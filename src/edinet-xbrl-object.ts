@@ -1,4 +1,5 @@
 import { EdinetDataUtil } from "./edinet-data-util";
+import { EdinetContext } from "./edinet-context";
 
 export class EdinetData {
     constructor(
@@ -26,9 +27,15 @@ export class EdinetData {
 
 export class EdinetXbrlObject {
     private dataMap: Map<string, EdinetData[]> = new Map();
+    private contextMap: Map<string, EdinetContext> = new Map();
 
     public clear(): void {
         this.dataMap.clear();
+        this.contextMap.clear();
+    }
+
+    public addContext(context: EdinetContext): void {
+        this.contextMap.set(context.id, context);
     }
 
     public put(key: string, edinetData: EdinetData): void {
@@ -55,23 +62,59 @@ export class EdinetXbrlObject {
     }
 
     /**
-     * Extract standardized key financial metrics.
-     * Currently supports J-GAAP Consolidated attributes.
-     */
+   * Extract standardized key financial metrics.
+   * Uses context analysis to find the most appropriate data.
+   */
     public getKeyMetrics(): KeyMetrics {
-        // Context definitions priority list
-        // We prioritize Consolidated (CurrentYearDuration) over NonConsolidated.
-        const CONTEXT_DURATIONS = ["CurrentYearDuration", "CurrentYearDuration_NonConsolidatedMember"];
-        const CONTEXT_INSTANTS = ["CurrentYearInstant", "CurrentYearInstant_NonConsolidatedMember"];
+        const durationCons = this.findContext({ type: "Duration", scope: "Consolidated" });
+        const durationNonCons = this.findContext({ type: "Duration", scope: "NonConsolidated" });
+
+        const instantCons = this.findContext({ type: "Instant", scope: "Consolidated" });
+        const instantNonCons = this.findContext({ type: "Instant", scope: "NonConsolidated" });
+
+        // Build priority lists
+        const durationIds: string[] = [];
+        if (durationCons) durationIds.push(durationCons.id);
+        if (durationNonCons) durationIds.push(durationNonCons.id);
+        durationIds.push("CurrentYearDuration", "CurrentYearDuration_NonConsolidatedMember"); // Backups
+
+        const instantIds: string[] = [];
+        if (instantCons) instantIds.push(instantCons.id);
+        if (instantNonCons) instantIds.push(instantNonCons.id);
+        instantIds.push("CurrentYearInstant", "CurrentYearInstant_NonConsolidatedMember"); // Backups
 
         return {
-            netSales: this.getNumberValue(["jppfs_cor:NetSales", "jpcrp_cor:NetSales"], CONTEXT_DURATIONS),
-            operatingIncome: this.getNumberValue(["jppfs_cor:OperatingIncome"], CONTEXT_DURATIONS),
-            ordinaryIncome: this.getNumberValue(["jppfs_cor:OrdinaryIncome"], CONTEXT_DURATIONS),
-            netIncome: this.getNumberValue(["jppfs_cor:ProfitLossAttributableToOwnersOfParent"], CONTEXT_DURATIONS),
-            netAssets: this.getNumberValue(["jppfs_cor:NetAssets"], CONTEXT_INSTANTS),
-            totalAssets: this.getNumberValue(["jppfs_cor:Assets"], CONTEXT_INSTANTS),
+            netSales: this.getNumberValue(["jppfs_cor:NetSales", "jpcrp_cor:NetSales"], durationIds),
+            operatingIncome: this.getNumberValue(["jppfs_cor:OperatingIncome"], durationIds),
+            ordinaryIncome: this.getNumberValue(["jppfs_cor:OrdinaryIncome"], durationIds),
+            netIncome: this.getNumberValue(["jppfs_cor:ProfitLossAttributableToOwnersOfParent"], durationIds),
+            netAssets: this.getNumberValue(["jppfs_cor:NetAssets"], instantIds),
+            totalAssets: this.getNumberValue(["jppfs_cor:Assets"], instantIds),
         };
+    }
+
+    /**
+     * Find a context ID matching the criteria.
+     * Logic:
+     * 1. Check Scope.
+     * 2. Check Type (Duration/Instant).
+     * 3. Check "Current Year".
+     *    Since we don't know "Current Year" absolutely, we assume the LATEST endDate/instant found in the file for that scope is "Current".
+     */
+    public findContext(options: { type: "Duration" | "Instant", scope: "Consolidated" | "NonConsolidated" }): EdinetContext | undefined {
+        let candidates = Array.from(this.contextMap.values()).filter(c => c.scope === options.scope);
+
+        if (options.type === "Duration") {
+            candidates = candidates.filter(c => c.period.startDate && c.period.endDate);
+            // Find latest endDate
+            candidates.sort((a, b) => (b.period.endDate || "").localeCompare(a.period.endDate || ""));
+        } else {
+            candidates = candidates.filter(c => c.period.instant);
+            // Find latest instant
+            candidates.sort((a, b) => (b.period.instant || "").localeCompare(a.period.instant || ""));
+        }
+
+        return candidates[0];
     }
 
     private getNumberValue(keys: string[], contextRefs: string[]): number | undefined {

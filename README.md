@@ -1,22 +1,92 @@
 # edinet-ts
 
-edinet-ts is a TypeScript port of the Python library [BuffettCode/edinet_xbrl](https://github.com/BuffettCode/edinet_xbrl), designed for parsing EDINET XBRL files in Node.js environments.
+`edinet-ts` は、金融庁の EDINET API v2 を利用して有価証券報告書等のXBRLファイルをダウンロード・解析するための TypeScript ライブラリです。
+Pythonライブラリ [BuffettCode/edinet_xbrl](https://github.com/BuffettCode/edinet_xbrl) のロジックをベースに、TypeScript/Node.js 環境向けに移植・最適化を行いました。
+複雑なXBRLの構造（Context、Namespace）を意識することなく、主要な財務指標を簡単に抽出できるように設計されています。
 
-## Installation
+## 特徴
+
+*   **TypeScript完全対応**: 型定義完備で、安全な開発が可能です。
+*   **EDINET API v2 対応**: 最新のAPI仕様（2024年現在）に対応しています。
+*   **主要指標の自動抽出**: 売上高、営業利益などを、連結/単体や期間を自動判定して `number` 型で取得できます。
+*   **ZIP自動解凍**: ダウンロードした書類のZIP解凍とファイル特定を自動化します。
+
+## インストール
 
 ```bash
 npm install edinet-ts
 ```
 
-## Credits / License
+## 使い方
 
-This library is a TypeScript port based on the Python library [BuffettCode/edinet_xbrl](https://github.com/BuffettCode/edinet_xbrl) developed by Buffett Code.
+### 1. XBRLファイルのダウンロード
+
+EDINET API を使用するには、APIキー（Subscription-Key）が必要です。
+
+```typescript
+import { EdinetXbrlDownloader } from "edinet-ts";
+
+const apiKey = process.env.EDINET_API_KEY || "YOUR_API_KEY";
+const downloader = new EdinetXbrlDownloader(apiKey);
+
+// 特定企業（例：トヨタ 7203）の最新の有価証券報告書をダウンロード
+// 指定したディレクトリに保存し、XBRLファイルのパスを返します
+const xbrlPath = await downloader.downloadByTicker("7203", "./downloads");
+
+if (xbrlPath) {
+  console.log(`Downloaded to: ${xbrlPath}`);
+}
+```
+
+### 2. データ解析と主要指標の取得 (Easy Mode)
+
+`getKeyMetrics()` を使うと、最も一般的な財務指標を簡単に取得できます。
+連結データがあれば連結を優先し、なければ単体データを自動的に探します。
+
+```typescript
+import { EdinetXbrlParser } from "edinet-ts";
+
+const parser = new EdinetXbrlParser();
+const data = parser.parseFile("./downloads/report.xbrl");
+
+// 主要指標を一括取得
+const metrics = data.getKeyMetrics();
+
+console.log(`売上高: ${metrics.netSales}`);          // 円単位 (例: 10000000000)
+console.log(`営業利益: ${metrics.operatingIncome}`);
+console.log(`経常利益: ${metrics.ordinaryIncome}`);
+console.log(`当期純利益: ${metrics.netIncome}`);
+console.log(`純資産: ${metrics.netAssets}`);
+console.log(`総資産: ${metrics.totalAssets}`);
+```
+
+### 3. 詳細なデータアクセス (Advanced Mode)
+
+特定のXBRLタグや、細かいコンテキスト（単体のみ指定など）を取得したい場合に使用します。
+
+```typescript
+// 例: 単体の売上高を明示的に取得
+// contextRefのIDではなく、条件を指定して検索できます
+const nonConsSalesContext = data.findContext({ 
+    type: "Duration", 
+    scope: "NonConsolidated" 
+});
+
+if (nonConsSalesContext) {
+    const rawData = data.getDataByContextRef("jppfs_cor:NetSales", nonConsSalesContext.id);
+    console.log(`単体売上高: ${rawData?.value}`);
+}
+```
+
+## クレジット / ライセンス
+
+本ライブラリは、Buffett Code氏によって開発されたPythonライブラリ [BuffettCode/edinet_xbrl](https://github.com/BuffettCode/edinet_xbrl) をベースに作成された TypeScript ポートです。
 
 - Original Author: Buffett Code
 - Original License: Apache License 2.0
 - Changes: Ported logic from Python to TypeScript, adjusted specifically for Node.js environment.
 
-## License
+### License
 
 ```text
 Copyright (c) 2025 oharato
