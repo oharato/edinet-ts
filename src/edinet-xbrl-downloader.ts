@@ -2,36 +2,59 @@ import * as fs from "fs";
 import * as path from "path";
 import AdmZip from "adm-zip";
 
+export interface EdinetDocument {
+    secCode: string;
+    docID: string;
+    docDescription: string;
+    docInfoEditStatus: number;
+    [key: string]: unknown;
+}
+
+export interface EdinetListResponse {
+    metadata: {
+        resultset: {
+            count: number;
+        };
+    };
+    results: EdinetDocument[];
+}
+
+/**
+ * Handles downloading of XBRL files from the EDINET API.
+ */
 export class EdinetXbrlDownloader {
-    private static readonly API_ENDPOINT = "https://disclosure.edinet-fsa.go.jp/api/v2";
+    private static readonly API_ENDPOINT = "https://api.edinet-fsa.go.jp/api/v2";
 
     constructor(private apiKey: string) { }
 
-    public async search(date: string): Promise<any[]> {
-        // date format: YYYY-MM-DD
-        const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents.json?date=${date}&type=2`;
-        const response = await fetch(url, {
-            headers: {
-                "Subscription-Key": this.apiKey,
-            },
-        });
+    /**
+     * Search for documents submitted on a specific date.
+     * @param date Format: YYYY-MM-DD
+     */
+    public async search(date: string): Promise<EdinetDocument[]> {
+        const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents.json?date=${date}&type=2&Subscription-Key=${this.apiKey}`;
+        const response = await fetch(url);
 
         if (!response.ok) {
             throw new Error(`Failed to fetch documents list: ${response.statusText}`);
         }
 
-        const data = await response.json();
-        return data.results || [];
+        const data = (await response.json()) as any; // Using any temporarily to check for error schema
+        if (data.statusCode && data.statusCode !== 200) {
+            throw new Error(`API Error: ${data.statusCode} - ${data.message}`);
+        }
+        return (data as EdinetListResponse).results || [];
     }
 
+    /**
+     * Download a specific document by its ID and extract the XBRL file.
+     * @param docId The EDINET document ID. // e.g., "S100XXXX"
+     * @param targetDir Directory to save the extracted files.
+     * @returns Path to the extracted .xbrl file.
+     */
     public async download(docId: string, targetDir: string): Promise<string> {
-        // type=1 for ZIP (default)
-        const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1`;
-        const response = await fetch(url, {
-            headers: {
-                "Subscription-Key": this.apiKey,
-            },
-        });
+        const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
+        const response = await fetch(url);
 
         if (!response.ok) {
             throw new Error(`Failed to download document ${docId}: ${response.statusText}`);
@@ -41,72 +64,39 @@ export class EdinetXbrlDownloader {
         const zip = new AdmZip(Buffer.from(buffer));
         const zipEntries = zip.getEntries();
 
-        let xbrlFile: string | null = null;
-        let xbrlContent: Buffer | null = null;
+        // Prioritize file in PublicDoc folder, otherwise take any .xbrl
+        const xbrlEntry =
+            zipEntries.find((e) => e.entryName.endsWith(".xbrl") && e.entryName.includes("PublicDoc")) ||
+            zipEntries.find((e) => e.entryName.endsWith(".xbrl"));
 
-        // Find the XBRL file (usually in PublicDoc/*.xbrl)
-        for (const entry of zipEntries) {
-            if (entry.entryName.endsWith(".xbrl") && entry.entryName.includes("PublicDoc")) {
-                xbrlFile = entry.entryName;
-                xbrlContent = entry.getData();
-                break;
-            }
-        }
-
-        if (!xbrlFile || !xbrlContent) {
-            // Fallback: look for ANY .xbrl file if PublicDoc is not found
-            for (const entry of zipEntries) {
-                if (entry.entryName.endsWith(".xbrl")) {
-                    xbrlFile = entry.entryName;
-                    xbrlContent = entry.getData();
-                    break;
-                }
-            }
-        }
-
-        if (!xbrlFile || !xbrlContent) {
+        if (!xbrlEntry) {
             throw new Error("No XBRL file found in the downloaded ZIP.");
         }
-
-        // Save to targetDir
-        // We only save the XBRL file itself to match the Python lib behavior which provided a path to the XBRL file.
-        // However, XBRL files often depend on XSDs referenced in the same directory.
-        // The Python lib `download` saved the *file_name* (the ZIP? or the contents?).
-        // Actually, `urllib.request.urlretrieve` saves the downloaded entity.
-        // UFOCatcher URLs were likely direct links to single files OR zips.
-        // If it was a ZIP, the user had to unzip.
-        // If I extract ONLY the XBRL, it might fail to parse if it needs local XSDs.
-        // BUT EDINET XBRLs usually reference remote or standard taxonomies.
-        // Wait, `jpcrp_cor` etc. are often standard.
-        // But if there are extension taxonomies (`*.xsd` in the zip), we might need them.
-        // To be safe, we should extract **everything** or at least the `PublicDoc` folder.
-
-        // For now, I will extract EVERYTHING to `targetDir/docId/`.
-        // And return the path to the .xbrl file.
 
         const extractPath = path.join(targetDir, docId);
         zip.extractAllTo(extractPath, true);
 
-        // Find the xbrl file path on disk
-        const foundEntry = zipEntries.find(e => e.entryName === xbrlFile);
-        if (foundEntry) {
-            return path.join(extractPath, foundEntry.entryName);
-        }
-        return "";
+        return path.join(extractPath, xbrlEntry.entryName);
     }
 
-    public async downloadByTicker(ticker: string, targetDir: string, date: string = new Date().toISOString().split('T')[0]): Promise<string | null> {
+    /**
+     * Convenience method to find and download the latest document for a ticker.
+     * @param ticker Stock ticker (e.g. "7203")
+     * @param targetDir Directory to save the downloaded file.
+     * @param date Date to search (YYYY-MM-DD). Defaults to today.
+     */
+    public async downloadByTicker(
+        ticker: string,
+        targetDir: string,
+        date: string = new Date().toISOString().split("T")[0]
+    ): Promise<string | null> {
         const docs = await this.search(date);
-        // documentCode is NOT ticker. edinetCode is. 
-        // Usually we map Ticker -> EdinetCode. 
-        // But the search results contain `secCode` (e.g. "72030").
-        // We look for strict match or startsWith.
 
-        const targetDoc = docs.find((d: any) => d.secCode === ticker + "0" && d.docInfoEditStatus === 0);
-        // secCode is 5 digits (ticker + char). e.g. 72030.
-        // We check if it matches.
-        // Also prioritize `docInfoEditStatus`?
-        // Let's just look for the first match with the ticker.
+        // secCode matches ticker + "0" typically (e.g. 72030)
+        // We prioritize original documents (docInfoEditStatus === 0)
+        const targetDoc = docs.find(
+            (d) => d.secCode === ticker + "0" && d.docInfoEditStatus === 0
+        );
 
         if (!targetDoc) {
             console.warn(`No document found for ticker ${ticker} on ${date}.`);
