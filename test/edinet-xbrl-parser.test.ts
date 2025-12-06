@@ -94,10 +94,18 @@ describe("EdinetXbrlParser", () => {
         expect(ym.operatingIncome).toBe(185012000000);
         expect(ym.netAssets).toBe(857912000000);
 
+        // New Metrics Check (Values derived from debug/grep)
+        // Yahoo uses NonConsolidated for this file
+        // EPS: 23.72
+        expect(ym.earningsPerShare).toBe(23.72);
+        expect(ym.bookValuePerShare).toBe(150.59); // From grep
+        // CF might be tricky if it's not in the primary context or named differently for NonConsolidated
+
         // Test with Raccoon (3031)
         const raccoon = parser.parseFile(path.join(TEST_DIR, "3031_raccoon.xbrl"));
         const rm = raccoon.getKeyMetrics();
         expect(rm.netSales).toBe(5808066000);
+        expect(rm.operatingCashFlow).toBe(660987000); // Consolidated value
         expect(rm.operatingIncome).toBe(566962000);
         expect(rm.netIncome).toBe(325982000);
     });

@@ -90,7 +90,31 @@ export class EdinetXbrlObject {
             netIncome: this.getNumberValue(["jppfs_cor:ProfitLossAttributableToOwnersOfParent"], durationIds),
             netAssets: this.getNumberValue(["jppfs_cor:NetAssets"], instantIds),
             totalAssets: this.getNumberValue(["jppfs_cor:Assets"], instantIds),
+
+            // Cash Flows
+            operatingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInOperatingActivities", "jpcrp_cor:NetCashProvidedByUsedInOperatingActivitiesSummaryOfBusinessResults"], durationIds),
+            investingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInInvestmentActivities", "jppfs_cor:NetCashProvidedByUsedInInvestingActivities", "jpcrp_cor:NetCashProvidedByUsedInInvestingActivitiesSummaryOfBusinessResults"], durationIds),
+            financingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInFinancingActivities", "jpcrp_cor:NetCashProvidedByUsedInFinancingActivitiesSummaryOfBusinessResults"], durationIds),
+            cashAndEquivalents: this.getNumberValue(["jppfs_cor:CashAndCashEquivalents", "jppfs_cor:CashAndCashEquivalentsEndOfPeriod"], instantIds),
+
+            // Per Share
+            earningsPerShare: this.getNumberValue(["jppfs_cor:BasicEarningsLossPerShare", "jpcrp_cor:BasicEarningsLossPerShareSummaryOfBusinessResults"], durationIds),
+            bookValuePerShare: this.getNumberValue(["jppfs_cor:NetAssetsPerShare", "jpcrp_cor:NetAssetsPerShareSummaryOfBusinessResults"], instantIds)
         };
+    }
+
+    /**
+   * Get data by specifying logical context criteria.
+   * This is the preferred way to access data without knowing XBRL Context IDs.
+   */
+    public getData(key: string, options: {
+        year?: "Current" | "Prior1Year" | "Prior2Year",
+        type: "Duration" | "Instant",
+        scope: "Consolidated" | "NonConsolidated"
+    }): EdinetData | undefined {
+        const context = this.findContext(options);
+        if (!context) return undefined;
+        return this.getDataByContextRef(key, context.id) || undefined;
     }
 
     /**
@@ -98,23 +122,34 @@ export class EdinetXbrlObject {
      * Logic:
      * 1. Check Scope.
      * 2. Check Type (Duration/Instant).
-     * 3. Check "Current Year".
-     *    Since we don't know "Current Year" absolutely, we assume the LATEST endDate/instant found in the file for that scope is "Current".
+     * 3. Check "Year" (Offset from latest).
      */
-    public findContext(options: { type: "Duration" | "Instant", scope: "Consolidated" | "NonConsolidated" }): EdinetContext | undefined {
+    public findContext(options: {
+        year?: "Current" | "Prior1Year" | "Prior2Year",
+        type: "Duration" | "Instant",
+        scope: "Consolidated" | "NonConsolidated"
+    }): EdinetContext | undefined {
         let candidates = Array.from(this.contextMap.values()).filter(c => c.scope === options.scope);
 
+        // Filter by type
         if (options.type === "Duration") {
             candidates = candidates.filter(c => c.period.startDate && c.period.endDate);
-            // Find latest endDate
+            // Sort by endDate descending (Latest first)
             candidates.sort((a, b) => (b.period.endDate || "").localeCompare(a.period.endDate || ""));
         } else {
             candidates = candidates.filter(c => c.period.instant);
-            // Find latest instant
+            // Sort by instant descending (Latest first)
             candidates.sort((a, b) => (b.period.instant || "").localeCompare(a.period.instant || ""));
         }
 
-        return candidates[0];
+        // Handle Year Offset
+        // Current (default) = Index 0
+        // Prior1Year = Index 1
+        // Prior2Year = Index 2
+        const offset = options.year === "Prior1Year" ? 1 :
+            options.year === "Prior2Year" ? 2 : 0;
+
+        return candidates[offset];
     }
 
     private getNumberValue(keys: string[], contextRefs: string[]): number | undefined {
@@ -122,7 +157,7 @@ export class EdinetXbrlObject {
             for (const key of keys) {
                 const data = this.getDataByContextRef(key, contextRef);
                 if (data && data.value) {
-                    const parsed = parseInt(data.value, 10);
+                    const parsed = parseFloat(data.value);
                     if (!isNaN(parsed)) return parsed;
                 }
             }
@@ -138,4 +173,14 @@ export interface KeyMetrics {
     netIncome?: number;
     netAssets?: number;
     totalAssets?: number;
+
+    // Cash Flows
+    operatingCashFlow?: number;
+    investingCashFlow?: number;
+    financingCashFlow?: number;
+    cashAndEquivalents?: number;
+
+    // Per Share
+    earningsPerShare?: number;
+    bookValuePerShare?: number;
 }
