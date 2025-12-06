@@ -85,4 +85,20 @@ describe("EdinetXbrlParser", () => {
         expect(netIncome).not.toBeNull();
         expect(parseInt(netIncome!.value)).toBe(325982000);
     });
+
+    it("extracts KeyMetrics object correctly", () => {
+        // Test with Yahoo (4689)
+        const yahoo = parser.parseFile(path.join(TEST_DIR, "CI_4689_yahoo.xbrl"));
+        const ym = yahoo.getKeyMetrics();
+        expect(ym.netSales).toBe(406793000000);
+        expect(ym.operatingIncome).toBe(185012000000);
+        expect(ym.netAssets).toBe(857912000000);
+
+        // Test with Raccoon (3031)
+        const raccoon = parser.parseFile(path.join(TEST_DIR, "3031_raccoon.xbrl"));
+        const rm = raccoon.getKeyMetrics();
+        expect(rm.netSales).toBe(5808066000);
+        expect(rm.operatingIncome).toBe(566962000);
+        expect(rm.netIncome).toBe(325982000);
+    });
 });

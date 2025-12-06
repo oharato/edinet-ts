@@ -53,4 +53,46 @@ export class EdinetXbrlObject {
     public hasKey(key: string): boolean {
         return this.dataMap.has(key);
     }
+
+    /**
+     * Extract standardized key financial metrics.
+     * Currently supports J-GAAP Consolidated attributes.
+     */
+    public getKeyMetrics(): KeyMetrics {
+        // Context definitions priority list
+        // We prioritize Consolidated (CurrentYearDuration) over NonConsolidated.
+        const CONTEXT_DURATIONS = ["CurrentYearDuration", "CurrentYearDuration_NonConsolidatedMember"];
+        const CONTEXT_INSTANTS = ["CurrentYearInstant", "CurrentYearInstant_NonConsolidatedMember"];
+
+        return {
+            netSales: this.getNumberValue(["jppfs_cor:NetSales", "jpcrp_cor:NetSales"], CONTEXT_DURATIONS),
+            operatingIncome: this.getNumberValue(["jppfs_cor:OperatingIncome"], CONTEXT_DURATIONS),
+            ordinaryIncome: this.getNumberValue(["jppfs_cor:OrdinaryIncome"], CONTEXT_DURATIONS),
+            netIncome: this.getNumberValue(["jppfs_cor:ProfitLossAttributableToOwnersOfParent"], CONTEXT_DURATIONS),
+            netAssets: this.getNumberValue(["jppfs_cor:NetAssets"], CONTEXT_INSTANTS),
+            totalAssets: this.getNumberValue(["jppfs_cor:Assets"], CONTEXT_INSTANTS),
+        };
+    }
+
+    private getNumberValue(keys: string[], contextRefs: string[]): number | undefined {
+        for (const contextRef of contextRefs) {
+            for (const key of keys) {
+                const data = this.getDataByContextRef(key, contextRef);
+                if (data && data.value) {
+                    const parsed = parseInt(data.value, 10);
+                    if (!isNaN(parsed)) return parsed;
+                }
+            }
+        }
+        return undefined;
+    }
+}
+
+export interface KeyMetrics {
+    netSales?: number;
+    operatingIncome?: number;
+    ordinaryIncome?: number;
+    netIncome?: number;
+    netAssets?: number;
+    totalAssets?: number;
 }
