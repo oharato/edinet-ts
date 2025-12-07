@@ -6,7 +6,8 @@ import { EdinetDataUtil } from "./edinet-data-util";
 import { ContextParser } from "./edinet-context";
 
 /**
- * XBRL文字列（XML）をパースします。
+ * XBRLファイル（XML形式）をパースし、扱いやすい `EdinetXbrlObject` に変換するクラス。
+ * `fast-xml-parser` を使用して解析を行います。
  */
 export class EdinetXbrlParser {
     private parser: XMLParser;
@@ -20,7 +21,9 @@ export class EdinetXbrlParser {
     }
 
     /**
-     * .xbrl ファイルをパースして EdinetXbrlObject を返します。
+     * .xbrl ファイルをパースして `EdinetXbrlObject` を返します。
+     * @param filePath .xbrl ファイルへのパス
+     * @returns パース済みのオブジェクト
      */
     public parseFile(filePath: string): EdinetXbrlObject {
         let targetPath = filePath;
@@ -103,7 +106,7 @@ export class EdinetXbrlParser {
     }
 
     /**
-     * XMLノードを再帰的にトラバースし、各要素を EdinetXbrlObject に格納します。
+     * XMLノードを再帰的にトラバースし、すべての要素を `EdinetXbrlObject` に格納します。
      */
     private traverse(node: unknown, xbrlObject: EdinetXbrlObject): void {
         if (!this.isObject(node)) {

@@ -1,20 +1,28 @@
 import { EdinetDataUtil } from "./edinet-data-util";
 
 export interface EdinetContext {
+    /** コンテキストのID (例: "CurrentYearDuration") */
     id: string;
+    /** 期間情報 */
     period: {
+        /** 開始日 (YYYY-MM-DD) - Durationの場合 */
         startDate?: string;
+        /** 終了日 (YYYY-MM-DD) - Durationの場合 */
         endDate?: string;
+        /** 時点 (YYYY-MM-DD) - Instantの場合 */
         instant?: string;
     };
+    /** 連結範囲 ("Consolidated" または "NonConsolidated") */
     scope: "Consolidated" | "NonConsolidated";
-    // dimensions: explicit member のリスト (例: "NonConsolidatedMember")
+    /** 明示的なメンバーのリスト (例: "NonConsolidatedMember") */
     dimensions: string[];
 }
 
 export class ContextParser {
     /**
-     * raw xbrli:context ノードを構造化された EdinetContext にパースします。
+     * raw xbrli:context ノードを構造化された EdinetContext オブジェクトにパースします。
+     * @param node XMLノード
+     * @returns パースされた EdinetContext。無効なノードの場合は null。
      */
     public static parse(node: any): EdinetContext | null {
         if (!node || !node["@_id"]) return null;
@@ -74,11 +82,11 @@ export class ContextParser {
                     if (Array.isArray(explicit)) {
                         explicit.forEach(val => {
                             const v = EdinetDataUtil.getValue(val);
-                            if (v) members.push(v);
+                            if (v) members.push(EdinetDataUtil.getKey(v));
                         });
                     } else {
                         const val = EdinetDataUtil.getValue(explicit);
-                        if (val) members.push(val);
+                        if (val) members.push(EdinetDataUtil.getKey(val));
                     }
                 }
 

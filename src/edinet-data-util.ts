@@ -1,6 +1,6 @@
 /**
- * Utility class for extracting data from parsed XBRL nodes.
- * Handles attribute access (prefixed with '@_') and text content extraction.
+ * XBRLノードからデータを抽出するためのユーティリティクラス。
+ * 属性（'@_'接頭辞）へのアクセスやテキストコンテンツの抽出を処理します。
  */
 export class EdinetDataUtil {
     private static readonly CONTEXT_REF = "contextRef";
@@ -11,9 +11,6 @@ export class EdinetDataUtil {
     private static readonly SCALE = "scale";
 
     /**
-     * Extract the tag name from a node key, stripping namespace if present.
-     * @param nodeKey e.g. "jpcrp_cor:NetSales"
-     * @returns e.g. "NetSales"
      * ノードキーからタグ名を抽出します。名前空間が存在する場合は除去します。
      * @param nodeKey 例: "jpcrp_cor:NetSales"
      * @returns 例: "NetSales"
@@ -39,7 +36,10 @@ export class EdinetDataUtil {
         if (this.isObject(node) && "#text" in node) {
             return String(node["#text"]);
         }
-        if (node !== null && typeof node !== "object") {
+        if (node === undefined || node === null) {
+            return "";
+        }
+        if (typeof node !== "object") {
             return String(node);
         }
         return "";
@@ -53,27 +53,45 @@ export class EdinetDataUtil {
         return "";
     }
 
+    /**
+     * ノードの `contextRef` 属性を取得します。
+     */
     public static getContextRef(node: unknown): string {
         return this.getAttribute(node, this.CONTEXT_REF);
     }
 
+    /**
+     * ノードの `unitRef` 属性を取得します。
+     */
     public static getUnitRef(node: unknown): string {
         return this.getAttribute(node, this.UNIT_REF);
     }
 
+    /**
+     * ノードの `decimals` 属性（精度）を取得します。
+     */
     public static getDecimals(node: unknown): number {
         const val = this.getAttribute(node, this.DECIMALS);
         return val ? parseInt(val, 10) : 0;
     }
 
+    /**
+     * ノードの `format` 属性を取得します。
+     */
     public static getFormat(node: unknown): string {
         return this.getAttribute(node, this.FORMAT);
     }
 
+    /**
+     * ノードの `name` 属性を取得します。
+     */
     public static getName(node: unknown): string {
         return this.getAttribute(node, this.NAME);
     }
 
+    /**
+     * ノードの `scale` 属性を取得します。
+     */
     public static getScale(node: unknown): number {
         const val = this.getAttribute(node, this.SCALE);
         return val ? parseInt(val, 10) : 0;

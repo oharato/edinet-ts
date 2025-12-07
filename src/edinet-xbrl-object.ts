@@ -11,9 +11,9 @@ export class EdinetData {
     ) { }
 
     /**
-     * Factory method to create an EdinetData instance from an XML node.
-     * @param node The parsed XML node.
-     * @param key The XBRL tag name (e.g. "jpcrp_cor:NetSales").
+     * XMLノードから `EdinetData` インスタンスを作成するファクトリメソッド。
+     * @param node パース済みのXMLノード
+     * @param key XBRLタグ名 (例: "jpcrp_cor:NetSales")
      */
     public static create(node: unknown, key: string): EdinetData {
         const value = EdinetDataUtil.getValue(node);
@@ -29,25 +29,40 @@ export class EdinetXbrlObject {
     private dataMap: Map<string, EdinetData[]> = new Map();
     private contextMap: Map<string, EdinetContext> = new Map();
 
+    /**
+     * 保持しているデータを全てクリアします。
+     */
     public clear(): void {
         this.dataMap.clear();
         this.contextMap.clear();
     }
 
+    /**
+     * コンテキスト定義を追加します。
+     */
     public addContext(context: EdinetContext): void {
         this.contextMap.set(context.id, context);
     }
 
+    /**
+     * 指定されたキーのデータを追加します。同じキーに複数のデータ（期間違いなど）が存在し得ます。
+     */
     public put(key: string, edinetData: EdinetData): void {
         const existing = this.dataMap.get(key) || [];
         existing.push(edinetData);
         this.dataMap.set(key, existing);
     }
 
+    /**
+     * 指定されたキーに関連するすべてのデータリストを取得します。
+     */
     public getDataList(key: string): EdinetData[] {
         return this.dataMap.get(key) || [];
     }
 
+    /**
+     * 指定されたキーとコンテキストIDに対応するデータを取得します。
+     */
     public getDataByContextRef(key: string, contextRef: string): EdinetData | null {
         const list = this.getDataList(key);
         return list.find((d) => d.contextRef === contextRef) || null;
@@ -221,28 +236,46 @@ export class EdinetXbrlObject {
 }
 
 export interface KeyMetrics {
+    /** 売上高 */
     netSales?: number;
+    /** 営業利益 */
     operatingIncome?: number;
+    /** 経常利益 */
     ordinaryIncome?: number;
+    /** 当期純利益 (親会社株主に帰属する当期純利益) */
     netIncome?: number;
+    /** 純資産 */
     netAssets?: number;
+    /** 総資産 */
     totalAssets?: number;
 
     // Cash Flows
+    /** 営業活動によるキャッシュ・フロー */
     operatingCashFlow?: number;
+    /** 投資活動によるキャッシュ・フロー */
     investingCashFlow?: number;
+    /** 財務活動によるキャッシュ・フロー */
     financingCashFlow?: number;
+    /** 現金及び現金同等物の期末残高 */
     cashAndEquivalents?: number;
 
     // Per Share
+    /** EPS (1株当たり当期純利益) */
     earningsPerShare?: number;
+    /** BPS (1株当たり純資産) */
     bookValuePerShare?: number;
 
     // Ratios & Others
-    equityToTotalAssetsRatio?: number; // % or decimal (check unit)
-    rateOfReturnOnEquity?: number; // % or decimal
+    /** 自己資本比率 (例: 0.5 = 50%) */
+    equityToTotalAssetsRatio?: number;
+    /** ROE (自己資本利益率) (例: 0.1 = 10%) */
+    rateOfReturnOnEquity?: number;
+    /** PER (株価収益率) ※XBRLに含まれる場合のみ */
     priceEarningsRatio?: number;
+    /** 配当性向 */
     payoutRatio?: number;
+    /** 発行済株式総数 */
     numberOfIssuedShares?: number;
+    /** 1株当たり配当額 */
     dividendPaidPerShare?: number;
 }

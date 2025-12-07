@@ -20,7 +20,8 @@ export interface EdinetListResponse {
 }
 
 /**
- * Handles downloading of XBRL files from the EDINET API.
+ * EDINET API から XBRL ファイルをダウンロードするためのクラス。
+ * 書類リストの検索や、特定の書類のダウンロード・ZIP展開を行います。
  */
 export class EdinetXbrlDownloader {
     private static readonly API_ENDPOINT = "https://api.edinet-fsa.go.jp/api/v2";
@@ -38,8 +39,9 @@ export class EdinetXbrlDownloader {
     }
 
     /**
-     * 最新の書類IDを取得します。
-     * @param date Format: YYYY-MM-DD
+     * 指定した日付に提出された書類のリストを取得します。
+     * @param date 検索対象日 (YYYY-MM-DD)
+     * @returns 書類情報のリスト
      */
     public async search(date: string): Promise<EdinetDocument[]> {
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents.json?date=${date}&type=2&Subscription-Key=${this.apiKey}`;
@@ -57,10 +59,11 @@ export class EdinetXbrlDownloader {
     }
 
     /**
-     * 指定されたティッカー（証券コード）の最新の有価証券報告書をダウンロードし、XBRLファイルを展開します。
-     * @param docId The EDINET document ID. // e.g., "S100XXXX"
-     * @param targetDir 保存先のディレクトリ (オプショナル: 指定がない場合はコンストラクタまたは環境変数の設定を使用)
-     * @returns 展開された .xbrl ファイルの絶対パス。見つからない場合は null。
+     * 指定されたドキュメントIDの XBRL ファイルをダウンロードし、展開します。
+     * @param docId EDINET書類管理ID (例: "S100XXXX")
+     * @param targetDir 保存先ディレクトリ (省略時はコンストラクタまたは環境変数の設定を使用)
+     * @returns 展開された .xbrl ファイルの絶対パス
+     * @throws ディレクトリが未指定の場合や、ダウンロード/展開に失敗した場合
      */
     public async download(docId: string, targetDir?: string): Promise<string> {
         const dir = targetDir || this.rootDir;
@@ -95,10 +98,12 @@ export class EdinetXbrlDownloader {
     }
 
     /**
-     * Convenience method to find and download the latest document for a ticker.
-     * @param ticker Stock ticker (e.g. "7203")
-     * @param targetDir Directory to save the downloaded file.
-     * @param date Date to search (YYYY-MM-DD). Defaults to today.
+     * ティッカー（証券コード）を指定して、最新の有価証券報告書をダウンロードします。
+     * 内部で `search()` を呼び出し、該当する最新の書類を特定します。
+     * @param ticker 証券コード (例: "7203")
+     * @param targetDir 保存先ディレクトリ
+     * @param date 検索対象日 (YYYY-MM-DD)。デフォルトは当日。
+     * @returns ダウンロードされた .xbrl ファイルのパス。見つからなかった場合は null。
      */
     public async downloadByTicker(
         ticker: string,
