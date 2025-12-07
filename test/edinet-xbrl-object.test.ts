@@ -96,4 +96,24 @@ describe("EdinetXbrlObject", () => {
             expect(metrics.netSales).toBe(500);
         });
     });
+
+    describe("getQualitativeInfo", () => {
+        it("extracts qualitative text blocks", () => {
+            xbrlObject.put("jpcrp_cor:BusinessRisksTextBlock", new EdinetData("jpcrp_cor:BusinessRisksTextBlock", "Risks are...", 0, "", "ctx1"));
+            xbrlObject.put("jpcrp_cor:DescriptionOfBusinessTextBlock", new EdinetData("jpcrp_cor:DescriptionOfBusinessTextBlock", "We sell widgets.", 0, "", "ctx1"));
+
+            const info = xbrlObject.getQualitativeInfo();
+            expect(info.businessRisks).toBe("Risks are...");
+            expect(info.businessDescription).toBe("We sell widgets.");
+            expect(info.companyHistory).toBeUndefined();
+        });
+
+        it("handles alternative tags", () => {
+            // Example of checking alternative tag priority if one is missing
+            xbrlObject.put("jpcrp_cor:DescriptionOfBusinessPolicyEnvironmentAndIssuesToAddressTextBlock", new EdinetData("jpcrp_cor:...", "Policy B", 0, "", "ctx1"));
+
+            const info = xbrlObject.getQualitativeInfo();
+            expect(info.businessPolicy).toBe("Policy B");
+        });
+    });
 });

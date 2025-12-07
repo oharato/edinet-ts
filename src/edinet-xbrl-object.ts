@@ -233,6 +233,38 @@ export class EdinetXbrlObject {
         }
         return undefined;
     }
+
+    /**
+     * 定性的なテキスト情報を抽出します。
+     * （例：事業等のリスク、経営者による分析など）
+     * テキストにはHTMLタグが含まれる場合があります。
+     */
+    public getQualitativeInfo(): QualitativeInfo {
+        // テキスト情報は通常、FilingDateInstant などの特定のコンテキストに紐付いていますが、
+        // 書類全体で一意であることが多いため、ここではコンテキストを厳密に指定せず、
+        // 存在するデータの中から最初に見つかった妥当な値を返します。
+
+        const getString = (keys: string[]): string | undefined => {
+            for (const key of keys) {
+                const dataList = this.getDataList(key);
+                if (dataList.length > 0) {
+                    // データが見つかれば、最初のものの値を返す
+                    // 必要であればコンテキストによるフィルタリングを追加可能
+                    return dataList[0].value;
+                }
+            }
+            return undefined;
+        }
+
+        return {
+            businessPolicy: getString(["jpcrp_cor:BusinessPolicyBusinessEnvironmentIssuesToAddressEtcTextBlock", "jpcrp_cor:DescriptionOfBusinessPolicyEnvironmentAndIssuesToAddressTextBlock"]),
+            businessRisks: getString(["jpcrp_cor:BusinessRisksTextBlock"]),
+            financialAnalysis: getString(["jpcrp_cor:AnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", "jpcrp_cor:ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock"]),
+            businessDescription: getString(["jpcrp_cor:DescriptionOfBusinessTextBlock"]),
+            companyHistory: getString(["jpcrp_cor:CompanyHistoryTextBlock"]),
+            researchAndDevelopment: getString(["jpcrp_cor:ResearchAndDevelopmentActivitiesTextBlock"])
+        };
+    }
 }
 
 export interface KeyMetrics {
@@ -278,4 +310,19 @@ export interface KeyMetrics {
     numberOfIssuedShares?: number;
     /** 1株当たり配当額 */
     dividendPaidPerShare?: number;
+}
+
+export interface QualitativeInfo {
+    /** 事業の方針、事業環境及び対処すべき課題 */
+    businessPolicy?: string;
+    /** 事業等のリスク */
+    businessRisks?: string;
+    /** 経営者による財政状態、経営成績及びキャッシュ・フローの状況の分析 */
+    financialAnalysis?: string;
+    /** 事業の内容 */
+    businessDescription?: string;
+    /** 沿革 */
+    companyHistory?: string;
+    /** 研究開発活動 */
+    researchAndDevelopment?: string;
 }
