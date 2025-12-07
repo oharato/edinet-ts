@@ -1,6 +1,7 @@
 import * as path from "path";
 import JSZip from "jszip";
 import { EdinetDocumentType } from "./edinet-document-type";
+import { RateLimiter } from "./utils/rate-limiter";
 
 export interface EdinetDocument {
     secCode: string;
@@ -13,11 +14,28 @@ export interface EdinetDocument {
 
 export interface EdinetListResponse {
     metadata: {
+        title: string;
+        date: string;
+        parameter: {
+            date: string;
+            type: string;
+        };
         resultset: {
             count: number;
         };
     };
     results: EdinetDocument[];
+}
+
+export interface EdinetClientOptions {
+    apiKey?: string;
+    rootDir?: string;
+    /** trueの場合、レートリミットを有効にする (デフォルト: true) */
+    enableRateLimit?: boolean;
+    /** 1秒あたりのリクエスト数 (デフォルト: 1) - 1000/N ms の間隔を設定するのと同等 */
+    requestsPerSecond?: number;
+    /** 429/5xx エラー発生時の最大リトライ回数 (デフォルト: 3) */
+    maxRetries?: number;
 }
 
 /**
@@ -28,15 +46,65 @@ export class EdinetXbrlDownloader {
     private static readonly API_ENDPOINT = "https://api.edinet-fsa.go.jp/api/v2";
 
     private apiKey: string;
-    private rootDir?: string;
+    private rootDir: string;
+    private rateLimiter: RateLimiter;
+    private options: EdinetClientOptions;
 
-    constructor(apiKey?: string, options?: { rootDir?: string }) {
-        const key = apiKey || (typeof process !== "undefined" ? process.env.EDINET_API_KEY : undefined);
-        if (!key) {
-            throw new Error("API Key is required. Provide it as an argument or set EDINET_API_KEY environment variable.");
+    /**
+     * @param options Configuration options
+     */
+    constructor(options?: EdinetClientOptions) {
+        this.options = options || {};
+        this.apiKey = this.options.apiKey || process.env.EDINET_API_KEY || "";
+
+        if (!this.apiKey) {
+            console.warn("Warning: EDINET_API_KEY is not provided. API calls may fail.");
         }
-        this.apiKey = key;
-        this.rootDir = options?.rootDir || (typeof process !== "undefined" ? process.env.EDINET_DOWNLOAD_DIR : undefined);
+
+        this.rootDir = this.options.rootDir || process.env.EDINET_DOWNLOAD_DIR || "downloads";
+
+        // レートリミッターの設定
+        const enableLimit = this.options.enableRateLimit ?? true; // デフォルト ON
+        const rps = this.options.requestsPerSecond || 1;
+        const interval = enableLimit ? Math.ceil(1000 / rps) : 0;
+
+        this.rateLimiter = new RateLimiter(1, interval);
+    }
+
+    private async fetchWithRetry(url: string, options?: RequestInit): Promise<Response> {
+        const maxRetries = this.options.maxRetries ?? 3;
+        let attempt = 0;
+
+        while (attempt <= maxRetries) {
+            try {
+                // レートリミッター経由で実行
+                const response = await this.rateLimiter.schedule(() => fetch(url, options));
+
+                if (response.ok) {
+                    return response;
+                }
+
+                // 429 (Too Many Requests) または 5xx (Server Error) のハンドリング
+                if (response.status === 429 || response.status >= 500) {
+                    const delay = 1000 * Math.pow(2, attempt);
+                    console.warn(`API Error ${response.status}. Retrying in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    attempt++;
+                    continue;
+                }
+
+                return response; // その他のエラー (400, 404 等) はそのまま返す
+
+            } catch (e) {
+                // ネットワークエラー
+                const delay = 1000 * Math.pow(2, attempt);
+                console.warn(`Network Error. Retrying in ${delay}ms...`, e);
+                await new Promise(r => setTimeout(r, delay));
+                attempt++;
+            }
+        }
+
+        throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`);
     }
 
     /**
@@ -52,7 +120,7 @@ export class EdinetXbrlDownloader {
      */
     public async search(date: string, typeFilter?: EdinetDocumentType): Promise<EdinetDocument[]> {
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents.json?date=${date}&type=2&Subscription-Key=${this.apiKey}`;
-        const response = await fetch(url);
+        const response = await this.fetchWithRetry(url);
 
         if (!response.ok) {
             throw new Error(`Failed to fetch documents list: ${response.statusText}`);
@@ -93,7 +161,7 @@ export class EdinetXbrlDownloader {
         }
 
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
-        const response = await fetch(url);
+        const response = await this.fetchWithRetry(url);
 
         if (!response.ok) {
             throw new Error(`Failed to download document ${docId}: ${response.statusText}`);
@@ -102,7 +170,7 @@ export class EdinetXbrlDownloader {
         const buffer = await response.arrayBuffer();
         const zip = await JSZip.loadAsync(buffer);
 
-        // Find XBRL file
+        // XBRLファイルを探す
         const files = Object.keys(zip.files);
         // PublicDocフォルダ内のファイルを優先し、なければ任意の.xbrlファイルを取得します
         const xbrlFileName =
@@ -113,13 +181,12 @@ export class EdinetXbrlDownloader {
             throw new Error("No XBRL file found in the downloaded ZIP.");
         }
 
-        // Extract all files (syncing behavior to adm-zip approach for compatibility)
-        // Note: JSZip is async, so we iterate.
+        // 全ファイルを展開（adm-zipの挙動に合わせて同期的に見せるが、JSZipは非同期）
+        // 注: JSZipは非同期なのでイテレートします
         const extractPath = path.join(dir, docId);
 
-        // This part strictly depends on Node.js fs. 
-        // In a browser environment, this method should likely not be called, 
-        // or we should provide a way to get the blob directly.
+        // この部分はNode.jsのfsに依存しています。
+        // ブラウザ環境ではこのメソッドは呼ぶべきではありません。
         if (!fs.existsSync(extractPath)) {
             fs.mkdirSync(extractPath, { recursive: true });
         }
@@ -145,7 +212,7 @@ export class EdinetXbrlDownloader {
      */
     public async fetchXbrl(docId: string): Promise<string> {
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
-        const response = await fetch(url);
+        const response = await this.fetchWithRetry(url);
 
         if (!response.ok) {
             throw new Error(`Failed to download document ${docId}: ${response.statusText}`);
@@ -191,7 +258,7 @@ export class EdinetXbrlDownloader {
             } catch (e) {
                 console.warn(`Failed to search on ${dateStr}:`, e);
             }
-            // Polite delay to avoid rate limiting if range is large
+            // 範囲が広い場合、レートリミットを避けるための待機
             if (d.getTime() < end.getTime()) {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
@@ -231,7 +298,7 @@ export class EdinetXbrlDownloader {
                 console.warn(`Error searching on ${dateStr}:`, e);
             }
 
-            // Rate limit politeness
+            // レート制限への配慮
             await new Promise(resolve => setTimeout(resolve, 100));
         }
 

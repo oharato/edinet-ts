@@ -30,8 +30,7 @@ import { EdinetXbrlDownloader } from "edinet-ts";
 const downloader = new EdinetXbrlDownloader();
 
 // 明示的に渡す場合
-// const apiKey = process.env.EDINET_API_KEY || "YOUR_API_KEY";
-// const downloader = new EdinetXbrlDownloader(apiKey);
+// const downloader = new EdinetXbrlDownloader({ apiKey: "YOUR_API_KEY" });
 
 // 特定企業（例：トヨタ 7203）の最新の有価証券報告書をダウンロード
 // 指定したディレクトリに保存し、XBRLファイルのパスを返します
@@ -41,6 +40,18 @@ const xbrlPath: string | null = await downloader.downloadByTicker("7203", "./dow
 if (xbrlPath) {
   console.log(`Downloaded to: ${xbrlPath}`);
 }
+
+// （応用）レートリミットの設定
+// デフォルトでは「1秒1リクエスト」の制限がかかっていますが、変更可能です。
+// 理想的な初期化オプション
+const edinet = new EdinetXbrlDownloader({
+  apiKey: "YOUR_API_KEY",
+  enableRateLimit: true,
+  requestsPerSecond: 2,
+  maxRetries: 3
+});
+
+
 
 // （応用）書類種別を指定してダウンロード
 // 例: 四半期報告書、半期報告書、大量保有報告書など

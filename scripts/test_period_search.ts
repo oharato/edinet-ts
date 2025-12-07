@@ -20,7 +20,7 @@ try {
 }
 
 async function main() {
-    const downloader = new EdinetXbrlDownloader(undefined, { rootDir: "./downloads" });
+    const downloader = new EdinetXbrlDownloader({ rootDir: "./downloads" });
 
     // Debug: Search wider period for Toyota (7203)
     console.log("Searching period 2024-11-01 to 2024-11-30 for Toyota Motor (72030)...");

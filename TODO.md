@@ -14,7 +14,14 @@
     *   CAGR（年平均成長率）の算出や、季節性（Seasonality）の排除、景気サイクルの判断に不可欠なため。
     *   例: 銘柄コード指定で過去5年分の主要数値を配列で返すAPI。
 
-## 3. CLIツール (Command Line Interface)
+
+## 3. APIリクエストの安定化とレートリミット (Reliability)
+*   EDINET API v2 の仕様に基づき、アクセス制限周辺の実装を強化します。
+    *   **Throttling (流量制限)**: デフォルトで「1秒1リクエスト」等の制限をかけ、IPブロックを回避。
+    *   **Retry Strategy (再試行)**: 429 Too Many Requests エラー時の指数関数的バックオフ (Exponential Backoff)。
+    *   **Configurable Client**: `EdinetDownloader` のコンストラクタで、レートリミットやリトライ回数を設定可能にする。
+
+## 4. CLIツール (Command Line Interface)
 *   コードを書かずにターミナルから直接利用できるCLIツールの提供。
     *   例: `edinet-ts download --ticker 7203 --years 5`
     *   例: `edinet-ts parse --file report.xbrl --format json`

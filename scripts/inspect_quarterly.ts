@@ -21,7 +21,7 @@ try {
 }
 
 async function main() {
-    const downloader = new EdinetXbrlDownloader(undefined, { rootDir: "./downloads" });
+    const downloader = new EdinetXbrlDownloader({ rootDir: "./downloads" });
     const parser = new EdinetXbrlParser();
 
     // Try 2024-08-14 for Q1 (Type 140)

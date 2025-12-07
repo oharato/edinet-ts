@@ -21,7 +21,7 @@ try {
 }
 
 async function main() {
-    const downloader = new EdinetXbrlDownloader(undefined, { rootDir: "./downloads" });
+    const downloader = new EdinetXbrlDownloader({ rootDir: "./downloads" });
     const parser = new EdinetXbrlParser();
 
     // Target date: 2024-11-14
