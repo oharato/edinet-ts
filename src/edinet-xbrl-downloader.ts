@@ -199,7 +199,37 @@ export class EdinetXbrlDownloader {
         }
 
         const buffer = await response.arrayBuffer();
-        const zip = await JSZip.loadAsync(buffer);
+
+        // 200 OKでもエラーJSONが返ってくる場合がある (例: API Key無効時)
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            const text = new TextDecoder().decode(buffer);
+            try {
+                const error = JSON.parse(text);
+                throw new Error(`API Error (200 OK): ${error.message || text}`);
+            } catch (e) {
+                // Not valid JSON, ignore
+            }
+        }
+
+        let zip;
+        try {
+            zip = await JSZip.loadAsync(buffer);
+        } catch (e) {
+            const text = new TextDecoder().decode(buffer.slice(0, 500)); // First 500 chars (enough for simple JSON error)
+
+            // Try to parse as JSON error
+            try {
+                const jsonError = JSON.parse(text);
+                if (jsonError.message) {
+                    throw new Error(`API Error: ${jsonError.message} (Status: ${jsonError.statusCode || 'Unknown'})`);
+                }
+            } catch (jsonEx) {
+                // Not JSON, fall through
+            }
+
+            throw new Error(`Failed to load ZIP for document ${docId}. The response might not be a ZIP file. Start of content: "${text}". Original Error: ${e}`);
+        }
 
         // XBRLファイルを探す
         const files = Object.keys(zip.files);
@@ -265,7 +295,36 @@ export class EdinetXbrlDownloader {
         }
 
         const buffer = await response.arrayBuffer();
-        const zip = await JSZip.loadAsync(buffer);
+
+        // 200 OKでもエラーJSONが返ってくる場合がある
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            const text = new TextDecoder().decode(buffer);
+            try {
+                const error = JSON.parse(text);
+                throw new Error(`API Error (200 OK): ${error.message || text}`);
+            } catch (e) {
+                // Not valid JSON
+            }
+        }
+
+        let zip;
+        try {
+            zip = await JSZip.loadAsync(buffer);
+        } catch (e) {
+            const text = new TextDecoder().decode(buffer.slice(0, 500));
+
+            try {
+                const jsonError = JSON.parse(text);
+                if (jsonError.message) {
+                    throw new Error(`API Error: ${jsonError.message} (Status: ${jsonError.statusCode || 'Unknown'})`);
+                }
+            } catch (jsonEx) {
+                // Not JSON
+            }
+
+            throw new Error(`Failed to load ZIP for document ${docId} (fetchXbrl). The response might not be a ZIP file. Start of content: "${text}". Original Error: ${e}`);
+        }
 
         const files = Object.keys(zip.files);
         const xbrlFileName =

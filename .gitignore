@@ -8,3 +8,5 @@ data/
 !data/.keep
 downloads_cache_test/
 !downloads_cache_test/.keep
+dist/
+!dist/.keep

@@ -2,8 +2,10 @@
     "name": "edinet-ts",
     "version": "0.0.1",
     "description": "TypeScript port of edinet_xbrl for parsing EDINET XBRL files",
-    "main": "index.js",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "scripts": {
+        "build": "tsc",
         "test": "vitest run"
     },
     "keywords": [
