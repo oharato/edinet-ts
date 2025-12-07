@@ -36,7 +36,7 @@ const downloader = new EdinetXbrlDownloader();
 // 特定企業（例：トヨタ 7203）の最新の有価証券報告書をダウンロード
 // 指定したディレクトリに保存し、XBRLファイルのパスを返します
 // 第2引数のディレクトリも省略可（EDINET_DOWNLOAD_DIRがある場合）
-const xbrlPath = await downloader.downloadByTicker("7203", "./downloads");
+const xbrlPath: string | null = await downloader.downloadByTicker("7203", "./downloads");
 
 if (xbrlPath) {
   console.log(`Downloaded to: ${xbrlPath}`);
@@ -65,7 +65,7 @@ const xml = fs.readFileSync(xbrlPath, "utf-8");
 const parser = new EdinetXbrlParser();
 const data = parser.parse(xml);
 
-const metrics = data.getKeyMetrics();
+const metrics: KeyMetrics = data.getKeyMetrics();
 
 console.log(`売上高: ${metrics.netSales}`);
 console.log(`営業利益: ${metrics.operatingIncome}`);
@@ -153,7 +153,8 @@ console.log(`大株主の状況: ${jpcrp.MajorShareholdersTextBlock}`);
 
 ```typescript
 // 大量保有報告書のXBRLをパースした後...
-const info = data.getLargeShareholdingInfo();
+// 大量保有報告書のXBRLをパースした後...
+const info: LargeShareholdingInfo = data.getLargeShareholdingInfo();
 
 if (info.holdingRatio) {
     console.log(`提出者: ${info.filerName}`);
@@ -177,6 +178,32 @@ const nonConsSalesContext = data.findContext({
 if (nonConsSalesContext) {
     const rawData = data.getDataByContextRef("jppfs_cor:NetSales", nonConsSalesContext.id);
     console.log(`単体売上高: ${rawData?.value}`);
+}
+```
+
+### 5. 期間指定検索と最新書類の自動特定
+
+日付ピンポイントではなく、期間指定や「最新の書類」を検索する便利機能です。
+
+#### `searchPeriod(startDate, endDate, typeFilter?)`
+指定した期間内の書類リストを取得します。
+
+```typescript
+// 2024年11月の全ての半期報告書を取得
+const docs: EdinetDocument[] = await downloader.searchPeriod("2024-11-01", "2024-11-30", EdinetDocumentType.SemiAnnualReport);
+```
+
+#### `findLatest(ticker, type, lookbackDays?)`
+指定した銘柄の最新の書類を、過去に遡って検索します。提出日が不明な場合に便利です。
+
+```typescript
+// 過去90日以内のトヨタ(7203)の最新の半期報告書を探す
+const latestDoc: EdinetDocument | null = await downloader.findLatest("7203", EdinetDocumentType.SemiAnnualReport, 90);
+
+if (latestDoc) {
+    console.log(`見つかりました: ${latestDoc.docDescription} (${latestDoc.docID})`);
+    // そのままダウンロードへ
+    await downloader.download(latestDoc.docID, "./downloads");
 }
 ```
 

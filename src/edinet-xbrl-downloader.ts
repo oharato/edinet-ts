@@ -172,8 +172,79 @@ export class EdinetXbrlDownloader {
     }
 
     /**
+     * 指定した期間の書類を検索します。
+     * @param startDate 開始日 (YYYY-MM-DD)
+     * @param endDate 終了日 (YYYY-MM-DD)
+     * @param typeFilter 書類種別 (オプション)
+     * @returns 書類リスト
+     */
+    public async searchPeriod(startDate: string, endDate: string, typeFilter?: EdinetDocumentType): Promise<EdinetDocument[]> {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const results: EdinetDocument[] = [];
+
+        for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split("T")[0];
+            try {
+                const docs = await this.search(dateStr, typeFilter);
+                results.push(...docs);
+            } catch (e) {
+                console.warn(`Failed to search on ${dateStr}:`, e);
+            }
+            // Polite delay to avoid rate limiting if range is large
+            if (d.getTime() < end.getTime()) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * 指定した銘柄の最新の書類を、過去に遡って検索します。
+     * @param ticker 証券コード (例: "7203")
+     * @param type 書類種別 (例: EdinetDocumentType.AnnualCards)
+     * @param lookbackDays 遡る日数 (デフォルト: 90日)
+     * @returns 見つかった書類情報、または null
+     */
+    public async findLatest(ticker: string, type: EdinetDocumentType, lookbackDays: number = 90): Promise<EdinetDocument | null> {
+        const today = new Date();
+        const secCode = ticker + "0";
+
+        for (let i = 0; i < lookbackDays; i++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            const dateStr = d.toISOString().split("T")[0];
+
+            try {
+                // 特定の日付・種別で検索
+                // searchメソッド内でフィルタリングされるため、通信量は削減できませんが、
+                // クライアント側で無駄なループを回すよりは良いでしょう。
+                // 日付ごとにAPIコールが発生するため、長期間の遡及は時間がかかります。
+                const docs = await this.search(dateStr, type);
+                const match = docs.find(doc => doc.secCode === secCode && doc.docInfoEditStatus === 0);
+
+                if (match) {
+                    return match;
+                }
+            } catch (e) {
+                console.warn(`Error searching on ${dateStr}:`, e);
+            }
+
+            // Rate limit politeness
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        return null;
+    }
+
+    /**
      * ティッカー（証券コード）を指定して、最新の有価証券報告書をダウンロードします。
      * 内部で `search()` を呼び出し、該当する最新の書類を特定します。
+     * 
+     * ※ 注意: このメソッドは指定された `date` (デフォルトは当日) のみを検索します。
+     * 過去に遡って最新を探したい場合は `findLatest()` を使用して docID を取得し、`download()` してください。
+     * 
      * @param ticker 証券コード (例: "7203")
      * @param targetDir 保存先ディレクトリ
      * @param date 検索対象日 (YYYY-MM-DD)。デフォルトは当日。
