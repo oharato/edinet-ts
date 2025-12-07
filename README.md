@@ -41,6 +41,13 @@ const xbrlPath = await downloader.downloadByTicker("7203", "./downloads");
 if (xbrlPath) {
   console.log(`Downloaded to: ${xbrlPath}`);
 }
+
+// （応用）書類種別を指定してダウンロード
+// 例: 四半期報告書、半期報告書、大量保有報告書など
+import { EdinetDocumentType } from "edinet-ts";
+
+// トヨタの半期報告書 (160) を検索・ダウンロード
+await downloader.downloadByTicker("7203", "./downloads", "2024-11-14", EdinetDocumentType.SemiAnnualReport);
 ```
 
 ### 2. データ解析と主要指標の取得 (Easy Mode)
@@ -139,6 +146,20 @@ if (jpcrp.DividendPolicyTextBlock) {
 }
 
 console.log(`大株主の状況: ${jpcrp.MajorShareholdersTextBlock}`);
+```
+
+#### 大量保有報告書 (Large Shareholding)
+`getLargeShareholdingInfo()` を使用すると、大量保有報告書や変更報告書から提出者・保有割合などを抽出できます。
+
+```typescript
+// 大量保有報告書のXBRLをパースした後...
+const info = data.getLargeShareholdingInfo();
+
+if (info.holdingRatio) {
+    console.log(`提出者: ${info.filerName}`);
+    console.log(`発行者: ${info.issuerName}`);
+    console.log(`保有割合: ${info.holdingRatio}% (前回: ${info.prevHoldingRatio}%)`);
+}
 ```
 
 ### 4. 詳細なデータアクセス (Advanced Mode)

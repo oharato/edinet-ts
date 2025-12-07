@@ -362,6 +362,32 @@ export class EdinetXbrlObject {
             }
         });
     }
+
+    /**
+     * 大量保有報告書（変更報告書、訂正報告書を含む）から主要な情報を抽出します。
+     * ネームスペースは `jplvh_cor` を使用します。
+     */
+    public getLargeShareholdingInfo(): LargeShareholdingInfo {
+        // ヘルパー: コンテキストを問わず、最初に見つかった値を返す
+        const getVal = (key: string): string | undefined => {
+            const list = this.getDataList(key);
+            return list.length > 0 ? list[0].value : undefined;
+        };
+
+        const getNum = (key: string): number | undefined => {
+            const val = getVal(key);
+            return val ? parseFloat(val) : undefined;
+        };
+
+        return {
+            filerName: getVal("jplvh_cor:FilerNameInJapaneseDEI") || getVal("jpdei_cor:FilerNameInJapaneseDEI") || getVal("jplvh_cor:Name"),
+            issuerName: getVal("jplvh_cor:NameOfIssuer") || getVal("jplvh_cor:IssuerName"),
+            holdingRatio: getNum("jplvh_cor:HoldingRatioOfShareCertificatesEtc"),
+            prevHoldingRatio: getNum("jplvh_cor:HoldingRatioOfShareCertificatesEtcPerLastReport"),
+            // Count can be inferred or found in tags like "NumberOfJointHolders"
+            // For now, leaving it undefined as it requires counting members or finding specific tag
+        };
+    }
 }
 
 export interface KeyMetrics {
@@ -407,6 +433,19 @@ export interface KeyMetrics {
     numberOfIssuedShares?: number;
     /** 1株当たり配当額 */
     dividendPaidPerShare?: number;
+}
+
+export interface LargeShareholdingInfo {
+    /** 提出者名 (氏名又は名称) */
+    filerName?: string;
+    /** 発行者名 (氏名又は名称) */
+    issuerName?: string;
+    /** 保有割合 (%) */
+    holdingRatio?: number;
+    /** 直前報告書における保有割合 (%) */
+    prevHoldingRatio?: number;
+    /** 共同保有者の数 */
+    jointHoldersCount?: number;
 }
 
 export interface QualitativeInfo {

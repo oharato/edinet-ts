@@ -1,10 +1,12 @@
 import * as path from "path";
 import JSZip from "jszip";
+import { EdinetDocumentType } from "./edinet-document-type";
 
 export interface EdinetDocument {
     secCode: string;
     docID: string;
     docDescription: string;
+    docTypeCode: string;
     docInfoEditStatus: number;
     [key: string]: unknown;
 }
@@ -42,7 +44,13 @@ export class EdinetXbrlDownloader {
      * @param date 検索対象日 (YYYY-MM-DD)
      * @returns 書類情報のリスト
      */
-    public async search(date: string): Promise<EdinetDocument[]> {
+    /**
+     * 指定した日付に提出された書類のリストを取得します。
+     * @param date 検索対象日 (YYYY-MM-DD)
+     * @param typeFilter 取得する書類種別 (オプション)。指定した場合、その種別のみを返します。
+     * @returns 書類情報のリスト
+     */
+    public async search(date: string, typeFilter?: EdinetDocumentType): Promise<EdinetDocument[]> {
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents.json?date=${date}&type=2&Subscription-Key=${this.apiKey}`;
         const response = await fetch(url);
 
@@ -50,11 +58,18 @@ export class EdinetXbrlDownloader {
             throw new Error(`Failed to fetch documents list: ${response.statusText}`);
         }
 
-        const data = (await response.json()) as any; // エラースキーマの確認のため一時的にanyを使用
+        const data = (await response.json()) as any;
         if (data.statusCode && data.statusCode !== 200) {
             throw new Error(`API Error: ${data.statusCode} - ${data.message}`);
         }
-        return (data as EdinetListResponse).results || [];
+
+        const results = (data as EdinetListResponse).results || [];
+
+        if (typeFilter) {
+            return results.filter(d => d.docTypeCode === typeFilter);
+        }
+
+        return results;
     }
 
     /**
@@ -167,18 +182,19 @@ export class EdinetXbrlDownloader {
     public async downloadByTicker(
         ticker: string,
         targetDir?: string,
-        date: string = new Date().toISOString().split("T")[0]
+        date: string = new Date().toISOString().split("T")[0],
+        type: EdinetDocumentType = EdinetDocumentType.AnnualCards
     ): Promise<string | null> {
         const docs = await this.search(date);
 
         // secCodeは通常、証券コード+0（例: 72030）となります
-        // 訂正報告書等ではなく、オリジナルの書類（docInfoEditStatus === 0）を優先します
+        // 指定された書類種別 (docTypeCode) かつ、訂正報告書等ではなくオリジナルの書類（docInfoEditStatus === 0）を優先します
         const targetDoc = docs.find(
-            (d) => d.secCode === ticker + "0" && d.docInfoEditStatus === 0
+            (d) => d.secCode === ticker + "0" && d.docTypeCode === type && d.docInfoEditStatus === 0
         );
 
         if (!targetDoc) {
-            console.warn(`No document found for ticker ${ticker} on ${date}.`);
+            console.warn(`No document of type ${type} found for ticker ${ticker} on ${date}.`);
             return null;
         }
 
