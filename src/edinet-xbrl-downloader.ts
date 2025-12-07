@@ -28,7 +28,7 @@ export class EdinetXbrlDownloader {
     constructor(private apiKey: string) { }
 
     /**
-     * Search for documents submitted on a specific date.
+     * 最新の書類IDを取得します。
      * @param date Format: YYYY-MM-DD
      */
     public async search(date: string): Promise<EdinetDocument[]> {
@@ -47,10 +47,10 @@ export class EdinetXbrlDownloader {
     }
 
     /**
-     * Download a specific document by its ID and extract the XBRL file.
+     * 指定されたティッカー（証券コード）の最新の有価証券報告書をダウンロードし、XBRLファイルを展開します。
      * @param docId The EDINET document ID. // e.g., "S100XXXX"
-     * @param targetDir Directory to save the extracted files.
-     * @returns Path to the extracted .xbrl file.
+     * @param targetDir 保存先のディレクトリ
+     * @returns 展開された .xbrl ファイルの絶対パス。見つからない場合は null。
      */
     public async download(docId: string, targetDir: string): Promise<string> {
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;

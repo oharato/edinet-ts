@@ -14,23 +14,26 @@ export class EdinetDataUtil {
      * Extract the tag name from a node key, stripping namespace if present.
      * @param nodeKey e.g. "jpcrp_cor:NetSales"
      * @returns e.g. "NetSales"
+     * ノードキーからタグ名を抽出します。名前空間が存在する場合は除去します。
+     * @param nodeKey 例: "jpcrp_cor:NetSales"
+     * @returns 例: "NetSales"
      */
     public static getKey(nodeKey: string): string {
         return nodeKey.includes(":") ? nodeKey.split(":")[1] : nodeKey;
     }
 
     /**
-     * Extract the namespace from a node key.
-     * @param nodeKey e.g. "jpcrp_cor:NetSales"
-     * @returns e.g. "jpcrp_cor"
+     * ノードキーから名前空間を抽出します。
+     * @param nodeKey 例: "jpcrp_cor:NetSales"
+     * @returns 例: "jpcrp_cor"
      */
     public static getNamespace(nodeKey: string): string {
         return nodeKey.includes(":") ? nodeKey.split(":")[0] : "";
     }
 
     /**
-     * Extract the text value from a node.
-     * Handles cases where the node is an object with '#text' property or a primitive value.
+     * ノードからテキスト値を抽出します。
+     * ノードが'#text'プロパティを持つオブジェクトである場合や、プリミティブ値である場合を処理します。
      */
     public static getValue(node: unknown): string {
         if (this.isObject(node) && "#text" in node) {

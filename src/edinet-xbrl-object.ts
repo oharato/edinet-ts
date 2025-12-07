@@ -62,26 +62,48 @@ export class EdinetXbrlObject {
     }
 
     /**
-   * Extract standardized key financial metrics.
-   * Uses context analysis to find the most appropriate data.
+   * 主要な経営指標を抽出します。
+   * コンテキスト（連結/単体、期間）を自動的に解析し、最適なデータを検索します。
    */
     public getKeyMetrics(): KeyMetrics {
-        const durationCons = this.findContext({ type: "Duration", scope: "Consolidated" });
-        const durationNonCons = this.findContext({ type: "Duration", scope: "NonConsolidated" });
+        // 戦略: まず連結(Consolidated)を探し、なければ単体(NonConsolidated)を探します。
+        // 日付が新しい順にソートされた全コンテキストを使用します。
+        // これにより、最新のコンテキスト（提出日など）にデータがなく、その次（当期）にある場合でも取得できます。
 
-        const instantCons = this.findContext({ type: "Instant", scope: "Consolidated" });
-        const instantNonCons = this.findContext({ type: "Instant", scope: "NonConsolidated" });
+        // 過去年度のデータを誤って取得しないよう、最新の日付から半年以内のデータに限定します。
+        const filterRecent = (ctxs: EdinetContext[]) => {
+            if (ctxs.length === 0) return [];
+            const latest = ctxs[0].period.endDate || ctxs[0].period.instant || "";
+            if (!latest) return ctxs;
 
-        // Build priority lists
-        const durationIds: string[] = [];
-        if (durationCons) durationIds.push(durationCons.id);
-        if (durationNonCons) durationIds.push(durationNonCons.id);
-        durationIds.push("CurrentYearDuration", "CurrentYearDuration_NonConsolidatedMember"); // Backups
+            const latestTime = new Date(latest).getTime();
+            const threshold = 180 * 24 * 60 * 60 * 1000; // 180 days
 
-        const instantIds: string[] = [];
-        if (instantCons) instantIds.push(instantCons.id);
-        if (instantNonCons) instantIds.push(instantNonCons.id);
-        instantIds.push("CurrentYearInstant", "CurrentYearInstant_NonConsolidatedMember"); // Backups
+            return ctxs.filter(c => {
+                const current = c.period.endDate || c.period.instant || "";
+                if (!current) return false;
+                return (latestTime - new Date(current).getTime()) < threshold;
+            });
+        }
+
+        const durationContexts = [
+            ...filterRecent(this.findContexts({ type: "Duration", scope: "Consolidated" })),
+            ...filterRecent(this.findContexts({ type: "Duration", scope: "NonConsolidated" })),
+            // レガシー/ハードコードされたIDへのフォールバック
+            { id: "CurrentYearDuration", period: {}, scope: "Consolidated" } as EdinetContext,
+            { id: "CurrentYearDuration_NonConsolidatedMember", period: {}, scope: "NonConsolidated" } as EdinetContext
+        ];
+
+        const instantContexts = [
+            ...filterRecent(this.findContexts({ type: "Instant", scope: "Consolidated" })),
+            ...filterRecent(this.findContexts({ type: "Instant", scope: "NonConsolidated" })),
+            // レガシー/ハードコードされたIDへのフォールバック
+            { id: "CurrentYearInstant", period: {}, scope: "Consolidated" } as EdinetContext,
+            { id: "CurrentYearInstant_NonConsolidatedMember", period: {}, scope: "NonConsolidated" } as EdinetContext
+        ];
+
+        const durationIds = durationContexts.map(c => c.id);
+        const instantIds = instantContexts.map(c => c.id);
 
         return {
             netSales: this.getNumberValue(["jppfs_cor:NetSales", "jpcrp_cor:NetSales"], durationIds),
@@ -99,13 +121,23 @@ export class EdinetXbrlObject {
 
             // Per Share
             earningsPerShare: this.getNumberValue(["jppfs_cor:BasicEarningsLossPerShare", "jpcrp_cor:BasicEarningsLossPerShareSummaryOfBusinessResults"], durationIds),
-            bookValuePerShare: this.getNumberValue(["jppfs_cor:NetAssetsPerShare", "jpcrp_cor:NetAssetsPerShareSummaryOfBusinessResults"], instantIds)
+            bookValuePerShare: this.getNumberValue(["jppfs_cor:NetAssetsPerShare", "jpcrp_cor:NetAssetsPerShareSummaryOfBusinessResults"], instantIds),
+
+            // Ratios & Types
+            equityToTotalAssetsRatio: this.getNumberValue(["jpcrp_cor:EquityToAssetRatioSummaryOfBusinessResults", "jpcrp_cor:EquityToTotalAssetsRatioSummaryOfBusinessResults", "jppfs_cor:EquityToTotalAssetsRatio"], instantIds),
+            rateOfReturnOnEquity: this.getNumberValue(["jpcrp_cor:RateOfReturnOnEquitySummaryOfBusinessResults", "jpcrp_cor:RateOfReturnOnEquityIFRSSummaryOfBusinessResults", "jppfs_cor:RateOfReturnOnEquity"], durationIds),
+            priceEarningsRatio: this.getNumberValue(["jpcrp_cor:PriceEarningsRatioSummaryOfBusinessResults"], durationIds), // Less common in XBRL
+            payoutRatio: this.getNumberValue(["jpcrp_cor:PayoutRatioSummaryOfBusinessResults"], durationIds),
+
+            // Shares
+            numberOfIssuedShares: this.getNumberValue(["jpcrp_cor:TotalNumberOfIssuedSharesSummaryOfBusinessResults", "jppfs_cor:TotalNumberOfIssuedShares"], instantIds),
+            dividendPaidPerShare: this.getNumberValue(["jpcrp_cor:DividendPaidPerShareSummaryOfBusinessResults"], durationIds)
         };
     }
 
     /**
-   * Get data by specifying logical context criteria.
-   * This is the preferred way to access data without knowing XBRL Context IDs.
+   * 論理的な条件を指定してデータを取得します。
+   * コンテキストIDを意識せずにデータを取得するための推奨メソッドです。
    */
     public getData(key: string, options: {
         year?: "Current" | "Prior1Year" | "Prior2Year",
@@ -118,38 +150,60 @@ export class EdinetXbrlObject {
     }
 
     /**
-     * Find a context ID matching the criteria.
-     * Logic:
-     * 1. Check Scope.
-     * 2. Check Type (Duration/Instant).
-     * 3. Check "Year" (Offset from latest).
+     * 条件に合致するコンテキストIDを検索します。
+     * ロジック:
+     * 1. 範囲(Scope)でフィルタ
+     * 2. タイプ(Duration/Instant)でフィルタ
+     * 3. 年度("Year")でオフセット指定 (0=最新, 1=前年...)
      */
     public findContext(options: {
         year?: "Current" | "Prior1Year" | "Prior2Year",
         type: "Duration" | "Instant",
         scope: "Consolidated" | "NonConsolidated"
     }): EdinetContext | undefined {
+        const candidates = this.findContexts(options);
+        return candidates[0];
+    }
+
+    /**
+     * 条件に合致するすべてのコンテキストIDを、日付の新しい順に検索します。
+     */
+    public findContexts(options: {
+        year?: "Current" | "Prior1Year" | "Prior2Year",
+        type: "Duration" | "Instant",
+        scope: "Consolidated" | "NonConsolidated"
+    }): EdinetContext[] {
         let candidates = Array.from(this.contextMap.values()).filter(c => c.scope === options.scope);
 
-        // Filter by type
+        // 次元の厳密なチェック
+        // 連結: 次元なし
+        // 単体: "NonConsolidatedMember" のみを次元として持つ
+        if (options.scope === "Consolidated") {
+            candidates = candidates.filter(c => c.dimensions.length === 0);
+        } else {
+            candidates = candidates.filter(c => c.dimensions.length === 1 && c.dimensions[0] === "NonConsolidatedMember");
+        }
+
+        // タイプでフィルタ
         if (options.type === "Duration") {
             candidates = candidates.filter(c => c.period.startDate && c.period.endDate);
-            // Sort by endDate descending (Latest first)
+            // endDateの降順（最新優先）
             candidates.sort((a, b) => (b.period.endDate || "").localeCompare(a.period.endDate || ""));
         } else {
             candidates = candidates.filter(c => c.period.instant);
-            // Sort by instant descending (Latest first)
+            // instantの降順（最新優先）
             candidates.sort((a, b) => (b.period.instant || "").localeCompare(a.period.instant || ""));
         }
 
-        // Handle Year Offset
+        // 年度のオフセット処理
         // Current (default) = Index 0
         // Prior1Year = Index 1
         // Prior2Year = Index 2
         const offset = options.year === "Prior1Year" ? 1 :
             options.year === "Prior2Year" ? 2 : 0;
 
-        return candidates[offset];
+        // オフセット以降の候補を返す
+        return candidates.slice(offset);
     }
 
     private getNumberValue(keys: string[], contextRefs: string[]): number | undefined {
@@ -183,4 +237,12 @@ export interface KeyMetrics {
     // Per Share
     earningsPerShare?: number;
     bookValuePerShare?: number;
+
+    // Ratios & Others
+    equityToTotalAssetsRatio?: number; // % or decimal (check unit)
+    rateOfReturnOnEquity?: number; // % or decimal
+    priceEarningsRatio?: number;
+    payoutRatio?: number;
+    numberOfIssuedShares?: number;
+    dividendPaidPerShare?: number;
 }

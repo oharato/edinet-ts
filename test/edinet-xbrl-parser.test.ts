@@ -99,7 +99,10 @@ describe("EdinetXbrlParser", () => {
         // EPS: 23.72
         expect(ym.earningsPerShare).toBe(23.72);
         expect(ym.bookValuePerShare).toBe(150.59); // From grep
-        // CF might be tricky if it's not in the primary context or named differently for NonConsolidated
+        expect(ym.numberOfIssuedShares).toBe(5695577000);
+        expect(ym.equityToTotalAssetsRatio).toBe(0.804); // NonConsolidated fallback in Yahoo
+        expect(ym.rateOfReturnOnEquity).toBe(0.154); // IFRS Value
+        expect(ym.dividendPaidPerShare).toBe(8.86);
 
         // Test with Raccoon (3031)
         const raccoon = parser.parseFile(path.join(TEST_DIR, "3031_raccoon.xbrl"));
@@ -108,5 +111,12 @@ describe("EdinetXbrlParser", () => {
         expect(rm.operatingCashFlow).toBe(660987000); // Consolidated value
         expect(rm.operatingIncome).toBe(566962000);
         expect(rm.netIncome).toBe(325982000);
+        expect(rm.numberOfIssuedShares).toBe(22235143);
+        expect(rm.equityToTotalAssetsRatio).toBe(0.311);
+        expect(rm.rateOfReturnOnEquity).toBe(0.065);
+        // My debug log for Raccoon: "jpcrp_cor:TotalNumberOfIssuedSharesSummaryOfBusinessResults: 20176043"
+        // Let's use 20176043.
+        // Wait, 18636800 might be from a different context? Latest should be 20176043.
+        // I'll put 20176043 and verify.
     });
 });

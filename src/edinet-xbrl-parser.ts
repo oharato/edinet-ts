@@ -5,7 +5,7 @@ import { EdinetDataUtil } from "./edinet-data-util";
 import { ContextParser } from "./edinet-context";
 
 /**
- * Parsed XBRL content traversal and extraction logic.
+ * XBRL文字列（XML）をパースします。
  */
 export class EdinetXbrlParser {
     private parser: XMLParser;
@@ -18,6 +18,9 @@ export class EdinetXbrlParser {
         });
     }
 
+    /**
+     * .xbrl ファイルをパースして EdinetXbrlObject を返します。
+     */
     public parseFile(filePath: string): EdinetXbrlObject {
         const content = fs.readFileSync(filePath, "utf-8");
         return this.parseString(content);
@@ -89,7 +92,7 @@ export class EdinetXbrlParser {
     }
 
     /**
-     * Recursively traverses the parsed XML object to find and store XBRL facts.
+     * XMLノードを再帰的にトラバースし、各要素を EdinetXbrlObject に格納します。
      */
     private traverse(node: unknown, xbrlObject: EdinetXbrlObject): void {
         if (!this.isObject(node)) {

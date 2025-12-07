@@ -8,24 +8,32 @@ export interface EdinetContext {
         instant?: string;
     };
     scope: "Consolidated" | "NonConsolidated";
+    // dimensions: explicit member のリスト (例: "NonConsolidatedMember")
+    dimensions: string[];
 }
 
 export class ContextParser {
     /**
-     * Parse a raw xbrli:context node into a structured EdinetContext.
+     * raw xbrli:context ノードを構造化された EdinetContext にパースします。
      */
     public static parse(node: any): EdinetContext | null {
         if (!node || !node["@_id"]) return null;
 
         const id = node["@_id"];
+        // parsePeriod メソッドは期間ノードをパースします。
         const period = ContextParser.parsePeriod(node["xbrli:period"]);
-        const scope = ContextParser.parseScope(node["xbrli:scenario"] || node["xbrli:entity"]?.["xbrli:segment"]);
+        // findExplicitMembers メソッドは明示的なメンバーを抽出します。
+        const dimensions = ContextParser.findExplicitMembers(node);
+        // scope のロジックは findExplicitMembers の結果に基づいて直接統合されました。
+        const scope = dimensions.includes("NonConsolidatedMember") ? "NonConsolidated" : "Consolidated";
 
-        return {
+        const context: EdinetContext = {
             id,
             period,
             scope,
+            dimensions
         };
+        return context;
     }
 
     private static parsePeriod(periodNode: any): { startDate?: string; endDate?: string; instant?: string } {
@@ -47,33 +55,10 @@ export class ContextParser {
         return {};
     }
 
-    private static parseScope(scenarioOrSegmentNode: any): "Consolidated" | "NonConsolidated" {
-        // If no explicit member is defined, it is usually Consolidated (for Consolidated reports)
-        // BUT, explicit NonConsolidatedMember marks it as NonConsolidated.
-        // Also, some contexts might specify ConsolidatedMember explicitly, but usually lack of it implies "default" which matches the report type.
-        // NOTE: This logic simplifies the reality. 
-        // Usually:
-        // - No member -> Consolidated (if the report is consolidated)
-        // - "jpcrp_cor:NonConsolidatedMember" -> NonConsolidated
-
-        if (!scenarioOrSegmentNode) return "Consolidated";
-
-        const explicitMembers = ContextParser.findExplicitMembers(scenarioOrSegmentNode);
-
-        for (const member of explicitMembers) {
-            if (member.includes("NonConsolidatedMember")) {
-                return "NonConsolidated";
-            }
-        }
-
-        return "Consolidated";
-    }
-
-    private static findExplicitMembers(node: any): string[] {
-        // Traverse to find xbrldi:explicitMember text
-        // Structure varies: xbrli:scenario -> xbrldi:explicitMember
+    private static findExplicitMembers(contextNode: any): string[] {
         const members: string[] = [];
 
+        // 明示的なメンバーをトラバースして検索するためのヘルパー関数
         const visit = (n: any) => {
             if (!n) return;
             if (Array.isArray(n)) {
@@ -81,21 +66,35 @@ export class ContextParser {
                 return;
             }
             if (typeof n === 'object') {
-                // xbrldi:explicitMember check
+                // このノードが明示的なメンバーであるかどうかを確認します
+                // 構造によっては、xbrldi:explicitMember であるか、それを含んでいる可能性があります。
+                // 通常の構造: xbrli:scenario -> xbrldi:explicitMember (テキスト値)
                 if (n["xbrldi:explicitMember"]) {
-                    const val = EdinetDataUtil.getValue(n["xbrldi:explicitMember"]);
-                    if (val) members.push(val);
+                    const explicit = n["xbrldi:explicitMember"];
+                    if (Array.isArray(explicit)) {
+                        explicit.forEach(val => {
+                            const v = EdinetDataUtil.getValue(val);
+                            if (v) members.push(v);
+                        });
+                    } else {
+                        const val = EdinetDataUtil.getValue(explicit);
+                        if (val) members.push(val);
+                    }
                 }
 
+                // 再帰のためにキーもチェックします
                 Object.keys(n).forEach(key => {
-                    if (key !== "#text" && key !== "@_id") {
+                    if (key !== "#text" && key !== "@_id" && key !== "xbrldi:explicitMember") {
                         visit(n[key]);
                     }
                 });
             }
         };
 
-        visit(node);
+        // scenario と segment のみを対象とします
+        if (contextNode["xbrli:scenario"]) visit(contextNode["xbrli:scenario"]);
+        if (contextNode["xbrli:entity"] && contextNode["xbrli:entity"]["xbrli:segment"]) visit(contextNode["xbrli:entity"]["xbrli:segment"]);
+
         return members;
     }
 }
