@@ -5,7 +5,7 @@ import path from "path";
 import fs from "fs";
 
 describe("Performance Benchmark", () => {
-    // Use the existing Nintendo file
+    // 既存の任天堂ファイルを使用
     const nintendoPath = path.resolve(__dirname, "test_data/S100TMMG/XBRL/PublicDoc/jpcrp030000-asr-001_E02367-000_2024-03-31_01_2024-06-28.xbrl");
     const content = fs.readFileSync(nintendoPath, "utf-8");
     const parser = new EdinetXbrlParser();
@@ -13,17 +13,17 @@ describe("Performance Benchmark", () => {
 
     it("Measure Parsing Time", () => {
         const start = performance.now();
-        object = parser.parseString(content);
+        if (!object) object = parser.parse(content);
         const end = performance.now();
         console.log(`Parsing Time: ${(end - start).toFixed(2)}ms`);
     });
 
     it("Measure Data Access Time (Typed Proxy)", () => {
-        if (!object) object = parser.parseString(content);
+        if (!object) object = parser.parse(content);
         const taxonomy = object.getJppfsCor();
 
         const start = performance.now();
-        // Access 1000 items (some might be undefined, that's fine, we measure overhead)
+        // 1000項目にアクセス（未定義が含まれてもオーバーヘッド測定には問題なし）
         for (let i = 0; i < 1000; i++) {
             const _a = taxonomy.NetSales;
             const _b = taxonomy.CashAndDeposits;
@@ -36,7 +36,7 @@ describe("Performance Benchmark", () => {
     });
 
     it("Measure getKeyMetrics Time", () => {
-        if (!object) object = parser.parseString(content);
+        if (!object) object = parser.parse(content);
 
         const start = performance.now();
         for (let i = 0; i < 100; i++) {

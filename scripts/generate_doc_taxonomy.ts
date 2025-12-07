@@ -6,7 +6,7 @@ import path from "path";
 const EXCEL_PATH = path.resolve(__dirname, "../taxonomy/AccountList.xlsx");
 const OUTPUT_PATH = path.resolve(__dirname, "../docs/TAXONOMY_JPPFS_COR.md");
 
-// Column Indices (0-based) based on inspection in scripts/generate_types.ts
+// 列インデックス（0始まり） scripts/generate_types.ts での確認に基づく
 const COL_LABEL_JP = 1;      // B列: 標準ラベル（日本語）
 const COL_LABEL_JP_VERBOSE = 2; // C列: 冗長ラベル（日本語）- optional usage
 const COL_LABEL_EN = 3;      // D列: 標準ラベル（英語）
@@ -39,7 +39,7 @@ function main() {
     const processedKeys = new Set<string>();
 
     console.log("Processing rows...");
-    // Start from row 2 (index 2) as row 0,1 are headers
+    // 行0,1はヘッダーのため、行2（インデックス2）から開始
     for (let i = 2; i < data.length; i++) {
         const row = data[i];
         const namespace = row[COL_NAMESPACE];
@@ -48,13 +48,13 @@ function main() {
         const labelEn = row[COL_LABEL_EN] || "";
         const type = row[COL_TYPE] || "";
 
-        // Filter: jppfs_cor only
+        // フィルタ: jppfs_cor のみ
         if (namespace !== "jppfs_cor") continue;
         if (!elementName) continue;
 
-        // Filter: Data items only (Monetary, String, etc.) - exclude abstracts if desired, but user might want full list?
-        // User asked for "1800 items", which matches what we generated in types.
-        // Let's stick to the same filtering logic as generate_types.ts to match the interface.
+        // フィルタ: データ項目のみ（金額、文字列など） - 抽象項目は除外
+        // ユーザー要望の「1800項目」に合わせて、型定義生成時と同じロジックを使用
+        // インターフェースと一致させるため、generate_types.ts と同じフィルタリングロジックを使用
 
         const isMonetary = type.includes("monetaryItemType");
         const isString = type.includes("stringItemType") || type.includes("textBlockItemType");
@@ -65,7 +65,7 @@ function main() {
         if (processedKeys.has(elementName)) continue;
         processedKeys.add(elementName);
 
-        // Escape pipes for markdown table
+        // Markdownテーブル用にパイプをエスケープ
         const safeLabelJp = String(labelJp).replace(/\|/g, "｜").replace(/\r?\n/g, " ");
         const safeLabelEn = String(labelEn).replace(/\|/g, "｜").replace(/\r?\n/g, " ");
 
@@ -76,7 +76,7 @@ function main() {
         count++;
     }
 
-    // Ensure directory exists
+    // ディレクトリが存在することを確認
     const outDir = path.dirname(OUTPUT_PATH);
     if (!fs.existsSync(outDir)) {
         fs.mkdirSync(outDir, { recursive: true });

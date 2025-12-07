@@ -6,7 +6,7 @@ import path from "path";
 const EXCEL_PATH = path.resolve(__dirname, "../taxonomy/AccountList.xlsx");
 const OUTPUT_PATH = path.resolve(__dirname, "../src/types/taxonomy.ts");
 
-// Column Indices (0-based) based on inspection
+// 列インデックス（0始まり）
 const COL_LABEL_JP = 1;
 const COL_NAMESPACE = 7;
 const COL_ELEMENT_NAME = 8;
@@ -25,8 +25,8 @@ function main() {
     }
 
     const data: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-    // Skip empty rows and headers (start from where data likely begins, e.g. row 2 or based on content)
-    // Actually, Row 1 is header, data starts from Row 2.
+    // 空行とヘッダーをスキップ（データ開始位置から開始）
+    // 行1がヘッダーで、データは行2から開始
 
     const properties: string[] = [];
     const processedKeys = new Set<string>();
@@ -39,29 +39,29 @@ function main() {
         const labelJp = row[COL_LABEL_JP];
         const type = row[COL_TYPE];
 
-        // Filter valid items
+        // 有効な項目をフィルタリング
         if (namespace !== "jppfs_cor") continue;
         if (!elementName || !type) continue;
 
-        // Skip abstract items often (unless we want them for structure, but usually we want data points)
-        // Checking if type is item or stringItemType or monetary
-        // Abstract items have 'true' in 'abstract' column (Col 13), but let's check content.
+        // 抽象項目はスキップ（データポイントのみ対象）
+        // タイプが item, stringItemType, monetaryItemType かチェック
+        // 抽象項目は 'abstract' 列 (Col 13) が 'true' だが、内容で判断
 
-        // Only include monetary or string items that hold data
+        // データを保持する金額または文字列項目のみを含める
         const isMonetary = type.includes("monetaryItemType");
         const isString = type.includes("stringItemType") || type.includes("textBlockItemType");
         const isDate = type.includes("dateItemType");
 
         let tsType = "string";
         if (isMonetary) tsType = "number";
-        else if (isDate) tsType = "string"; // Dates are strings in JSON/XBRL usually
-        else if (!isString) continue; // Skip other types for now (e.g., boolean, huge text blocks if not wanted)
+        else if (isDate) tsType = "string"; // 日付はJSON/XBRLでは通常文字列
+        else if (!isString) continue; // その他の型（boolean、巨大なテキストブロックなど）は一旦スキップ
 
-        // Avoid duplicates
+        // 重複を回避
         if (processedKeys.has(elementName)) continue;
         processedKeys.add(elementName);
 
-        // Generate JSDoc
+        // JSDocを生成
         const jsDoc = `    /**\n     * ${labelJp || elementName}\n     * Namespace: ${namespace}\n     */`;
         const property = `${jsDoc}\n    ${elementName}?: ${tsType};`;
         properties.push(property);
@@ -77,7 +77,7 @@ ${properties.join("\n\n")}
 }
 `;
 
-    // Ensure directory exists
+    // ディレクトリが存在することを確認
     const outDir = path.dirname(OUTPUT_PATH);
     if (!fs.existsSync(outDir)) {
         fs.mkdirSync(outDir, { recursive: true });

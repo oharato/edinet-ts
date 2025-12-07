@@ -28,7 +28,7 @@ function main() {
     const xsdObj = parser.parse(xsdContent);
     const labelObj = parser.parse(labelContent);
 
-    // 1. Parse Elements from XSD
+    // 1. XSDから要素をパース
     const elements: Map<string, ElementInfo> = new Map();
     const xsdElements = xsdObj["xsd:schema"]["xsd:element"];
 
@@ -37,16 +37,16 @@ function main() {
             const name = el["@_name"];
             const type = el["@_type"];
             if (name && type) {
-                // Mapping XBRL types to TS types
+                // XBRL型をTS型にマッピング
                 let tsType = "string";
                 if (type.includes("Monetary")) tsType = "number";
                 if (type.includes("Shares")) tsType = "number";
                 if (type.includes("PerShare")) tsType = "number";
                 if (type.includes("Decimal")) tsType = "number";
                 if (type.includes("Integer")) tsType = "number";
-                if (type.includes("Percent")) tsType = "number"; // Ratios are decimal numbers
+                if (type.includes("Percent")) tsType = "number"; // 比率は数値
 
-                // TextBlock is string
+                // TextBlockは文字列
                 if (type.includes("TextBlock")) tsType = "string";
 
                 elements.set(name, { name, type: tsType });
@@ -56,11 +56,11 @@ function main() {
 
     console.log(`Found ${elements.size} elements in XSD.`);
 
-    // 2. Parse Labels
+    // 2. ラベルをパース
     const labels: Map<string, string> = new Map();
     const resources = labelObj["link:linkbase"]["link:labelLink"]["link:label"];
 
-    // Create a map of IDs to Labels first
+    // IDからラベルへのマップを先に作成
     const labelResourceMap = new Map<string, string>();
     if (Array.isArray(resources)) {
         resources.forEach((res: any) => {
@@ -72,18 +72,18 @@ function main() {
         });
     }
 
-    // Link locators to arcs to resources
-    // Actually, structure is:
+    // ロケータ、アーク、リソースをリンク
+    // 実際の構造:
     // <link:loc xlink:href="#jpcrp_cor_ElementName" xlink:label="LabelName" />
     // <link:labelArc xlink:from="LabelName" xlink:to="LabelID" />
     // <link:label id="LabelID">Text</link:label>
 
-    // Ideally we parse arcs, but simple heuristic: label ID often contains element name?
-    // Let's check arcs.
+    // 本来はアークをパースすべきだが、簡易的なヒューリスティックで処理: label ID often contains element name?
+    // アークを確認
     const arcs = labelObj["link:linkbase"]["link:labelLink"]["link:labelArc"];
     const locs = labelObj["link:linkbase"]["link:labelLink"]["link:loc"];
 
-    const labelMap: Map<string, string> = new Map(); // LabelName -> LabelText (via ID)
+    const labelMap: Map<string, string> = new Map(); // LabelName -> LabelText (ID経由)
     if (Array.isArray(arcs)) {
         arcs.forEach((arc: any) => {
             if (arc["@_xlink:arcrole"] === "http://www.xbrl.org/2003/arcrole/concept-label") {
@@ -97,7 +97,7 @@ function main() {
         });
     }
 
-    // Map Locators to Element Names
+    // ロケータを要素名にマッピング
     if (Array.isArray(locs)) {
         locs.forEach((loc: any) => {
             const href = loc["@_xlink:href"]; // e.g. "../jpcrp_cor_2023-12-01.xsd#jpcrp_cor_NetSales"
@@ -115,7 +115,7 @@ function main() {
         });
     }
 
-    // 3. Generate TS Interface
+    // 3. TSインターフェースを生成
     let tsContent = `/**
  * EDINET Taxonomy (jpcrp_cor: Corporate Information)
  * Generated automatically.
@@ -132,7 +132,7 @@ export interface JpcrpCorTaxonomy {
     fs.writeFileSync(OUTPUT_ts, tsContent);
     console.log(`Generated ${OUTPUT_ts}`);
 
-    // 4. Generate Markdown Documentation
+    // 4. Markdownドキュメントを生成
     let mdContent = `# EDINET Taxonomy List (jpcrp_cor)
 
 Namespace: \`jpcrp_cor\`
@@ -142,7 +142,7 @@ Total Items: ${elements.size}
 | :--- | :--- | :--- |
 `;
 
-    // Sort by name
+    // 名前順にソート
     const sortedElements = Array.from(elements.values()).sort((a, b) => a.name.localeCompare(b.name));
 
     sortedElements.forEach((info) => {

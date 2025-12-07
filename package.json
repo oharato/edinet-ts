@@ -18,12 +18,12 @@
         "url": "https://github.com/oharato/edinet-ts.git"
     },
     "dependencies": {
-        "adm-zip": "^0.5.16",
         "fast-xml-parser": "^5.3.2",
+        "jszip": "^3.10.1",
         "xlsx": "^0.18.5"
     },
     "devDependencies": {
-        "@types/adm-zip": "^0.5.7",
+        "@types/jszip": "^3.4.0",
         "@types/node": "^24.10.1",
         "typescript": "^5.9.3",
         "vitest": "^4.0.15"

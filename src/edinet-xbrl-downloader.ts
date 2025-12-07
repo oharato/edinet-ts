@@ -1,6 +1,5 @@
-import * as fs from "fs";
 import * as path from "path";
-import AdmZip from "adm-zip";
+import JSZip from "jszip";
 
 export interface EdinetDocument {
     secCode: string;
@@ -30,12 +29,12 @@ export class EdinetXbrlDownloader {
     private rootDir?: string;
 
     constructor(apiKey?: string, options?: { rootDir?: string }) {
-        const key = apiKey || process.env.EDINET_API_KEY;
+        const key = apiKey || (typeof process !== "undefined" ? process.env.EDINET_API_KEY : undefined);
         if (!key) {
             throw new Error("API Key is required. Provide it as an argument or set EDINET_API_KEY environment variable.");
         }
         this.apiKey = key;
-        this.rootDir = options?.rootDir || process.env.EDINET_DOWNLOAD_DIR;
+        this.rootDir = options?.rootDir || (typeof process !== "undefined" ? process.env.EDINET_DOWNLOAD_DIR : undefined);
     }
 
     /**
@@ -66,6 +65,13 @@ export class EdinetXbrlDownloader {
      * @throws ディレクトリが未指定の場合や、ダウンロード/展開に失敗した場合
      */
     public async download(docId: string, targetDir?: string): Promise<string> {
+        let fs;
+        try {
+            fs = await import("fs");
+        } catch (e) {
+            throw new Error("File system access is not available in this environment. Use fetchXbrl() instead.");
+        }
+
         const dir = targetDir || this.rootDir;
         if (!dir) {
             throw new Error("Target directory is not specified. Set it via argument or EDINET_DOWNLOAD_DIR environment variable.");
@@ -79,22 +85,75 @@ export class EdinetXbrlDownloader {
         }
 
         const buffer = await response.arrayBuffer();
-        const zip = new AdmZip(Buffer.from(buffer));
-        const zipEntries = zip.getEntries();
+        const zip = await JSZip.loadAsync(buffer);
 
+        // Find XBRL file
+        const files = Object.keys(zip.files);
         // PublicDocフォルダ内のファイルを優先し、なければ任意の.xbrlファイルを取得します
-        const xbrlEntry =
-            zipEntries.find((e) => e.entryName.endsWith(".xbrl") && e.entryName.includes("PublicDoc")) ||
-            zipEntries.find((e) => e.entryName.endsWith(".xbrl"));
+        const xbrlFileName =
+            files.find(name => name.endsWith(".xbrl") && name.includes("PublicDoc")) ||
+            files.find(name => name.endsWith(".xbrl"));
 
-        if (!xbrlEntry) {
+        if (!xbrlFileName) {
             throw new Error("No XBRL file found in the downloaded ZIP.");
         }
 
+        // Extract all files (syncing behavior to adm-zip approach for compatibility)
+        // Note: JSZip is async, so we iterate.
         const extractPath = path.join(dir, docId);
-        zip.extractAllTo(extractPath, true);
 
-        return path.join(extractPath, xbrlEntry.entryName);
+        // This part strictly depends on Node.js fs. 
+        // In a browser environment, this method should likely not be called, 
+        // or we should provide a way to get the blob directly.
+        if (!fs.existsSync(extractPath)) {
+            fs.mkdirSync(extractPath, { recursive: true });
+        }
+
+        for (const filename of files) {
+            const fileData = await zip.file(filename)?.async("nodebuffer");
+            if (fileData) {
+                const dest = path.join(extractPath, filename);
+                const destDir = path.dirname(dest);
+                if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+                fs.writeFileSync(dest, fileData);
+            }
+        }
+
+        return path.join(extractPath, xbrlFileName);
+    }
+
+    /**
+     * 指定されたドキュメントIDの XBRL ファイルをメモリ上にダウンロード・展開し、テキストとして返します。
+     * ファイルシステムへの保存は行いません。ブラウザ環境等での利用に適しています。
+     * @param docId EDINET書類管理ID
+     * @returns XBRLファイルの内容 (string)
+     */
+    public async fetchXbrl(docId: string): Promise<string> {
+        const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`Failed to download document ${docId}: ${response.statusText}`);
+        }
+
+        const buffer = await response.arrayBuffer();
+        const zip = await JSZip.loadAsync(buffer);
+
+        const files = Object.keys(zip.files);
+        const xbrlFileName =
+            files.find(name => name.endsWith(".xbrl") && name.includes("PublicDoc")) ||
+            files.find(name => name.endsWith(".xbrl"));
+
+        if (!xbrlFileName) {
+            throw new Error("No XBRL file found in the downloaded ZIP.");
+        }
+
+        const content = await zip.file(xbrlFileName)?.async("string");
+        if (!content) {
+            throw new Error("Failed to read XBRL file content.");
+        }
+
+        return content;
     }
 
     /**

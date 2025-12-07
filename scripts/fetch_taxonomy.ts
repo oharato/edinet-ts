@@ -2,10 +2,9 @@
 import https from "https";
 import fs from "fs";
 import path from "path";
-import AdmZip from "adm-zip";
+// AdmZip import removed
 
-// 2024 Version EDINET Taxonomy (Published 2023-12-11)
-// https://www.fsa.go.jp/search/20231211.html
+// 2024年版 EDINETタクソノミ（2023-12-11公表）
 const TAXONOMY_URL = "https://www.fsa.go.jp/search/20231211/1c_Taxonomy.zip";
 const DOWNLOAD_DIR = path.resolve(__dirname, "../taxonomy");
 const ZIP_FILE_PATH = path.join(DOWNLOAD_DIR, "taxonomy.zip");
@@ -18,13 +17,13 @@ async function main() {
     console.log(`Downloading taxonomy from ${TAXONOMY_URL}...`);
     await downloadFile(TAXONOMY_URL, ZIP_FILE_PATH);
 
-    console.log("Extracting zip file with cp932 encoding...");
-    // Use system unzip command with cp932 encoding to handle Japanese filenames correctly
+    console.log("cp932エンコーディングでファイルを解凍中...");
+    // 日本語ファイル名を正しく扱うためにcp932エンコーディングでシステムのunzipコマンドを使用
     try {
         const { execSync } = await import("child_process");
-        // -O cp932: 指定CHARSET for DOS/Windows (Shift-JIS)
-        // -q: Quiet mode
-        // -d: Destination directory
+        // -O cp932: DOS/Windows用文字コード指定 (Shift-JIS)
+        // -q: 静音モード
+        // -d: 出力先ディレクトリ
         execSync(`unzip -O cp932 -q "${ZIP_FILE_PATH}" -d "${DOWNLOAD_DIR}"`);
     } catch (error) {
         console.error("Failed to unzip using system command. Ensure 'unzip' is installed.");

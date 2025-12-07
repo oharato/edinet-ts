@@ -3,7 +3,7 @@ import { EdinetXbrlDownloader } from "../src/edinet-xbrl-downloader";
 import fs from "fs";
 import path from "path";
 
-// Manually read .env since we don't have dotenv
+// dotenvがないため手動で.envを読み込む
 const envPath = path.resolve(__dirname, "../.env");
 let apiKey = process.env.EDINET_API_KEY;
 

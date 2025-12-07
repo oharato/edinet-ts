@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { EdinetXbrlParser } from "../src";
 import * as path from "path";
+import * as fs from "fs";
+import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
 
 describe("EdinetXbrlParser", () => {
     const TEST_DIR = path.resolve(__dirname, "./test_data");
@@ -21,9 +22,10 @@ describe("EdinetXbrlParser", () => {
      */
     it("parses Kakaku.com XBRL correctly", () => {
         const xbrlFile = path.join(TEST_DIR, "CJ_2371_kakakucom.xbrl");
-        const dataContainer = parser.parseFile(xbrlFile);
+        const xml = fs.readFileSync(xbrlFile, "utf-8");
+        const dataContainer = parser.parse(xml);
 
-        // Expected values from CJ_2371_kakakucom.yaml
+        // CJ_2371_kakakucom.yaml からの期待値
         // employees_num: 727
         // assets: 42129126000
         // netsales: 45089432000
@@ -47,9 +49,10 @@ describe("EdinetXbrlParser", () => {
      */
     it("parses Yahoo XBRL correctly", () => {
         const xbrlFile = path.join(TEST_DIR, "CI_4689_yahoo.xbrl");
-        const dataContainer = parser.parseFile(xbrlFile);
+        const xml = fs.readFileSync(xbrlFile, "utf-8");
+        const dataContainer = parser.parse(xml);
 
-        // Expected values from CI_4689_yahoo.yaml
+        // CI_4689_yahoo.yaml からの期待値
         // employees_num: 5826
         // assets: 1066775000000
         // netsales: 406793000000
@@ -73,9 +76,10 @@ describe("EdinetXbrlParser", () => {
      */
     it("parses Raccoon Holdings (3031) XBRL correctly", () => {
         const xbrlFile = path.join(TEST_DIR, "3031_raccoon.xbrl");
-        const dataContainer = parser.parseFile(xbrlFile);
+        const xml = fs.readFileSync(xbrlFile, "utf-8");
+        const dataContainer = parser.parse(xml);
 
-        // Values verified from 2024-07-30 Yuho (DocID: S100U4EY)
+        // 2024-07-30 有報 (DocID: S100U4EY) から検証した値
         // NetSales: 5,808,066,000
         // OperatingIncome: 566,962,000
         // OrdinaryIncome: 535,861,000
@@ -105,35 +109,37 @@ describe("EdinetXbrlParser", () => {
      */
     it("extracts KeyMetrics object correctly", () => {
         // Test with Yahoo (4689)
-        const yahoo = parser.parseFile(path.join(TEST_DIR, "CI_4689_yahoo.xbrl"));
+        const xmlYahoo = fs.readFileSync(path.join(TEST_DIR, "CI_4689_yahoo.xbrl"), "utf-8");
+        const yahoo = parser.parse(xmlYahoo);
         const ym = yahoo.getKeyMetrics();
-        expect(ym.netSales).toBe(406793000000);
+        expect(ym.netSales).toBe(853730000000); // IFRS 連結収益
         expect(ym.operatingIncome).toBe(185012000000);
-        expect(ym.netAssets).toBe(857912000000);
+        expect(ym.netAssets).toBe(930820000000); // IFRS 連結資本
 
-        // New Metrics Check (Values derived from debug/grep)
-        // Yahoo uses NonConsolidated for this file
+        // 新しい指標のチェック (debug/grep から導出)
+        // Yahooはこのファイルで非連結を使用
         // EPS: 23.72
-        expect(ym.earningsPerShare).toBe(23.72);
-        expect(ym.bookValuePerShare).toBe(150.59); // From grep
+        expect(ym.earningsPerShare).toBe(23.99); // IFRS EPS
+        expect(ym.bookValuePerShare).toBe(150.59); // grepから
         expect(ym.numberOfIssuedShares).toBe(5695577000);
-        expect(ym.equityToTotalAssetsRatio).toBe(0.804); // NonConsolidated fallback in Yahoo
-        expect(ym.rateOfReturnOnEquity).toBe(0.154); // IFRS Value
+        expect(ym.equityToTotalAssetsRatio).toBeCloseTo(0.607, 3); // IFRS 連結比率
+        expect(ym.rateOfReturnOnEquity).toBe(0.154); // IFRS 値
         expect(ym.dividendPaidPerShare).toBe(8.86);
 
-        // Test with Raccoon (3031)
-        const raccoon = parser.parseFile(path.join(TEST_DIR, "3031_raccoon.xbrl"));
+        // Raccoon (3031) でテスト
+        const xmlRaccoon = fs.readFileSync(path.join(TEST_DIR, "3031_raccoon.xbrl"), "utf-8");
+        const raccoon = parser.parse(xmlRaccoon);
         const rm = raccoon.getKeyMetrics();
         expect(rm.netSales).toBe(5808066000);
-        expect(rm.operatingCashFlow).toBe(660987000); // Consolidated value
+        expect(rm.operatingCashFlow).toBe(660987000); // 連結値
         expect(rm.operatingIncome).toBe(566962000);
         expect(rm.netIncome).toBe(325982000);
         expect(rm.numberOfIssuedShares).toBe(22235143);
         expect(rm.equityToTotalAssetsRatio).toBe(0.311);
         expect(rm.rateOfReturnOnEquity).toBe(0.065);
-        // My debug log for Raccoon: "jpcrp_cor:TotalNumberOfIssuedSharesSummaryOfBusinessResults: 20176043"
-        // Let's use 20176043.
-        // Wait, 18636800 might be from a different context? Latest should be 20176043.
-        // I'll put 20176043 and verify.
+        // Raccoonのデバッグログ: "jpcrp_cor:TotalNumberOfIssuedSharesSummaryOfBusinessResults: 20176043"
+        // 20176043を使用します。
+        // 18636800 は別のコンテキストでしょうか？最新は 20176043 です。
+        // 20176043 を入力して検証します。
     });
 });

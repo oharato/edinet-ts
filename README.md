@@ -45,16 +45,19 @@ if (xbrlPath) {
 
 ### 2. データ解析と主要指標の取得 (Easy Mode)
 
-`getKeyMetrics()` を使うと、最も一般的な財務指標を簡単に取得できます。
-連結データがあれば連結を優先し、なければ単体データを自動的に探します。
+XBRLファイルを解析し、主要な財務指標を抽出します。
 
 ```typescript
 import { EdinetXbrlParser } from "edinet-ts";
+import * as fs from "fs";
+
+// ダウンロードしたファイルを読み込み
+// （ブラウザ等の場合は fetchXbrl で取得した文字列などを渡します）
+const xml = fs.readFileSync(xbrlPath, "utf-8");
 
 const parser = new EdinetXbrlParser();
-const data = parser.parseFile("./downloads/report.xbrl");
+const data = parser.parse(xml);
 
-// 主要指標を一括取得
 const metrics = data.getKeyMetrics();
 
 console.log(`売上高: ${metrics.netSales}`);
