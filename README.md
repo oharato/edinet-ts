@@ -78,7 +78,28 @@ const downloader = new EdinetXbrlDownloader();
 await downloader.downloadByTicker("7203");
 ```
 
-### 3. 詳細なデータアクセス (Advanced Mode)
+```
+
+### 3. 型安全なデータアクセス (Type-Safe Mode)
+
+EDINETタクソノミに基づいた型定義定義（1800項目以上）を利用して、安全かつ補完の効く状態でデータを取得できます。
+`getJppfsCor()` は、財務諸表本表（General Commercial and Industrial）の項目に対応しています。
+
+```typescript
+const taxonomy = data.getJppfsCor();
+
+// IDEで補完が効きます
+// 連結・単体、最新年度・過去年度を自動で検索して最適な値を返します
+console.log(`現金及び預金: ${taxonomy.CashAndDeposits}`);
+console.log(`売上高: ${taxonomy.NetSales}`);
+console.log(`棚卸資産: ${taxonomy.Inventories}`);
+
+if (taxonomy.OperatingIncome) {
+    console.log(`営業利益: ${taxonomy.OperatingIncome}`);
+}
+```
+
+### 4. 詳細なデータアクセス (Advanced Mode)
 
 特定のXBRLタグや、細かいコンテキスト（単体のみ指定など）を取得したい場合に使用します。
 

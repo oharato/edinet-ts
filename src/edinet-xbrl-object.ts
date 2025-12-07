@@ -1,5 +1,6 @@
 import { EdinetDataUtil } from "./edinet-data-util";
 import { EdinetContext } from "./edinet-context";
+import { JppfsCorTaxonomy } from "./types/taxonomy";
 
 export class EdinetData {
     constructor(
@@ -264,6 +265,44 @@ export class EdinetXbrlObject {
             companyHistory: getString(["jpcrp_cor:CompanyHistoryTextBlock"]),
             researchAndDevelopment: getString(["jpcrp_cor:ResearchAndDevelopmentActivitiesTextBlock"])
         };
+    }
+
+    /**
+     * 財務諸表本表タクソノミ (jppfs_cor) のデータを型安全に取得するためのプロキシを返します。
+     * プロパティにアクセスすると、自動的に最適なコンテキスト（連結優先、最新年度）のデータを検索して返します。
+     * 
+     * @returns JppfsCorTaxonomy インターフェースに準拠したプロキシオブジェクト
+     */
+    public getJppfsCor(): import("./types/taxonomy").JppfsCorTaxonomy {
+        const _this = this;
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        return new Proxy({} as import("./types/taxonomy").JppfsCorTaxonomy, {
+            get(target, prop, receiver) {
+                if (typeof prop !== "string") return Reflect.get(target, prop, receiver);
+
+                // namespace prefix "jppfs_cor:" を付与して検索
+                const key = `jppfs_cor:${prop}`;
+
+                // 優先順位: 連結 > 単体, 最新 > 過去
+                // DurationとInstant両方のコンテキストを候補に入れる
+                const contexts = [
+                    ..._this.findContexts({ type: "Duration", scope: "Consolidated" }),
+                    ..._this.findContexts({ type: "Instant", scope: "Consolidated" }),
+                    ..._this.findContexts({ type: "Duration", scope: "NonConsolidated" }),
+                    ..._this.findContexts({ type: "Instant", scope: "NonConsolidated" })
+                ];
+
+                for (const context of contexts) {
+                    const data = _this.getDataByContextRef(key, context.id);
+                    if (data && data.value) {
+                        const parsed = parseFloat(data.value);
+                        return isNaN(parsed) ? data.value : parsed;
+                    }
+                }
+
+                return undefined;
+            }
+        });
     }
 }
 
