@@ -57,13 +57,36 @@ const data = parser.parseFile("./downloads/report.xbrl");
 // 主要指標を一括取得
 const metrics = data.getKeyMetrics();
 
-console.log(`売上高: ${metrics.netSales}`);          // 円単位 (例: 10000000000)
+console.log(`売上高: ${metrics.netSales}`);
 console.log(`営業利益: ${metrics.operatingIncome}`);
 console.log(`経常利益: ${metrics.ordinaryIncome}`);
 console.log(`当期純利益: ${metrics.netIncome}`);
 console.log(`純資産: ${metrics.netAssets}`);
 console.log(`総資産: ${metrics.totalAssets}`);
 ```
+
+#### 取得可能な指標一覧 (`KeyMetrics` インターフェース)
+
+| プロパティ名 | 日本語名 | 備考 |
+| :--- | :--- | :--- |
+| `netSales` | 売上高 | |
+| `operatingIncome` | 営業利益 | |
+| `ordinaryIncome` | 経常利益 | IFRSでは一般的ではないため取得できない場合があります |
+| `netIncome` | 当期純利益 | 親会社株主に帰属する当期純利益 |
+| `netAssets` | 純資産 | |
+| `totalAssets` | 総資産 | |
+| `operatingCashFlow` | 営業CF | 営業活動によるキャッシュ・フロー |
+| `investingCashFlow` | 投資CF | 投資活動によるキャッシュ・フロー |
+| `financingCashFlow` | 財務CF | 財務活動によるキャッシュ・フロー |
+| `cashAndEquivalents` | 現預金 | 現金及び現金同等物の期末残高 |
+| `earningsPerShare` | EPS | 1株当たり当期純利益 |
+| `bookValuePerShare` | BPS | 1株当たり純資産 |
+| `equityToTotalAssetsRatio` | 自己資本比率 | |
+| `rateOfReturnOnEquity` | ROE | 自己資本利益率 |
+| `priceEarningsRatio` | PER | 株価収益率（XBRLに含まれる場合のみ） |
+| `payoutRatio` | 配当性向 | |
+| `numberOfIssuedShares` | 発行済株式総数 | |
+| `dividendPaidPerShare` | 1株当たり配当 | |
 
 ## Environment Variables
 
@@ -82,21 +105,37 @@ await downloader.downloadByTicker("7203");
 
 ### 3. 型安全なデータアクセス (Type-Safe Mode)
 
-EDINETタクソノミに基づいた型定義定義（1800項目以上）を利用して、安全かつ補完の効く状態でデータを取得できます。
-`getJppfsCor()` は、財務諸表本表（General Commercial and Industrial）の項目に対応しています。
+EDINETタクソノミに基づいた型定義（4000項目以上）を利用して、安全かつ補完の効く状態でデータを取得できます。
+
+#### 財務諸表 (JPPFS)
+`getJppfsCor()` は、貸借対照表や損益計算書などの財務諸表本表（General Commercial and Industrial）に対応しています。
 
 ```typescript
-const taxonomy = data.getJppfsCor();
+const jppfs = data.getJppfsCor();
 
 // IDEで補完が効きます
 // 連結・単体、最新年度・過去年度を自動で検索して最適な値を返します
-console.log(`現金及び預金: ${taxonomy.CashAndDeposits}`);
-console.log(`売上高: ${taxonomy.NetSales}`);
-console.log(`棚卸資産: ${taxonomy.Inventories}`);
+console.log(`現金及び預金: ${jppfs.CashAndDeposits}`);
+console.log(`売上高: ${jppfs.NetSales}`);
+console.log(`棚卸資産: ${jppfs.Inventories}`);
 
-if (taxonomy.OperatingIncome) {
-    console.log(`営業利益: ${taxonomy.OperatingIncome}`);
+if (jppfs.OperatingIncome) {
+    console.log(`営業利益: ${jppfs.OperatingIncome}`);
 }
+```
+
+#### 企業情報 (JPCRP)
+`getJpcrpCor()` は、有価証券報告書の企業情報（大株主の状況、役員の状況、配当政策など）に対応しています。
+
+```typescript
+const jpcrp = data.getJpcrpCor();
+
+// IFRS採用企業の主要指標もここに含まれる場合があります
+if (jpcrp.DividendPolicyTextBlock) {
+    console.log(`配当政策: ${jpcrp.DividendPolicyTextBlock}`);
+}
+
+console.log(`大株主の状況: ${jpcrp.MajorShareholdersTextBlock}`);
 ```
 
 ### 4. 詳細なデータアクセス (Advanced Mode)

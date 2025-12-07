@@ -311,6 +311,57 @@ export class EdinetXbrlObject {
             }
         });
     }
+    /**
+     * 企業情報本表タクソノミ (jpcrp_cor) のデータを型安全に取得するためのプロキシを返します。
+     * プロパティにアクセスすると、自動的に最適なコンテキスト（連結優先、最新年度）のデータを検索して返します。
+     * 
+     * @returns JpcrpCorTaxonomy インターフェースに準拠したプロキシオブジェクト
+     */
+    public getJpcrpCor(): import("./types/jpcrp_taxonomy").JpcrpCorTaxonomy {
+        const _this = this;
+
+        // パフォーマンス向上のためにコンテキストをキャッシュします
+        const contexts = [
+            ..._this.findContexts({ type: "Duration", scope: "Consolidated" }),
+            ..._this.findContexts({ type: "Instant", scope: "Consolidated" }),
+            ..._this.findContexts({ type: "Duration", scope: "NonConsolidated" }),
+            ..._this.findContexts({ type: "Instant", scope: "NonConsolidated" })
+        ];
+
+        return new Proxy({} as import("./types/jpcrp_taxonomy").JpcrpCorTaxonomy, {
+            get(target, prop, receiver) {
+                if (typeof prop !== "string") return Reflect.get(target, prop, receiver);
+
+                // namespace prefix "jpcrp_cor:" を付与して検索
+                const key = `jpcrp_cor:${prop}`;
+
+                for (const context of contexts) {
+                    const data = _this.getDataByContextRef(key, context.id);
+                    if (data && data.value) {
+                        // 数値型の場合はパースを試みるが、jpcrpはテキストも多いため、
+                        // タクソノミ定義(TS型)に合わせてキャストされることを期待する。
+                        // ここでは生の値を返しつつ、数値変換可能なものは数値として扱うのが理想だが、
+                        // TSの型定義上は string | number の判別が難しい (実行時にはすべて string で来る)
+
+                        // 簡易的な判定: 数字のみで構成される場合は数値に変換？
+                        // いや、電話番号や郵便番号の可能性もある。
+                        // 安全のため、parseFloatしてNaNでなければ数値、そうでなければ文字列とする。
+                        // ただし、TSの型定義と矛盾しないように注意が必要。
+                        // JpcrpCorTaxonomyの型定義は generate_types_jpcrp.ts で生成されており、
+                        // Monetary/Shares等は number、それ以外は string となっている。
+
+                        const parsed = parseFloat(data.value);
+                        // 単純な数値変換だと "0123" が 123 (number) になってしまう問題があるか？
+                        // EDINETの数値データは通常フォーマット済みではない (カンマなし)。
+                        // テキストブロックなどはNaNになるのでstringで返る。
+                        return isNaN(parsed) ? data.value : parsed;
+                    }
+                }
+
+                return undefined;
+            }
+        });
+    }
 }
 
 export interface KeyMetrics {

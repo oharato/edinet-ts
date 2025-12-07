@@ -2,25 +2,19 @@
 
 本プロジェクトで将来的に実装を検討している機能一覧です。
 
-## 1. IFRS (国際会計基準) 対応
-*   現在は J-GAAP (日本基準) のタグ (`jppfs_cor`, `jpcrp_cor`) を中心に対応しています。
-*   IFRS採用企業のXBRL (`ifrs-full` 等) からも主要指標を抽出できるようにマッピングを追加予定です。
-
-## 2. CLIツール (Command Line Interface)
-*   コードを書かずにターミナルから直接利用できるCLIツールの提供。
+## 1. CLIツール (Command Line Interface)
+*   コードを書かずにターミナルから直接利用できるCLIツールの提供求。
     *   例: `edinet-ts download --ticker 7203`
     *   例: `edinet-ts parse --file report.xbrl --format json`
 
-## 3. 取得指標の拡充
-*   現在は主要6指標 (`NetSales`, `OperatingIncome`, `OrdinaryIncome`, `NetIncome`, `NetAssets`, `TotalAssets`) のみに対応しています。
-*   以下のような詳細な指標への対応を検討中です。
-    *   キャッシュフロー計算書 (OperatingCF, InvestingCF, FinancingCF)
-    *   一株当たり情報 (EPS, BPS)
-    *   セグメント情報
+## 2. npmへの公開
+*   CI/CDパイプラインの構築 (GitHub Actions)
+*   npm registry へのパブリッシュ
 
-## 4. 型定義の完全網羅
-*   現在は主要なタグのみサポートしていますが、EDINETタクソノミ全定義からの型生成スクリプトを作成し、完全な型安全性を提供することを目指します。
+## 3. 型定義のさらなる拡充 (jpcrp_cor)
+*   現在は財務諸表本表 (`jppfs_cor`) のみを型定義しています。
+*   企業情報 (`jpcrp_cor`) には、役員情報、大株主の状況、設備の状況など膨大な情報が含まれています。これらに対しても型安全なアクセスを提供することを検討します。
 
-## 5. パフォーマンス最適化
-*   大量のXBRLファイル（数千社分）を一括処理する際のメモリ使用量と速度の最適化。
-*   ストリーム処理の導入検討。
+## 4. ブラウザ/Edge ランタイム対応
+*   現在は `fs` モジュールや `adm-zip` に依存しているため、Node.js 環境でのみ動作します。
+*   Web Standard API (Fetch, checkt) への移行や、Isomorphic対応を行い、Cloudflare Workers やブラウザ上でも動作するように改良することを検討します。
