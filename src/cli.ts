@@ -15,19 +15,67 @@ program
     .description("EDINET XBRLファイルをダウンロードおよび解析するためのCLI")
     .version("0.0.1");
 
+const DOCUMENT_TYPE_MAP: Record<string, EdinetDocumentType> = {
+    // Aliases
+    "annual": EdinetDocumentType.AnnualCards,
+    "quarterly": EdinetDocumentType.QuarterlyReport,
+    "semiannual": EdinetDocumentType.SemiAnnualReport,
+    "extraordinary": EdinetDocumentType.ExtraordinaryReport,
+    "registration": EdinetDocumentType.SecuritiesRegistrationStatement,
+    "amended": EdinetDocumentType.AmendedSecuritiesRegistrationStatement,
+    "confirmation": EdinetDocumentType.ConfirmationLetter,
+    "internalcontrol": EdinetDocumentType.InternalControlReport,
+    "largeshareholding": EdinetDocumentType.LargeShareholdingReport,
+    "change": EdinetDocumentType.ChangeReport,
+    "correction": EdinetDocumentType.CorrectionReport,
+    "tenderoffer": EdinetDocumentType.TenderOfferStatement,
+    "tenderofferreport": EdinetDocumentType.TenderOfferReport,
+    // Short codes
+    "120": EdinetDocumentType.AnnualCards,
+    "140": EdinetDocumentType.QuarterlyReport,
+    "160": EdinetDocumentType.SemiAnnualReport,
+    "180": EdinetDocumentType.ExtraordinaryReport,
+    "010": EdinetDocumentType.SecuritiesRegistrationStatement,
+    "040": EdinetDocumentType.AmendedSecuritiesRegistrationStatement,
+    "135": EdinetDocumentType.ConfirmationLetter,
+    "235": EdinetDocumentType.InternalControlReport,
+    "340": EdinetDocumentType.LargeShareholdingReport,
+    "350": EdinetDocumentType.ChangeReport,
+    "360": EdinetDocumentType.CorrectionReport,
+    "240": EdinetDocumentType.TenderOfferStatement,
+    "270": EdinetDocumentType.TenderOfferReport,
+};
+
+function resolveDocumentType(input: string): EdinetDocumentType {
+    const lower = input.toLowerCase();
+
+    // Check aliases
+    if (DOCUMENT_TYPE_MAP[lower]) {
+        return DOCUMENT_TYPE_MAP[lower];
+    }
+
+    // Check if raw value exists in Enum
+    const values = Object.values(EdinetDocumentType);
+    if (values.includes(input as EdinetDocumentType)) {
+        return input as EdinetDocumentType;
+    }
+
+    // Default to Annual if unknown, or maybe log warning?
+    // Using Annual as safe default similar to original logic
+    return EdinetDocumentType.AnnualCards;
+}
+
 program.command("download")
     .description("EDINET書類をダウンロードします")
     .option("-t, --ticker <codes>", "証券コード（カンマ区切り、例: 7203,9984）")
     .option("-d, --date <date>", "対象日 (YYYY-MM-DD)。デフォルトは当日")
-    .option("--type <type>", "書類種別 (デフォルト: Annual)", "Annual")
+    .option("--type <type>", "書類種別 (例: Annual, Quarterly, 120...)。デフォルト: Annual", "Annual")
     .option("--dir <path>", "出力先ディレクトリ", "./downloads")
     .action(async (options) => {
         const downloader = new EdinetXbrlDownloader({ rootDir: options.dir });
         const date = options.date || new Date().toISOString().split("T")[0];
 
-        let docType: EdinetDocumentType = EdinetDocumentType.AnnualCards;
-        if (options.type === "Quarterly") docType = EdinetDocumentType.QuarterlyReport;
-        else if (options.type === "Semiannual") docType = EdinetDocumentType.SemiAnnualReport;
+        const docType = resolveDocumentType(options.type);
 
         const tickers = options.ticker ? options.ticker.split(",") : [];
         if (tickers.length === 0) {
@@ -87,7 +135,7 @@ program.command("get")
     .requiredOption("-t, --ticker <code>", "証券コード (例: 7203)")
     .option("-d, --date <date>", "対象日 (YYYY-MM-DD)。デフォルトは当日")
     .option("-l, --lookback <days>", "対象日に見つからない場合に遡る日数 (デフォルト: 90)", "90")
-    .option("--type <type>", "書類種別 (デフォルト: Annual)", "Annual")
+    .option("--type <type>", "書類種別 (例: Annual, Quarterly, 120...)。デフォルト: Annual", "Annual")
     .option("--save-dir <path>", "ダウンロードファイルの保存先ディレクトリ")
     .option("--pretty", "JSONを整形して出力")
     .option("-v, --verbose", "進捗ログを表示")
@@ -96,9 +144,7 @@ program.command("get")
         const downloader = new EdinetXbrlDownloader({ rootDir: tempDir });
         const parser = new EdinetXbrlParser();
 
-        let docType: EdinetDocumentType = EdinetDocumentType.AnnualCards;
-        if (options.type === "Quarterly") docType = EdinetDocumentType.QuarterlyReport;
-        else if (options.type === "Semiannual") docType = EdinetDocumentType.SemiAnnualReport;
+        const docType = resolveDocumentType(options.type);
 
         try {
             let xbrlPath: string | null = null;
