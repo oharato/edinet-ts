@@ -27,10 +27,10 @@ export class EdinetXbrlParser {
         const parsed = this.parser.parse(xmlContent);
         const xbrlObject = new EdinetXbrlObject();
 
-        // 1. Parse Contexts first
+        // 1. 最初にコンテキストを解析
         this.parseContexts(parsed, xbrlObject);
 
-        // 2. Traverse for Data
+        // 2. データをトラバースして解析
         this.traverse(parsed, xbrlObject);
 
         return xbrlObject;
@@ -59,7 +59,7 @@ export class EdinetXbrlParser {
                 }
             }
 
-            // Also check children just in case
+            // 念のため子要素もチェック
             for (const key of Object.keys(node)) {
                 if (key !== "xbrli:context" && !key.startsWith("@_") && typeof node[key] === 'object') {
                     // 最適化: 深すぎる探索を避けます。コンテキストは通常 <xbrl> の直下にあります。
@@ -72,7 +72,7 @@ export class EdinetXbrlParser {
             }
         };
 
-        // Most EDINET files have root key like "xbrli:xbrl"
+        // 多くのEDINETファイルは "xbrli:xbrl" のようなルートキーを持っています
         const rootKeys = Object.keys(root);
         for (const k of rootKeys) {
             if (k.includes("xbrl")) {

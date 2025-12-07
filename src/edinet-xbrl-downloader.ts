@@ -145,11 +145,11 @@ export class EdinetXbrlDownloader {
         if (!fs.existsSync(dir)) return null;
         const files = fs.readdirSync(dir);
 
-        // 1. Check current directory
+        // 1. カレントディレクトリをチェック
         const xbrl = files.find((f: string) => f.endsWith(".xbrl"));
         if (xbrl) return path.join(dir, xbrl);
 
-        // 2. Check subdirectories (specifically PublicDoc which is standard)
+        // 2. サブディレクトリをチェック (PublicDoc が標準的)
         for (const file of files) {
             const fullPath = path.join(dir, file);
             if (fs.statSync(fullPath).isDirectory()) {
@@ -219,14 +219,14 @@ export class EdinetXbrlDownloader {
         } catch (e) {
             const text = new TextDecoder().decode(buffer.slice(0, 500)); // First 500 chars (enough for simple JSON error)
 
-            // Try to parse as JSON error
+            // JSONエラーとしての解析を試みる
             try {
                 const jsonError = JSON.parse(text);
                 if (jsonError.message) {
                     throw new Error(`API Error: ${jsonError.message} (Status: ${jsonError.statusCode || 'Unknown'})`);
                 }
             } catch (jsonEx) {
-                // Not JSON, fall through
+                // JSONでない場合はそのまま続行
             }
 
             throw new Error(`Failed to load ZIP for document ${docId}. The response might not be a ZIP file. Start of content: "${text}". Original Error: ${e}`);
@@ -284,7 +284,7 @@ export class EdinetXbrlDownloader {
                     }
                 }
             } catch (e) {
-                // fs import failed or other error, ignore and proceed to fetch
+                // fs のインポートに失敗した場合やその他のエラーは無視して、フェッチ処理に進む
             }
         }
 

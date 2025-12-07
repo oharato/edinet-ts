@@ -144,6 +144,38 @@ if (info.holdingRatio) {
 }
 ```
 
+## CLIツール (Command Line Interface)
+
+`edinet-ts` は、コードを書かずにターミナルから直接利用できるCLIツールを提供しています。
+
+### 1. `get`: ダウンロード & 解析 (推奨)
+ローカルDB（Seed Index）を使用して書類を高速に検索し、ダウンロードと解析を一括で行います。
+
+```bash
+# 証券コード 3031 の直近の有価証券報告書を取得
+npx edinet-ts get --ticker 3031 --pretty
+```
+
+### 2. `download`: 一括ダウンロード
+特定の日付や銘柄の書類をダウンロードします。
+
+```bash
+# 2024-06-25 の書類を一括ダウンロード
+npx edinet-ts download --date 2024-06-25
+
+# 証券コードを指定してダウンロード
+npx edinet-ts download --ticker 7203,9984
+```
+
+### 3. `parse`: ファイル解析
+ローカルにあるXBRLファイルを解析してJSONを出力します。
+
+```bash
+npx edinet-ts parse --file ./downloads/report.xbrl --pretty
+```
+
+詳細なオプションは `npx edinet-ts --help` で確認できます。
+
 ## License
 
 ```text

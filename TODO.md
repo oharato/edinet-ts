@@ -12,10 +12,10 @@
         *   API追加: `findDocumentsByFiler()`, `findDocumentsByType()`。
         *   doc_type_code を型として定義する
 
-## 2. CLIツール (Command Line Interface)
-*   コードを書かずにターミナルから直接利用できるCLIツールの提供。
-    *   例: `edinet-ts download --ticker 7203 --years 5`
-    *   例: `edinet-ts parse --file report.xbrl --format json`
+## 2. CLIツール (Command Line Interface) - [x] Implemented
+*   `edinet-ts download`: 書類のダウンロード
+*   `edinet-ts parse`: ローカルxBRLの解析
+*   `edinet-ts get`: ダウンロードと解析を一括実行 (Local DB対応)
 
 ## 3. npmへの公開
 *   CI/CDパイプラインの構築 (GitHub Actions)
