@@ -275,6 +275,21 @@ export class EdinetXbrlObject {
      */
     public getJppfsCor(): import("./types/taxonomy").JppfsCorTaxonomy {
         const _this = this;
+
+        // パフォーマンス向上のためにコンテキストをキャッシュします
+        // 遅延読み込み: getJppfsCorが呼び出されたタイミングでのみ計算されます
+        // EdinetXbrlObjectはパース後通常不変であるため、キャッシュしても安全です
+        const contexts = [
+            ..._this.findContexts({ type: "Duration", scope: "Consolidated" }),
+            ..._this.findContexts({ type: "Instant", scope: "Consolidated" }),
+            ..._this.findContexts({ type: "Duration", scope: "NonConsolidated" }),
+            ..._this.findContexts({ type: "Instant", scope: "NonConsolidated" })
+        ];
+
+        // プロキシ内部で `contexts` 配列を再利用することで最適化を行っています。
+        // 以前はプロパティアクセスのたびに `findContexts`（Mapのフィルタリングを含む）を4回呼び出していましたが、
+        // これによりオーバーヘッドを削減しています。
+
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         return new Proxy({} as import("./types/taxonomy").JppfsCorTaxonomy, {
             get(target, prop, receiver) {
@@ -283,16 +298,8 @@ export class EdinetXbrlObject {
                 // namespace prefix "jppfs_cor:" を付与して検索
                 const key = `jppfs_cor:${prop}`;
 
-                // 優先順位: 連結 > 単体, 最新 > 過去
-                // DurationとInstant両方のコンテキストを候補に入れる
-                const contexts = [
-                    ..._this.findContexts({ type: "Duration", scope: "Consolidated" }),
-                    ..._this.findContexts({ type: "Instant", scope: "Consolidated" }),
-                    ..._this.findContexts({ type: "Duration", scope: "NonConsolidated" }),
-                    ..._this.findContexts({ type: "Instant", scope: "NonConsolidated" })
-                ];
-
                 for (const context of contexts) {
+                    // getDataByContextRef itself is fast (Map lookup)
                     const data = _this.getDataByContextRef(key, context.id);
                     if (data && data.value) {
                         const parsed = parseFloat(data.value);

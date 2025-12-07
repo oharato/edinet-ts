@@ -54,18 +54,11 @@ export class EdinetXbrlParser {
     }
 
     private parseContexts(root: unknown, xbrlObject: EdinetXbrlObject): void {
-        // Find xbrli:context elements. usually under root -> xbrli:xbrl -> xbrli:context
-        // Since we don't know exact root name (sometimes xbrl, sometimes something else?), we can search keys.
+        // xbrli:context 要素を探します。通常は root -> xbrli:xbrl -> xbrli:context の階層にあります。
+        // ルート要素名が不確定（xbrl以外の場合など）でも対応できるよう、キーを検索します。
         if (!this.isObject(root)) return;
 
-        // Usually root is like { "xbrli:xbrl": { ... } }
-        // We look for any key that contains "xbrl" or search recursively?
-        // Actually, traverse is generic, maybe we can just find them there?
-        // BUT we need contexts indexed BEFORE processing data if we want to validate?
-        // No, we can process contexts independently.
-
-        // Let's assume standard structure or search a bit.
-        // For simplicity, let's scan the first level children for "xbrli:context" or "xbrl" -> "context"
+        // 簡略化のため、第1階層の子要素から "xbrli:context" または "xbrl含有キー" -> "context" をスキャンします
 
         const findContextsRecursive = (node: unknown) => {
             if (!this.isObject(node)) return;
@@ -86,8 +79,8 @@ export class EdinetXbrlParser {
             // Also check children just in case
             for (const key of Object.keys(node)) {
                 if (key !== "xbrli:context" && !key.startsWith("@_") && typeof node[key] === 'object') {
-                    // Optimization: don't go too deep. Contexts are usually top level in <xbrl>
-                    if (key.includes("xbrl") || key === "link:linkbaseRef") { // Just heuristics
+                    // 最適化: 深すぎる探索を避けます。コンテキストは通常 <xbrl> の直下にあります。
+                    if (key.includes("xbrl") || key === "link:linkbaseRef") { // ヒューリスティックな判定
                         findContextsRecursive(node[key]);
                     } else if (key.endsWith("xbrl")) {
                         findContextsRecursive(node[key]);
@@ -114,7 +107,7 @@ export class EdinetXbrlParser {
         }
 
         for (const key of Object.keys(node)) {
-            // Skip attributes and text content identifiers
+            // 属性（Attribute）とテキストコンテンツ識別子（#text）はスキップします
             if (key.startsWith("@_") || key === "#text") continue;
 
             const value = node[key];
@@ -132,10 +125,10 @@ export class EdinetXbrlParser {
     }
 
     private processNode(key: string, node: unknown, xbrlObject: EdinetXbrlObject): void {
-        // If it has a contextRef, it's definitely a fact.
-        // If it has a value, it might be a fact or metadata.
-        // We store it if either condition matches to be comprehensive.
-        // This aligns with the original Python logic which was permissive.
+        // contextRefがあれば、それは確実にファクト（事実データ）です。
+        // valueがあれば、それはファクトかメタデータの可能性があります。
+        // どちらかの条件に合致すれば、包括的にデータを格納します。
+        // これは、幅広い構造を許容するオリジナルのPythonライブラリのロジックに合わせています。
         const contextRef = EdinetDataUtil.getContextRef(node);
         const value = EdinetDataUtil.getValue(node);
 

@@ -51,7 +51,7 @@ export class EdinetXbrlDownloader {
             throw new Error(`Failed to fetch documents list: ${response.statusText}`);
         }
 
-        const data = (await response.json()) as any; // Using any temporarily to check for error schema
+        const data = (await response.json()) as any; // エラースキーマの確認のため一時的にanyを使用
         if (data.statusCode && data.statusCode !== 200) {
             throw new Error(`API Error: ${data.statusCode} - ${data.message}`);
         }
@@ -82,7 +82,7 @@ export class EdinetXbrlDownloader {
         const zip = new AdmZip(Buffer.from(buffer));
         const zipEntries = zip.getEntries();
 
-        // Prioritize file in PublicDoc folder, otherwise take any .xbrl
+        // PublicDocフォルダ内のファイルを優先し、なければ任意の.xbrlファイルを取得します
         const xbrlEntry =
             zipEntries.find((e) => e.entryName.endsWith(".xbrl") && e.entryName.includes("PublicDoc")) ||
             zipEntries.find((e) => e.entryName.endsWith(".xbrl"));
@@ -112,8 +112,8 @@ export class EdinetXbrlDownloader {
     ): Promise<string | null> {
         const docs = await this.search(date);
 
-        // secCode matches ticker + "0" typically (e.g. 72030)
-        // We prioritize original documents (docInfoEditStatus === 0)
+        // secCodeは通常、証券コード+0（例: 72030）となります
+        // 訂正報告書等ではなく、オリジナルの書類（docInfoEditStatus === 0）を優先します
         const targetDoc = docs.find(
             (d) => d.secCode === ticker + "0" && d.docInfoEditStatus === 0
         );
