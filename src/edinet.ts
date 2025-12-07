@@ -2,6 +2,7 @@ import { EdinetRepository } from "./db/edinet-repository";
 import { EdinetXbrlDownloader, EdinetClientOptions, EdinetDocument } from "./edinet-xbrl-downloader";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
+import { EdinetMetadata } from "./db/edinet-metadata";
 
 export interface EdinetConfig extends EdinetClientOptions {
     dbPath?: string;
@@ -87,6 +88,38 @@ export class Edinet {
 
         // DB検索時点で period_end の降順になっているが、念のため
         return history;
+    }
+
+    /**
+     * 特定の「イベント」が発生した書類を探します (横断検索)。
+     * 例: TOB(公開買付)が発表された書類を直近30日分取得する場合などに使用します。
+     * 
+     * @param docType 書類種別 (例: EdinetDocumentType.TenderOfferStatement / "240")
+     * @param days 過去何日分を検索するか (デフォルト: 30)
+     */
+    public async findDocumentsByType(docType: EdinetDocumentType | string, days: number = 30): Promise<EdinetMetadata[]> {
+        const today = new Date();
+        const pastDate = new Date();
+        pastDate.setDate(today.getDate() - days);
+
+        const startDate = pastDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+        return this.repo.findDocuments({
+            docTypeCode: docType,
+            startDate: startDate
+        });
+    }
+
+    /**
+     * 特定の「提出者」が提出した書類を探します (横断検索)。
+     * 例: "株式会社光通信" や "バークシャー" などで検索。
+     * 
+     * @param filerNamePartial 提出者名の一部
+     */
+    public async findDocumentsByFiler(filerNamePartial: string): Promise<EdinetMetadata[]> {
+        return this.repo.findDocuments({
+            filerName: filerNamePartial
+        });
     }
 
     public close() {

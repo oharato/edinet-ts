@@ -4,7 +4,7 @@
     "description": "TypeScript port of edinet_xbrl for parsing EDINET XBRL files",
     "main": "index.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "vitest run"
     },
     "keywords": [
         "edinet",

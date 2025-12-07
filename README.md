@@ -35,7 +35,7 @@ const edinet = new Edinet({
 });
 
 // 2. トヨタ自動車(7203)の過去5年分の有価証券報告書を取得
-const history = await edinet.getFinancialHistory("7203", 5);
+const history: FinancialHistory[] = await edinet.getFinancialHistory("7203", 5);
 
 history.forEach(h => {
   console.log(`決算日: ${h.periodEnd}`);     // 2024-03-31
@@ -45,8 +45,24 @@ history.forEach(h => {
 });
 ```
 
+### 2. 横断的検索 (Horizontal Analysis)
+
+特定の銘柄ではなく、市場全体のイベントや投資家の動向を検索する機能です。
+
+```typescript
+// A. 提出者名で検索 (例: 著名投資家やファンド)
+// "バークシャー" を含む提出者が提出した全ての書類を取得
+import { EdinetMetadata } from "edinet-ts";
+const filerDocs: EdinetMetadata[] = await edinet.findDocumentsByFiler("バークシャー");
+
+// B. 書類種別で検索 (例: 公開買付届出書によるTOB検知)
+// 直近30日間に提出された "公開買付届出書" (240) を全て取得
+import { EdinetDocumentType } from "edinet-ts";
+const tobDocs: EdinetMetadata[] = await edinet.findDocumentsByType(EdinetDocumentType.TenderOfferStatement, 30);
+```
+
 ### セットアップ (DB構築)
-時系列分析を使用する場合、初回のみ以下のコマンドでデータベースを構築してください（所要時間: 約20分）。
+時系列分析や横断的検索を使用する場合、初回のみ以下のコマンドでデータベースを構築してください（所要時間: 約20分）。
 ```bash
 # .envに EDINET_API_KEY=xxx を設定してから実行
 npx tsx scripts/seed.ts
@@ -54,7 +70,7 @@ npx tsx scripts/seed.ts
 
 ---
 
-### 2. 書類単体のダウンロード (Downloader)
+### 3. 書類単体のダウンロード (Downloader)
 
 DBを使用せず、APIを直接叩いて最新の書類などをダウンロードする場合の使用方法です。
 
@@ -67,7 +83,7 @@ const downloader = new EdinetXbrlDownloader({
 });
 
 // 特定企業（例：トヨタ 7203）の最新の有価証券報告書をダウンロード
-const xbrlPath = await downloader.downloadByTicker("7203", "./downloads");
+const xbrlPath: string | null = await downloader.downloadByTicker("7203", "./downloads");
 
 // 特定の日付・書類種別を指定してダウンロード（例: 半期報告書）
 await downloader.downloadByTicker("7203", "./downloads", "2024-11-14", EdinetDocumentType.SemiAnnualReport);
@@ -85,7 +101,7 @@ const xml = fs.readFileSync(xbrlPath, "utf-8");
 const parser = new EdinetXbrlParser();
 const data = parser.parse(xml);
 
-const metrics = data.getKeyMetrics();
+const metrics: KeyMetrics = data.getKeyMetrics();
 console.log(`売上高: ${metrics.netSales}`);
 console.log(`営業利益: ${metrics.operatingIncome}`);
 // ...
@@ -111,7 +127,7 @@ console.log(`営業利益: ${metrics.operatingIncome}`);
 
 ```typescript
 // 大量保有報告書の解析例
-const info = data.getLargeShareholdingInfo();
+const info: LargeShareholdingInfo = data.getLargeShareholdingInfo();
 if (info.holdingRatio) {
     console.log(`提出者: ${info.filerName}`);
     console.log(`保有割合: ${info.holdingRatio}%`);
