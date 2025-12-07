@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as path from "path";
 import { XMLParser } from "fast-xml-parser";
 import { EdinetXbrlObject, EdinetData } from "./edinet-xbrl-object";
 import { EdinetDataUtil } from "./edinet-data-util";
@@ -22,7 +23,17 @@ export class EdinetXbrlParser {
      * .xbrl ファイルをパースして EdinetXbrlObject を返します。
      */
     public parseFile(filePath: string): EdinetXbrlObject {
-        const content = fs.readFileSync(filePath, "utf-8");
+        let targetPath = filePath;
+
+        // ファイルが存在せず、かつ環境変数が設定されている場合はフォールバックを試みる
+        if (!fs.existsSync(filePath) && process.env.EDINET_DOWNLOAD_DIR) {
+            const resolvedPath = path.join(process.env.EDINET_DOWNLOAD_DIR, filePath);
+            if (fs.existsSync(resolvedPath)) {
+                targetPath = resolvedPath;
+            }
+        }
+
+        const content = fs.readFileSync(targetPath, "utf-8");
         return this.parseString(content);
     }
 

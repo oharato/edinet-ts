@@ -25,7 +25,17 @@ export interface EdinetListResponse {
 export class EdinetXbrlDownloader {
     private static readonly API_ENDPOINT = "https://api.edinet-fsa.go.jp/api/v2";
 
-    constructor(private apiKey: string) { }
+    private apiKey: string;
+    private rootDir?: string;
+
+    constructor(apiKey?: string, options?: { rootDir?: string }) {
+        const key = apiKey || process.env.EDINET_API_KEY;
+        if (!key) {
+            throw new Error("API Key is required. Provide it as an argument or set EDINET_API_KEY environment variable.");
+        }
+        this.apiKey = key;
+        this.rootDir = options?.rootDir || process.env.EDINET_DOWNLOAD_DIR;
+    }
 
     /**
      * 最新の書類IDを取得します。
@@ -49,10 +59,15 @@ export class EdinetXbrlDownloader {
     /**
      * 指定されたティッカー（証券コード）の最新の有価証券報告書をダウンロードし、XBRLファイルを展開します。
      * @param docId The EDINET document ID. // e.g., "S100XXXX"
-     * @param targetDir 保存先のディレクトリ
+     * @param targetDir 保存先のディレクトリ (オプショナル: 指定がない場合はコンストラクタまたは環境変数の設定を使用)
      * @returns 展開された .xbrl ファイルの絶対パス。見つからない場合は null。
      */
-    public async download(docId: string, targetDir: string): Promise<string> {
+    public async download(docId: string, targetDir?: string): Promise<string> {
+        const dir = targetDir || this.rootDir;
+        if (!dir) {
+            throw new Error("Target directory is not specified. Set it via argument or EDINET_DOWNLOAD_DIR environment variable.");
+        }
+
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
         const response = await fetch(url);
 
@@ -73,7 +88,7 @@ export class EdinetXbrlDownloader {
             throw new Error("No XBRL file found in the downloaded ZIP.");
         }
 
-        const extractPath = path.join(targetDir, docId);
+        const extractPath = path.join(dir, docId);
         zip.extractAllTo(extractPath, true);
 
         return path.join(extractPath, xbrlEntry.entryName);
@@ -87,7 +102,7 @@ export class EdinetXbrlDownloader {
      */
     public async downloadByTicker(
         ticker: string,
-        targetDir: string,
+        targetDir?: string,
         date: string = new Date().toISOString().split("T")[0]
     ): Promise<string | null> {
         const docs = await this.search(date);

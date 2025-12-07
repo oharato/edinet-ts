@@ -26,11 +26,16 @@ EDINET API を使用するには、APIキー（Subscription-Key）が必要で�
 ```typescript
 import { EdinetXbrlDownloader } from "edinet-ts";
 
-const apiKey = process.env.EDINET_API_KEY || "YOUR_API_KEY";
-const downloader = new EdinetXbrlDownloader(apiKey);
+// EDINET_API_KEY 環境変数が設定されている場合、引数は不要です
+const downloader = new EdinetXbrlDownloader();
+
+// 明示的に渡す場合
+// const apiKey = process.env.EDINET_API_KEY || "YOUR_API_KEY";
+// const downloader = new EdinetXbrlDownloader(apiKey);
 
 // 特定企業（例：トヨタ 7203）の最新の有価証券報告書をダウンロード
 // 指定したディレクトリに保存し、XBRLファイルのパスを返します
+// 第2引数のディレクトリも省略可（EDINET_DOWNLOAD_DIRがある場合）
 const xbrlPath = await downloader.downloadByTicker("7203", "./downloads");
 
 if (xbrlPath) {
@@ -58,6 +63,19 @@ console.log(`経常利益: ${metrics.ordinaryIncome}`);
 console.log(`当期純利益: ${metrics.netIncome}`);
 console.log(`純資産: ${metrics.netAssets}`);
 console.log(`総資産: ${metrics.totalAssets}`);
+```
+
+## Environment Variables
+
+*   `EDINET_API_KEY`: EDINET API v2 の利用キー (推奨)
+*   `EDINET_DOWNLOAD_DIR`: XBRLファイルのデフォルトダウンロード先ディレクトリ
+    *   この変数を設定すると、`download` や `downloadByTicker` メソッドで保存先ディレクトリを省略できます。
+
+```typescript
+// EDINET_DOWNLOAD_DIR="downloads", EDINET_API_KEY="xxx" と設定されている場合
+const downloader = new EdinetXbrlDownloader();
+// ディレクトリ引数を省略可能
+await downloader.downloadByTicker("7203");
 ```
 
 ### 3. 詳細なデータアクセス (Advanced Mode)
