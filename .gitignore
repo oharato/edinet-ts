@@ -4,3 +4,5 @@ downloads/
 !downloads/.keep
 taxonomy/
 !taxonomy/.keep
+data/
+!data/.keep

@@ -7,3 +7,4 @@ export * from "./edinet-document-type";
 export * from "./edinet-data-util";
 export * from "./types/taxonomy";
 export * from "./types/jpcrp_taxonomy";
+export * from "./edinet";
