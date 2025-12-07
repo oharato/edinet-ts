@@ -10,6 +10,10 @@ export interface EdinetDocument {
     docTypeCode: string;
     docInfoEditStatus: number;
     filerName?: string;
+    edinetCode?: string;
+    submitDateTime?: string;
+    date?: string; // API v2: metadata.date but individual results have submitDateTime usually? 
+    // actually results have 'submitDateTime'
     [key: string]: unknown;
 }
 
@@ -119,7 +123,7 @@ export class EdinetXbrlDownloader {
      * @param typeFilter 取得する書類種別 (オプション)。指定した場合、その種別のみを返します。
      * @returns 書類情報のリスト
      */
-    public async search(date: string, typeFilter?: EdinetDocumentType): Promise<EdinetDocument[]> {
+    public async search(date: string, typeFilter?: EdinetDocumentType | EdinetDocumentType[]): Promise<EdinetDocument[]> {
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents.json?date=${date}&type=2&Subscription-Key=${this.apiKey}`;
         const response = await this.fetchWithRetry(url);
 
@@ -135,6 +139,9 @@ export class EdinetXbrlDownloader {
         const results = (data as EdinetListResponse).results || [];
 
         if (typeFilter) {
+            if (Array.isArray(typeFilter)) {
+                return results.filter(d => typeFilter.includes(d.docTypeCode as EdinetDocumentType));
+            }
             return results.filter(d => d.docTypeCode === typeFilter);
         }
 
@@ -145,23 +152,38 @@ export class EdinetXbrlDownloader {
         if (!fs.existsSync(dir)) return null;
         const files = fs.readdirSync(dir);
 
-        // 1. カレントディレクトリをチェック
-        const xbrl = files.find((f: string) => f.endsWith(".xbrl"));
-        if (xbrl) return path.join(dir, xbrl);
+        // 1. カレントディレクトリをチェック (PublicDocがあればそれを優先)
+        const publicDocXbrl = files.find((f: string) => f.endsWith(".xbrl") && f.includes("PublicDoc"));
+        if (publicDocXbrl) return path.join(dir, publicDocXbrl);
 
-        // 2. サブディレクトリをチェック (PublicDoc が標準的)
-        for (const file of files) {
-            const fullPath = path.join(dir, file);
-            if (fs.statSync(fullPath).isDirectory()) {
-                const found = this.findXbrlFileInDir(fullPath, fs);
-                if (found) return found;
-            }
+        const anyXbrl = files.find((f: string) => f.endsWith(".xbrl"));
+        if (anyXbrl) return path.join(dir, anyXbrl);
+
+        // 2. サブディレクトリをチェック
+        // "PublicDoc" ディレクトリを優先的に探索する
+        const dirs = files.filter((f: string) => {
+            try {
+                return fs.statSync(path.join(dir, f)).isDirectory();
+            } catch (e) { return false; }
+        });
+
+        dirs.sort((a: string, b: string) => {
+            // PublicDoc を先頭に
+            const aIsPublic = a.includes("PublicDoc");
+            const bIsPublic = b.includes("PublicDoc");
+            if (aIsPublic && !bIsPublic) return -1;
+            if (!aIsPublic && bIsPublic) return 1;
+            return 0;
+        });
+
+        for (const subDir of dirs) {
+            const found = this.findXbrlFileInDir(path.join(dir, subDir), fs);
+            if (found) return found;
         }
         return null;
     }
 
     /**
-
      * 指定されたドキュメントIDの XBRL ファイルをダウンロードし、展開します。
      * @param docId EDINET書類管理ID (例: "S100XXXX")
      * @param targetDir 保存先ディレクトリ (省略時はコンストラクタまたは環境変数の設定を使用)
@@ -380,7 +402,7 @@ export class EdinetXbrlDownloader {
      * @param lookbackDays 遡る日数 (デフォルト: 90日)
      * @returns 見つかった書類情報、または null
      */
-    public async findLatest(ticker: string, type: EdinetDocumentType, lookbackDays: number = 90): Promise<EdinetDocument | null> {
+    public async findLatest(ticker: string, type: EdinetDocumentType | EdinetDocumentType[], lookbackDays: number = 90): Promise<EdinetDocument | null> {
         const today = new Date();
         const secCode = ticker + "0";
 
@@ -427,14 +449,17 @@ export class EdinetXbrlDownloader {
         ticker: string,
         targetDir?: string,
         date: string = new Date().toISOString().split("T")[0],
-        type: EdinetDocumentType = EdinetDocumentType.AnnualCards
+        type: EdinetDocumentType | EdinetDocumentType[] = EdinetDocumentType.AnnualCards
     ): Promise<string | null> {
         const docs = await this.search(date);
 
         // secCodeは通常、証券コード+0（例: 72030）となります
         // 指定された書類種別 (docTypeCode) かつ、訂正報告書等ではなくオリジナルの書類（docInfoEditStatus === 0）を優先します
         const targetDoc = docs.find(
-            (d) => d.secCode === ticker + "0" && d.docTypeCode === type && d.docInfoEditStatus === 0
+            (d) => {
+                const matchType = Array.isArray(type) ? type.includes(d.docTypeCode as EdinetDocumentType) : d.docTypeCode === type;
+                return d.secCode === ticker + "0" && matchType && d.docInfoEditStatus === 0;
+            }
         );
 
         if (!targetDoc) {

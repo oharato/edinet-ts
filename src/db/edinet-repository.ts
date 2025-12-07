@@ -100,7 +100,17 @@ export class EdinetRepository {
     }
 
     public findDocuments(criteria: DocumentSearchCriteria): EdinetMetadata[] {
-        let query = "SELECT * FROM documents WHERE 1=1";
+        let query = `
+            SELECT 
+                doc_id as docID, 
+                sec_code as secCode, 
+                filer_name as filerName, 
+                doc_type_code as docTypeCode, 
+                submit_date as submitDate, 
+                period_end as periodEnd, 
+                doc_description as docDescription
+            FROM documents WHERE 1=1
+        `;
         const params: any[] = [];
 
         if (criteria.secCode) {

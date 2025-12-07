@@ -154,7 +154,32 @@ if (info.holdingRatio) {
 ```bash
 # 証券コード 3031 の直近の有価証券報告書を取得
 npx edinet-ts get --ticker 3031 --pretty
+
+# 大量保有報告書（変更報告書・訂正報告書含む）を当日分すべて取得
+# (ティッカー指定なしで実行すると API から直接リストを取得します)
+npx edinet-ts get --type LargeShareholding --verbose
 ```
+
+> **Note**: `LargeShareholding` を指定した場合、大量保有報告書(340)、変更報告書(350)、訂正報告書(360)のすべてが対象となります。
+> また、大量保有報告書はAPIの仕様上、提出対象会社（発行体）のティッカーで検索することが難しいため、`--ticker` を指定せずに日付指定で一括取得することをお勧めします。
+
+#### レスポンスのキー仕様
+`get` コマンドは以下のプロパティを含むJSON配列を返します。
+
+| キー名 | 説明 | 備考 |
+| :--- | :--- | :--- |
+| `docID` | 書類管理ID | 例: S100WE54 |
+| `filerName` | 提出者名 | RIZAPなど |
+| `edinetCode` | 提出者のEDINETコード | 例: E00518 (*API経由のみ*) |
+| `docDescription` | 書類名/件名 | 例: 有価証券報告書... |
+| `submitDate` | 提出日 | YYYY-MM-DD |
+| `issuerName` | **発行者名** | 大量保有報告書の場合のみ (例: Bitcoin Japan) |
+| `holdingRatio` | **保有割合** (%) | 大量保有報告書の場合のみ |
+| `prevHoldingRatio` | 直前保有割合 (%) | 大量保有報告書の場合または変更報告書 |
+| `netSales` | 売上高 | 財務数値 (単位: 円) |
+| `operatingIncome` | 営業利益 | 財務数値 |
+| `netIncome` | 当期純利益 | 財務数値 |
+| `...` | その他財務指標 | `KeyMetrics` 参照 |
 
 ### 2. `download`: 一括ダウンロード
 特定の日付や銘柄の書類をダウンロードします。

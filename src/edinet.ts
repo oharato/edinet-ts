@@ -66,7 +66,7 @@ export class Edinet {
         for (const doc of docs) {
             try {
                 // XBRLを取得 (ダウンロード & キャッシュ)
-                const xbrlPath = await this.downloader.download(doc.doc_id);
+                const xbrlPath = await this.downloader.download(doc.docID);
 
                 // ファイル読み込み (Node.js環境前提)
                 const fs = await import("fs"); // Dynamic import to avoid top-level node dep if used in edge (though Edinet class is node-centric mostly)
@@ -77,15 +77,15 @@ export class Edinet {
                 const metrics = object.getKeyMetrics();
 
                 history.push({
-                    periodEnd: doc.period_end,
-                    submitDate: doc.submit_date,
-                    docID: doc.doc_id,
-                    filerName: doc.filer_name,
+                    periodEnd: doc.periodEnd,
+                    submitDate: doc.submitDate,
+                    docID: doc.docID,
+                    filerName: doc.filerName,
                     metrics: metrics
                 });
 
             } catch (e) {
-                console.error(`書類の処理に失敗しました ${doc.doc_id} (${doc.submit_date}):`, e);
+                console.error(`書類の処理に失敗しました ${doc.docID} (${doc.submitDate}):`, e);
             }
         }
 
