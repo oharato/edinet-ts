@@ -89,9 +89,19 @@ const xbrlPath: string | null = await downloader.downloadByTicker("7203", "./dow
 await downloader.downloadByTicker("7203", "./downloads", "2024-11-14", EdinetDocumentType.SemiAnnualReport);
 ```
 
-### 3. XBRL解析 (Parser)
+### 4. ローカルキャッシュ (Local Caching)
 
-ダウンロードしたXBRLファイルを解析し、`KeyMetrics` を抽出します。
+`Edinet` クラスおよび `EdinetXbrlDownloader` は、ダウンロードしたXBRLファイルをローカルに保存し、次回以降の実行時にキャッシュとして利用します。
+
+*   **仕組み**: `rootDir` (デフォルト: `./downloads`) に `[DocID]/` ディレクトリが作成され、その中にある `.xbrl` ファイルが再利用されます。
+*   **メリット**:
+    *   2回目以降の実行が爆発的に高速化されます（数秒→数十ミリ秒）。
+    *   APIへの不要なリクエストを防ぎ、レート制限に引っかかるリスクを低減します。
+*   **注意**: キャッシュディレクトリを削除すると、次回実行時に再度ダウンロードが行われます。
+
+### 5. XBRL解析 (Parser)
+
+ダウンローダーで取得したXBRLファイルを解析し、`KeyMetrics` を抽出します。
 
 ```typescript
 import { EdinetXbrlParser } from "edinet-ts";
@@ -121,7 +131,7 @@ console.log(`営業利益: ${metrics.operatingIncome}`);
 | `financingCashFlow` | 財務CF |
 | (その他多数: EPS, BPS, ROE, 配当など) | |
 
-### 4. 詳細なデータアクセス (Advanced)
+### 6. 詳細なデータアクセス (Advanced)
 
 `getJppfsCor()` (財務諸表) や `getLargeShareholdingInfo()` (大量保有) などを使用して、より詳細なデータにアクセスできます。
 

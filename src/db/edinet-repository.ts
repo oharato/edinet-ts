@@ -49,6 +49,10 @@ export class EdinetRepository {
         -- 横断検索用のインデックス追加
         CREATE INDEX IF NOT EXISTS idx_filer_name ON documents(filer_name);
         CREATE INDEX IF NOT EXISTS idx_doc_type ON documents(doc_type_code);
+        
+        -- 高速化用複合インデックス
+        -- 特定企業の特定書類を日付順で取得するクエリ用
+        CREATE INDEX IF NOT EXISTS idx_sec_doc_type_date ON documents(sec_code, doc_type_code, period_end DESC);
         `;
         this.db.exec(schema);
     }

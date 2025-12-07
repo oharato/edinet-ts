@@ -65,9 +65,12 @@ export class Edinet {
         // APIへの負荷を考慮して直列処理 (またはダウンローダー内のRateLimiterを使用)
         for (const doc of docs) {
             try {
-                // XBRLを取得 (メモリまたはダウンロード)
-                // fetchXbrl を使用してコンテンツを直接文字列として取得
-                const xbrlContent = await this.downloader.fetchXbrl(doc.doc_id);
+                // XBRLを取得 (ダウンロード & キャッシュ)
+                const xbrlPath = await this.downloader.download(doc.doc_id);
+
+                // ファイル読み込み (Node.js環境前提)
+                const fs = await import("fs"); // Dynamic import to avoid top-level node dep if used in edge (though Edinet class is node-centric mostly)
+                const xbrlContent = fs.readFileSync(xbrlPath, "utf-8");
 
                 // 解析
                 const object = this.parser.parse(xbrlContent);

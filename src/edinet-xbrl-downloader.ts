@@ -140,7 +140,27 @@ export class EdinetXbrlDownloader {
         return results;
     }
 
+    private findXbrlFileInDir(dir: string, fs: any): string | null {
+        if (!fs.existsSync(dir)) return null;
+        const files = fs.readdirSync(dir);
+
+        // 1. Check current directory
+        const xbrl = files.find((f: string) => f.endsWith(".xbrl"));
+        if (xbrl) return path.join(dir, xbrl);
+
+        // 2. Check subdirectories (specifically PublicDoc which is standard)
+        for (const file of files) {
+            const fullPath = path.join(dir, file);
+            if (fs.statSync(fullPath).isDirectory()) {
+                const found = this.findXbrlFileInDir(fullPath, fs);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
     /**
+
      * 指定されたドキュメントIDの XBRL ファイルをダウンロードし、展開します。
      * @param docId EDINET書類管理ID (例: "S100XXXX")
      * @param targetDir 保存先ディレクトリ (省略時はコンストラクタまたは環境変数の設定を使用)
@@ -148,7 +168,7 @@ export class EdinetXbrlDownloader {
      * @throws ディレクトリが未指定の場合や、ダウンロード/展開に失敗した場合
      */
     public async download(docId: string, targetDir?: string): Promise<string> {
-        let fs;
+        let fs: any;
         try {
             fs = await import("fs");
         } catch (e) {
@@ -158,6 +178,17 @@ export class EdinetXbrlDownloader {
         const dir = targetDir || this.rootDir;
         if (!dir) {
             throw new Error("Target directory is not specified. Set it via argument or EDINET_DOWNLOAD_DIR environment variable.");
+        }
+
+        const extractPath = path.join(dir, docId);
+
+        // 1. キャッシュチェック
+        if (fs.existsSync(extractPath)) {
+            const cachedXbrlPath = this.findXbrlFileInDir(extractPath, fs);
+            if (cachedXbrlPath) {
+                // console.log(`Using cached file for ${docId}`);
+                return cachedXbrlPath;
+            }
         }
 
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
@@ -183,7 +214,6 @@ export class EdinetXbrlDownloader {
 
         // 全ファイルを展開（adm-zipの挙動に合わせて同期的に見せるが、JSZipは非同期）
         // 注: JSZipは非同期なのでイテレートします
-        const extractPath = path.join(dir, docId);
 
         // この部分はNode.jsのfsに依存しています。
         // ブラウザ環境ではこのメソッドは呼ぶべきではありません。
@@ -206,11 +236,27 @@ export class EdinetXbrlDownloader {
 
     /**
      * 指定されたドキュメントIDの XBRL ファイルをメモリ上にダウンロード・展開し、テキストとして返します。
-     * ファイルシステムへの保存は行いません。ブラウザ環境等での利用に適しています。
+     * ローカルキャッシュが存在する場合は、それを読み込みます。
      * @param docId EDINET書類管理ID
      * @returns XBRLファイルの内容 (string)
      */
     public async fetchXbrl(docId: string): Promise<string> {
+        // 1. キャッシュチェック (Node.js環境のみ)
+        if (this.rootDir) {
+            try {
+                const fs = await import("fs");
+                const extractPath = path.join(this.rootDir, docId);
+                if (fs.existsSync(extractPath)) {
+                    const cachedXbrlPath = this.findXbrlFileInDir(extractPath, fs);
+                    if (cachedXbrlPath) {
+                        return fs.readFileSync(cachedXbrlPath, "utf-8");
+                    }
+                }
+            } catch (e) {
+                // fs import failed or other error, ignore and proceed to fetch
+            }
+        }
+
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
         const response = await this.fetchWithRetry(url);
 
