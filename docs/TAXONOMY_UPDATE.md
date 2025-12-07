@@ -42,16 +42,16 @@ npx tsx scripts/fetch_taxonomy.ts
 ### 3. 型定義の生成
 
 #### 3-1. 財務諸表本表 (jppfs_cor)
-`AccountList.xlsx` から `src/types/taxonomy.ts` を生成します。
+`AccountList.xlsx` から `src/types/jppfs_cor_taxonomy.ts` を生成します。
 
 ```bash
 npx tsx scripts/generate_types.ts
 ```
 
-実行後、 `src/types/taxonomy.ts` が更新されます。
+実行後、 `src/types/jppfs_cor_taxonomy.ts` が更新されます。
 
 #### 3-2. 企業情報本表 (jpcrp_cor)
-`taxonomy/` フォルダ内のXSD定義から `src/types/jpcrp_taxonomy.ts` およびドキュメントを生成します。
+`taxonomy/` フォルダ内のXSD定義から `src/types/jpcrp_cor_taxonomy.ts` およびドキュメントを生成します。
 
 ```bash
 npx tsx scripts/generate_types_jpcrp.ts

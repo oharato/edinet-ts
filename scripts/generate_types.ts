@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 const EXCEL_PATH = path.resolve(__dirname, "../taxonomy/AccountList.xlsx");
-const OUTPUT_PATH = path.resolve(__dirname, "../src/types/taxonomy.ts");
+const OUTPUT_PATH = path.resolve(__dirname, "../src/types/jppfs_cor_taxonomy.ts");
 
 // 列インデックス（0始まり）
 const COL_LABEL_JP = 1;

@@ -9,6 +9,7 @@ export interface EdinetDocument {
     docDescription: string;
     docTypeCode: string;
     docInfoEditStatus: number;
+    filerName?: string;
     [key: string]: unknown;
 }
 

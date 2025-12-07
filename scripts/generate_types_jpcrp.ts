@@ -5,7 +5,7 @@ import { XMLParser } from "fast-xml-parser";
 
 const XSD_PATH = path.join(__dirname, "../taxonomy/タクソノミ/taxonomy/jpcrp/2023-12-01/jpcrp_cor_2023-12-01.xsd");
 const LABEL_PATH = path.join(__dirname, "../taxonomy/タクソノミ/taxonomy/jpcrp/2023-12-01/label/jpcrp_2023-12-01_lab.xml");
-const OUTPUT_ts = path.join(__dirname, "../src/types/jpcrp_taxonomy.ts");
+const OUTPUT_ts = path.join(__dirname, "../src/types/jpcrp_cor_taxonomy.ts");
 const OUTPUT_md = path.join(__dirname, "../docs/TAXONOMY_JPCRP_COR.md");
 
 interface ElementInfo {

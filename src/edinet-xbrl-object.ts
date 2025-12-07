@@ -1,6 +1,6 @@
 import { EdinetDataUtil } from "./edinet-data-util";
 import { EdinetContext } from "./edinet-context";
-import { JppfsCorTaxonomy } from "./types/taxonomy";
+import { JppfsCorTaxonomy } from "./types/jppfs_cor_taxonomy";
 
 export class EdinetData {
     constructor(
@@ -273,7 +273,7 @@ export class EdinetXbrlObject {
      * 
      * @returns JppfsCorTaxonomy インターフェースに準拠したプロキシオブジェクト
      */
-    public getJppfsCor(): import("./types/taxonomy").JppfsCorTaxonomy {
+    public getJppfsCor(): import("./types/jppfs_cor_taxonomy").JppfsCorTaxonomy {
         const _this = this;
 
         // パフォーマンス向上のためにコンテキストをキャッシュします
@@ -291,7 +291,7 @@ export class EdinetXbrlObject {
         // これによりオーバーヘッドを削減しています。
 
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        return new Proxy({} as import("./types/taxonomy").JppfsCorTaxonomy, {
+        return new Proxy({} as import("./types/jppfs_cor_taxonomy").JppfsCorTaxonomy, {
             get(target, prop, receiver) {
                 if (typeof prop !== "string") return Reflect.get(target, prop, receiver);
 
@@ -317,7 +317,7 @@ export class EdinetXbrlObject {
      * 
      * @returns JpcrpCorTaxonomy インターフェースに準拠したプロキシオブジェクト
      */
-    public getJpcrpCor(): import("./types/jpcrp_taxonomy").JpcrpCorTaxonomy {
+    public getJpcrpCor(): import("./types/jpcrp_cor_taxonomy").JpcrpCorTaxonomy {
         const _this = this;
 
         // パフォーマンス向上のためにコンテキストをキャッシュします
@@ -328,7 +328,7 @@ export class EdinetXbrlObject {
             ..._this.findContexts({ type: "Instant", scope: "NonConsolidated" })
         ];
 
-        return new Proxy({} as import("./types/jpcrp_taxonomy").JpcrpCorTaxonomy, {
+        return new Proxy({} as import("./types/jpcrp_cor_taxonomy").JpcrpCorTaxonomy, {
             get(target, prop, receiver) {
                 if (typeof prop !== "string") return Reflect.get(target, prop, receiver);
 
