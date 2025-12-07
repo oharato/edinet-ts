@@ -15,6 +15,10 @@ describe("EdinetXbrlParser", () => {
 
     const parser = new EdinetXbrlParser();
 
+    /**
+     * カカクコムのXBRLファイルを解析し、従業員数、資産、売上高が正しく取得できるかテストします。
+     * このファイルはJ-GAAP基準です。
+     */
     it("parses Kakaku.com XBRL correctly", () => {
         const xbrlFile = path.join(TEST_DIR, "CJ_2371_kakakucom.xbrl");
         const dataContainer = parser.parseFile(xbrlFile);
@@ -37,6 +41,10 @@ describe("EdinetXbrlParser", () => {
         expect(parseInt(netsales!.value)).toBe(45089432000);
     });
 
+    /**
+     * LINEヤフーのXBRLファイルを解析し、同様に正しい値が取得できるかテストします。
+     * このケースでは非連結（NonConsolidated）コンテキストからのデータ抽出を確認しています。
+     */
     it("parses Yahoo XBRL correctly", () => {
         const xbrlFile = path.join(TEST_DIR, "CI_4689_yahoo.xbrl");
         const dataContainer = parser.parseFile(xbrlFile);
@@ -59,6 +67,10 @@ describe("EdinetXbrlParser", () => {
         expect(parseInt(netsales!.value)).toBe(406793000000);
     });
 
+    /**
+     * ラクーンホールディングス（3031）のXBRLファイルを解析できるかテストします。
+     * 売上高、営業利益、経常利益、当期純利益の抽出を確認します。
+     */
     it("parses Raccoon Holdings (3031) XBRL correctly", () => {
         const xbrlFile = path.join(TEST_DIR, "3031_raccoon.xbrl");
         const dataContainer = parser.parseFile(xbrlFile);
@@ -86,6 +98,11 @@ describe("EdinetXbrlParser", () => {
         expect(parseInt(netIncome!.value)).toBe(325982000);
     });
 
+    /**
+     * `getKeyMetrics` メソッドを使用して、主要な財務指標を一括で抽出できるかテストします。
+     * IFRS基準（Yahoo）とJ-GAAP基準（Raccoon）の両方で正しい値が取得できるかを確認します。
+     * EPS、BPS、自己資本比率、ROEなどの指標も検証対象です。
+     */
     it("extracts KeyMetrics object correctly", () => {
         // Test with Yahoo (4689)
         const yahoo = parser.parseFile(path.join(TEST_DIR, "CI_4689_yahoo.xbrl"));

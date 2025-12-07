@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xbrli:xbrl xmlns:jpcrp_cor="http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2023-12-01/jpcrp_cor" xmlns:link="http://www.xbrl.org/2003/linkbase" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:xbrli="http://www.xbrl.org/2003/instance" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <link:schemaRef xlink:href="jpaud-aai-cc-001_E02778-000_2024-03-31_01_2024-06-21.xsd" xlink:type="simple"/>
+  <xbrli:context id="FilingDateInstant_Row1Member">
+<xbrli:entity>
+<xbrli:identifier scheme="http://disclosure.edinet-fsa.go.jp">E02778-000</xbrli:identifier>
+</xbrli:entity>
+<xbrli:period>
+<xbrli:instant>2024-06-21</xbrli:instant>
+</xbrli:period>
+<xbrli:scenario>
+<xbrldi:explicitMember dimension="jpcrp_cor:SequentialNumbersAxis">jpcrp_cor:Row1Member</xbrldi:explicitMember>
+</xbrli:scenario>
+</xbrli:context>
+  <xbrli:context id="FilingDateInstant">
+<xbrli:entity>
+<xbrli:identifier scheme="http://disclosure.edinet-fsa.go.jp">E02778-000</xbrli:identifier>
+</xbrli:entity>
+<xbrli:period>
+<xbrli:instant>2024-06-21</xbrli:instant>
+</xbrli:period>
+</xbrli:context>
+  <jpcrp_cor:IndependentAuditorsReportConsolidatedTextBlock contextRef="FilingDateInstant">
+&lt;p style="line-height: 1.3333333333333333333333333333px; text-align: left"&gt; &lt;/p&gt;
+&lt;div&gt;
+&lt;table cellpadding="0" cellspacing="0" style="table-layout: fixed; width: 648px"&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 168px"/&gt;
+&lt;col style="width: 312px"/&gt;
+&lt;col style="width: 168px"/&gt;
+&lt;/colgroup&gt;
+&lt;tbody&gt;
+&lt;tr style="height: 23px"&gt;
+&lt;td style="vertical-align: bottom; width: 168px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 21.333333333333333333333333333px; text-align: center"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: bottom; width: 312px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 3px double #000000"&gt;
+&lt;p style="line-height: 21.333333333333333333333333333px; text-align: center"&gt;
+&lt;span style="font-size: 14px"&gt;独立監査人の監査報告書及び内部統制監査報告書&lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: bottom; width: 168px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 21.333333333333333333333333333px; text-align: center"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;p style="line-height: 13.333333333333333333333333333px; text-align: left"&gt; &lt;/p&gt;
+&lt;div&gt;
+&lt;table cellpadding="0" cellspacing="0" style="table-layout: fixed; width: 648px"&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 504px"/&gt;
+&lt;col style="width: 144px"/&gt;
+&lt;/colgroup&gt;
+&lt;tbody&gt;
+&lt;tr style="height: 21px"&gt;
+&lt;td style="vertical-align: middle; width: 504px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: right"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 144px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: center"&gt;2024年６月21日&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;p style="line-height: 1.3333333333333333333333333333px; text-align: left"&gt; &lt;/p&gt;
+&lt;div&gt;
+&lt;table cellpadding="0" cellspacing="0" style="table-layout: fixed; width: 648px"&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 648px"/&gt;
+&lt;/colgroup&gt;
+&lt;tbody&gt;
+&lt;tr style="height: 24px"&gt;
+&lt;td style="vertical-align: middle; width: 648px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="margin-left: 14px; line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 14px"&gt;ソフトバンクグループ株式会社&lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;p style="line-height: 1.3333333333333333333333333333px; text-align: left"&gt; &lt;/p&gt;
+&lt;div&gt;
+&lt;table cellpadding="0" cellspacing="0" style="table-layout: fixed; width: 648px"&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 224px"/&gt;
+&lt;col style="width: 424px"/&gt;
+&lt;/colgroup&gt;
+&lt;tbody&gt;
+&lt;tr style="height: 24px"&gt;
+&lt;td style="vertical-align: middle; width: 224px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: center"&gt;
+&lt;span style="font-size: 14px"&gt;取　締　役　会　　御　中&lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 424px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;p style="line-height: 13.333333333333333333333333333px; text-align: left"&gt; &lt;/p&gt;
+&lt;div&gt;
+&lt;table cellpadding="0" cellspacing="0" style="table-layout: fixed; width: 648px"&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 271.33333333333333333333333333px"/&gt;
+&lt;col style="width: 224px"/&gt;
+&lt;col style="width: 152.66666666666666666666666667px"/&gt;
+&lt;/colgroup&gt;
+&lt;tbody&gt;
+&lt;tr style="height: 23px"&gt;
+&lt;td style="vertical-align: middle; width: 271.33333333333333333333333333px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 224px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 14px"&gt;有限責任監査法人 ト ー マ ツ&lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 152.66666666666666666666666667px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height: 23px"&gt;
+&lt;td style="vertical-align: middle; width: 271.33333333333333333333333333px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 224px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 14px"&gt;　　　　　東　京　事　務　所&lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 152.66666666666666666666666667px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;p style="line-height: 20px; text-align: left"&gt; &lt;/p&gt;
+&lt;div&gt;
+&lt;table cellpadding="0" cellspacing="0" style="table-layout: fixed; width: 648px"&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 259.33333333333333333333333333px"/&gt;
+&lt;col style="width: 114px"/&gt;
+&lt;col style="width: 12px"/&gt;
+&lt;col style="width: 80px"/&gt;
+&lt;col style="width: 182.66666666666666666666666667px"/&gt;
+&lt;/colgroup&gt;
+&lt;tbody&gt;
+&lt;tr style="height: 38px"&gt;
+&lt;td style="vertical-align: middle; width: 259.33333333333333333333333333px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 114px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;指定有限責任社員&lt;/p&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;業務執行社員&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 12px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 80px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;公認会計士&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 182.66666666666666666666666667px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 14px"&gt;國　本　　　望&lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;p style="line-height: 22.666666666666666666666666667px; text-align: left"&gt; &lt;/p&gt;
+&lt;div&gt;
+&lt;table cellpadding="0" cellspacing="0" style="table-layout: fixed; width: 648px"&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 259.33333333333333333333333333px"/&gt;
+&lt;col style="width: 114px"/&gt;
+&lt;col style="width: 12px"/&gt;
+&lt;col style="width: 80px"/&gt;
+&lt;col style="width: 182.66666666666666666666666667px"/&gt;
+&lt;/colgroup&gt;
+&lt;tbody&gt;
+&lt;tr style="height: 38px"&gt;
+&lt;td style="vertical-align: middle; width: 259.33333333333333333333333333px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 114px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;指定有限責任社員&lt;/p&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;業務執行社員&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 12px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 80px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;公認会計士&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 182.66666666666666666666666667px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 14px"&gt;平　野　礼　人&lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;p style="line-height: 22.666666666666666666666666667px; text-align: left"&gt; &lt;/p&gt;
+&lt;div&gt;
+&lt;table cellpadding="0" cellspacing="0" style="table-layout: fixed; width: 648px"&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 259.33333333333333333333333333px"/&gt;
+&lt;col style="width: 114px"/&gt;
+&lt;col style="width: 12px"/&gt;
+&lt;col style="width: 80px"/&gt;
+&lt;col style="width: 182.66666666666666666666666667px"/&gt;
+&lt;/colgroup&gt;
+&lt;tbody&gt;
+&lt;tr style="height: 38px"&gt;
+&lt;td style="vertical-align: middle; width: 259.33333333333333333333333333px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 114px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;指定有限責任社員&lt;/p&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;業務執行社員&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 12px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 12px"&gt; &lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 80px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;公認会計士&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="vertical-align: middle; width: 182.66666666666666666666666667px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 0px none ; border-right: 0px none ; border-bottom: 1px solid #000000"&gt;
+&lt;p style="line-height: 16px; text-align: left"&gt;
+&lt;span style="font-size: 14px"&gt;増　田　裕　介&lt;/span&gt;
+&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+&lt;p style="line-height: 22.666666666666666666666666667px; text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;＜連結財務諸表監査＞&lt;/p&gt;
+&lt;p style="text-align: left"&gt;監査意見&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人は、金融商品取引法第193条の２第１項の規定に基づく監査証明を行うため、「経理の状況」に掲げられているソフトバンクグループ株式会社の2023年４月１日から2024年３月31日までの連結会計年度の連結財務諸表、すなわち、連結財政状態計算書、連結損益計算書、連結包括利益計算書、連結持分変動計算書、連結キャッシュ・フロー計算書、連結財務諸表作成のための基本となる重要な事項及びその他の注記について監査を行った。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人は、上記の連結財務諸表が、「連結財務諸表の用語、様式及び作成方法に関する規則」第93条により規定された国際会計基準に準拠して、ソフトバンクグループ株式会社及び連結子会社の2024年３月31日現在の財政状態並びに同日をもって終了する連結会計年度の経営成績及びキャッシュ・フローの状況を、全ての重要な点において適正に表示しているものと認める。&lt;/p&gt;
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;監査意見の根拠&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人は、我が国において一般に公正妥当と認められる監査の基準に準拠して監査を行った。監査の基準における当監査法人の責任は、「連結財務諸表監査における監査人の責任」に記載されている。当監査法人は、我が国における職業倫理に関する規定に従って、会社及び連結子会社から独立しており、また、監査人としてのその他の倫理上の責任を果たしている。当監査法人は、意見表明の基礎となる十分かつ適切な監査証拠を入手したと判断している。&lt;/p&gt;
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+
+&lt;p style="text-align: left"&gt;監査上の主要な検討事項&lt;/p&gt;
+&lt;p style="text-align: left"&gt;
+　監査上の主要な検討事項とは、当連結会計年度の連結財務諸表の監査において、監査人が職業的専門家として特に重要であると判断した事項である。監査上の主要な検討事項は、連結財務諸表全体に対する監査の実施過程及び監査意見の形成において対応した事項であり、当監査法人は、当該事項に対して個別に意見を表明するものではない。
+&lt;/p&gt;
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;
+レベル３に分類されたSVFからの投資（FVTPL）の評価の妥当性
+&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left"&gt;(1）監査上の主要な検討事項の内容及び決定理由&lt;/p&gt;
+
+&lt;p style="margin-left: 24px; text-align: left"&gt;　会社は、主にソフトバンク・ビジョン・ファンドを通じて投資を保有している。当該投資は、「SVFからの投資（FVTPL）」（残高11,014,487百万円）として連結財政状態計算書に計上されており、連結財務諸表における金額的重要性がある。また当該科目には「注記29．金融商品の公正価値」に記載のとおり、公正価値ヒエラルキーのレベル別分類でレベル３（観察可能でないインプットを使用して測定した公正価値）に分類された「SVFからの投資（FVTPL）」が7,840,631百万円含まれている。レベル３に分類されたSVFからの投資（FVTPL）の公正価値の算定の基礎になる企業価値については、主に取引事例法、割引キャッシュ・フロー法及び類似会社比較法等を銘柄毎に１つまたは複数使用して算定している。&lt;/p&gt;
+&lt;p style="margin-left: 24px; text-align: left"&gt;　企業価値の算出過程で使用される以下の仮定は、経営者の判断により重要な影響を受け、またこれらの仮定の変化及び以下の事象の発生により公正価値が大きく変動する。&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・割引キャッシュ・フロー法において使用される事業計画や資本コスト&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・類似会社比較法において使用される「収益倍率」等の基礎となる類似企業の選定&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・報告期間の末日の公正価値に追加的な証拠を提供する後発事象の有無&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・上記複数の評価技法により算出される結果を加重平均して企業価値を算定している銘柄の場合の「加重平均割合」&lt;/p&gt;
+&lt;p style="margin-left: 24px; text-align: left"&gt;　また、これらの手法により算定された企業価値は、投資先の資本構成に応じて各種類株式に配分され、公正価値が決定される。その配分は、主として株主の権利や優先権を考慮したオプション価格法等が用いられ、また、新規株式公開等により優先株式が普通株式に転換される可能性等も考慮して決定される。これらの配分の決定は、新規株式公開が実現する可能性等の将来の不確実性が高い見積りにより重要な影響を受ける。&lt;/p&gt;
+&lt;p style="margin-left: 24px; text-align: left"&gt;　以上から、レベル３に分類されたSVFからの投資（FVTPL）の評価の妥当性について、監査上の主要な検討事項に該当するものと判断した。&lt;/p&gt;
+
+&lt;p style="margin-left: 12px; text-align: left"&gt;(2）監査上の対応&lt;/p&gt;
+
+&lt;p style="margin-left: 24px; text-align: left"&gt;　当監査法人は、レベル３に分類されたSVFからの投資（FVTPL）の評価に関連する見積りの合理性を評価するため、構成単位の監査人に指示し、以下の検証を実施した。&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・評価技法の選定の合理性について、経営者への質問を実施し、過去の評価技法との整合性及び変更が生じている場合には当該変更の適切性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・割引キャッシュ・フロー法による評価が行われている銘柄の場合、評価の基礎となる事業計画の妥当性については、過去の実績数値との比較等により検討を行い、また、資本コストについては、公正価値評価に関する内部専門家を利用し、評価に用いた資本コストの合理性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・類似会社比較法による評価が行われている銘柄の場合、公正価値評価に関する内部専門家を利用し、使用される「収益倍率」等の基礎となる類似企業の選定の合理性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・報告期間の末日以降に生じた事象について、経営者への質問及び公表情報の閲覧を実施し、新たな資金調達ラウンドの有無等を把握し、報告期間の末日の公正価値にこれらの事象が考慮されているかどうかを検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・算出した企業価値を各種類株式に配分する必要がある場合、その配分が契約や定款等に定められた優先劣後関係に従い実施されているかを検討し、新規株式公開が実現する可能性等の見積りについて経営者への質問及び関連書類の閲覧を実施&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・複数の評価技法により算出される結果を加重平均して企業価値を算定している銘柄の場合、「加重平均割合」の妥当性について、過去の加重平均割合や投資先の状況との整合性を検討し、変更が生じている場合には当該変更の適切性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・経営者が算定した公正価値が、監査人が公正価値評価に関する内部専門家とともに算定した公正価値の見積りとの重要な乖離がないかどうかを検討&lt;/p&gt;
+
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+
+
+&lt;p style="text-align: left"&gt;その他の記載内容&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　その他の記載内容は、有価証券報告書に含まれる情報のうち、連結財務諸表及び財務諸表並びにこれらの監査報告書以外の情報である。経営者の責任は、その他の記載内容を作成し開示することにある。また、監査役及び監査役会の責任は、その他の記載内容の報告プロセスの整備及び運用における取締役の職務の執行を監視することにある。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人の連結財務諸表に対する監査意見の対象にはその他の記載内容は含まれておらず、当監査法人はその他の記載内容に対して意見を表明するものではない。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　連結財務諸表監査における当監査法人の責任は、その他の記載内容を通読し、通読の過程において、その他の記載内容と連結財務諸表又は当監査法人が監査の過程で得た知識との間に重要な相違があるかどうか検討すること、また、そのような重要な相違以外にその他の記載内容に重要な誤りの兆候があるかどうか注意を払うことにある。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人は、実施した作業に基づき、その他の記載内容に重要な誤りがあると判断した場合には、その事実を報告することが求められている。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　その他の記載内容に関して、当監査法人が報告すべき事項はない。&lt;/p&gt;
+
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;連結財務諸表に対する経営者並びに監査役及び監査役会の責任&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　経営者の責任は、国際会計基準に準拠して連結財務諸表を作成し適正に表示することにある。これには、不正又は誤謬による重要な虚偽表示のない連結財務諸表を作成し適正に表示するために経営者が必要と判断した内部統制を整備及び運用することが含まれる。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　連結財務諸表を作成するに当たり、経営者は、継続企業の前提に基づき連結財務諸表を作成することが適切であるかどうかを評価し、国際会計基準に基づいて継続企業に関する事項を開示する必要がある場合には当該事項を開示する責任がある。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査役及び監査役会の責任は、財務報告プロセスの整備及び運用における取締役の職務の執行を監視することにある。&lt;/p&gt;
+&lt;p class="style_pb_after" style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;連結財務諸表監査における監査人の責任&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査人の責任は、監査人が実施した監査に基づいて、全体としての連結財務諸表に不正又は誤謬による重要な虚偽表示がないかどうかについて合理的な保証を得て、監査報告書において独立の立場から連結財務諸表に対する意見を表明することにある。虚偽表示は、不正又は誤謬により発生する可能性があり、個別に又は集計すると、連結財務諸表の利用者の意思決定に影響を与えると合理的に見込まれる場合に、重要性があると判断される。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査人は、我が国において一般に公正妥当と認められる監査の基準に従って、監査の過程を通じて、職業的専門家としての判断を行い、職業的懐疑心を保持して以下を実施する。&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left; text-indent: -12px"&gt;・不正又は誤謬による重要な虚偽表示リスクを識別し、評価する。また、重要な虚偽表示リスクに対応した監査手続を立案し、実施する。監査手続の選択及び適用は監査人の判断による。さらに、意見表明の基礎となる十分かつ適切な監査証拠を入手する。&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left; text-indent: -12px"&gt;・連結財務諸表監査の目的は、内部統制の有効性について意見表明するためのものではないが、監査人は、リスク評価の実施に際して、状況に応じた適切な監査手続を立案するために、監査に関連する内部統制を検討する。&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left; text-indent: -12px"&gt;・経営者が採用した会計方針及びその適用方法の適切性、並びに経営者によって行われた会計上の見積りの合理性及び関連する注記事項の妥当性を評価する。&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left; text-indent: -12px"&gt;・経営者が継続企業を前提として連結財務諸表を作成することが適切であるかどうか、また、入手した監査証拠に基づき、継続企業の前提に重要な疑義を生じさせるような事象又は状況に関して重要な不確実性が認められるかどうか結論付ける。継続企業の前提に関する重要な不確実性が認められる場合は、監査報告書において連結財務諸表の注記事項に注意を喚起すること、又は重要な不確実性に関する連結財務諸表の注記事項が適切でない場合は、連結財務諸表に対して除外事項付意見を表明することが求められている。監査人の結論は、監査報告書日までに入手した監査証拠に基づいているが、将来の事象や状況により、企業は継続企業として存続できなくなる可能性がある。&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left; text-indent: -12px"&gt;・連結財務諸表の表示及び注記事項が、国際会計基準に準拠しているかどうかとともに、関連する注記事項を含めた連結財務諸表の表示、構成及び内容、並びに連結財務諸表が基礎となる取引や会計事象を適正に表示しているかどうかを評価する。&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left; text-indent: -12px"&gt;・連結財務諸表に対する意見を表明するために、会社及び連結子会社の財務情報に関する十分かつ適切な監査証拠を入手する。監査人は、連結財務諸表の監査に関する指示、監督及び実施に関して責任がある。監査人は、単独で監査意見に対して責任を負う。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査人は、監査役及び監査役会に対して、計画した監査の範囲とその実施時期、監査の実施過程で識別した内部統制の重要な不備を含む監査上の重要な発見事項、及び監査の基準で求められているその他の事項について報告を行う。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査人は、監査役及び監査役会に対して、独立性についての我が国における職業倫理に関する規定を遵守したこと、並びに監査人の独立性に影響を与えると合理的に考えられる事項、及び阻害要因を除去するための対応策を講じている場合又は阻害要因を許容可能な水準にまで軽減するためのセーフガードを適用している場合はその内容について報告を行う。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査人は、監査役及び監査役会と協議した事項のうち、当連結会計年度の連結財務諸表の監査で特に重要であると判断した事項を監査上の主要な検討事項と決定し、監査報告書において記載する。ただし、法令等により当該事項の公表が禁止されている場合や、極めて限定的ではあるが、監査報告書において報告することにより生じる不利益が公共の利益を上回ると合理的に見込まれるため、監査人が報告すべきでないと判断した場合は、当該事項を記載しない。&lt;/p&gt;
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;＜内部統制監査＞&lt;/p&gt;
+&lt;p style="text-align: left"&gt;監査意見&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人は、金融商品取引法第193条の２第２項の規定に基づく監査証明を行うため、ソフトバンクグループ株式会社の2024年３月31日現在の内部統制報告書について監査を行った。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人は、ソフトバンクグループ株式会社が2024年３月31日現在の財務報告に係る内部統制は有効であると表示した上記の内部統制報告書が、我が国において一般に公正妥当と認められる財務報告に係る内部統制の評価の基準に準拠して、財務報告に係る内部統制の評価結果について、全ての重要な点において適正に表示しているものと認める。&lt;/p&gt;
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;監査意見の根拠&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人は、我が国において一般に公正妥当と認められる財務報告に係る内部統制の監査の基準に準拠して内部統制監査を行った。財務報告に係る内部統制の監査の基準における当監査法人の責任は、「内部統制監査における監査人の責任」に記載されている。当監査法人は、我が国における職業倫理に関する規定に従って、会社及び連結子会社から独立しており、また、監査人としてのその他の倫理上の責任を果たしている。当監査法人は、意見表明の基礎となる十分かつ適切な監査証拠を入手したと判断している。&lt;/p&gt;
+&lt;p class="style_pb_after" style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;内部統制報告書に対する経営者並びに監査役及び監査役会の責任&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　経営者の責任は、財務報告に係る内部統制を整備及び運用し、我が国において一般に公正妥当と認められる財務報告に係る内部統制の評価の基準に準拠して内部統制報告書を作成し適正に表示することにある。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査役及び監査役会の責任は、財務報告に係る内部統制の整備及び運用状況を監視、検証することにある。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　なお、財務報告に係る内部統制により財務報告の虚偽の記載を完全には防止又は発見することができない可能性がある。&lt;/p&gt;
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;内部統制監査における監査人の責任&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査人の責任は、監査人が実施した内部統制監査に基づいて、内部統制報告書に重要な虚偽表示がないかどうかについて合理的な保証を得て、内部統制監査報告書において独立の立場から内部統制報告書に対する意見を表明することにある。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査人は、我が国において一般に公正妥当と認められる財務報告に係る内部統制の監査の基準に従って、監査の過程を通じて、職業的専門家としての判断を行い、職業的懐疑心を保持して以下を実施する。&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left; text-indent: -12px"&gt;・内部統制報告書における財務報告に係る内部統制の評価結果について監査証拠を入手するための監査手続を実施する。内部統制監査の監査手続は、監査人の判断により、財務報告の信頼性に及ぼす影響の重要性に基づいて選択及び適用される。&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left; text-indent: -12px"&gt;・財務報告に係る内部統制の評価範囲、評価手続及び評価結果について経営者が行った記載を含め、全体としての内部統制報告書の表示を検討する。&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left; text-indent: -12px"&gt;・内部統制報告書における財務報告に係る内部統制の評価結果に関する十分かつ適切な監査証拠を入手する。監査人は、内部統制報告書の監査に関する指示、監督及び実施に関して責任がある。監査人は、単独で監査意見に対して責任を負う。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査人は、監査役及び監査役会に対して、計画した内部統制監査の範囲とその実施時期、内部統制監査の実施結果、識別した内部統制の開示すべき重要な不備、その是正結果、及び内部統制の監査の基準で求められているその他の事項について報告を行う。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　監査人は、監査役及び監査役会に対して、独立性についての我が国における職業倫理に関する規定を遵守したこと、並びに監査人の独立性に影響を与えると合理的に考えられる事項、及び阻害要因を除去するための対応策を講じている場合又は阻害要因を許容可能な水準にまで軽減するためのセーフガードを適用している場合はその内容について報告を行う。&lt;/p&gt;
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+
+&lt;p style="text-align: left"&gt;＜報酬関連情報＞&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人及び当監査法人と同一のネットワークに属する者に対する、会社及び子会社の監査証明業務に基づく報酬及び非監査業務に基づく報酬の額は、「提出会社の状況」に含まれるコーポレート・ガバナンスの状況等（３）【監査の状況】に記載されている。&lt;/p&gt;
+
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;利害関係&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　会社及び連結子会社と当監査法人又は業務執行社員との間には、公認会計士法の規定により記載すべき利害関係はない。&lt;/p&gt;
+&lt;p style="margin-right: 12px; text-align: right"&gt;以　上&lt;/p&gt;
+&lt;p style="line-height: 6.6666666666666666666666666667px; text-align: right"&gt; &lt;/p&gt;
+&lt;div&gt;
+&lt;table cellpadding="0" cellspacing="0" style="table-layout: fixed; width: 648px"&gt;
+&lt;colgroup&gt;
+&lt;col style="width: 648px"/&gt;
+&lt;/colgroup&gt;
+&lt;tbody&gt;
+&lt;tr style="height: 1.33px"&gt;
+&lt;td style="vertical-align: top; width: 648px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px; border-left: 0px none ; border-top: 1px solid #000000; border-right: 0px none ; border-bottom: 0px none "&gt;
+&lt;p style="margin-left: 72px; text-align: left; text-indent: -60px"&gt;（※）１　上記は当社（有価証券報告書提出会社）が、監査報告書の原本に記載された事項を電子化したものであり、その原本は当社（有価証券報告書提出会社）が連結財務諸表に添付する形で別途保管しています。&lt;/p&gt;
+&lt;p style="margin-left: 72px; text-align: left; text-indent: -24px"&gt;２　XBRLデータは監査の対象には含まれていません。&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+</jpcrp_cor:IndependentAuditorsReportConsolidatedTextBlock>
+  <jpcrp_cor:AuditFirm1Consolidated contextRef="FilingDateInstant">有限責任監査法人 ト ー マ ツ</jpcrp_cor:AuditFirm1Consolidated>
+  <jpcrp_cor:CPA1AuditFirm1Consolidated contextRef="FilingDateInstant">國　本　　　望</jpcrp_cor:CPA1AuditFirm1Consolidated>
+  <jpcrp_cor:CPA2AuditFirm1Consolidated contextRef="FilingDateInstant">平　野　礼　人</jpcrp_cor:CPA2AuditFirm1Consolidated>
+  <jpcrp_cor:CPA3AuditFirm1Consolidated contextRef="FilingDateInstant">増　田　裕　介</jpcrp_cor:CPA3AuditFirm1Consolidated>
+  <jpcrp_cor:KeyAuditMattersConsolidatedTextBlock contextRef="FilingDateInstant">
+&lt;p style="text-align: left"&gt;監査上の主要な検討事項&lt;/p&gt;
+&lt;p style="text-align: left"&gt;
+　監査上の主要な検討事項とは、当連結会計年度の連結財務諸表の監査において、監査人が職業的専門家として特に重要であると判断した事項である。監査上の主要な検討事項は、連結財務諸表全体に対する監査の実施過程及び監査意見の形成において対応した事項であり、当監査法人は、当該事項に対して個別に意見を表明するものではない。
+&lt;/p&gt;
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+&lt;p style="text-align: left"&gt;
+レベル３に分類されたSVFからの投資（FVTPL）の評価の妥当性
+&lt;/p&gt;
+&lt;p style="margin-left: 12px; text-align: left"&gt;(1）監査上の主要な検討事項の内容及び決定理由&lt;/p&gt;
+
+&lt;p style="margin-left: 24px; text-align: left"&gt;　会社は、主にソフトバンク・ビジョン・ファンドを通じて投資を保有している。当該投資は、「SVFからの投資（FVTPL）」（残高11,014,487百万円）として連結財政状態計算書に計上されており、連結財務諸表における金額的重要性がある。また当該科目には「注記29．金融商品の公正価値」に記載のとおり、公正価値ヒエラルキーのレベル別分類でレベル３（観察可能でないインプットを使用して測定した公正価値）に分類された「SVFからの投資（FVTPL）」が7,840,631百万円含まれている。レベル３に分類されたSVFからの投資（FVTPL）の公正価値の算定の基礎になる企業価値については、主に取引事例法、割引キャッシュ・フロー法及び類似会社比較法等を銘柄毎に１つまたは複数使用して算定している。&lt;/p&gt;
+&lt;p style="margin-left: 24px; text-align: left"&gt;　企業価値の算出過程で使用される以下の仮定は、経営者の判断により重要な影響を受け、またこれらの仮定の変化及び以下の事象の発生により公正価値が大きく変動する。&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・割引キャッシュ・フロー法において使用される事業計画や資本コスト&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・類似会社比較法において使用される「収益倍率」等の基礎となる類似企業の選定&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・報告期間の末日の公正価値に追加的な証拠を提供する後発事象の有無&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・上記複数の評価技法により算出される結果を加重平均して企業価値を算定している銘柄の場合の「加重平均割合」&lt;/p&gt;
+&lt;p style="margin-left: 24px; text-align: left"&gt;　また、これらの手法により算定された企業価値は、投資先の資本構成に応じて各種類株式に配分され、公正価値が決定される。その配分は、主として株主の権利や優先権を考慮したオプション価格法等が用いられ、また、新規株式公開等により優先株式が普通株式に転換される可能性等も考慮して決定される。これらの配分の決定は、新規株式公開が実現する可能性等の将来の不確実性が高い見積りにより重要な影響を受ける。&lt;/p&gt;
+&lt;p style="margin-left: 24px; text-align: left"&gt;　以上から、レベル３に分類されたSVFからの投資（FVTPL）の評価の妥当性について、監査上の主要な検討事項に該当するものと判断した。&lt;/p&gt;
+
+&lt;p style="margin-left: 12px; text-align: left"&gt;(2）監査上の対応&lt;/p&gt;
+
+&lt;p style="margin-left: 24px; text-align: left"&gt;　当監査法人は、レベル３に分類されたSVFからの投資（FVTPL）の評価に関連する見積りの合理性を評価するため、構成単位の監査人に指示し、以下の検証を実施した。&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・評価技法の選定の合理性について、経営者への質問を実施し、過去の評価技法との整合性及び変更が生じている場合には当該変更の適切性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・割引キャッシュ・フロー法による評価が行われている銘柄の場合、評価の基礎となる事業計画の妥当性については、過去の実績数値との比較等により検討を行い、また、資本コストについては、公正価値評価に関する内部専門家を利用し、評価に用いた資本コストの合理性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・類似会社比較法による評価が行われている銘柄の場合、公正価値評価に関する内部専門家を利用し、使用される「収益倍率」等の基礎となる類似企業の選定の合理性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・報告期間の末日以降に生じた事象について、経営者への質問及び公表情報の閲覧を実施し、新たな資金調達ラウンドの有無等を把握し、報告期間の末日の公正価値にこれらの事象が考慮されているかどうかを検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・算出した企業価値を各種類株式に配分する必要がある場合、その配分が契約や定款等に定められた優先劣後関係に従い実施されているかを検討し、新規株式公開が実現する可能性等の見積りについて経営者への質問及び関連書類の閲覧を実施&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・複数の評価技法により算出される結果を加重平均して企業価値を算定している銘柄の場合、「加重平均割合」の妥当性について、過去の加重平均割合や投資先の状況との整合性を検討し、変更が生じている場合には当該変更の適切性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・経営者が算定した公正価値が、監査人が公正価値評価に関する内部専門家とともに算定した公正価値の見積りとの重要な乖離がないかどうかを検討&lt;/p&gt;
+
+&lt;p style="text-align: left"&gt; &lt;/p&gt;
+</jpcrp_cor:KeyAuditMattersConsolidatedTextBlock>
+  <jpcrp_cor:OverviewKAMConsolidatedTextBlock contextRef="FilingDateInstant">　監査上の主要な検討事項とは、当連結会計年度の連結財務諸表の監査において、監査人が職業的専門家として特に重要であると判断した事項である。監査上の主要な検討事項は、連結財務諸表全体に対する監査の実施過程及び監査意見の形成において対応した事項であり、当監査法人は、当該事項に対して個別に意見を表明するものではない。</jpcrp_cor:OverviewKAMConsolidatedTextBlock>
+  <jpcrp_cor:ShortDescriptionKAMConsolidated contextRef="FilingDateInstant_Row1Member">レベル３に分類されたSVFからの投資（FVTPL）の評価の妥当性</jpcrp_cor:ShortDescriptionKAMConsolidated>
+  <jpcrp_cor:DescriptionIncludingReasonKAMConsolidatedTextBlock contextRef="FilingDateInstant_Row1Member">
+&lt;p style="margin-left: 24px; text-align: left"&gt;　会社は、主にソフトバンク・ビジョン・ファンドを通じて投資を保有している。当該投資は、「SVFからの投資（FVTPL）」（残高11,014,487百万円）として連結財政状態計算書に計上されており、連結財務諸表における金額的重要性がある。また当該科目には「注記29．金融商品の公正価値」に記載のとおり、公正価値ヒエラルキーのレベル別分類でレベル３（観察可能でないインプットを使用して測定した公正価値）に分類された「SVFからの投資（FVTPL）」が7,840,631百万円含まれている。レベル３に分類されたSVFからの投資（FVTPL）の公正価値の算定の基礎になる企業価値については、主に取引事例法、割引キャッシュ・フロー法及び類似会社比較法等を銘柄毎に１つまたは複数使用して算定している。&lt;/p&gt;
+&lt;p style="margin-left: 24px; text-align: left"&gt;　企業価値の算出過程で使用される以下の仮定は、経営者の判断により重要な影響を受け、またこれらの仮定の変化及び以下の事象の発生により公正価値が大きく変動する。&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・割引キャッシュ・フロー法において使用される事業計画や資本コスト&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・類似会社比較法において使用される「収益倍率」等の基礎となる類似企業の選定&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・報告期間の末日の公正価値に追加的な証拠を提供する後発事象の有無&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・上記複数の評価技法により算出される結果を加重平均して企業価値を算定している銘柄の場合の「加重平均割合」&lt;/p&gt;
+&lt;p style="margin-left: 24px; text-align: left"&gt;　また、これらの手法により算定された企業価値は、投資先の資本構成に応じて各種類株式に配分され、公正価値が決定される。その配分は、主として株主の権利や優先権を考慮したオプション価格法等が用いられ、また、新規株式公開等により優先株式が普通株式に転換される可能性等も考慮して決定される。これらの配分の決定は、新規株式公開が実現する可能性等の将来の不確実性が高い見積りにより重要な影響を受ける。&lt;/p&gt;
+&lt;p style="margin-left: 24px; text-align: left"&gt;　以上から、レベル３に分類されたSVFからの投資（FVTPL）の評価の妥当性について、監査上の主要な検討事項に該当するものと判断した。&lt;/p&gt;
+</jpcrp_cor:DescriptionIncludingReasonKAMConsolidatedTextBlock>
+  <jpcrp_cor:ReferenceKAMConsolidated contextRef="FilingDateInstant_Row1Member">注記29．金融商品の公正価値</jpcrp_cor:ReferenceKAMConsolidated>
+  <jpcrp_cor:AuditorsResponseKAMConsolidatedTextBlock contextRef="FilingDateInstant_Row1Member">
+&lt;p style="margin-left: 24px; text-align: left"&gt;　当監査法人は、レベル３に分類されたSVFからの投資（FVTPL）の評価に関連する見積りの合理性を評価するため、構成単位の監査人に指示し、以下の検証を実施した。&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・評価技法の選定の合理性について、経営者への質問を実施し、過去の評価技法との整合性及び変更が生じている場合には当該変更の適切性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・割引キャッシュ・フロー法による評価が行われている銘柄の場合、評価の基礎となる事業計画の妥当性については、過去の実績数値との比較等により検討を行い、また、資本コストについては、公正価値評価に関する内部専門家を利用し、評価に用いた資本コストの合理性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・類似会社比較法による評価が行われている銘柄の場合、公正価値評価に関する内部専門家を利用し、使用される「収益倍率」等の基礎となる類似企業の選定の合理性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・報告期間の末日以降に生じた事象について、経営者への質問及び公表情報の閲覧を実施し、新たな資金調達ラウンドの有無等を把握し、報告期間の末日の公正価値にこれらの事象が考慮されているかどうかを検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・算出した企業価値を各種類株式に配分する必要がある場合、その配分が契約や定款等に定められた優先劣後関係に従い実施されているかを検討し、新規株式公開が実現する可能性等の見積りについて経営者への質問及び関連書類の閲覧を実施&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・複数の評価技法により算出される結果を加重平均して企業価値を算定している銘柄の場合、「加重平均割合」の妥当性について、過去の加重平均割合や投資先の状況との整合性を検討し、変更が生じている場合には当該変更の適切性を検討&lt;/p&gt;
+&lt;p style="margin-left: 48px; text-align: left; text-indent: -12px"&gt;・経営者が算定した公正価値が、監査人が公正価値評価に関する内部専門家とともに算定した公正価値の見積りとの重要な乖離がないかどうかを検討&lt;/p&gt;
+</jpcrp_cor:AuditorsResponseKAMConsolidatedTextBlock>
+  <jpcrp_cor:OtherInformationConsolidatedTextBlock contextRef="FilingDateInstant">
+&lt;p style="text-align: left"&gt;その他の記載内容&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　その他の記載内容は、有価証券報告書に含まれる情報のうち、連結財務諸表及び財務諸表並びにこれらの監査報告書以外の情報である。経営者の責任は、その他の記載内容を作成し開示することにある。また、監査役及び監査役会の責任は、その他の記載内容の報告プロセスの整備及び運用における取締役の職務の執行を監視することにある。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人の連結財務諸表に対する監査意見の対象にはその他の記載内容は含まれておらず、当監査法人はその他の記載内容に対して意見を表明するものではない。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　連結財務諸表監査における当監査法人の責任は、その他の記載内容を通読し、通読の過程において、その他の記載内容と連結財務諸表又は当監査法人が監査の過程で得た知識との間に重要な相違があるかどうか検討すること、また、そのような重要な相違以外にその他の記載内容に重要な誤りの兆候があるかどうか注意を払うことにある。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人は、実施した作業に基づき、その他の記載内容に重要な誤りがあると判断した場合には、その事実を報告することが求められている。&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　その他の記載内容に関して、当監査法人が報告すべき事項はない。&lt;/p&gt;
+</jpcrp_cor:OtherInformationConsolidatedTextBlock>
+  <jpcrp_cor:FeeRelatedInformationConsolidatedTextBlock contextRef="FilingDateInstant">
+&lt;p style="text-align: left"&gt;＜報酬関連情報＞&lt;/p&gt;
+&lt;p style="text-align: left"&gt;　当監査法人及び当監査法人と同一のネットワークに属する者に対する、会社及び子会社の監査証明業務に基づく報酬及び非監査業務に基づく報酬の額は、「提出会社の状況」に含まれるコーポレート・ガバナンスの状況等（３）【監査の状況】に記載されている。&lt;/p&gt;
+</jpcrp_cor:FeeRelatedInformationConsolidatedTextBlock>
+</xbrli:xbrl>

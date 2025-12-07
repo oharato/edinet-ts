@@ -121,28 +121,28 @@ export class EdinetXbrlObject {
         const instantIds = instantContexts.map(c => c.id);
 
         return {
-            netSales: this.getNumberValue(["jppfs_cor:NetSales", "jpcrp_cor:NetSales"], durationIds),
-            operatingIncome: this.getNumberValue(["jppfs_cor:OperatingIncome"], durationIds),
-            ordinaryIncome: this.getNumberValue(["jppfs_cor:OrdinaryIncome"], durationIds),
-            netIncome: this.getNumberValue(["jppfs_cor:ProfitLossAttributableToOwnersOfParent"], durationIds),
-            netAssets: this.getNumberValue(["jppfs_cor:NetAssets"], instantIds),
-            totalAssets: this.getNumberValue(["jppfs_cor:Assets"], instantIds),
+            netSales: this.getNumberValue(["jppfs_cor:NetSales", "jpcrp_cor:NetSales", "jpcrp_cor:RevenueIFRSSummaryOfBusinessResults"], durationIds),
+            operatingIncome: this.getNumberValue(["jppfs_cor:OperatingIncome", "jpcrp_cor:OperatingIncomeIFRSSummaryOfBusinessResults"], durationIds), // Note: OperatingIncome might be company-specific in IFRS
+            ordinaryIncome: this.getNumberValue(["jppfs_cor:OrdinaryIncome"], durationIds), // IFRS doesn't usually have OrdinaryIncome
+            netIncome: this.getNumberValue(["jppfs_cor:ProfitLossAttributableToOwnersOfParent", "jpcrp_cor:ProfitLossAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"], durationIds),
+            netAssets: this.getNumberValue(["jppfs_cor:NetAssets", "jpcrp_cor:EquityAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"], instantIds),
+            totalAssets: this.getNumberValue(["jppfs_cor:Assets", "jpcrp_cor:TotalAssetsIFRSSummaryOfBusinessResults"], instantIds),
 
             // Cash Flows
-            operatingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInOperatingActivities", "jpcrp_cor:NetCashProvidedByUsedInOperatingActivitiesSummaryOfBusinessResults"], durationIds),
-            investingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInInvestmentActivities", "jppfs_cor:NetCashProvidedByUsedInInvestingActivities", "jpcrp_cor:NetCashProvidedByUsedInInvestingActivitiesSummaryOfBusinessResults"], durationIds),
-            financingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInFinancingActivities", "jpcrp_cor:NetCashProvidedByUsedInFinancingActivitiesSummaryOfBusinessResults"], durationIds),
-            cashAndEquivalents: this.getNumberValue(["jppfs_cor:CashAndCashEquivalents", "jppfs_cor:CashAndCashEquivalentsEndOfPeriod"], instantIds),
+            operatingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInOperatingActivities", "jpcrp_cor:NetCashProvidedByUsedInOperatingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInOperatingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
+            investingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInInvestmentActivities", "jppfs_cor:NetCashProvidedByUsedInInvestingActivities", "jpcrp_cor:NetCashProvidedByUsedInInvestingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInInvestingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
+            financingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInFinancingActivities", "jpcrp_cor:NetCashProvidedByUsedInFinancingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInFinancingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
+            cashAndEquivalents: this.getNumberValue(["jppfs_cor:CashAndCashEquivalents", "jppfs_cor:CashAndCashEquivalentsEndOfPeriod", "jpcrp_cor:CashAndCashEquivalentsIFRSSummaryOfBusinessResults"], instantIds),
 
             // Per Share
-            earningsPerShare: this.getNumberValue(["jppfs_cor:BasicEarningsLossPerShare", "jpcrp_cor:BasicEarningsLossPerShareSummaryOfBusinessResults"], durationIds),
-            bookValuePerShare: this.getNumberValue(["jppfs_cor:NetAssetsPerShare", "jpcrp_cor:NetAssetsPerShareSummaryOfBusinessResults"], instantIds),
+            earningsPerShare: this.getNumberValue(["jppfs_cor:BasicEarningsLossPerShare", "jpcrp_cor:BasicEarningsLossPerShareSummaryOfBusinessResults", "jpcrp_cor:BasicEarningsLossPerShareIFRSSummaryOfBusinessResults"], durationIds),
+            bookValuePerShare: this.getNumberValue(["jppfs_cor:NetAssetsPerShare", "jpcrp_cor:NetAssetsPerShareSummaryOfBusinessResults", "jpcrp_cor:EquityAttributableToOwnersOfParentPerShareIFRSSummaryOfBusinessResults"], instantIds),
 
             // Ratios & Types
-            equityToTotalAssetsRatio: this.getNumberValue(["jpcrp_cor:EquityToAssetRatioSummaryOfBusinessResults", "jpcrp_cor:EquityToTotalAssetsRatioSummaryOfBusinessResults", "jppfs_cor:EquityToTotalAssetsRatio"], instantIds),
+            equityToTotalAssetsRatio: this.getNumberValue(["jpcrp_cor:EquityToAssetRatioSummaryOfBusinessResults", "jpcrp_cor:EquityToTotalAssetsRatioSummaryOfBusinessResults", "jppfs_cor:EquityToTotalAssetsRatio", "jpcrp_cor:RatioOfOwnersEquityToGrossAssetsIFRSSummaryOfBusinessResults"], instantIds),
             rateOfReturnOnEquity: this.getNumberValue(["jpcrp_cor:RateOfReturnOnEquitySummaryOfBusinessResults", "jpcrp_cor:RateOfReturnOnEquityIFRSSummaryOfBusinessResults", "jppfs_cor:RateOfReturnOnEquity"], durationIds),
-            priceEarningsRatio: this.getNumberValue(["jpcrp_cor:PriceEarningsRatioSummaryOfBusinessResults"], durationIds), // Less common in XBRL
-            payoutRatio: this.getNumberValue(["jpcrp_cor:PayoutRatioSummaryOfBusinessResults"], durationIds),
+            priceEarningsRatio: this.getNumberValue(["jpcrp_cor:PriceEarningsRatioSummaryOfBusinessResults", "jpcrp_cor:PriceEarningsRatioIFRSSummaryOfBusinessResults"], durationIds), // Less common in XBRL
+            payoutRatio: this.getNumberValue(["jpcrp_cor:PayoutRatioSummaryOfBusinessResults", "jpcrp_cor:PayoutRatioIFRSSummaryOfBusinessResults"], durationIds),
 
             // Shares
             numberOfIssuedShares: this.getNumberValue(["jpcrp_cor:TotalNumberOfIssuedSharesSummaryOfBusinessResults", "jppfs_cor:TotalNumberOfIssuedShares"], instantIds),
