@@ -21,11 +21,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          # registry-url は除去済み (Trusted Publishing用)
+          registry-url: 'https://registry.npmjs.org'
 
-      - name: Create .npmrc
-        run: echo "registry=https://registry.npmjs.org/" > .npmrc
-        # 明示的にレジストリを指定する (認証トークンは書かない)
+      # npm documentation recommends updating to the latest version
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Get version from package.json
         id: pkg
