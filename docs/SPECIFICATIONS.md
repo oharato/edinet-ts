@@ -18,7 +18,7 @@ graph TD
     Downloader -->|XBRL File| FS[FileSystem]
     FS --> Parser
     Parser -->|Returns| Object[EdinetXbrlObject]
-    Object -->|getKeyMetrics()| Metrics[KeyMetrics]
+    Object -->|"getKeyMetrics()"| Metrics[KeyMetrics]
 ```
 
 ## 2. クラス設計
