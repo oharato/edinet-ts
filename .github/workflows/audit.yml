@@ -1,0 +1,31 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 0 * * 1' # 毎週月曜日に実行
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - run: npm ci
+
+      - name: Audit Production Dependencies
+        run: npm audit --omit=dev
+        # 本番依存関係(dependencies)に脆弱性があればCIを失敗させる
+
+      - name: Audit All Dependencies (Report Only)
+        run: npm audit || true
+        # 開発依存関係(devDependencies)も含めてチェックするが、CIは失敗させない
+        # (xlsx等のdev依存の既知の脆弱性でブロックされないようにするため)
