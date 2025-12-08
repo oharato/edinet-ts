@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # OIDC (Trusted Publishing) 用
 
 jobs:
   release:
@@ -68,6 +69,12 @@ jobs:
 
       - name: Publish to NPM
         if: steps.check_tag.outputs.exists == 'false'
-        run: npm publish
+        run: npm publish --provenance
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} # Trusted Publishing設定済みなら不要だが、フォールバック用に残しても可。
+                                                     # ただしTrusted Publishingが優先されるにはTOKEN削除が必要な場合もあるため
+                                                     # ここでは削除して setup-node の自動処理に任せるのが正解だが
+                                                     # setup-nodeは NODE_AUTH_TOKEN を自動で使いません (inputが必要)。
+                                                     # Trusted Publishingの場合、npm publishがOIDCトークンを使う。
+                                                     # setup-node は .npmrc を書くだけ。
+

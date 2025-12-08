@@ -7,7 +7,19 @@
 *   npm アカウントを持っていること
 *   npm にログイン済みであること (`npm login`)
 *   メンテナー権限を持っていること
-*   GitHubリポジトリの Secrets に `NPM_TOKEN` が設定されていること
+*   **npm側で Trusted Publishing (GitHub Actions連携) の設定が完了していること**
+
+## 初期設定: Trusted Publishing (推奨)
+
+npm の「2要素認証(2FA)を回避するリスク」警告を解消し、より安全に自動デプロイを行うための設定です。
+
+1.  [npm website](https://www.npmjs.com/) にログインします。
+2.  パッケージのページ (`edinet-ts`) または自分のプロフィールから「Access」または「Publishing Access」設定を開きます。
+3.  **"Connect a new account"** (または "GitHub Actions") を選択します。
+4.  このGitHubリポジトリ (`oharato/edinet-ts`) を接続します。
+5.  設定が完了すると、GitHub Actions からの公開リクエストが信頼され、`NPM_TOKEN` シークレットを使わずに安全に公開できるようになります。
+
+※ 従来通り `NPM_TOKEN` シークレットを使う場合は、Token生成時に "Automation" タイプを選べば2FAをバイパスできますが、npmからは推奨されていません。
 
 ## 自動化（実装済み）
 
