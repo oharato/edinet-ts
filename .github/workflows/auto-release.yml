@@ -21,7 +21,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          # registry-url は .npmrc (Token認証) を生成するため、Trusted Publishing利用時は削除する
+          # registry-url は除去済み (Trusted Publishing用)
+
+      - name: Create .npmrc
+        run: echo "registry=https://registry.npmjs.org/" > .npmrc
+        # 明示的にレジストリを指定する (認証トークンは書かない)
 
       - name: Get version from package.json
         id: pkg
@@ -69,6 +73,6 @@ jobs:
 
       - name: Publish to NPM
         if: steps.check_tag.outputs.exists == 'false'
-        run: npm publish --provenance
+        run: npm publish --provenance --access public
         # OIDC (Trusted Publishing) を使用するため NODE_AUTH_TOKEN は不要
 
