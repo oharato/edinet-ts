@@ -201,6 +201,19 @@ npx edinet-ts parse --file ./downloads/report.xbrl --pretty
 
 詳細なオプションは `npx edinet-ts --help` で確認できます。
 
+## ドキュメント (Documents)
+
+詳細な設計や運用に関するドキュメントは `docs/` ディレクトリにあります。
+
+*   **[要件定義書 (REQUIREMENTS.md)](docs/REQUIREMENTS.md)**: 提供機能、システム要件、APIカバレッジ。
+*   **[技術仕様書 (SPECIFICATIONS.md)](docs/SPECIFICATIONS.md)**: アーキテクチャ、クラス設計、アルゴリズム詳細。
+*   **[タクソノミ更新手順 (TAXONOMY_UPDATE.md)](docs/TAXONOMY_UPDATE.md)**: 毎年更新されるEDINETタクソノミへの追従手順。
+*   **[npmパブリッシュ手順 (NPM_PUBLISH.md)](docs/NPM_PUBLISH.md)**: リリースとデプロイのフロー（Trusted Publishing設定含む）。
+*   **[会社四季報スクリーニング対応表 (SHIKIHO_SCREENING_MAP.md)](docs/SHIKIHO_SCREENING_MAP.md)**: 四季報オンラインのスクリーニング項目と本ライブラリでの取得方法の対応表。
+*   **タクソノミ定義書**:
+    *   **[財務諸表本表 (TAXONOMY_JPPFS_COR.md)](docs/TAXONOMY_JPPFS_COR.md)**: `jppfs_cor` 名前空間の全項目定義。
+    *   **[企業情報 (TAXONOMY_JPCRP_COR.md)](docs/TAXONOMY_JPCRP_COR.md)**: `jpcrp_cor` 名前空間の全項目定義。
+
 ## License
 
 ```text

@@ -71,7 +71,28 @@ J-GAAP（日本基準）と IFRS（国際会計基準）の両方に対応して
 | `companyHistory` | 沿革 | 会社の沿革 |
 | `researchAndDevelopment`| 研究開発活動 | 研究開発の状況 |
 
-#### C. 型安全なタクソノミアクセス (`getJppfsCor`)
+#### D. 大量保有報告書の解析 (`getLargeShareholdingInfo`)
+大量保有報告書（変更報告書・訂正報告書含む）から、以下の情報を抽出できます。
+
+*   **提出者名**: `filerName`
+*   **発行者名**: `issuerName` (提出対象会社)
+*   **保有割合**: `holdingRatio` (%)
+*   **直前保有割合**: `prevHoldingRatio` (%)
+
+```typescript
+// 例
+const info = doc.getLargeShareholdingInfo();
+console.log(`${info.issuerName} の株を ${info.holdingRatio}% 保有`);
+```
+
+### 3.4 CLIツール
+ライブラリの機能をコマンドラインから直接利用できるCLIを提供します。
+
+*   **`get` コマンド**: ティッカーまたは日付指定で書類を取得・解析し、JSONを出力します。
+*   **`download` コマンド**: 書類を指定ディレクトリにダウンロードします。
+*   **ローカルDBキャッシュ**: メタデータをSQLiteにキャッシュし、高速な検索を実現します。
+
+### 3.5 型安全なタクソノミアクセス (`getJppfsCor`)
 
 EDINETタクソノミ（2024年版）の「財務諸表本表 (jppfs_cor)」に含まれる **1,800項目以上** の財務項目を、型定義付きで直接取得できます。
 
