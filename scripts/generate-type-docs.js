@@ -21,13 +21,17 @@ function getJSDocComment(node, sourceFile) {
         const commentText = fullText.substring(lastRange.pos, lastRange.end);
         
         // Extract content from /** ... */
-        const match = commentText.match(/\/\*\*\s*(.*?)\s*\*\//s);
+        const match = commentText.match(/\/\*\*([\s\S]*?)\*\//);
         if (match) {
-            // Remove leading * from each line
+            // Remove leading * and whitespace from each line, filter empty lines
             return match[1]
                 .split('\n')
-                .map(line => line.replace(/^\s*\*\s?/, '').trim())
-                .filter(line => line)
+                .map(line => {
+                    // Remove leading whitespace and * character
+                    const cleaned = line.replace(/^\s*\*\s?/, '').trim();
+                    return cleaned;
+                })
+                .filter(line => line.length > 0)
                 .join(' ');
         }
     }
@@ -123,7 +127,12 @@ export interface TypeDocumentation {
         code += `    fields: [\n`;
         
         for (const field of iface.fields) {
-            const escapedLabel = field.japaneseLabel.replace(/"/g, '\\"');
+            // Escape special characters for TypeScript string literal
+            const escapedLabel = field.japaneseLabel
+                .replace(/\\/g, '\\\\')
+                .replace(/"/g, '\\"')
+                .replace(/\n/g, '\\n')
+                .replace(/\r/g, '\\r');
             code += `        { key: "${field.key}", japaneseLabel: "${escapedLabel}", type: "${field.type}" },\n`;
         }
         
@@ -269,7 +278,10 @@ function main() {
     const largeShareholding = parseInterface(sourceFile, "LargeShareholdingInfo");
     
     if (!keyMetrics || !largeShareholding) {
-        console.error("Failed to parse interfaces");
+        console.error("Failed to parse interfaces from src/edinet-xbrl-object.ts");
+        if (!keyMetrics) console.error("  - Could not find or parse KeyMetrics interface");
+        if (!largeShareholding) console.error("  - Could not find or parse LargeShareholdingInfo interface");
+        console.error("\nPlease ensure the interfaces are properly defined in the source file.");
         process.exit(1);
     }
     
