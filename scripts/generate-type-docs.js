@@ -1,100 +1,120 @@
 #!/usr/bin/env node
 /**
  * Auto-generate type documentation from TypeScript source files
- * Extracts interface definitions and JSDoc comments from src/edinet-xbrl-object.ts
+ * Extracts interface definitions and JSDoc comments using ts-morph
  */
 
-const ts = require("typescript");
-const fs = require("fs");
+const { Project } = require("ts-morph");
 const path = require("path");
+const fs = require("fs");
 
 /**
- * Extract JSDoc comment text from a node
+ * Extract field info from an interface declaration
  */
-function getJSDocComment(node, sourceFile) {
-    const fullText = sourceFile.getFullText();
-    const nodeStart = node.getFullStart();
-    const ranges = ts.getLeadingCommentRanges(fullText, nodeStart);
-    
-    if (ranges && ranges.length > 0) {
-        const lastRange = ranges[ranges.length - 1];
-        const commentText = fullText.substring(lastRange.pos, lastRange.end);
-        
-        // Extract content from /** ... */
-        const match = commentText.match(/\/\*\*([\s\S]*?)\*\//);
-        if (match) {
-            // Remove leading * and whitespace from each line, filter empty lines
-            return match[1]
+function extractInterfaceInfo(interfaceDecl) {
+    const fields = [];
+
+    // Extract interface description
+    const interfaceJsDocs = interfaceDecl.getJsDocs();
+    let description = interfaceDecl.getName();
+    if (interfaceJsDocs.length > 0) {
+        description = interfaceJsDocs[0].getDescription().trim();
+        // Clean up newlines
+        description = description
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .join(' ');
+    }
+
+    interfaceDecl.getProperties().forEach(prop => {
+        const key = prop.getName();
+        const typeNode = prop.getTypeNode();
+        // Get the text of the type node, or fallback to the type object's text
+        let type = typeNode ? typeNode.getText() : prop.getType().getText();
+
+        // Check if optional
+        const isOptional = prop.hasQuestionToken();
+        if (isOptional) {
+            type += " (optional)";
+        }
+
+        // Get JSDoc description
+        const jsDocs = prop.getJsDocs();
+        let japaneseLabel = "";
+        if (jsDocs.length > 0) {
+            japaneseLabel = jsDocs[0].getDescription().trim();
+
+            // Clean up newlines in description
+            japaneseLabel = japaneseLabel
                 .split('\n')
-                .map(line => {
-                    // Remove leading whitespace and * character
-                    const cleaned = line.replace(/^\s*\*\s?/, '').trim();
-                    return cleaned;
-                })
+                .map(line => line.trim())
                 .filter(line => line.length > 0)
                 .join(' ');
         }
-    }
-    
-    return undefined;
+
+        fields.push({ key, japaneseLabel, type });
+    });
+
+    return {
+        name: interfaceDecl.getName(),
+        description,
+        fields
+    };
 }
 
 /**
- * Get TypeScript type as string
+ * Extract document type definition from an interface
  */
-function getTypeString(typeNode) {
-    if (!typeNode) return "any";
-    
-    switch (typeNode.kind) {
-        case ts.SyntaxKind.NumberKeyword:
-            return "number";
-        case ts.SyntaxKind.StringKeyword:
-            return "string";
-        case ts.SyntaxKind.BooleanKeyword:
-            return "boolean";
-        case ts.SyntaxKind.UnionType:
-            return typeNode.types.map(t => getTypeString(t)).join(" | ");
-        default:
-            return typeNode.getText();
-    }
-}
+function extractDocumentTypeInfo(interfaceDecl) {
+    const jsDocs = interfaceDecl.getJsDocs();
+    if (jsDocs.length === 0) return null;
 
-/**
- * Parse interface from source file
- */
-function parseInterface(sourceFile, interfaceName) {
-    const fields = [];
-    
-    function visit(node) {
-        if (ts.isInterfaceDeclaration(node) && node.name.text === interfaceName) {
-            node.members.forEach(member => {
-                if (ts.isPropertySignature(member) && member.name) {
-                    const key = member.name.getText(sourceFile);
-                    const japaneseLabel = getJSDocComment(member, sourceFile) || "";
-                    const isOptional = member.questionToken !== undefined;
-                    const baseType = getTypeString(member.type);
-                    const type = isOptional ? `${baseType} (optional)` : baseType;
-                    
-                    fields.push({ key, japaneseLabel, type });
-                }
-            });
+    const description = jsDocs[0].getDescription().trim().split('\n').join(' ');
+
+    const tags = jsDocs[0].getTags();
+    let documentType = "";
+    let japaneseLabel = "";
+
+    for (const tag of tags) {
+        const tagName = tag.getTagName();
+        const tagText = tag.getCommentText ? tag.getCommentText() : ""; // handle different ts-morph versions or fallback
+
+        if (tagName === "documentType") {
+            documentType = tagText ? tagText.trim() : "";
+        } else if (tagName === "japaneseLabel") {
+            japaneseLabel = tagText ? tagText.trim() : "";
         }
-        
-        ts.forEachChild(node, visit);
     }
-    
-    visit(sourceFile);
-    
-    return fields.length > 0 ? { name: interfaceName, fields } : null;
+
+    if (!documentType || !japaneseLabel) {
+        return null;
+    }
+
+    const responseIncludes = [];
+    interfaceDecl.getProperties().forEach(prop => {
+        const typeName = prop.getTypeNode() ? prop.getTypeNode().getText() : prop.getType().getText();
+        // Map type name directly to DOC constant
+        // Assumes naming convention: TypeName -> TYPE_NAME_DOC
+        const docConstant = typeName.replace(/([A-Z])/g, '_$1').toUpperCase().replace(/^_/, '') + "_DOC";
+        responseIncludes.push(docConstant);
+    });
+
+    return {
+        documentType,
+        japaneseLabel,
+        description,
+        responseIncludes
+    };
 }
 
 /**
  * Generate TypeScript code for type documentation
  */
-function generateTypeDocCode(interfaces) {
+function generateTypeDocCode(interfaces, docTypes) {
     let code = `/**
  * Auto-generated type documentation
- * Generated from src/edinet-xbrl-object.ts
+ * Generated using ts-morph
  * DO NOT EDIT THIS FILE MANUALLY - Run 'npm run generate-type-docs' to regenerate
  */
 
@@ -115,20 +135,12 @@ export interface TypeDocumentation {
     // Generate constants for each interface
     for (const iface of interfaces) {
         const constName = iface.name.replace(/([A-Z])/g, '_$1').toUpperCase().replace(/^_/, '');
-        
-        // Map interface names to Japanese descriptions
-        const descriptionMap = {
-            'KeyMetrics': '財務・業績の主要指標',
-            'LargeShareholdingInfo': '大量保有報告書の情報',
-            'QualitativeInfo': '定性的情報（テキスト）'
-        };
-        const description = descriptionMap[iface.name] || iface.name;
-        
+
         code += `export const ${constName}_DOC: TypeDocumentation = {\n`;
         code += `    typeName: "${iface.name}",\n`;
-        code += `    description: "${description}",\n`;
+        code += `    description: "${iface.description}",\n`;
         code += `    fields: [\n`;
-        
+
         for (const field of iface.fields) {
             // Escape special characters for TypeScript string literal
             const escapedLabel = field.japaneseLabel
@@ -136,27 +148,17 @@ export interface TypeDocumentation {
                 .replace(/"/g, '\\"')
                 .replace(/\n/g, '\\n')
                 .replace(/\r/g, '\\r');
-            code += `        { key: "${field.key}", japaneseLabel: "${escapedLabel}", type: "${field.type}" },\n`;
+            // Escape backticks in type string if any (though unlikely for simple types)
+            const escapedType = field.type
+                .replace(/\\/g, '\\\\')
+                .replace(/"/g, '\\"');
+
+            code += `        { key: "${field.key}", japaneseLabel: "${escapedLabel}", type: "${escapedType}" },\n`;
         }
-        
+
         code += `    ]\n`;
         code += `};\n\n`;
     }
-
-    // Add common metadata doc
-    code += `export const COMMON_METADATA_DOC: TypeDocumentation = {
-    typeName: "共通メタデータ",
-    description: "全ての書類に含まれるメタデータ",
-    fields: [
-        { key: "docID", japaneseLabel: "書類管理ID", type: "string" },
-        { key: "filerName", japaneseLabel: "提出者名", type: "string" },
-        { key: "edinetCode", japaneseLabel: "提出者のEDINETコード", type: "string" },
-        { key: "docDescription", japaneseLabel: "書類名/件名", type: "string" },
-        { key: "submitDate", japaneseLabel: "提出日", type: "string" }
-    ]
-};
-
-`;
 
     // Add document type responses
     code += `export interface DocumentTypeResponse {
@@ -166,79 +168,41 @@ export interface TypeDocumentation {
     responseIncludes: TypeDocumentation[];
 }
 
-export const DOCUMENT_TYPE_RESPONSES: DocumentTypeResponse[] = [
-    {
-        documentType: "Annual (有価証券報告書) [120]",
-        japaneseLabel: "有価証券報告書",
-        description: "年次の有価証券報告書。財務情報を含みます。",
-        responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
-    },
-    {
-        documentType: "Quarterly (四半期報告書) [140]",
-        japaneseLabel: "四半期報告書",
-        description: "四半期ごとの報告書。財務情報を含みます。",
-        responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
-    },
-    {
-        documentType: "SemiAnnual (半期報告書) [160]",
-        japaneseLabel: "半期報告書",
-        description: "半期ごとの報告書。財務情報を含みます。",
-        responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
-    },
-    {
-        documentType: "Extraordinary (臨時報告書) [180]",
-        japaneseLabel: "臨時報告書",
-        description: "臨時報告書。財務情報を含む場合があります。",
-        responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
-    },
-    {
-        documentType: "LargeShareholding (大量保有報告書) [340/350/360]",
-        japaneseLabel: "大量保有報告書",
-        description: "大量保有報告書、変更報告書、訂正報告書。保有情報を含みます。",
-        responseIncludes: [COMMON_METADATA_DOC, LARGE_SHAREHOLDING_INFO_DOC]
-    },
-    {
-        documentType: "SecuritiesRegistration (有価証券届出書) [010]",
-        japaneseLabel: "有価証券届出書",
-        description: "有価証券届出書。財務情報を含む場合があります。",
-        responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
-    },
-    {
-        documentType: "InternalControl (内部統制報告書) [235]",
-        japaneseLabel: "内部統制報告書",
-        description: "内部統制報告書。主にメタデータのみが返されます。",
-        responseIncludes: [COMMON_METADATA_DOC]
-    },
-    {
-        documentType: "TenderOffer (公開買付届出書/報告書) [240/270]",
-        japaneseLabel: "公開買付関連書類",
-        description: "公開買付届出書または公開買付報告書。主にメタデータのみが返されます。",
-        responseIncludes: [COMMON_METADATA_DOC]
-    }
-];
+export const DOCUMENT_TYPE_RESPONSES: DocumentTypeResponse[] = [\n`;
 
-export function generateTypeMarkdown(doc: TypeDocumentation): string {
+    for (const dt of docTypes) {
+        code += `    {\n`;
+        code += `        documentType: "${dt.documentType}",\n`;
+        code += `        japaneseLabel: "${dt.japaneseLabel}",\n`;
+        code += `        description: "${dt.description}",\n`;
+        code += `        responseIncludes: [${dt.responseIncludes.join(', ')}]\n`;
+        code += `    },\n`;
+    }
+
+    code += `];\n\n`;
+
+    code += `export function generateTypeMarkdown(doc: TypeDocumentation): string {
     let md = \`### \${doc.typeName}\\n\\n\`;
     md += \`\${doc.description}\\n\\n\`;
     md += \`| キー | 日本語名 | 型 |\\n\`;
     md += \`| --- | --- | --- |\\n\`;
-    
+
     for (const field of doc.fields) {
         md += \`| \\\`\${field.key}\\\` | \${field.japaneseLabel} | \\\`\${field.type}\\\` |\\n\`;
     }
-    
+
     return md;
 }
 
 export function generateDocumentTypeMarkdown(docTypeResponse: DocumentTypeResponse): string {
     let md = \`\\n## \${docTypeResponse.documentType}\\n\\n\`;
     md += \`\${docTypeResponse.description}\\n\\n\`;
-    
+
     for (const typeDoc of docTypeResponse.responseIncludes) {
         md += generateTypeMarkdown(typeDoc);
         md += \`\\n\`;
     }
-    
+
     return md;
 }
 
@@ -250,11 +214,11 @@ export function generateFullHelpMarkdown(): string {
     md += \`--type オプションには、以下のいずれかの形式で指定できます:\\n\`;
     md += \`- エイリアス名 (例: annual, quarterly, largeshareholding)\\n\`;
     md += \`- 書類種別コード (例: 120, 140, 340)\\n\\n\`;
-    
+
     for (const docType of DOCUMENT_TYPE_RESPONSES) {
         md += generateDocumentTypeMarkdown(docType);
     }
-    
+
     return md;
 }
 `;
@@ -268,48 +232,90 @@ function main() {
     const interfaceConfig = [
         {
             sourceFile: path.join(__dirname, "..", "src", "edinet-xbrl-object.ts"),
-            interfaces: ["KeyMetrics", "LargeShareholdingInfo", "QualitativeInfo"]
+            interfaces: ["CommonMetadata", "KeyMetrics", "LargeShareholdingInfo", "QualitativeInfo"]
+        },
+        {
+            sourceFile: path.join(__dirname, "..", "src", "types", "jppfs_cor_taxonomy.ts"),
+            interfaces: ["JppfsCorTaxonomy"]
+        },
+        {
+            sourceFile: path.join(__dirname, "..", "src", "types", "jpcrp_cor_taxonomy.ts"),
+            interfaces: ["JpcrpCorTaxonomy"]
         }
     ];
-    
+
+    const documentTypeConfig = [
+        {
+            sourceFile: path.join(__dirname, "..", "src", "edinet-xbrl-object.ts"),
+            interfaces: [
+                "AnnualResponse",
+                "QuarterlyResponse",
+                "SemiAnnualResponse",
+                "ExtraordinaryResponse",
+                "LargeShareholdingResponse",
+                "SecuritiesRegistrationResponse",
+                "InternalControlResponse",
+                "TenderOfferResponse"
+            ]
+        }
+    ];
+
+    const project = new Project();
     const allInterfaces = [];
-    
-    // Process each source file
+    const allDocTypes = [];
+
+    // Process regular interfaces
     for (const config of interfaceConfig) {
-        const sourceCode = fs.readFileSync(config.sourceFile, "utf-8");
-        const sourceFile = ts.createSourceFile(
-            config.sourceFile,
-            sourceCode,
-            ts.ScriptTarget.Latest,
-            true
-        );
-        
-        // Parse each interface
+        const sourceFile = project.addSourceFileAtPath(config.sourceFile);
+
         for (const interfaceName of config.interfaces) {
-            const parsedInterface = parseInterface(sourceFile, interfaceName);
-            if (!parsedInterface) {
+            try {
+                const interfaceDecl = sourceFile.getInterfaceOrThrow(interfaceName);
+                const info = extractInterfaceInfo(interfaceDecl);
+
+                allInterfaces.push(info);
+                console.log(`  ✓ Parsed Interface ${interfaceName}: ${info.fields.length} fields`);
+            } catch (error) {
                 console.error(`\nError: Failed to parse interface '${interfaceName}' from ${config.sourceFile}`);
-                console.error(`Possible causes:`);
-                console.error(`  - Interface '${interfaceName}' does not exist in the file`);
-                console.error(`  - Interface has no fields or properties`);
-                console.error(`  - Syntax error in the interface definition`);
-                console.error(`\nPlease verify the interface name and definition.`);
+                console.error(error.message);
                 process.exit(1);
             }
-            allInterfaces.push(parsedInterface);
-            console.log(`  ✓ Parsed ${interfaceName}: ${parsedInterface.fields.length} fields`);
         }
     }
-    
+
+    // Process document type response interfaces
+    for (const config of documentTypeConfig) {
+        const sourceFile = project.addSourceFileAtPath(config.sourceFile);
+
+        for (const interfaceName of config.interfaces) {
+            try {
+                const interfaceDecl = sourceFile.getInterfaceOrThrow(interfaceName);
+                const docInfo = extractDocumentTypeInfo(interfaceDecl);
+
+                if (docInfo) {
+                    allDocTypes.push(docInfo);
+                    console.log(`  ✓ Parsed DocumentType ${interfaceName}: ${docInfo.documentType}`);
+                } else {
+                    console.warn(`  ! Skipped DocumentType ${interfaceName}: Missing JSDoc tags`);
+                }
+            } catch (error) {
+                console.error(`\nError: Failed to parse interface '${interfaceName}' from ${config.sourceFile}`);
+                console.error(error.message);
+                process.exit(1);
+            }
+        }
+    }
+
     // Generate code
     const outputFilePath = path.join(__dirname, "..", "src", "utils", "type-doc-generator.ts");
-    const code = generateTypeDocCode(allInterfaces);
-    
+    const code = generateTypeDocCode(allInterfaces, allDocTypes);
+
     // Write output
     fs.writeFileSync(outputFilePath, code, "utf-8");
-    
+
     console.log(`\n✓ Generated type documentation: ${outputFilePath}`);
     console.log(`  Total interfaces: ${allInterfaces.length}`);
+    console.log(`  Total document types: ${allDocTypes.length}`);
 }
 
 main();

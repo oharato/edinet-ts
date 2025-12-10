@@ -2,6 +2,23 @@ import { EdinetDataUtil } from "./edinet-data-util";
 import { EdinetContext } from "./edinet-context";
 import { JppfsCorTaxonomy } from "./types/jppfs_cor_taxonomy";
 
+/**
+ * 共通メタデータ
+ * 全ての書類に含まれるメタデータ
+ */
+export interface CommonMetadata {
+    /** 書類管理ID */
+    docID: string;
+    /** 提出者名 */
+    filerName: string;
+    /** 提出者のEDINETコード */
+    edinetCode: string;
+    /** 書類名/件名 */
+    docDescription: string;
+    /** 提出日 */
+    submitDate: string;
+}
+
 export class EdinetData {
     constructor(
         public readonly key: string,
@@ -390,6 +407,9 @@ export class EdinetXbrlObject {
     }
 }
 
+/**
+ * 財務・業績の主要指標
+ */
 export interface KeyMetrics {
     /** 売上高 */
     netSales?: number;
@@ -435,6 +455,9 @@ export interface KeyMetrics {
     dividendPaidPerShare?: number;
 }
 
+/**
+ * 大量保有報告書の情報
+ */
 export interface LargeShareholdingInfo {
     /** 提出者名 (氏名又は名称) */
     filerName?: string;
@@ -448,6 +471,9 @@ export interface LargeShareholdingInfo {
     jointHoldersCount?: number;
 }
 
+/**
+ * 定性的情報（テキスト）
+ */
 export interface QualitativeInfo {
     /** 事業の方針、事業環境及び対処すべき課題 */
     businessPolicy?: string;
@@ -461,4 +487,82 @@ export interface QualitativeInfo {
     companyHistory?: string;
     /** 研究開発活動 */
     researchAndDevelopment?: string;
+}
+
+/**
+ * 年次の有価証券報告書。財務情報を含みます。
+ * @documentType Annual (有価証券報告書) [120]
+ * @japaneseLabel 有価証券報告書
+ */
+export interface AnnualResponse {
+    metadata: CommonMetadata;
+    metrics: KeyMetrics;
+}
+
+/**
+ * 四半期ごとの報告書。財務情報を含みます。
+ * @documentType Quarterly (四半期報告書) [140]
+ * @japaneseLabel 四半期報告書
+ */
+export interface QuarterlyResponse {
+    metadata: CommonMetadata;
+    metrics: KeyMetrics;
+}
+
+/**
+ * 半期ごとの報告書。財務情報を含みます。
+ * @documentType SemiAnnual (半期報告書) [160]
+ * @japaneseLabel 半期報告書
+ */
+export interface SemiAnnualResponse {
+    metadata: CommonMetadata;
+    metrics: KeyMetrics;
+}
+
+/**
+ * 臨時報告書。財務情報を含む場合があります。
+ * @documentType Extraordinary (臨時報告書) [180]
+ * @japaneseLabel 臨時報告書
+ */
+export interface ExtraordinaryResponse {
+    metadata: CommonMetadata;
+    metrics: KeyMetrics;
+}
+
+/**
+ * 大量保有報告書、変更報告書、訂正報告書。保有情報を含みます。
+ * @documentType LargeShareholding (大量保有報告書) [340/350/360]
+ * @japaneseLabel 大量保有報告書
+ */
+export interface LargeShareholdingResponse {
+    metadata: CommonMetadata;
+    info: LargeShareholdingInfo;
+}
+
+/**
+ * 有価証券届出書。財務情報を含む場合があります。
+ * @documentType SecuritiesRegistration (有価証券届出書) [010]
+ * @japaneseLabel 有価証券届出書
+ */
+export interface SecuritiesRegistrationResponse {
+    metadata: CommonMetadata;
+    metrics: KeyMetrics;
+}
+
+/**
+ * 内部統制報告書。主にメタデータのみが返されます。
+ * @documentType InternalControl (内部統制報告書) [235]
+ * @japaneseLabel 内部統制報告書
+ */
+export interface InternalControlResponse {
+    metadata: CommonMetadata;
+}
+
+/**
+ * 公開買付届出書または公開買付報告書。主にメタデータのみが返されます。
+ * @documentType TenderOffer (公開買付届出書/報告書) [240/270]
+ * @japaneseLabel 公開買付関連書類
+ */
+export interface TenderOfferResponse {
+    metadata: CommonMetadata;
 }

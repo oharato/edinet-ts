@@ -43,6 +43,7 @@
         "@types/cli-progress": "^3.11.6",
         "@types/jszip": "^3.4.0",
         "@types/node": "^24.10.1",
+        "ts-morph": "^27.0.2",
         "typescript": "^5.9.3",
         "vitest": "^4.0.15",
         "xlsx": "^0.18.5"
