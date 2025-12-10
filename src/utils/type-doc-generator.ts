@@ -53,6 +53,19 @@ export const LARGE_SHAREHOLDING_INFO_DOC: TypeDocumentation = {
     ]
 };
 
+export const QUALITATIVE_INFO_DOC: TypeDocumentation = {
+    typeName: "QualitativeInfo",
+    description: "定性的情報（テキスト）",
+    fields: [
+        { key: "businessPolicy", japaneseLabel: "事業の方針、事業環境及び対処すべき課題", type: "string (optional)" },
+        { key: "businessRisks", japaneseLabel: "事業等のリスク", type: "string (optional)" },
+        { key: "financialAnalysis", japaneseLabel: "経営者による財政状態、経営成績及びキャッシュ・フローの状況の分析", type: "string (optional)" },
+        { key: "businessDescription", japaneseLabel: "事業の内容", type: "string (optional)" },
+        { key: "companyHistory", japaneseLabel: "沿革", type: "string (optional)" },
+        { key: "researchAndDevelopment", japaneseLabel: "研究開発活動", type: "string (optional)" },
+    ]
+};
+
 export const COMMON_METADATA_DOC: TypeDocumentation = {
     typeName: "共通メタデータ",
     description: "全ての書類に含まれるメタデータ",

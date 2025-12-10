@@ -115,11 +115,14 @@ export interface TypeDocumentation {
     // Generate constants for each interface
     for (const iface of interfaces) {
         const constName = iface.name.replace(/([A-Z])/g, '_$1').toUpperCase().replace(/^_/, '');
-        const description = iface.name === 'KeyMetrics' 
-            ? '財務・業績の主要指標' 
-            : iface.name === 'LargeShareholdingInfo'
-            ? '大量保有報告書の情報'
-            : iface.name;
+        
+        // Map interface names to Japanese descriptions
+        const descriptionMap = {
+            'KeyMetrics': '財務・業績の主要指標',
+            'LargeShareholdingInfo': '大量保有報告書の情報',
+            'QualitativeInfo': '定性的情報（テキスト）'
+        };
+        const description = descriptionMap[iface.name] || iface.name;
         
         code += `export const ${constName}_DOC: TypeDocumentation = {\n`;
         code += `    typeName: "${iface.name}",\n`;
@@ -261,39 +264,47 @@ export function generateFullHelpMarkdown(): string {
 
 // Main execution
 function main() {
-    const sourceFilePath = path.join(__dirname, "..", "src", "edinet-xbrl-object.ts");
-    const outputFilePath = path.join(__dirname, "..", "src", "utils", "type-doc-generator.ts");
+    // Configuration: Define which interfaces to extract from which files
+    const interfaceConfig = [
+        {
+            sourceFile: path.join(__dirname, "..", "src", "edinet-xbrl-object.ts"),
+            interfaces: ["KeyMetrics", "LargeShareholdingInfo", "QualitativeInfo"]
+        }
+    ];
     
-    // Read and parse source file
-    const sourceCode = fs.readFileSync(sourceFilePath, "utf-8");
-    const sourceFile = ts.createSourceFile(
-        sourceFilePath,
-        sourceCode,
-        ts.ScriptTarget.Latest,
-        true
-    );
+    const allInterfaces = [];
     
-    // Parse interfaces
-    const keyMetrics = parseInterface(sourceFile, "KeyMetrics");
-    const largeShareholding = parseInterface(sourceFile, "LargeShareholdingInfo");
-    
-    if (!keyMetrics || !largeShareholding) {
-        console.error("Failed to parse interfaces from src/edinet-xbrl-object.ts");
-        if (!keyMetrics) console.error("  - Could not find or parse KeyMetrics interface");
-        if (!largeShareholding) console.error("  - Could not find or parse LargeShareholdingInfo interface");
-        console.error("\nPlease ensure the interfaces are properly defined in the source file.");
-        process.exit(1);
+    // Process each source file
+    for (const config of interfaceConfig) {
+        const sourceCode = fs.readFileSync(config.sourceFile, "utf-8");
+        const sourceFile = ts.createSourceFile(
+            config.sourceFile,
+            sourceCode,
+            ts.ScriptTarget.Latest,
+            true
+        );
+        
+        // Parse each interface
+        for (const interfaceName of config.interfaces) {
+            const parsedInterface = parseInterface(sourceFile, interfaceName);
+            if (!parsedInterface) {
+                console.error(`Failed to parse ${interfaceName} from ${config.sourceFile}`);
+                process.exit(1);
+            }
+            allInterfaces.push(parsedInterface);
+            console.log(`  ✓ Parsed ${interfaceName}: ${parsedInterface.fields.length} fields`);
+        }
     }
     
     // Generate code
-    const code = generateTypeDocCode([keyMetrics, largeShareholding]);
+    const outputFilePath = path.join(__dirname, "..", "src", "utils", "type-doc-generator.ts");
+    const code = generateTypeDocCode(allInterfaces);
     
     // Write output
     fs.writeFileSync(outputFilePath, code, "utf-8");
     
-    console.log(`✓ Generated type documentation: ${outputFilePath}`);
-    console.log(`  - KeyMetrics: ${keyMetrics.fields.length} fields`);
-    console.log(`  - LargeShareholdingInfo: ${largeShareholding.fields.length} fields`);
+    console.log(`\n✓ Generated type documentation: ${outputFilePath}`);
+    console.log(`  Total interfaces: ${allInterfaces.length}`);
 }
 
 main();
