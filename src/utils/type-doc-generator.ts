@@ -87,28 +87,52 @@ export interface DocumentTypeResponse {
 
 export const DOCUMENT_TYPE_RESPONSES: DocumentTypeResponse[] = [
     {
-        documentType: "Annual (有価証券報告書)",
+        documentType: "Annual (有価証券報告書) [120]",
         japaneseLabel: "有価証券報告書",
         description: "年次の有価証券報告書。財務情報を含みます。",
         responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
     },
     {
-        documentType: "Quarterly (四半期報告書)",
+        documentType: "Quarterly (四半期報告書) [140]",
         japaneseLabel: "四半期報告書",
         description: "四半期ごとの報告書。財務情報を含みます。",
         responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
     },
     {
-        documentType: "SemiAnnual (半期報告書)",
+        documentType: "SemiAnnual (半期報告書) [160]",
         japaneseLabel: "半期報告書",
         description: "半期ごとの報告書。財務情報を含みます。",
         responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
     },
     {
-        documentType: "LargeShareholding (大量保有報告書)",
+        documentType: "Extraordinary (臨時報告書) [180]",
+        japaneseLabel: "臨時報告書",
+        description: "臨時報告書。財務情報を含む場合があります。",
+        responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
+    },
+    {
+        documentType: "LargeShareholding (大量保有報告書) [340/350/360]",
         japaneseLabel: "大量保有報告書",
         description: "大量保有報告書、変更報告書、訂正報告書。保有情報を含みます。",
         responseIncludes: [COMMON_METADATA_DOC, LARGE_SHAREHOLDING_INFO_DOC]
+    },
+    {
+        documentType: "SecuritiesRegistration (有価証券届出書) [010]",
+        japaneseLabel: "有価証券届出書",
+        description: "有価証券届出書。財務情報を含む場合があります。",
+        responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
+    },
+    {
+        documentType: "InternalControl (内部統制報告書) [235]",
+        japaneseLabel: "内部統制報告書",
+        description: "内部統制報告書。主にメタデータのみが返されます。",
+        responseIncludes: [COMMON_METADATA_DOC]
+    },
+    {
+        documentType: "TenderOffer (公開買付届出書/報告書) [240/270]",
+        japaneseLabel: "公開買付関連書類",
+        description: "公開買付届出書または公開買付報告書。主にメタデータのみが返されます。",
+        responseIncludes: [COMMON_METADATA_DOC]
     }
 ];
 
@@ -149,7 +173,11 @@ export function generateDocumentTypeMarkdown(docTypeResponse: DocumentTypeRespon
 export function generateFullHelpMarkdown(): string {
     let md = `# getコマンドのレスポンス形式\n\n`;
     md += `このコマンドは、書類の種別 (--type) に応じて異なるJSONを返します。\n`;
-    md += `以下に各書類種別で返されるJSONのキー、日本語名、型を示します。\n`;
+    md += `以下に各書類種別で返されるJSONのキー、日本語名、型を示します。\n\n`;
+    md += `## 書類種別の指定方法\n\n`;
+    md += `--type オプションには、以下のいずれかの形式で指定できます:\n`;
+    md += `- エイリアス名 (例: annual, quarterly, largeshareholding)\n`;
+    md += `- 書類種別コード (例: 120, 140, 340)\n\n`;
     
     for (const docType of DOCUMENT_TYPE_RESPONSES) {
         md += generateDocumentTypeMarkdown(docType);
