@@ -288,7 +288,12 @@ function main() {
         for (const interfaceName of config.interfaces) {
             const parsedInterface = parseInterface(sourceFile, interfaceName);
             if (!parsedInterface) {
-                console.error(`Failed to parse ${interfaceName} from ${config.sourceFile}`);
+                console.error(`\nError: Failed to parse interface '${interfaceName}' from ${config.sourceFile}`);
+                console.error(`Possible causes:`);
+                console.error(`  - Interface '${interfaceName}' does not exist in the file`);
+                console.error(`  - Interface has no fields or properties`);
+                console.error(`  - Syntax error in the interface definition`);
+                console.error(`\nPlease verify the interface name and definition.`);
                 process.exit(1);
             }
             allInterfaces.push(parsedInterface);
