@@ -8,7 +8,8 @@
         "edinet-ts": "dist/cli.js"
     },
     "scripts": {
-        "build": "tsc",
+        "build": "npm run generate-type-docs && tsc",
+        "generate-type-docs": "node scripts/generate-type-docs.js",
         "test": "vitest run"
     },
     "keywords": [
