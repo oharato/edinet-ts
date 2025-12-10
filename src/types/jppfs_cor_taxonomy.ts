@@ -2,6 +2,7 @@
 /**
  * EDINET Taxonomy Types (Auto-generated)
  * Based on: 2024 Version EDINET Taxonomy - General Commercial and Industrial
+ * 財務諸表本表タクソノミ (jppfs_cor)
  */
 export interface JppfsCorTaxonomy {
     /**

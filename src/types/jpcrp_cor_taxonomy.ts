@@ -1,6 +1,7 @@
 /**
  * EDINET Taxonomy (jpcrp_cor: Corporate Information)
  * Generated automatically.
+ * 企業情報本表タクソノミ (jpcrp_cor)
  */
 export interface JpcrpCorTaxonomy {
     /** 開示府令 第二号様式 有価証券届出書 */

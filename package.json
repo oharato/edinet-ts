@@ -1,6 +1,6 @@
 {
     "name": "edinet-ts",
-    "version": "1.1.4",
+    "version": "1.1.5",
     "description": "TypeScript port of edinet_xbrl for parsing EDINET XBRL files",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -8,7 +8,8 @@
         "edinet-ts": "dist/cli.js"
     },
     "scripts": {
-        "build": "tsc",
+        "build": "npm run generate-type-docs && tsc",
+        "generate-type-docs": "node scripts/generate-type-docs.js",
         "test": "vitest run"
     },
     "keywords": [
@@ -42,6 +43,7 @@
         "@types/cli-progress": "^3.11.6",
         "@types/jszip": "^3.4.0",
         "@types/node": "^24.10.1",
+        "ts-morph": "^27.0.2",
         "typescript": "^5.9.3",
         "vitest": "^4.0.15",
         "xlsx": "^0.18.5"

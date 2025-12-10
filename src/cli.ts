@@ -5,6 +5,7 @@ import { EdinetXbrlDownloader } from "./edinet-xbrl-downloader";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
+import { generateFullHelpMarkdown } from "./utils/type-doc-generator";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -133,7 +134,7 @@ program.command("parse")
         }
     });
 
-program.command("get")
+const getCommand = program.command("get")
     .description("EDINET書類をダウンロードし、即座に解析します")
     .option("-t, --ticker <code>", "証券コード (例: 7203)")
     .option("-d, --date <date>", "対象日 (YYYY-MM-DD)。デフォルトは当日")
@@ -142,7 +143,14 @@ program.command("get")
     .option("--save-dir <path>", "ダウンロードファイルの保存先ディレクトリ")
     .option("--pretty", "JSONを整形して出力")
     .option("-v, --verbose", "進捗ログを表示")
+    .option("--help-types", "各書類タイプで返されるJSONの型情報を表示")
+    .addHelpText('after', '\n詳細な型情報については --help-types オプションを使用してください。')
     .action(async (options) => {
+        // If --help-types is specified, show type documentation and exit
+        if (options.helpTypes) {
+            console.log(generateFullHelpMarkdown());
+            process.exit(0);
+        }
         // デフォルトを ./downloads にすることでキャッシュを効かせる
         const saveDir = options.saveDir || "./downloads";
         const downloader = new EdinetXbrlDownloader({ rootDir: saveDir });
