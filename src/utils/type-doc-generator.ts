@@ -23,24 +23,24 @@ export const KEY_METRICS_DOC: TypeDocumentation = {
     typeName: "KeyMetrics",
     description: "財務・業績の主要指標",
     fields: [
-        { key: "netSales", japaneseLabel: "売上高", type: "number | undefined" },
-        { key: "operatingIncome", japaneseLabel: "営業利益", type: "number | undefined" },
-        { key: "ordinaryIncome", japaneseLabel: "経常利益", type: "number | undefined" },
-        { key: "netIncome", japaneseLabel: "当期純利益 (親会社株主に帰属する当期純利益)", type: "number | undefined" },
-        { key: "netAssets", japaneseLabel: "純資産", type: "number | undefined" },
-        { key: "totalAssets", japaneseLabel: "総資産", type: "number | undefined" },
-        { key: "operatingCashFlow", japaneseLabel: "営業活動によるキャッシュ・フロー", type: "number | undefined" },
-        { key: "investingCashFlow", japaneseLabel: "投資活動によるキャッシュ・フロー", type: "number | undefined" },
-        { key: "financingCashFlow", japaneseLabel: "財務活動によるキャッシュ・フロー", type: "number | undefined" },
-        { key: "cashAndEquivalents", japaneseLabel: "現金及び現金同等物の期末残高", type: "number | undefined" },
-        { key: "earningsPerShare", japaneseLabel: "EPS (1株当たり当期純利益)", type: "number | undefined" },
-        { key: "bookValuePerShare", japaneseLabel: "BPS (1株当たり純資産)", type: "number | undefined" },
-        { key: "equityToTotalAssetsRatio", japaneseLabel: "自己資本比率", type: "number | undefined" },
-        { key: "rateOfReturnOnEquity", japaneseLabel: "ROE (自己資本利益率)", type: "number | undefined" },
-        { key: "priceEarningsRatio", japaneseLabel: "PER (株価収益率)", type: "number | undefined" },
-        { key: "payoutRatio", japaneseLabel: "配当性向", type: "number | undefined" },
-        { key: "numberOfIssuedShares", japaneseLabel: "発行済株式総数", type: "number | undefined" },
-        { key: "dividendPaidPerShare", japaneseLabel: "1株当たり配当額", type: "number | undefined" }
+        { key: "netSales", japaneseLabel: "売上高", type: "number (optional)" },
+        { key: "operatingIncome", japaneseLabel: "営業利益", type: "number (optional)" },
+        { key: "ordinaryIncome", japaneseLabel: "経常利益", type: "number (optional)" },
+        { key: "netIncome", japaneseLabel: "当期純利益 (親会社株主に帰属する当期純利益)", type: "number (optional)" },
+        { key: "netAssets", japaneseLabel: "純資産", type: "number (optional)" },
+        { key: "totalAssets", japaneseLabel: "総資産", type: "number (optional)" },
+        { key: "operatingCashFlow", japaneseLabel: "営業活動によるキャッシュ・フロー", type: "number (optional)" },
+        { key: "investingCashFlow", japaneseLabel: "投資活動によるキャッシュ・フロー", type: "number (optional)" },
+        { key: "financingCashFlow", japaneseLabel: "財務活動によるキャッシュ・フロー", type: "number (optional)" },
+        { key: "cashAndEquivalents", japaneseLabel: "現金及び現金同等物の期末残高", type: "number (optional)" },
+        { key: "earningsPerShare", japaneseLabel: "EPS (1株当たり当期純利益)", type: "number (optional)" },
+        { key: "bookValuePerShare", japaneseLabel: "BPS (1株当たり純資産)", type: "number (optional)" },
+        { key: "equityToTotalAssetsRatio", japaneseLabel: "自己資本比率", type: "number (optional)" },
+        { key: "rateOfReturnOnEquity", japaneseLabel: "ROE (自己資本利益率)", type: "number (optional)" },
+        { key: "priceEarningsRatio", japaneseLabel: "PER (株価収益率)", type: "number (optional)" },
+        { key: "payoutRatio", japaneseLabel: "配当性向", type: "number (optional)" },
+        { key: "numberOfIssuedShares", japaneseLabel: "発行済株式総数", type: "number (optional)" },
+        { key: "dividendPaidPerShare", japaneseLabel: "1株当たり配当額", type: "number (optional)" }
     ]
 };
 
@@ -52,11 +52,11 @@ export const LARGE_SHAREHOLDING_INFO_DOC: TypeDocumentation = {
     typeName: "LargeShareholdingInfo",
     description: "大量保有報告書の情報",
     fields: [
-        { key: "filerName", japaneseLabel: "提出者名 (氏名又は名称)", type: "string | undefined" },
-        { key: "issuerName", japaneseLabel: "発行者名 (氏名又は名称)", type: "string | undefined" },
-        { key: "holdingRatio", japaneseLabel: "保有割合 (%)", type: "number | undefined" },
-        { key: "prevHoldingRatio", japaneseLabel: "直前報告書における保有割合 (%)", type: "number | undefined" },
-        { key: "jointHoldersCount", japaneseLabel: "共同保有者の数", type: "number | undefined" }
+        { key: "filerName", japaneseLabel: "提出者名 (氏名又は名称)", type: "string (optional)" },
+        { key: "issuerName", japaneseLabel: "発行者名 (氏名又は名称)", type: "string (optional)" },
+        { key: "holdingRatio", japaneseLabel: "保有割合 (%)", type: "number (optional)" },
+        { key: "prevHoldingRatio", japaneseLabel: "直前報告書における保有割合 (%)", type: "number (optional)" },
+        { key: "jointHoldersCount", japaneseLabel: "共同保有者の数", type: "number (optional)" }
     ]
 };
 
