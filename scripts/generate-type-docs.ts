@@ -4,15 +4,34 @@
  * ts-morphを使用してインターフェース定義とJSDocコメントを抽出
  */
 
-const { Project } = require("ts-morph");
-const path = require("path");
-const fs = require("fs");
+import { Project, InterfaceDeclaration, VariableDeclarationKind } from "ts-morph";
+import * as path from "path";
+import * as fs from "fs";
+
+interface ExtractedFieldInfo {
+    key: string;
+    japaneseLabel: string;
+    type: string;
+}
+
+interface ExtractedInterfaceInfo {
+    name: string;
+    description: string;
+    fields: ExtractedFieldInfo[];
+}
+
+interface ExtractedDocumentTypeInfo {
+    documentType: string;
+    japaneseLabel: string;
+    description: string;
+    responseIncludes: string[];
+}
 
 /**
  * インターフェース宣言からフィールド情報を抽出
  */
-function extractInterfaceInfo(interfaceDecl) {
-    const fields = [];
+function extractInterfaceInfo(interfaceDecl: InterfaceDeclaration): ExtractedInterfaceInfo {
+    const fields: ExtractedFieldInfo[] = [];
 
     // インターフェースの説明を抽出
     const interfaceJsDocs = interfaceDecl.getJsDocs();
@@ -66,7 +85,7 @@ function extractInterfaceInfo(interfaceDecl) {
 /**
  * インターフェースから書類種別定義を抽出
  */
-function extractDocumentTypeInfo(interfaceDecl) {
+function extractDocumentTypeInfo(interfaceDecl: InterfaceDeclaration): ExtractedDocumentTypeInfo | null {
     const jsDocs = interfaceDecl.getJsDocs();
     if (jsDocs.length === 0) return null;
 
@@ -78,6 +97,7 @@ function extractDocumentTypeInfo(interfaceDecl) {
 
     for (const tag of tags) {
         const tagName = tag.getTagName();
+        // @ts-ignore
         const tagText = tag.getCommentText ? tag.getCommentText() : ""; // 異なるts-morphバージョンまたはフォールバックの処理
 
         if (tagName === "documentType") {
@@ -91,9 +111,10 @@ function extractDocumentTypeInfo(interfaceDecl) {
         return null;
     }
 
-    const responseIncludes = [];
+    const responseIncludes: string[] = [];
     interfaceDecl.getProperties().forEach(prop => {
-        const typeName = prop.getTypeNode() ? prop.getTypeNode().getText() : prop.getType().getText();
+        const typeNode = prop.getTypeNode();
+        const typeName = typeNode ? typeNode.getText() : prop.getType().getText();
         // 型名をDOC定数に直接マッピング
         // 命名規則を前提とする: TypeName -> TYPE_NAME_DOC
         const docConstant = typeName.replace(/([A-Z])/g, '_$1').toUpperCase().replace(/^_/, '') + "_DOC";
@@ -111,7 +132,7 @@ function extractDocumentTypeInfo(interfaceDecl) {
 /**
  * 型ドキュメント用のTypeScriptコードを生成（データ定義のみ）
  */
-function generateTypeDocCode(project, outputFilePath, interfaces, docTypes) {
+function generateTypeDocCode(project: Project, outputFilePath: string, interfaces: ExtractedInterfaceInfo[], docTypes: ExtractedDocumentTypeInfo[]) {
     // strict: true は既存の場合クリーンアップするか新規作成することを意味する
     // スクラッチから生成するため、メモリ上に新しいソースファイルを作成
     // 既存ファイルを変更する場合は addSourceFileAtPath を使用
@@ -160,7 +181,7 @@ function generateTypeDocCode(project, outputFilePath, interfaces, docTypes) {
 
         sourceFile.addVariableStatement({
             isExported: true,
-            declarationKind: "const", // Using string "const" for VariableDeclarationKind.Const
+            declarationKind: VariableDeclarationKind.Const,
             declarations: [{
                 name: constName,
                 type: "TypeDocumentation",
@@ -189,7 +210,7 @@ function generateTypeDocCode(project, outputFilePath, interfaces, docTypes) {
 
     sourceFile.addVariableStatement({
         isExported: true,
-        declarationKind: "const",
+        declarationKind: VariableDeclarationKind.Const,
         declarations: [{
             name: "DOCUMENT_TYPE_RESPONSES",
             type: "DocumentTypeResponse[]",
@@ -235,8 +256,8 @@ function main() {
     ];
 
     const project = new Project();
-    const allInterfaces = [];
-    const allDocTypes = [];
+    const allInterfaces: ExtractedInterfaceInfo[] = [];
+    const allDocTypes: ExtractedDocumentTypeInfo[] = [];
 
     // 通常のインターフェースを処理
     for (const config of interfaceConfig) {
@@ -253,7 +274,7 @@ function main() {
 
                 allInterfaces.push(info);
                 console.log(`  ✓ Parsed Interface ${interfaceName}: ${info.fields.length} fields`);
-            } catch (error) {
+            } catch (error: any) {
                 console.error(`\nError: Failed to parse interface '${interfaceName}' from ${config.sourceFile}`);
                 console.error(error.message);
                 process.exit(1);
@@ -280,7 +301,7 @@ function main() {
                 } else {
                     console.warn(`  ! Skipped DocumentType ${interfaceName}: Missing JSDoc tags`);
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error(`\nError: Failed to parse interface '${interfaceName}' from ${config.sourceFile}`);
                 console.error(error.message);
                 process.exit(1);

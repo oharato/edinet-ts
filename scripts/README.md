@@ -1,68 +1,49 @@
-# Type Documentation Generator
+# 開発用スクリプト
 
-This script automatically generates type documentation from TypeScript source files.
+`scripts` ディレクトリには、データ生成、テスト、データベース構築などのための各種ユーティリティスクリプトが含まれています。
 
-## How it works
+## 主要スクリプト
 
-The `generate-type-docs.js` script:
+### 1. 型ドキュメント自動生成 (`generate-type-docs.ts`)
 
-1. Parses TypeScript source files using the TypeScript Compiler API
-2. Extracts specified interface definitions
-3. Reads JSDoc comments (/** ... */) from each field
-4. Generates `src/utils/type-doc-generator.ts` with structured documentation
+TypeScriptのソースコードから型定義ドキュメントを自動生成します。CLIの `--help-types` で表示される情報はここから生成されます。
 
-Currently extracts from `src/edinet-xbrl-object.ts`:
-- `KeyMetrics` - 財務・業績の主要指標
-- `LargeShareholdingInfo` - 大量保有報告書の情報
-- `QualitativeInfo` - 定性的情報（テキスト）
+- **実行**: `npm run generate-type-docs` (またはビルド時に自動実行)
+- **入力**: `src/edinet-xbrl-object.ts`, `src/types/*.ts` など
+- **出力**: `src/utils/type-doc-defs.ts` (データ定義のみ)
+- **仕組み**: `ts-morph` を使用してインターフェース定義とJSDocコメントを解析し、プログラムで利用可能な定数定義に変換します。
 
-## Usage
+### 2. データベースの初期構築 (`seed.ts`)
 
-The script runs automatically during the build process:
+メタデータ検索用のローカルSQLiteデータベースを構築します。
 
-```bash
-npm run build
-```
+- **実行**: `npx tsx scripts/seed.ts`
+- **機能**: 過去5年分（または指定期間）の書類一覧APIを叩き、ローカルDBにメタデータを保存します。
 
-Or run it manually:
+### 3. タクソノミ生成 (`generate_types.ts`, `generate_types_jpcrp.ts`)
 
-```bash
-npm run generate-type-docs
-```
+EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を生成します。
 
-## Adding More Interfaces
+- **`generate_types.ts`**: 財務諸表本表 (`jppfs_cor`) 用
+- **`generate_types_jpcrp.ts`**: 企業内容等の開示に関する内閣府令 (`jpcrp_cor`) 用
 
-To add more interfaces to the documentation, edit `scripts/generate-type-docs.js`:
+## 調査・検証用スクリプト (`scripts/debug/`)
 
-1. Update the `interfaceConfig` array in the `main()` function
-2. Add the source file path and interface names
-3. Optionally add a Japanese description in `descriptionMap`
+開発中の動作検証や特定のデータの調査に使用するスクリプト群は `scripts/debug/` ディレクトリに配備されています。
 
-Example:
+- **`inspect_*.ts`**: 実際のEDINETデータを取得して内容を確認するためのスクリプト
+- **`verify_*.ts`**: 生成された指標やロジックの正当性を検証するスクリプト
 
-```javascript
-const interfaceConfig = [
-    {
-        sourceFile: path.join(__dirname, "..", "src", "edinet-xbrl-object.ts"),
-        interfaces: ["KeyMetrics", "LargeShareholdingInfo", "QualitativeInfo"]
-    },
-    {
-        sourceFile: path.join(__dirname, "..", "src", "your-file.ts"),
-        interfaces: ["YourInterface"]
-    }
-];
-```
+## メンテナンス手順
 
-## Maintenance
+### 新しいインターフェースをドキュメントに追加する場合
 
-When you update interface definitions in source files:
+1. `scripts/generate-type-docs.ts` を編集します。
+2. `interfaceConfig` または `documentTypeConfig` 配列に対象のファイルパスとインターフェース名を追加します。
+3. `npm run generate-type-docs` を実行して `src/utils/type-doc-defs.ts` を再生成します。
+4. CLIのヘルプコマンドを実行して、正しく表示されることを確認します。
 
-1. Update the JSDoc comments above each field
-2. Run `npm run generate-type-docs` to regenerate the documentation
-3. The CLI help (`--help-types`) will automatically show the updated information
+### 生成されるファイルについて
 
-## Generated File
-
-- **DO NOT** edit `src/utils/type-doc-generator.ts` manually
-- This file is auto-generated and will be overwritten
-- Source of truth is the TypeScript source files defined in `interfaceConfig`
+- **`src/utils/type-doc-defs.ts`**: 自動生成されます。**手動で編集しないでください。**
+- **`src/utils/type-doc-helpers.ts`**: ヘルパー関数群です。こちらは手動で管理される静的なファイルです。

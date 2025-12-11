@@ -9,7 +9,7 @@
     },
     "scripts": {
         "build": "npm run generate-type-docs && tsc",
-        "generate-type-docs": "node scripts/generate-type-docs.js",
+        "generate-type-docs": "npx tsx scripts/generate-type-docs.ts",
         "test": "vitest run"
     },
     "keywords": [
