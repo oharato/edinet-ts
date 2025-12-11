@@ -5,7 +5,7 @@ import { EdinetXbrlDownloader } from "./edinet-xbrl-downloader";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
-import { generateFullHelpMarkdown } from "./utils/type-doc-generator";
+import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
 import * as fs from "fs";
 import * as path from "path";
 

@@ -11,6 +11,7 @@ Pythonライブラリ [BuffettCode/edinet_xbrl](https://github.com/BuffettCode/e
 *   **主要指標の自動抽出**: 売上高、営業利益などを、連結/単体や期間を自動判定して `number` 型で取得できます。
 *   **ハイブリッド検索**: ローカルDB（SQLite）とAPIを組み合わせた高速な過去データ検索が可能です。
 *   **ZIP自動解凍**: ダウンロードした書類のZIP解凍とファイル特定を自動化します。
+*   **Human/AI Friendly**: `--help-types` で型定義とドキュメントを生成可能。開発者の参照用としてはもちろん、AIエージェントに仕様を理解させるためのコンテキストとしても最適です。
 
 ## インストール
 
@@ -180,6 +181,14 @@ npx edinet-ts get --type LargeShareholding --verbose
 | `operatingIncome` | 営業利益 | 財務数値 |
 | `netIncome` | 当期純利益 | 財務数値 |
 | `...` | その他財務指標 | `KeyMetrics` 参照 |
+
+#### 型定義とレスポンス形式の確認
+
+`--help-types` オプションを使用すると、各書類種別（有価証券報告書、大量保有報告書など）で返されるJSONの完全な型定義、キー名、日本語ラベルの一覧を確認できます。開発時のリファレンスとしてご活用ください。
+
+```bash
+npx edinet-ts get --help-types
+```
 
 ### 2. `download`: 一括ダウンロード
 特定の日付や銘柄の書類をダウンロードします。
