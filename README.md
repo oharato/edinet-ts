@@ -78,7 +78,16 @@ import { EdinetInfoSeeder } from "edinet-ts";
 const seeder = new EdinetInfoSeeder({
   apiKey: process.env.EDINET_API_KEY,
   dbPath: "./data/edinet.db",
-  // onProgress: (current, total) => { ... }
+  
+  // 差分更新（Incremental Update）
+  // 既にDBにメタデータが存在する日付の処理をスキップします（デフォルト: false）
+  skipExisting: true,
+
+  // 進捗状況のコールバック
+  // status: "skipped" | "processed" | "error"
+  onProgress: (current, total, date, status) => {
+    console.log(`${date}: ${status} (${current}/${total})`);
+  }
 });
 
 await seeder.run();

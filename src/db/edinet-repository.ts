@@ -99,6 +99,12 @@ export class EdinetRepository {
         insertMany(docs);
     }
 
+    public hasMetadataForDate(dateStr: string): boolean {
+        const stmt = this.db.prepare("SELECT 1 FROM documents WHERE submit_date = ? LIMIT 1");
+        const result = stmt.get(dateStr);
+        return !!result;
+    }
+
     public findDocuments(criteria: DocumentSearchCriteria): EdinetMetadata[] {
         let query = `
             SELECT 

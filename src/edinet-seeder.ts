@@ -2,6 +2,8 @@ import { EdinetXbrlDownloader } from "./edinet-xbrl-downloader";
 import { EdinetRepository } from "./db/edinet-repository";
 import dayjs from "dayjs";
 
+export type SeedingStatus = "skipped" | "processed" | "error";
+
 export interface EdinetInfoSeederOptions {
     /** API Key for EDINET API */
     apiKey?: string;
@@ -12,9 +14,11 @@ export interface EdinetInfoSeederOptions {
     /** End date for seeding. Default: Today */
     end?: string | Date | dayjs.Dayjs;
     /** Call back on progress increment */
-    onProgress?: (processed: number, total: number) => void;
+    onProgress?: (processed: number, total: number, date: string, status: SeedingStatus) => void;
     /** Callback on error */
     onError?: (error: unknown, dateStr: string) => void;
+    /** Skip seeding if data for the date already exists in DB */
+    skipExisting?: boolean;
 }
 
 export class EdinetInfoSeeder {
@@ -46,21 +50,27 @@ export class EdinetInfoSeeder {
 
         while (current.isBefore(end) || current.isSame(end, "day")) {
             const dateStr = current.format("YYYY-MM-DD");
+            let status: SeedingStatus = "processed";
 
-            try {
-                const docs = await downloader.search(dateStr);
-                if (docs.length > 0) {
-                    repo.insertBatch(docs, dateStr);
-                }
-            } catch (e) {
-                if (this.options.onError) {
-                    this.options.onError(e, dateStr);
+            if (this.options.skipExisting && repo.hasMetadataForDate(dateStr)) {
+                status = "skipped";
+            } else {
+                try {
+                    const docs = await downloader.search(dateStr);
+                    if (docs.length > 0) {
+                        repo.insertBatch(docs, dateStr);
+                    }
+                } catch (e) {
+                    status = "error";
+                    if (this.options.onError) {
+                        this.options.onError(e, dateStr);
+                    }
                 }
             }
 
             processed++;
             if (this.options.onProgress) {
-                this.options.onProgress(processed, totalDays);
+                this.options.onProgress(processed, totalDays, dateStr, status);
             }
 
             current = current.add(1, "day");
