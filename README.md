@@ -69,6 +69,21 @@ const tobDocs: EdinetMetadata[] = await edinet.findDocumentsByType(EdinetDocumen
 npx tsx scripts/seed.ts
 ```
 
+#### ライブラリ経由での実行 (Programmatic Seeding)
+他のアプリケーションやスクリプトからSeeding機能を呼び出すことも可能です。
+
+```typescript
+import { EdinetInfoSeeder } from "edinet-ts";
+
+const seeder = new EdinetInfoSeeder({
+  apiKey: process.env.EDINET_API_KEY,
+  dbPath: "./data/edinet.db",
+  // onProgress: (current, total) => { ... }
+});
+
+await seeder.run();
+```
+
 ---
 
 ### 3. 書類単体のダウンロード (Downloader)
