@@ -169,6 +169,39 @@ if (info.holdingRatio) {
 }
 ```
 
+#### dataMap への直接アクセス
+
+パースされた全てのXBRLデータには、`dataMap` プロパティを通じて直接アクセスすることも可能です。
+`dataMap` は `ReadonlyMap<string, readonly EdinetData[]>` 型で、XBRL内の全要素がキー（タグ名）とデータのペアで格納されています。
+
+```typescript
+import { EdinetXbrlParser } from "edinet-ts";
+import * as fs from "fs";
+
+const xml = fs.readFileSync(xbrlPath, "utf-8");
+const parser = new EdinetXbrlParser();
+const data = parser.parse(xml);
+
+// dataMap のサイズを確認
+console.log(`パースされたキー数: ${data.dataMap.size}`);
+
+// 特定のキーからデータを取得
+const netSalesData = data.dataMap.get('jppfs_cor:NetSales');
+if (netSalesData && netSalesData.length > 0) {
+    console.log(`NetSales値: ${netSalesData[0].value}`);
+    console.log(`コンテキスト: ${netSalesData[0].contextRef}`);
+}
+
+// 全キーを列挙
+for (const [key, values] of data.dataMap) {
+    console.log(`${key}: ${values.length}個のエントリ`);
+}
+```
+
+> **注意**: `dataMap` は JavaScript の `Map` オブジェクトです。`Object.keys(data.dataMap)` は空配列を返すため、`data.dataMap.size` や `data.dataMap.keys()` を使用してください。
+> 
+> 通常のデータ取得には、`getDataList()`、`getDataByContextRef()`、`getKeyMetrics()` などの専用メソッドの使用を推奨します。これらのメソッドは型安全で、より使いやすいインターフェースを提供します。
+
 ## CLIツール (Command Line Interface)
 
 `edinet-ts` は、コードを書かずにターミナルから直接利用できるCLIツールを提供しています。

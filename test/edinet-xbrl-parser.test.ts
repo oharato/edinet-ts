@@ -142,4 +142,31 @@ describe("EdinetXbrlParser", () => {
         // 18636800 は別のコンテキストでしょうか？最新は 20176043 です。
         // 20176043 を入力して検証します。
     });
+
+    /**
+     * `dataMap` プロパティが公開されており、直接アクセスできることを確認します。
+     * これにより、ユーザーはパースされた全データに対する低レベルアクセスが可能になります。
+     */
+    it("exposes dataMap for direct access", () => {
+        const xbrlFile = path.join(TEST_DIR, "3031_raccoon.xbrl");
+        const xml = fs.readFileSync(xbrlFile, "utf-8");
+        const dataContainer = parser.parse(xml);
+
+        // dataMap should be accessible and be a Map
+        expect(dataContainer.dataMap).toBeDefined();
+        expect(dataContainer.dataMap instanceof Map).toBe(true);
+
+        // Should have data
+        expect(dataContainer.dataMap.size).toBeGreaterThan(0);
+
+        // Should be able to access NetSales data via dataMap
+        const netSalesData = dataContainer.dataMap.get(NETSALES_KEY);
+        expect(netSalesData).toBeDefined();
+        expect(Array.isArray(netSalesData)).toBe(true);
+        expect(netSalesData!.length).toBeGreaterThan(0);
+
+        // Should match getDataList result
+        const netSalesViaMethod = dataContainer.getDataList(NETSALES_KEY);
+        expect(netSalesData).toEqual(netSalesViaMethod);
+    });
 });
