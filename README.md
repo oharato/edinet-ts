@@ -156,6 +156,44 @@ console.log(`営業利益: ${metrics.operatingIncome}`);
 | `financingCashFlow` | 財務CF |
 | (その他多数: EPS, BPS, ROE, 配当など) | |
 
+#### 定性的情報の取得 (`QualitativeInfo`)
+
+財務数値だけでなく、事業リスクや経営分析などのテキスト情報も抽出できます。
+
+```typescript
+import { EdinetXbrlParser, QualitativeInfo } from "edinet-ts";
+
+const parser = new EdinetXbrlParser();
+const data = parser.parse(xml);
+
+const qualInfo: QualitativeInfo = data.getQualitativeInfo();
+console.log(`事業等のリスク: ${qualInfo.businessRisks}`);
+console.log(`経営者による分析: ${qualInfo.financialAnalysis}`);
+console.log(`研究開発活動: ${qualInfo.researchAndDevelopment}`);
+```
+
+**取得可能なテキスト情報:**
+- `businessPolicy`: 事業の方針、事業環境及び対処すべき課題
+- `businessRisks`: 事業等のリスク
+- `financialAnalysis`: 経営者による財政状態、経営成績及びキャッシュ・フローの状況の分析
+- `businessDescription`: 事業の内容
+- `companyHistory`: 沿革
+- `researchAndDevelopment`: 研究開発活動
+
+**四半期報告書・半期報告書への対応:**
+パーサーは、有価証券報告書（年次）だけでなく、四半期報告書（docTypeCode: 140）や半期報告書（docTypeCode: 160）にも対応しています。これらの報告書では文書固有の名前空間（例: `jpcrp040300-q2r_*`）が使用されることがありますが、パーサーは自動的に名前空間を識別して正しくデータを抽出します。
+
+```typescript
+// 四半期報告書の例
+const docId = 'S100WE54'; // 四半期報告書
+const xbrlText = await downloader.fetchXbrl(docId);
+const parsed = parser.parse(xbrlText);
+
+// 四半期報告書でも同じAPIで取得可能
+const qualInfo = parsed.getQualitativeInfo();
+const metrics = parsed.getKeyMetrics();
+```
+
 ### 6. 詳細なデータアクセス (Advanced)
 
 `getJppfsCor()` (財務諸表) や `getLargeShareholdingInfo()` (大量保有) などを使用して、より詳細なデータにアクセスできます。
