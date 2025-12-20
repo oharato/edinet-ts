@@ -9,12 +9,19 @@ import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
 import * as fs from "fs";
 import * as path from "path";
 
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// Read version from package.json
+const packageJsonPath = path.join(__dirname, ". .", "package.json");
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+
 const program = new Command();
 
 program
     .name("edinet-ts")
     .description("EDINET XBRLファイルをダウンロードおよび解析するためのCLI")
-    .version("0.0.1");
+    .version(packageJson.version);
 
 const DOCUMENT_TYPE_MAP: Record<string, EdinetDocumentType | EdinetDocumentType[]> = {
     // Aliases
