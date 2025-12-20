@@ -61,6 +61,10 @@ export function decodeHtmlEntities(text: string): string {
  * Removes HTML tags from a string.
  * This is a simple regex-based approach suitable for cleaning XBRL text blocks.
  * 
+ * IMPORTANT: This function is for EXTRACTING text content from HTML, not for sanitizing
+ * untrusted input for HTML rendering. The output is plain text and should not be
+ * rendered as HTML. For HTML sanitization, use a dedicated library like DOMPurify.
+ * 
  * @param text - Text containing HTML tags
  * @returns Text with HTML tags removed
  */
@@ -69,6 +73,7 @@ export function stripHtmlTags(text: string): string {
 
     // Remove HTML tags
     // This regex matches opening tags, closing tags, and self-closing tags
+    // Note: This is safe for text extraction, but NOT for HTML sanitization
     let cleaned = text.replace(/<[^>]*>/g, '');
 
     // Clean up multiple consecutive spaces
