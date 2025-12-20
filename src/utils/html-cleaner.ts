@@ -15,29 +15,31 @@
 export function decodeHtmlEntities(text: string): string {
     if (!text) return text;
 
-    // Map of common HTML entities to their characters
-    const entities: Record<string, string> = {
-        '&lt;': '<',
-        '&gt;': '>',
-        '&amp;': '&',
-        '&quot;': '"',
-        '&apos;': "'",
-        '&#39;': "'",
-        '&#x27;': "'",
-        '&nbsp;': ' ',
-    };
-
-    // Replace named entities
     let decoded = text;
-    for (const [entity, char] of Object.entries(entities)) {
-        decoded = decoded.replace(new RegExp(entity, 'g'), char);
+
+    // First pass: Decode &amp; to & (this handles double-encoded entities like &amp;apos;)
+    decoded = decoded.replace(/&amp;/g, '&');
+
+    // Second pass: Decode other named entities (now &amp;apos; has become &apos; and will be decoded to ')
+    const entities: [RegExp, string][] = [
+        [/&lt;/g, '<'],
+        [/&gt;/g, '>'],
+        [/&quot;/g, '"'],
+        [/&apos;/g, "'"],
+        [/&#39;/g, "'"],
+        [/&#x27;/gi, "'"],
+        [/&nbsp;/g, ' '],
+    ];
+
+    for (const [pattern, char] of entities) {
+        decoded = decoded.replace(pattern, char);
     }
 
-    // Replace numeric HTML entities (&#xxx; and &#xHH;)
+    // Third pass: Replace numeric HTML entities (&#xxx; and &#xHH;)
     decoded = decoded.replace(/&#(\d+);/g, (match, dec) => {
         return String.fromCharCode(parseInt(dec, 10));
     });
-    decoded = decoded.replace(/&#x([0-9A-Fa-f]+);/g, (match, hex) => {
+    decoded = decoded.replace(/&#x([0-9A-Fa-f]+);/gi, (match, hex) => {
         return String.fromCharCode(parseInt(hex, 16));
     });
 
