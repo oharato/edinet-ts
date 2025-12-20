@@ -36,11 +36,22 @@ export function decodeHtmlEntities(text: string): string {
     }
 
     // Third pass: Replace numeric HTML entities (&#xxx; and &#xHH;)
+    // Add bounds checking to ensure character codes are within valid Unicode range
     decoded = decoded.replace(/&#(\d+);/g, (match, dec) => {
-        return String.fromCharCode(parseInt(dec, 10));
+        const code = parseInt(dec, 10);
+        // Valid Unicode range is 0x0 to 0x10FFFF
+        if (code >= 0 && code <= 0x10FFFF) {
+            return String.fromCharCode(code);
+        }
+        return match; // Return original if out of range
     });
     decoded = decoded.replace(/&#x([0-9A-Fa-f]+);/gi, (match, hex) => {
-        return String.fromCharCode(parseInt(hex, 16));
+        const code = parseInt(hex, 16);
+        // Valid Unicode range is 0x0 to 0x10FFFF
+        if (code >= 0 && code <= 0x10FFFF) {
+            return String.fromCharCode(code);
+        }
+        return match; // Return original if out of range
     });
 
     return decoded;
