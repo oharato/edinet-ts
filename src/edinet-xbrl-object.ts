@@ -91,7 +91,8 @@ export class EdinetXbrlObject {
         const results: EdinetData[] = [];
         for (const [key, dataList] of this._dataMap) {
             // キーから名前空間を除去してタグ名を抽出
-            const keyTagName = key.includes(":") ? key.split(":")[1] : key;
+            // lastIndexOf を使用して、複数のコロンを含むキーにも対応
+            const keyTagName = key.includes(":") ? key.substring(key.lastIndexOf(":") + 1) : key;
             if (keyTagName === tagName) {
                 results.push(...dataList);
             }
@@ -300,10 +301,13 @@ export class EdinetXbrlObject {
         const getString = (tagNames: string[]): string | undefined => {
             for (const tagName of tagNames) {
                 // まず完全なキー（jpcrp_cor:タグ名）で検索
+                // これにより標準名前空間が優先されます
                 const fullKey = `jpcrp_cor:${tagName}`;
                 let dataList = this.getDataList(fullKey);
                 
                 // 見つからない場合は、名前空間に依存しない検索（四半期・半期報告書対応）
+                // 複数の名前空間でマッチする場合は最初のものを返しますが、
+                // 通常、同じタグ名は同じ意味を持つため問題ありません
                 if (dataList.length === 0) {
                     dataList = this.getDataListByTagName(tagName);
                 }
