@@ -79,6 +79,28 @@ export class EdinetXbrlObject {
     }
 
     /**
+     * 名前空間に依存せず、タグ名で検索してデータリストを取得します。
+     * 例: "BusinessRisksTextBlock" で検索すると、
+     * "jpcrp_cor:BusinessRisksTextBlock" または "jpcrp040300-q2r_E39268-000:BusinessRisksTextBlock"
+     * などのキーに一致します。
+     * 
+     * @param tagName タグ名（名前空間なし）
+     * @returns マッチするすべてのデータの配列
+     */
+    public getDataListByTagName(tagName: string): EdinetData[] {
+        const results: EdinetData[] = [];
+        for (const [key, dataList] of this._dataMap) {
+            // キーから名前空間を除去してタグ名を抽出
+            // lastIndexOf を使用して、複数のコロンを含むキーにも対応
+            const keyTagName = key.includes(":") ? key.substring(key.lastIndexOf(":") + 1) : key;
+            if (keyTagName === tagName) {
+                results.push(...dataList);
+            }
+        }
+        return results;
+    }
+
+    /**
      * 指定されたキーとコンテキストIDに対応するデータを取得します。
      */
     public getDataByContextRef(key: string, contextRef: string): EdinetData | null {
@@ -276,12 +298,22 @@ export class EdinetXbrlObject {
         // 書類全体で一意であることが多いため、ここではコンテキストを厳密に指定せず、
         // 存在するデータの中から最初に見つかった妥当な値を返します。
 
-        const getString = (keys: string[]): string | undefined => {
-            for (const key of keys) {
-                const dataList = this.getDataList(key);
+        const getString = (tagNames: string[]): string | undefined => {
+            for (const tagName of tagNames) {
+                // まず完全なキー（jpcrp_cor:タグ名）で検索
+                // これにより標準名前空間が優先されます
+                const fullKey = `jpcrp_cor:${tagName}`;
+                let dataList = this.getDataList(fullKey);
+                
+                // 見つからない場合は、名前空間に依存しない検索（四半期・半期報告書対応）
+                // 複数の名前空間でマッチする場合は最初のものを返しますが、
+                // 通常、同じタグ名は同じ意味を持つため問題ありません
+                if (dataList.length === 0) {
+                    dataList = this.getDataListByTagName(tagName);
+                }
+                
                 if (dataList.length > 0) {
                     // データが見つかれば、最初のものの値を返す
-                    // 必要であればコンテキストによるフィルタリングを追加可能
                     return dataList[0].value;
                 }
             }
@@ -289,12 +321,12 @@ export class EdinetXbrlObject {
         }
 
         return {
-            businessPolicy: getString(["jpcrp_cor:BusinessPolicyBusinessEnvironmentIssuesToAddressEtcTextBlock", "jpcrp_cor:DescriptionOfBusinessPolicyEnvironmentAndIssuesToAddressTextBlock"]),
-            businessRisks: getString(["jpcrp_cor:BusinessRisksTextBlock"]),
-            financialAnalysis: getString(["jpcrp_cor:AnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", "jpcrp_cor:ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock"]),
-            businessDescription: getString(["jpcrp_cor:DescriptionOfBusinessTextBlock"]),
-            companyHistory: getString(["jpcrp_cor:CompanyHistoryTextBlock"]),
-            researchAndDevelopment: getString(["jpcrp_cor:ResearchAndDevelopmentActivitiesTextBlock"])
+            businessPolicy: getString(["BusinessPolicyBusinessEnvironmentIssuesToAddressEtcTextBlock", "DescriptionOfBusinessPolicyEnvironmentAndIssuesToAddressTextBlock"]),
+            businessRisks: getString(["BusinessRisksTextBlock"]),
+            financialAnalysis: getString(["AnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock"]),
+            businessDescription: getString(["DescriptionOfBusinessTextBlock"]),
+            companyHistory: getString(["CompanyHistoryTextBlock"]),
+            researchAndDevelopment: getString(["ResearchAndDevelopmentActivitiesTextBlock"])
         };
     }
 
@@ -329,9 +361,19 @@ export class EdinetXbrlObject {
                 // namespace prefix "jppfs_cor:" を付与して検索
                 const key = `jppfs_cor:${prop}`;
 
+                // まず標準の名前空間で検索
                 for (const context of contexts) {
-                    // getDataByContextRef itself is fast (Map lookup)
                     const data = _this.getDataByContextRef(key, context.id);
+                    if (data && data.value) {
+                        const parsed = parseFloat(data.value);
+                        return isNaN(parsed) ? data.value : parsed;
+                    }
+                }
+                
+                // 標準の名前空間で見つからない場合のみ、名前空間に依存しない検索（四半期・半期報告書対応）
+                for (const context of contexts) {
+                    const dataList = _this.getDataListByTagName(prop);
+                    const data = dataList.find(d => d.contextRef === context.id);
                     if (data && data.value) {
                         const parsed = parseFloat(data.value);
                         return isNaN(parsed) ? data.value : parsed;
@@ -366,25 +408,21 @@ export class EdinetXbrlObject {
                 // namespace prefix "jpcrp_cor:" を付与して検索
                 const key = `jpcrp_cor:${prop}`;
 
+                // まず標準の名前空間で検索
                 for (const context of contexts) {
                     const data = _this.getDataByContextRef(key, context.id);
                     if (data && data.value) {
-                        // 数値型の場合はパースを試みるが、jpcrpはテキストも多いため、
-                        // タクソノミ定義(TS型)に合わせてキャストされることを期待する。
-                        // ここでは生の値を返しつつ、数値変換可能なものは数値として扱うのが理想だが、
-                        // TSの型定義上は string | number の判別が難しい (実行時にはすべて string で来る)
-
-                        // 簡易的な判定: 数字のみで構成される場合は数値に変換？
-                        // いや、電話番号や郵便番号の可能性もある。
-                        // 安全のため、parseFloatしてNaNでなければ数値、そうでなければ文字列とする。
-                        // ただし、TSの型定義と矛盾しないように注意が必要。
-                        // JpcrpCorTaxonomyの型定義は generate_types_jpcrp.ts で生成されており、
-                        // Monetary/Shares等は number、それ以外は string となっている。
-
                         const parsed = parseFloat(data.value);
-                        // 単純な数値変換だと "0123" が 123 (number) になってしまう問題があるか？
-                        // EDINETの数値データは通常フォーマット済みではない (カンマなし)。
-                        // テキストブロックなどはNaNになるのでstringで返る。
+                        return isNaN(parsed) ? data.value : parsed;
+                    }
+                }
+                
+                // 標準の名前空間で見つからない場合のみ、名前空間に依存しない検索（四半期・半期報告書対応）
+                for (const context of contexts) {
+                    const dataList = _this.getDataListByTagName(prop);
+                    const data = dataList.find(d => d.contextRef === context.id);
+                    if (data && data.value) {
+                        const parsed = parseFloat(data.value);
                         return isNaN(parsed) ? data.value : parsed;
                     }
                 }
