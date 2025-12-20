@@ -85,4 +85,3 @@ fs.writeFileSync(
 );
 
 console.log('✓ Created dist/package.json with "type": "module"');
-
