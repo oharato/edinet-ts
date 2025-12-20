@@ -44,14 +44,14 @@ export class EdinetData {
 }
 
 export class EdinetXbrlObject {
-    private dataMap: Map<string, EdinetData[]> = new Map();
+    private _dataMap: Map<string, EdinetData[]> = new Map();
     private contextMap: Map<string, EdinetContext> = new Map();
 
     /**
      * 保持しているデータを全てクリアします。
      */
     public clear(): void {
-        this.dataMap.clear();
+        this._dataMap.clear();
         this.contextMap.clear();
     }
 
@@ -66,16 +66,16 @@ export class EdinetXbrlObject {
      * 指定されたキーのデータを追加します。同じキーに複数のデータ（期間違いなど）が存在し得ます。
      */
     public put(key: string, edinetData: EdinetData): void {
-        const existing = this.dataMap.get(key) || [];
+        const existing = this._dataMap.get(key) || [];
         existing.push(edinetData);
-        this.dataMap.set(key, existing);
+        this._dataMap.set(key, existing);
     }
 
     /**
      * 指定されたキーに関連するすべてのデータリストを取得します。
      */
     public getDataList(key: string): EdinetData[] {
-        return this.dataMap.get(key) || [];
+        return this._dataMap.get(key) || [];
     }
 
     /**
@@ -87,11 +87,20 @@ export class EdinetXbrlObject {
     }
 
     public getKeys(): string[] {
-        return Array.from(this.dataMap.keys());
+        return Array.from(this._dataMap.keys());
     }
 
     public hasKey(key: string): boolean {
-        return this.dataMap.has(key);
+        return this._dataMap.has(key);
+    }
+
+    /**
+     * 内部データマップへの読み取り専用アクセスを提供します。
+     * XBRLファイルからパースされた全てのデータ要素を含むMapを返します。
+     * @returns キー（タグ名）から EdinetData の配列へのマッピング
+     */
+    public get dataMap(): ReadonlyMap<string, readonly EdinetData[]> {
+        return this._dataMap;
     }
 
     /**
