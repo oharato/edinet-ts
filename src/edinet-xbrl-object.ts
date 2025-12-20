@@ -97,6 +97,11 @@ export class EdinetXbrlObject {
     /**
      * 内部データマップへの読み取り専用アクセスを提供します。
      * XBRLファイルからパースされた全てのデータ要素を含むMapを返します。
+     * 
+     * 注意: このプロパティは下位互換性のために公開されていますが、
+     * データの取得には getDataList(), getDataByContextRef(), getKeyMetrics() などの
+     * 専用メソッドの使用を推奨します。
+     * 
      * @returns キー（タグ名）から EdinetData の配列へのマッピング
      */
     public get dataMap(): ReadonlyMap<string, readonly EdinetData[]> {
