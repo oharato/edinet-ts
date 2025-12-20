@@ -15,8 +15,9 @@
         "edinet-ts": "dist/cli.js"
     },
     "scripts": {
-        "build": "npm run generate-type-docs && tsc",
+        "build": "npm run generate-type-docs && tsc && npm run add-js-extensions",
         "generate-type-docs": "npx tsx scripts/generate-type-docs.ts",
+        "add-js-extensions": "node scripts/add-js-extensions.js",
         "test": "vitest run"
     },
     "keywords": [
