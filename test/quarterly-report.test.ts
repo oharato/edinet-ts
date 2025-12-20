@@ -96,4 +96,41 @@ describe("EdinetXbrlParser - Quarterly Reports", () => {
         expect(qualInfo.researchAndDevelopment).toBeDefined();
         expect(qualInfo.researchAndDevelopment).toContain("R&D activities");
     });
+
+    /**
+     * Test that typed proxy also works with document-specific namespaces.
+     * This verifies that getJpcrpCor() can retrieve text blocks from quarterly reports.
+     */
+    it("accesses quarterly report data via typed proxy", () => {
+        const quarterlyXbrl = `<?xml version="1.0" encoding="UTF-8"?>
+<xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance"
+    xmlns:jpcrp040300-q2r_E39268-000="http://disclosure.edinet-fsa.go.jp/jpcrp040300/q2r/001/E39268-000/2024-06-30/01/2024-08-09"
+    xmlns:jpcrp_cor="http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2023-12-01/jpcrp_cor">
+    
+    <xbrli:context id="FilingDateInstant">
+        <xbrli:entity>
+            <xbrli:identifier scheme="http://disclosure.edinet-fsa.go.jp">E39268-000</xbrli:identifier>
+        </xbrli:entity>
+        <xbrli:period>
+            <xbrli:instant>2024-08-09</xbrli:instant>
+        </xbrli:period>
+    </xbrli:context>
+    
+    <jpcrp040300-q2r_E39268-000:CorporateGovernanceTextBlock contextRef="FilingDateInstant">
+        Corporate governance information from quarterly report.
+    </jpcrp040300-q2r_E39268-000:CorporateGovernanceTextBlock>
+</xbrli:xbrl>`;
+
+        const parsed = parser.parse(quarterlyXbrl);
+        
+        // Test namespace-agnostic method
+        const dataList = parsed.getDataListByTagName("CorporateGovernanceTextBlock");
+        expect(dataList.length).toBeGreaterThan(0);
+        expect(dataList[0].value).toContain("Corporate governance");
+        
+        // Test typed proxy - should now also work with fallback mechanism
+        const jpcrpCor = parsed.getJpcrpCor();
+        expect(jpcrpCor.CorporateGovernanceTextBlock).toBeDefined();
+        expect(jpcrpCor.CorporateGovernanceTextBlock).toContain("Corporate governance");
+    });
 });
