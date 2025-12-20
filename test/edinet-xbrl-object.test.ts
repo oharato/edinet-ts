@@ -157,5 +157,29 @@ describe("EdinetXbrlObject", () => {
             const info = xbrlObject.getQualitativeInfo();
             expect(info.businessPolicy).toBe("Policy B");
         });
+
+        /**
+         * HTMLタグとエスケープされたHTML実体が除去されることを確認します。
+         */
+        it("removes HTML tags and entities from qualitative text", () => {
+            // Escaped HTML entities like in real EDINET data
+            const htmlText = '&lt;p style="page-break-before:always;"&gt; &lt;/p&gt;&lt;h3 class="smt_head2"&gt;３ 【事業等のリスク】&lt;/h3&gt;&lt;p class="smt_text2"&gt;当社の事業内容、経営成績及び財政状態等に関するリスク要因について&lt;/p&gt;';
+            
+            xbrlObject.put("jpcrp_cor:BusinessRisksTextBlock", new EdinetData("jpcrp_cor:BusinessRisksTextBlock", htmlText, 0, "", "ctx1"));
+
+            const info = xbrlObject.getQualitativeInfo();
+            
+            // Should contain the text content
+            expect(info.businessRisks).toContain('３ 【事業等のリスク】');
+            expect(info.businessRisks).toContain('当社の事業内容、経営成績及び財政状態等に関するリスク要因について');
+            
+            // Should not contain HTML tags or entities
+            expect(info.businessRisks).not.toContain('<');
+            expect(info.businessRisks).not.toContain('>');
+            expect(info.businessRisks).not.toContain('&lt;');
+            expect(info.businessRisks).not.toContain('&gt;');
+            expect(info.businessRisks).not.toContain('style=');
+            expect(info.businessRisks).not.toContain('class=');
+        });
     });
 });

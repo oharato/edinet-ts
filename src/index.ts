@@ -8,3 +8,4 @@ export * from "./edinet-xbrl-downloader";
 export * from "./types/jpcrp_cor_taxonomy";
 export * from "./types/jppfs_cor_taxonomy";
 export * from "./edinet-seeder";
+export * from "./utils/html-cleaner";

@@ -159,6 +159,7 @@ console.log(`営業利益: ${metrics.operatingIncome}`);
 #### 定性的情報の取得 (`QualitativeInfo`)
 
 財務数値だけでなく、事業リスクや経営分析などのテキスト情報も抽出できます。
+**HTMLタグとエスケープされたHTML実体参照は自動的に除去され、クリーンなテキストとして取得できます。**
 
 ```typescript
 import { EdinetXbrlParser, QualitativeInfo } from "edinet-ts";
@@ -179,6 +180,8 @@ console.log(`研究開発活動: ${qualInfo.researchAndDevelopment}`);
 - `businessDescription`: 事業の内容
 - `companyHistory`: 沿革
 - `researchAndDevelopment`: 研究開発活動
+
+> **注:** EDINET XBRLファイルに含まれるHTMLタグ（`&lt;p&gt;`、`&lt;h3&gt;` など）やHTML実体参照（`&amp;apos;`、`&nbsp;` など）は自動的にデコード・除去されます。これにより、テキスト解析やAI処理に適したクリーンなテキストデータを取得できます。
 
 **四半期報告書・半期報告書への対応:**
 パーサーは、有価証券報告書（年次）だけでなく、四半期報告書（docTypeCode: 140）や半期報告書（docTypeCode: 160）にも対応しています。これらの報告書では文書固有の名前空間（例: `jpcrp040300-q2r_*`）が使用されることがありますが、パーサーは自動的に名前空間を識別して正しくデータを抽出します。

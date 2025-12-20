@@ -1,6 +1,7 @@
 import { EdinetDataUtil } from "./edinet-data-util";
 import { EdinetContext } from "./edinet-context";
 import { JppfsCorTaxonomy } from "./types/jppfs_cor_taxonomy";
+import { cleanHtml } from "./utils/html-cleaner";
 
 /**
  * 共通メタデータ
@@ -291,7 +292,7 @@ export class EdinetXbrlObject {
     /**
      * 定性的なテキスト情報を抽出します。
      * （例：事業等のリスク、経営者による分析など）
-     * テキストにはHTMLタグが含まれる場合があります。
+     * HTMLタグとエスケープされたHTML実体は自動的に除去されます。
      */
     public getQualitativeInfo(): QualitativeInfo {
         // テキスト情報は通常、FilingDateInstant などの特定のコンテキストに紐付いていますが、
@@ -313,8 +314,8 @@ export class EdinetXbrlObject {
                 }
                 
                 if (dataList.length > 0) {
-                    // データが見つかれば、最初のものの値を返す
-                    return dataList[0].value;
+                    // データが見つかれば、最初のものの値を返す（HTMLタグを除去）
+                    return cleanHtml(dataList[0].value);
                 }
             }
             return undefined;
