@@ -167,8 +167,8 @@ import { EdinetXbrlParser, QualitativeInfo } from "edinet-ts";
 const parser = new EdinetXbrlParser();
 const data = parser.parse(xml);
 
-const qualInfo: QualitativeInfo = data.getQualitativeInfo();
-console.log(`事業等のリスク: ${qualInfo.businessRisks}`);
+const qualInfo: QualitativeInfo = data.getQualitativeInfo(); // HTMLタグが自動除去される
+console.log(`事業等のリスク: ${qualInfo.businessRisks}`); // クリーンなテキスト
 console.log(`経営者による分析: ${qualInfo.financialAnalysis}`);
 console.log(`研究開発活動: ${qualInfo.researchAndDevelopment}`);
 ```
@@ -242,6 +242,21 @@ for (const [key, values] of data.dataMap) {
 > **注意**: `dataMap` は JavaScript の `Map` オブジェクトです。`Object.keys(data.dataMap)` は空配列を返すため、`data.dataMap.size` や `data.dataMap.keys()` を使用してください。
 > 
 > 通常のデータ取得には、`getDataList()`、`getDataByContextRef()`、`getKeyMetrics()` などの専用メソッドの使用を推奨します。これらのメソッドは型安全で、より使いやすいインターフェースを提供します。
+
+#### フォールバック処理 (Fallback Strategy)
+
+四半期報告書や半期報告書など、一部の書類では標準的な名前空間（`jpcrp_cor`など）が使用されず、独自の拡張名前空間が使用される場合があります。
+`getQualitativeInfo()` などは内部で自動的にフォールバック処理を行いますが、手動で特定のタグを取得したい場合は `getDataListByTagName()` を使用してください。
+
+```typescript
+// 名前空間を無視してタグ名のみで検索
+// 例: "jpcrp040300-q2r_...:BusinessRisksTextBlock" のような独自タグもヒットします
+const risks = data.getDataListByTagName("BusinessRisksTextBlock");
+
+if (risks.length > 0) {
+    console.log(risks[0].value); // 生のHTMLが含まれる場合があります
+}
+```
 
 ## CLIツール (Command Line Interface)
 

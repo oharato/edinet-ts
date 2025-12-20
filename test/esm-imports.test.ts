@@ -174,5 +174,5 @@ describe("ESM Import Resolution", () => {
                 `Failed to import built package: ${error instanceof Error ? error.message : String(error)}`
             );
         }
-    });
+    }, 10000); // Increase timeout to 10s for slow environments (e.g. WSL /mnt)
 });
