@@ -2,7 +2,6 @@
     "name": "edinet-ts",
     "version": "1.1.9",
     "description": "TypeScript port of edinet_xbrl for parsing EDINET XBRL files",
-    "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "exports": {

@@ -34,34 +34,22 @@ function addJsExtensions(filePath) {
     let content = fs.readFileSync(filePath, 'utf8');
     let modified = false;
     
-    // Pattern to match import/export statements with relative paths without extensions
-    // Matches: from "./path" or from "./path/file"
-    // Doesn't match: from "./path.js" or from "package-name"
-    const patterns = [
-        // export * from "./path" or export { } from "./path"
-        /from\s+['"](\.\.?\/[^'"]+)(['"])/g,
-        // import ... from "./path"
-        /import\s+.*\s+from\s+['"](\.\.?\/[^'"]+)(['"])/g,
-        // import("./path") - dynamic imports in type declarations
-        /import\s*\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g,
-    ];
+    // Handle dynamic imports import("./path") separately for clarity
+    content = content.replace(/import\s*\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g, (match, importPath) => {
+        if (importPath.endsWith('.js') || importPath.endsWith('.json')) {
+            return match;
+        }
+        modified = true;
+        return match.replace(importPath, importPath + '.js');
+    });
     
-    patterns.forEach(pattern => {
-        content = content.replace(pattern, (match, importPath, quote) => {
-            // Skip if already has .js or .json extension
-            if (importPath.endsWith('.js') || importPath.endsWith('.json')) {
-                return match;
-            }
-            
-            modified = true;
-            
-            // For dynamic imports import("./path"), quote is not captured separately
-            if (match.startsWith('import(')) {
-                return match.replace(importPath, importPath + '.js');
-            }
-            
-            return match.replace(importPath + quote, importPath + '.js' + quote);
-        });
+    // Handle regular import/export statements with from clause
+    content = content.replace(/from\s+['"](\.\.?\/[^'"]+)['"]/g, (match, importPath) => {
+        if (importPath.endsWith('.js') || importPath.endsWith('.json')) {
+            return match;
+        }
+        modified = true;
+        return match.replace(importPath, importPath + '.js');
     });
     
     if (modified) {
@@ -84,3 +72,17 @@ const files = findJsFiles(distDir);
 files.forEach(addJsExtensions);
 
 console.log(`\n✓ Processed ${files.length} files`);
+
+// Create package.json in dist to mark it as ESM
+const distPackageJson = {
+    type: 'module'
+};
+
+fs.writeFileSync(
+    path.join(distDir, 'package.json'),
+    JSON.stringify(distPackageJson, null, 2) + '\n',
+    'utf8'
+);
+
+console.log('✓ Created dist/package.json with "type": "module"');
+
