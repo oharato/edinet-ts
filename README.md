@@ -180,8 +180,39 @@ console.log(`研究開発活動: ${qualInfo.researchAndDevelopment}`);
 - `businessDescription`: 事業の内容
 - `companyHistory`: 沿革
 - `researchAndDevelopment`: 研究開発活動
+- `corporateGovernance`: コーポレート・ガバナンスの状況等
+- `operationsOverview`: 業績等の概要
+- `capitalResourcesAnalysis`: 資本の財源及び資金の流動性
+- `criticalContracts`: 経営上の重要な契約等
+- `employeesInformation`: 従業員の状況
 
 > **注:** EDINET XBRLファイルに含まれるHTMLタグ（`&lt;p&gt;`、`&lt;h3&gt;` など）やHTML実体参照（`&amp;apos;`、`&nbsp;` など）は自動的にデコード・除去されます。これにより、テキスト解析やAI処理に適したクリーンなテキストデータを取得できます。
+
+#### 共通メタデータの取得 (`CommonMetadata`)
+
+書類の基本的なメタデータ（提出者名、提出日など）を取得できます。
+
+```typescript
+const metadata = data.getCommonMetadata();
+console.log(`提出者: ${metadata.filerName}`);
+console.log(`書類名: ${metadata.docDescription}`);
+console.log(`提出日: ${metadata.submitDate}`);
+```
+
+> **Note**: `docID` (書類管理ID) はXBRLファイルの内容自体には含まれていないため、このメソッドからは空文字が返されます。`docID` が必要な場合は、ファイル名やAPIレスポンスから取得してください。
+
+#### 大株主情報の取得 (`ShareholderInfo`)
+
+有価証券報告書に含まれる大株主の状況を構造化データとして取得できます。
+
+```typescript
+const shareholders = data.getMajorShareholders();
+shareholders.forEach(s => {
+    console.log(`株主名: ${s.name}`);
+    console.log(`持株数: ${s.numberOfShares}`);
+    console.log(`比率: ${s.ownershipRatio}%`);
+});
+```
 
 **四半期報告書・半期報告書への対応:**
 パーサーは、有価証券報告書（年次）だけでなく、四半期報告書（docTypeCode: 140）や半期報告書（docTypeCode: 160）にも対応しています。これらの報告書では文書固有の名前空間（例: `jpcrp040300-q2r_*`）が使用されることがありますが、パーサーは自動的に名前空間を識別して正しくデータを抽出します。

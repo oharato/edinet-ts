@@ -21,11 +21,12 @@ export class EdinetXbrlParser {
     /**
      * XML文字列をパースして `EdinetXbrlObject` を返します。
      * @param xmlContent XBRLファイルのテキスト内容
+     * @param docID 書類管理ID (オプション)。指定すると `getCommonMetadata().docID` に反映されます。
      * @returns パース済みのオブジェクト
      */
-    public parse(xmlContent: string): EdinetXbrlObject {
+    public parse(xmlContent: string, docID: string = ""): EdinetXbrlObject {
         const parsed = this.parser.parse(xmlContent);
-        const xbrlObject = new EdinetXbrlObject();
+        const xbrlObject = new EdinetXbrlObject(docID);
 
         // 1. 最初にコンテキストを解析
         this.parseContexts(parsed, xbrlObject);

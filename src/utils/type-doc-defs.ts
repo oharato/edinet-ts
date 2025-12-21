@@ -70,7 +70,12 @@ export const QUALITATIVE_INFO_DOC: TypeDocumentation = {
             { key: "financialAnalysis", japaneseLabel: "経営者による財政状態、経営成績及びキャッシュ・フローの状況の分析", type: "string (optional)" },
             { key: "businessDescription", japaneseLabel: "事業の内容", type: "string (optional)" },
             { key: "companyHistory", japaneseLabel: "沿革", type: "string (optional)" },
-            { key: "researchAndDevelopment", japaneseLabel: "研究開発活動", type: "string (optional)" }
+            { key: "researchAndDevelopment", japaneseLabel: "研究開発活動", type: "string (optional)" },
+            { key: "corporateGovernance", japaneseLabel: "コーポレート・ガバナンスの状況等", type: "string (optional)" },
+            { key: "operationsOverview", japaneseLabel: "業績等の概要", type: "string (optional)" },
+            { key: "capitalResourcesAnalysis", japaneseLabel: "資本の財源及び資金の流動性", type: "string (optional)" },
+            { key: "criticalContracts", japaneseLabel: "経営上の重要な契約等", type: "string (optional)" },
+            { key: "employeesInformation", japaneseLabel: "従業員の状況", type: "string (optional)" }
         ]
     };
 export const JPPFS_COR_TAXONOMY_DOC: TypeDocumentation = {

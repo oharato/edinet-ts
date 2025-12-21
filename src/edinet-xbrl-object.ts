@@ -47,6 +47,11 @@ export class EdinetData {
 export class EdinetXbrlObject {
     private _dataMap: Map<string, EdinetData[]> = new Map();
     private contextMap: Map<string, EdinetContext> = new Map();
+    private _docID: string;
+
+    constructor(docID: string = "") {
+        this._docID = docID;
+    }
 
     /**
      * 保持しているデータを全てクリアします。
@@ -54,6 +59,7 @@ export class EdinetXbrlObject {
     public clear(): void {
         this._dataMap.clear();
         this.contextMap.clear();
+        this._docID = "";
     }
 
     /**
@@ -327,7 +333,12 @@ export class EdinetXbrlObject {
             financialAnalysis: getString(["AnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock"]),
             businessDescription: getString(["DescriptionOfBusinessTextBlock"]),
             companyHistory: getString(["CompanyHistoryTextBlock"]),
-            researchAndDevelopment: getString(["ResearchAndDevelopmentActivitiesTextBlock"])
+            researchAndDevelopment: getString(["ResearchAndDevelopmentActivitiesTextBlock"]),
+            corporateGovernance: getString(["ExplanationAboutCorporateGovernanceTextBlock", "CorporateGovernanceTextBlock"]),
+            operationsOverview: getString(["OverviewOfBusinessResultsTextBlock", "OverviewOfResultsOfOperationsEtcTextBlock"]),
+            capitalResourcesAnalysis: getString(["CapitalResourcesAndLiquidityAnalysisTextBlock"]),
+            criticalContracts: getString(["CriticalContractsForOperationTextBlock"]),
+            employeesInformation: getString(["InformationAboutEmployeesTextBlock", "EmployeesInformationTextBlock"])
         };
     }
 
@@ -458,6 +469,54 @@ export class EdinetXbrlObject {
             // For now, leaving it undefined as it requires counting members or finding specific tag
         };
     }
+
+    /**
+     * 書類の共通メタデータを取得します。
+     * docIDはパーサー経由で渡された場合のみ値が入ります。
+     */
+    public getCommonMetadata(): CommonMetadata {
+        const getVal = (key: string): string | undefined => {
+            const list = this.getDataList(key);
+            return list.length > 0 ? list[0].value : undefined;
+        };
+
+        return {
+            docID: this._docID,
+            filerName: getVal("jpdei_cor:FilerNameInJapaneseDEI") || "",
+            edinetCode: getVal("jpdei_cor:EDINETCodeDEI") || "",
+            docDescription: getVal("jpcrp_cor:DocumentTitleCoverPage") || "",
+            submitDate: getVal("jpdei_cor:FilingDateCoverPage") || getVal("jpcrp_cor:FilingDateCoverPage") || ""
+        };
+    }
+
+    /**
+     * 大株主の状況を取得します。
+     * 構造化されたデータとして返します。
+     */
+    public getMajorShareholders(): ShareholderInfo[] {
+        const shareholders: ShareholderInfo[] = [];
+        
+        // MajorShareholdersMember を含むコンテキストを検索
+        const contexts = Array.from(this.contextMap.values()).filter(c => 
+            c.dimensions.some(d => d.endsWith("MajorShareholdersMember"))
+        );
+
+        for (const context of contexts) {
+            const name = this.getDataByContextRef("jpcrp_cor:NameMajorShareholders", context.id)?.value;
+            if (!name) continue;
+
+            const numberOfSharesStr = this.getDataByContextRef("jpcrp_cor:NumberOfSharesHeld", context.id)?.value;
+            const ownershipRatioStr = this.getDataByContextRef("jpcrp_cor:ShareholdingRatio", context.id)?.value;
+
+            shareholders.push({
+                name: name,
+                numberOfShares: numberOfSharesStr ? parseFloat(numberOfSharesStr) : undefined,
+                ownershipRatio: ownershipRatioStr ? parseFloat(ownershipRatioStr) : undefined
+            });
+        }
+
+        return shareholders;
+    }
 }
 
 /**
@@ -540,6 +599,28 @@ export interface QualitativeInfo {
     companyHistory?: string;
     /** 研究開発活動 */
     researchAndDevelopment?: string;
+    /** コーポレート・ガバナンスの状況等 */
+    corporateGovernance?: string;
+    /** 業績等の概要 */
+    operationsOverview?: string;
+    /** 資本の財源及び資金の流動性 */
+    capitalResourcesAnalysis?: string;
+    /** 経営上の重要な契約等 */
+    criticalContracts?: string;
+    /** 従業員の状況 */
+    employeesInformation?: string;
+}
+
+/**
+ * 株主情報
+ */
+export interface ShareholderInfo {
+    /** 氏名又は名称 */
+    name: string;
+    /** 所有株式数 */
+    numberOfShares?: number;
+    /** 持株比率 (%) */
+    ownershipRatio?: number;
 }
 
 /**
