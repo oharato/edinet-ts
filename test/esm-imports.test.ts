@@ -12,7 +12,7 @@ describe("ESM Import Resolution", () => {
             console.log("Building project for ESM tests...");
             execSync("npm run build", { cwd: path.resolve(__dirname, "..") });
         }
-    });
+    }, 30000);
 
     /**
      * Recursively find all .js and .d.ts files in dist directory
