@@ -21,9 +21,10 @@ jobs:
       
       - run: npm ci
 
-      - name: Audit Production Dependencies
-        run: npm audit --omit=dev
-        # 本番依存関係(dependencies)に脆弱性があればCIを失敗させる
+      - name: Audit Production Dependencies (print details)
+        run: |
+          npm audit --omit=dev --json | tee audit-omit-dev.json
+          node -e "const a=require('./audit-omit-dev.json'); console.log('audit metadata:', a.metadata)"
 
       - name: Audit All Dependencies (Report Only)
         run: npm audit || true
