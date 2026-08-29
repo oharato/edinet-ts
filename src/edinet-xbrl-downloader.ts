@@ -8,7 +8,7 @@ export interface EdinetDocument {
     docID: string;
     docDescription: string;
     docTypeCode: string;
-    docInfoEditStatus: number;
+    docInfoEditStatus: string;
     filerName?: string;
     edinetCode?: string;
     submitDateTime?: string;
@@ -417,7 +417,7 @@ export class EdinetXbrlDownloader {
                 // クライアント側で無駄なループを回すよりは良いでしょう。
                 // 日付ごとにAPIコールが発生するため、長期間の遡及は時間がかかります。
                 const docs = await this.search(dateStr, type);
-                const match = docs.find(doc => doc.secCode === secCode && doc.docInfoEditStatus === 0);
+                const match = docs.find(doc => doc.secCode === secCode && doc.docInfoEditStatus === "0");
 
                 if (match) {
                     return match;
@@ -454,11 +454,11 @@ export class EdinetXbrlDownloader {
         const docs = await this.search(date);
 
         // secCodeは通常、証券コード+0（例: 72030）となります
-        // 指定された書類種別 (docTypeCode) かつ、訂正報告書等ではなくオリジナルの書類（docInfoEditStatus === 0）を優先します
+        // 指定された書類種別 (docTypeCode) かつ、訂正報告書等ではなくオリジナルの書類（docInfoEditStatus === "0"）を優先します
         const targetDoc = docs.find(
             (d) => {
                 const matchType = Array.isArray(type) ? type.includes(d.docTypeCode as EdinetDocumentType) : d.docTypeCode === type;
-                return d.secCode === ticker + "0" && matchType && d.docInfoEditStatus === 0;
+                return d.secCode === ticker + "0" && matchType && d.docInfoEditStatus === "0";
             }
         );
 
