@@ -1,0 +1,26 @@
+name: Version Check
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure package.json version is bumped
+        run: |
+          BASE_VERSION=$(git show origin/${{ github.base_ref }}:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf-8')).version")
+          HEAD_VERSION=$(node -p "require('./package.json').version")
+
+          echo "base (${{ github.base_ref }}): $BASE_VERSION"
+          echo "head (this PR):     $HEAD_VERSION"
+
+          if [ "$BASE_VERSION" = "$HEAD_VERSION" ]; then
+            echo "::error::package.json の version が ${{ github.base_ref }} と同じです ($HEAD_VERSION)。auto-release.yml がタグ重複でリリースをスキップするため、'npm version patch|minor|major' 等で version を上げてください。"
+            exit 1
+          fi
