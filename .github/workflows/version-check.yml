@@ -12,7 +12,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check if release-relevant files changed
+        id: diff
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- src/ bin/ package.json)
+          if [ -z "$CHANGED" ]; then
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            echo "Changed files:"
+            echo "$CHANGED"
+          fi
+
       - name: Ensure package.json version is bumped
+        if: steps.diff.outputs.relevant == 'true'
         run: |
           BASE_VERSION=$(git show origin/${{ github.base_ref }}:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf-8')).version")
           HEAD_VERSION=$(node -p "require('./package.json').version")
@@ -21,6 +34,6 @@ jobs:
           echo "head (this PR):     $HEAD_VERSION"
 
           if [ "$BASE_VERSION" = "$HEAD_VERSION" ]; then
-            echo "::error::package.json の version が ${{ github.base_ref }} と同じです ($HEAD_VERSION)。auto-release.yml がタグ重複でリリースをスキップするため、'npm version patch|minor|major' 等で version を上げてください。"
+            echo "::error::src/ や package.json に変更がありますが version が ${{ github.base_ref }} と同じです ($HEAD_VERSION)。auto-release.yml がタグ重複でリリースをスキップするため、'npm version patch|minor|major' 等で version を上げてください。"
             exit 1
           fi
