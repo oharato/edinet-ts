@@ -4,23 +4,25 @@ import { EdinetDocumentType } from "./edinet-document-type";
 import { RateLimiter } from "./utils/rate-limiter";
 
 export interface EdinetDocument {
-    secCode: string;
+    secCode: string | null;
     docID: string;
-    docDescription: string;
-    docTypeCode: string;
+    docDescription: string | null;
+    docTypeCode: string | null;
+    /** API の文字列区分を数値 0 / 1 / 2 に正規化します。 */
     docInfoEditStatus: number;
-    filerName?: string;
-    edinetCode?: string;
-    submitDateTime?: string;
-    date?: string; // API v2: metadata.date but individual results have submitDateTime usually? 
-    // actually results have 'submitDateTime'
+    filerName?: string | null;
+    edinetCode?: string | null;
+    submitDateTime?: string | null;
+    date?: string | null;
     [key: string]: unknown;
 }
 
 export interface EdinetListResponse {
     metadata: {
         title: string;
-        date: string;
+        processDateTime: string;
+        status: string;
+        message: string;
         parameter: {
             date: string;
             type: string;
@@ -30,6 +32,78 @@ export interface EdinetListResponse {
         };
     };
     results: EdinetDocument[];
+}
+
+/** 配列や null を通常の JSON オブジェクトとして扱わないための境界チェック。 */
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * 書類一覧の利用に必要な項目を検証します。壊れた応答を「提出書類なし」に変換しません。
+ * 区分だけを正規化し、null・未知の追加項目を含む元の書類情報は保持します。
+ */
+function parseDocumentList(data: unknown): EdinetDocument[] {
+    if (!isRecord(data)) {
+        throw new Error("Invalid EDINET documents response: expected an object");
+    }
+
+    // API ゲートウェイのエラー形式と、EDINET 本体の metadata.status を両方確認します。
+    if (data.statusCode !== undefined && data.statusCode !== 200 && data.statusCode !== "200") {
+        throw new Error(`API Error: ${String(data.statusCode)} - ${typeof data.message === "string" ? data.message : "Unknown error"}`);
+    }
+    const metadata = data.metadata;
+    if (!isRecord(metadata) || (typeof metadata.status !== "string" && typeof metadata.status !== "number")) {
+        throw new Error("Invalid EDINET documents response: missing metadata.status");
+    }
+    if (metadata.status !== "200" && metadata.status !== 200) {
+        throw new Error(`API Error: ${String(metadata.status)} - ${typeof metadata.message === "string" ? metadata.message : "Unknown error"}`);
+    }
+    if (!Array.isArray(data.results)) {
+        throw new Error("Invalid EDINET documents response: results must be an array");
+    }
+    const resultset = metadata.resultset;
+    if (!isRecord(resultset) || !Number.isInteger(resultset.count) || resultset.count !== data.results.length) {
+        throw new Error("Invalid EDINET documents response: resultset.count must match results.length");
+    }
+
+    return data.results.map((value: unknown, index: number): EdinetDocument => {
+        const invalid = (field: string): never => {
+            throw new Error(`Invalid EDINET document at results[${index}]: ${field}`);
+        };
+        if (!isRecord(value)) return invalid("expected an object");
+        if (typeof value.docID !== "string" || value.docID.trim() === "") return invalid("docID");
+
+        // 非上場提出者や取下げ済み書類等では null が正しい値です。
+        const nullableString = (field: string): string | null => {
+            const v = value[field];
+            if (typeof v !== "string" && v !== null) return invalid(field);
+            return v;
+        };
+        const secCode = nullableString("secCode");
+        const docTypeCode = nullableString("docTypeCode");
+        const docDescription = nullableString("docDescription");
+        const optionalString = (field: string): string | null | undefined =>
+            value[field] === undefined ? undefined : nullableString(field);
+
+        const status = value.docInfoEditStatus;
+        // Number(null)、空文字、真偽値などが誤って 0 になる広い型変換は行いません。
+        if (status !== "0" && status !== "1" && status !== "2" && status !== 0 && status !== 1 && status !== 2) {
+            return invalid("docInfoEditStatus must be 0, 1 or 2 (string or number)");
+        }
+        return {
+            ...value,
+            docID: value.docID,
+            secCode,
+            docTypeCode,
+            docDescription,
+            docInfoEditStatus: Number(status),
+            filerName: optionalString("filerName"),
+            edinetCode: optionalString("edinetCode"),
+            submitDateTime: optionalString("submitDateTime"),
+            date: optionalString("date")
+        };
+    });
 }
 
 export interface EdinetClientOptions {
@@ -131,12 +205,8 @@ export class EdinetXbrlDownloader {
             throw new Error(`Failed to fetch documents list: ${response.statusText}`);
         }
 
-        const data = (await response.json()) as any;
-        if (data.statusCode && data.statusCode !== 200) {
-            throw new Error(`API Error: ${data.statusCode} - ${data.message}`);
-        }
-
-        const results = (data as EdinetListResponse).results || [];
+        const data: unknown = await response.json();
+        const results = parseDocumentList(data);
 
         if (typeFilter) {
             if (Array.isArray(typeFilter)) {
@@ -454,7 +524,8 @@ export class EdinetXbrlDownloader {
         const docs = await this.search(date);
 
         // secCodeは通常、証券コード+0（例: 72030）となります
-        // 指定された書類種別 (docTypeCode) かつ、訂正報告書等ではなくオリジナルの書類（docInfoEditStatus === 0）を優先します
+        // 指定された書類種別かつ、書類情報修正区分が 0 の書類を選びます。
+        // docInfoEditStatus は訂正報告書の区分ではありません。選択条件自体は従来どおりです。
         const targetDoc = docs.find(
             (d) => {
                 const matchType = Array.isArray(type) ? type.includes(d.docTypeCode as EdinetDocumentType) : d.docTypeCode === type;
