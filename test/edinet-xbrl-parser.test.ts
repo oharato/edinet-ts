@@ -113,7 +113,19 @@ describe("EdinetXbrlParser", () => {
         const yahoo = parser.parse(xmlYahoo);
         const ym = yahoo.getKeyMetrics();
         expect(ym.netSales).toBe(853730000000); // IFRS 連結収益
-        expect(ym.operatingIncome).toBe(185012000000);
+        // 同梱fixtureでは既存の期待値185,012,000,000は単体の営業利益です。
+        // 連結の企業拡張タグは現在の標準タグ候補に含まれないため、単体値で補いません。
+        expect(yahoo.getDataByContextRef("jppfs_cor:OperatingIncome", CURRENT_YEAR_DURATION_NON_CON_CONTEXT)?.value)
+            .toBe("185012000000");
+        expect(yahoo.getDataByContextRef("jppfs_cor:OperatingIncome", CURRENT_YEAR_DURATION_CONTEXT)).toBeNull();
+        expect(yahoo.getDataByContextRef("jpcrp_cor:OperatingIncomeIFRSSummaryOfBusinessResults", CURRENT_YEAR_DURATION_CONTEXT))
+            .toBeNull();
+        expect(yahoo.getDataListByTagName("OperatingIncomeIFRSSummaryOfBusinessResults")
+            .find(d => d.contextRef === CURRENT_YEAR_DURATION_CONTEXT)?.value).toBe("192049000000");
+        expect(ym.operatingIncome).toBeUndefined();
+        expect(yahoo.getDataByContextRef("jppfs_cor:OrdinaryIncome", CURRENT_YEAR_DURATION_NON_CON_CONTEXT)?.value)
+            .toBe("187449000000");
+        expect(ym.ordinaryIncome).toBeUndefined();
         expect(ym.netAssets).toBe(930820000000); // IFRS 連結資本
 
         // 新しい指標のチェック (debug/grep から導出)
