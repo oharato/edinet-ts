@@ -63,6 +63,14 @@ describe("Integration Test - New Real Data", () => {
         // 負の値であるか、存在するかを確認
         expect(metrics.netIncome).toBeDefined();
 
+        // 同梱fixtureの単体利益を、連結指標の欠落時に混入させないことを確認します。
+        expect(data.getDataByContextRef("jppfs_cor:OperatingIncome", "CurrentYearDuration_NonConsolidatedMember")?.value)
+            .toBe("-42808000000");
+        expect(data.getDataByContextRef("jppfs_cor:OrdinaryIncome", "CurrentYearDuration_NonConsolidatedMember")?.value)
+            .toBe("-1161224000000");
+        expect(metrics.operatingIncome).toBeUndefined();
+        expect(metrics.ordinaryIncome).toBeUndefined();
+
         // 定性情報
         const qual = data.getQualitativeInfo();
         expect(qual.businessRisks).toBeDefined();

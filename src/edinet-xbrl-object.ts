@@ -142,9 +142,8 @@ export class EdinetXbrlObject {
    * コンテキスト（連結/単体、期間）を自動的に解析し、最適なデータを検索します。
    */
     public getKeyMetrics(): KeyMetrics {
-        // 戦略: まず連結(Consolidated)を探し、なければ単体(NonConsolidated)を探します。
-        // 日付が新しい順にソートされた全コンテキストを使用します。
-        // これにより、最新のコンテキスト（提出日など）にデータがなく、その次（当期）にある場合でも取得できます。
+        // 金額・CFは連結/単体の探索範囲を先に確定し、タグの欠落を理由に範囲を変えません。
+        // 1株当たり・株式数・配当・比率は互換性のため従来の連結→単体探索を維持します。
 
         // 過去年度のデータを誤って取得しないよう、最新の日付から半年以内のデータに限定します。
         const filterRecent = (ctxs: EdinetContext[]) => {
@@ -162,24 +161,34 @@ export class EdinetXbrlObject {
             });
         }
 
-        const durationContexts = [
-            ...filterRecent(this.findContexts({ type: "Duration", scope: "Consolidated" })),
-            ...filterRecent(this.findContexts({ type: "Duration", scope: "NonConsolidated" })),
-            // レガシー/ハードコードされたIDへのフォールバック
-            { id: "CurrentYearDuration", period: {}, scope: "Consolidated" } as EdinetContext,
-            { id: "CurrentYearDuration_NonConsolidatedMember", period: {}, scope: "NonConsolidated" } as EdinetContext
-        ];
+        const getContextIds = (type: "Duration" | "Instant") => {
+            const groups = [
+                this.findContexts({ type, scope: "Consolidated" }),
+                this.findContexts({ type, scope: "NonConsolidated" })
+            ];
+            const legacyIds = [`CurrentYear${type}`, `CurrentYear${type}_NonConsolidatedMember`];
+            const flat = [...groups.flatMap(group => filterRecent(group).map(c => c.id)), ...legacyIds];
 
-        const instantContexts = [
-            ...filterRecent(this.findContexts({ type: "Instant", scope: "Consolidated" })),
-            ...filterRecent(this.findContexts({ type: "Instant", scope: "NonConsolidated" })),
-            // レガシー/ハードコードされたIDへのフォールバック
-            { id: "CurrentYearInstant", period: {}, scope: "Consolidated" } as EdinetContext,
-            { id: "CurrentYearInstant_NonConsolidatedMember", period: {}, scope: "NonConsolidated" } as EdinetContext
-        ];
+            // 提出日メタデータだけで、単体のみの企業を連結ありと判定しないようにします。
+            // この除外は主要指標の金額・CFに限定し、findContexts 自体の仕様は変えません。
+            const group = groups
+                .map(contexts => contexts.filter(c => type !== "Instant" || c.id !== "FilingDateInstant"))
+                .find(contexts => contexts.length > 0);
+            if (group) {
+                // 期間フィルタで空になっても、単体や固定IDへ探索をやり直しません。
+                return { scoped: filterRecent(group).map(c => c.id), flat };
+            }
 
-        const durationIds = durationContexts.map(c => c.id);
-        const instantIds = instantContexts.map(c => c.id);
+            // 定義なしで put() された従来形式をサポートします。既知の定義が次元・期間の
+            // 条件で除外された場合は固定IDで復活させず、未定義IDの実データだけを使います。
+            // 対象タグの有無ではなく、何らかのデータが存在する最初の範囲に固定します。
+            const legacyId = legacyIds.find(id => !this.contextMap.has(id) &&
+                Array.from(this._dataMap.values()).some(data => data.some(d => d.contextRef === id)));
+            return { scoped: legacyId ? [legacyId] : [], flat };
+        };
+
+        const { scoped: durationIds, flat: durationIdsFlat } = getContextIds("Duration");
+        const { scoped: instantIds, flat: instantIdsFlat } = getContextIds("Instant");
 
         return {
             netSales: this.getNumberValue(["jppfs_cor:NetSales", "jpcrp_cor:NetSales", "jpcrp_cor:RevenueIFRSSummaryOfBusinessResults"], durationIds),
@@ -195,19 +204,19 @@ export class EdinetXbrlObject {
             financingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInFinancingActivities", "jpcrp_cor:NetCashProvidedByUsedInFinancingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInFinancingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
             cashAndEquivalents: this.getNumberValue(["jppfs_cor:CashAndCashEquivalents", "jppfs_cor:CashAndCashEquivalentsEndOfPeriod", "jpcrp_cor:CashAndCashEquivalentsIFRSSummaryOfBusinessResults"], instantIds),
 
-            // Per Share
-            earningsPerShare: this.getNumberValue(["jppfs_cor:BasicEarningsLossPerShare", "jpcrp_cor:BasicEarningsLossPerShareSummaryOfBusinessResults", "jpcrp_cor:BasicEarningsLossPerShareIFRSSummaryOfBusinessResults"], durationIds),
-            bookValuePerShare: this.getNumberValue(["jppfs_cor:NetAssetsPerShare", "jpcrp_cor:NetAssetsPerShareSummaryOfBusinessResults", "jpcrp_cor:EquityAttributableToOwnersOfParentPerShareIFRSSummaryOfBusinessResults"], instantIds),
+            // 1株当たり指標（以下は単体値も使う従来の互換探索）
+            earningsPerShare: this.getNumberValue(["jppfs_cor:BasicEarningsLossPerShare", "jpcrp_cor:BasicEarningsLossPerShareSummaryOfBusinessResults", "jpcrp_cor:BasicEarningsLossPerShareIFRSSummaryOfBusinessResults"], durationIdsFlat),
+            bookValuePerShare: this.getNumberValue(["jppfs_cor:NetAssetsPerShare", "jpcrp_cor:NetAssetsPerShareSummaryOfBusinessResults", "jpcrp_cor:EquityAttributableToOwnersOfParentPerShareIFRSSummaryOfBusinessResults"], instantIdsFlat),
 
-            // Ratios & Types
-            equityToTotalAssetsRatio: this.getNumberValue(["jpcrp_cor:EquityToAssetRatioSummaryOfBusinessResults", "jpcrp_cor:EquityToTotalAssetsRatioSummaryOfBusinessResults", "jppfs_cor:EquityToTotalAssetsRatio", "jpcrp_cor:RatioOfOwnersEquityToGrossAssetsIFRSSummaryOfBusinessResults"], instantIds),
-            rateOfReturnOnEquity: this.getNumberValue(["jpcrp_cor:RateOfReturnOnEquitySummaryOfBusinessResults", "jpcrp_cor:RateOfReturnOnEquityIFRSSummaryOfBusinessResults", "jppfs_cor:RateOfReturnOnEquity"], durationIds),
-            priceEarningsRatio: this.getNumberValue(["jpcrp_cor:PriceEarningsRatioSummaryOfBusinessResults", "jpcrp_cor:PriceEarningsRatioIFRSSummaryOfBusinessResults"], durationIds), // Less common in XBRL
-            payoutRatio: this.getNumberValue(["jpcrp_cor:PayoutRatioSummaryOfBusinessResults", "jpcrp_cor:PayoutRatioIFRSSummaryOfBusinessResults"], durationIds),
+            // 比率
+            equityToTotalAssetsRatio: this.getNumberValue(["jpcrp_cor:EquityToAssetRatioSummaryOfBusinessResults", "jpcrp_cor:EquityToTotalAssetsRatioSummaryOfBusinessResults", "jppfs_cor:EquityToTotalAssetsRatio", "jpcrp_cor:RatioOfOwnersEquityToGrossAssetsIFRSSummaryOfBusinessResults"], instantIdsFlat),
+            rateOfReturnOnEquity: this.getNumberValue(["jpcrp_cor:RateOfReturnOnEquitySummaryOfBusinessResults", "jpcrp_cor:RateOfReturnOnEquityIFRSSummaryOfBusinessResults", "jppfs_cor:RateOfReturnOnEquity"], durationIdsFlat),
+            priceEarningsRatio: this.getNumberValue(["jpcrp_cor:PriceEarningsRatioSummaryOfBusinessResults", "jpcrp_cor:PriceEarningsRatioIFRSSummaryOfBusinessResults"], durationIdsFlat), // Less common in XBRL
+            payoutRatio: this.getNumberValue(["jpcrp_cor:PayoutRatioSummaryOfBusinessResults", "jpcrp_cor:PayoutRatioIFRSSummaryOfBusinessResults"], durationIdsFlat),
 
-            // Shares
-            numberOfIssuedShares: this.getNumberValue(["jpcrp_cor:TotalNumberOfIssuedSharesSummaryOfBusinessResults", "jppfs_cor:TotalNumberOfIssuedShares"], instantIds),
-            dividendPaidPerShare: this.getNumberValue(["jpcrp_cor:DividendPaidPerShareSummaryOfBusinessResults"], durationIds)
+            // 株式数・配当
+            numberOfIssuedShares: this.getNumberValue(["jpcrp_cor:TotalNumberOfIssuedSharesSummaryOfBusinessResults", "jppfs_cor:TotalNumberOfIssuedShares"], instantIdsFlat),
+            dividendPaidPerShare: this.getNumberValue(["jpcrp_cor:DividendPaidPerShareSummaryOfBusinessResults"], durationIdsFlat)
         };
     }
 
