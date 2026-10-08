@@ -114,6 +114,8 @@ const xbrlPath: string | null = await downloader.downloadByTicker("7203", "./dow
 await downloader.downloadByTicker("7203", "./downloads", "2024-11-14", EdinetDocumentType.SemiAnnualReport);
 ```
 
+書類一覧の型・区分の正規化、不正応答の扱いと互換性は [書類一覧 API の応答境界](docs/DOCUMENT_LIST_VALIDATION.md) を参照してください。
+
 ### 4. ローカルキャッシュ (Local Caching)
 
 `Edinet` クラスおよび `EdinetXbrlDownloader` は、ダウンロードしたXBRLファイルをローカルに保存し、次回以降の実行時にキャッシュとして利用します。
