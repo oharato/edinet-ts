@@ -1,9 +1,12 @@
-name: Auto Release
+name: Manual Release
 
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (must match package.json, without v)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -12,6 +15,7 @@ permissions:
 
 jobs:
   release:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@v6
@@ -24,6 +28,12 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Confirm release version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          node -e 'const version = require("./package.json").version; if (process.env.RELEASE_VERSION !== version) { console.error("Requested version must exactly match package.json: " + version); process.exit(1); }'
+
       # npm documentation recommends updating to the latest version
       - name: Update npm
         run: npm install -g npm@latest
@@ -35,7 +45,7 @@ jobs:
       - name: Check if tag exists
         id: check_tag
         run: |
-          if git rev-parse "v${{ steps.pkg.outputs.version }}" >/dev/null 2>&1; then
+          if git show-ref --verify --quiet "refs/tags/v${{ steps.pkg.outputs.version }}"; then
             echo "Tag v${{ steps.pkg.outputs.version }} already exists. Skipping release."
             echo "exists=true" >> $GITHUB_OUTPUT
           else
