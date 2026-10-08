@@ -1,79 +1,36 @@
 # npmパブリッシュ運用の手順
 
-本ライブラリ `edinet-ts` を npm に公開（リリース）するための手順書です。
+本ライブラリ `edinet-ts` の公開は、GitHub Actions の **Manual Release** を明示的に実行したときだけ行います。`master` への push・PR の作成・マージ・バージョン変更だけでは公開されません。
 
 ## 前提条件
 
-*   npm アカウントを持っていること
-*   npm にログイン済みであること (`npm login`)
-*   メンテナー権限を持っていること
-*   **npm側で Trusted Publishing (GitHub Actions連携) の設定が完了していること**
+- このリポジトリで GitHub Actions を手動実行できる権限があること
+- npm 側で、このリポジトリの `.github/workflows/auto-release.yml` に対する Trusted Publishing の設定が完了していること
+- GitHub Packages への公開に必要な既存のリポジトリ設定が有効であること
 
-## 初期設定: Trusted Publishing (推奨)
+ワークフローのファイル名は Trusted Publishing の設定との互換性のため変更しません。npm は既存の OIDC、GitHub Packages は既存の `GITHUB_TOKEN` を使用します。
 
-npm の「2要素認証(2FA)を回避するリスク」警告を解消し、より安全に自動デプロイを行うための設定です。
+## 手動リリースの手順
 
-1.  [npm website](https://www.npmjs.com/) にログインします。
-2.  パッケージのページ (`edinet-ts`) または自分のプロフィールから「Access」または「Publishing Access」設定を開きます。
-3.  **"Connect a new account"** (または "GitHub Actions") を選択します。
-4.  このGitHubリポジトリ (`oharato/edinet-ts`) を接続します。
-5.  設定が完了すると、GitHub Actions からの公開リクエストが信頼され、`NPM_TOKEN` シークレットを使わずに安全に公開できるようになります。
+1. リリースする変更をレビューし、バージョン更新を PR に含めます。タグは作らず、ロックファイルも更新します。
 
-※ 従来通り `NPM_TOKEN` シークレットを使う場合は、Token生成時に "Automation" タイプを選べば2FAをバイパスできますが、npmからは推奨されていません。
+   ```bash
+   npm version patch --no-git-tag-version # 必要に応じて minor / major
+   git add package.json package-lock.json
+   ```
 
-## 自動化（実装済み）
+2. PR を `master` にマージし、公開対象コミットの **Test and Build** が成功していることを確認します。この段階では公開されません。
+3. `master` の `package.json` のバージョンと、対応する `v<version>` タグを確認します。タグが既にあれば、このワークフローは既存の公開処理をすべてスキップします。
+4. GitHub の **Actions → Manual Release → Run workflow** を開きます。
+   - Branch は **master** を選びます。他のブランチ・タグからの実行はジョブ全体がスキップされます。
+   - `version` に、公開する `package.json` のバージョンを **v を付けずに**入力します。完全一致しなければ、タグ作成・公開前に失敗します。
+   - 対象とバージョンを確認して **Run workflow** を実行します。この操作が公開の開始です。
+5. 実行結果と、GitHub Release・npm・GitHub Packages の各公開先を確認します。
 
-`package.json` のバージョン変更を検知して、自動的にタグ作成・リリース・npm公開を行うワークフローを設定しました。
+手動実行後は、従来と同じ順序で依存関係のインストール、テスト、ビルド、タグ作成、GitHub Release 作成、npm 公開、GitHub Packages 公開を行います。npm のパッケージ名は `edinet-ts`、GitHub Packages は `@oharato/edinet-ts` です。
 
-### 運用フロー
+## 失敗・再実行時の注意
 
-1.  ローカルで開発を行う。
-2.  リリース準備ができたら、`package.json` のバージョンを更新する（手動またはコマンド）。
-    ```bash
-    npm version patch # or minor, major
-    ```
-    ※ `git push` は自動生成されるタグと競合しないように注意してください。`npm version` はデフォルトでタグを作ってしまいますが、`npm version patch --no-git-tag-version` を使うか、あるいはタグを作ってもプッシュせずにバージョン変更コミットだけをプッシュすればOKです。
-    
-    **推奨手順**:
-    ```bash
-    # 1. バージョンだけ上げる（タグは作らない、または作ってもプッシュしない）
-    npm version patch --no-git-tag-version
-    
-    # 2. 変更をコミット
-    git add package.json
-    git commit -m "Bump version"
-    
-    # 3. masterへプッシュ
-    git push origin master
-    ```
-
-3.  GitHub Actions が自動的に以下を行います：
-    *   バージョン重複チェック（既にタグがあればスキップ）
-    *   Gitタグ (`v0.0.x`) の作成
-    *   ビルド & テスト
-    *   npm 公開
-    *   GitHub Release 作成（リリースノート自動生成）
-
-### 手動リリースの手順（フォールバック）
-
-自動化が失敗した場合などは、手動でリリースを行ってください。
-
-1.  テスト & ビルド:
-    ```bash
-    npm test
-    npm run build
-    ```
-2.  バージョン更新 & タグ付け:
-    ```bash
-    npm version patch
-    ```
-3.  npm 公開:
-    ```bash
-    npm publish
-    ```
-4.  Gitプッシュ:
-    ```bash
-    git push origin master --tags
-    ```
-
-
+- 同じバージョンの実行を重複して開始しないでください。
+- タグが作られた後に公開が失敗した場合、単純な再実行ではタグ重複チェックにより公開がスキップされます。まず各公開先の状態とログを確認し、未完了の公開だけを個別に判断してください。
+- 復旧のために既存タグや公開済みパッケージを削除したり、確認なしに再公開したりしないでください。
