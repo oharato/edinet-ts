@@ -383,3 +383,7 @@ You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 ```
+
+## nuc7 local artifacts
+
+See [local build, retention, validation and cutover](docs/nuc7-local-artifacts.md).
