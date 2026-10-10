@@ -61,3 +61,16 @@ when the wrapper script changes. Never replace a package in-place based only on 
 No local timer is added: this library only needs rebuilding when its reviewed source changes.
 The existing stock-data acquisition timer and GitHub schedule require a separate coordinated
 cutover, documented in stock-data; this library PR neither fetches data nor changes either.
+
+## Validation on nuc7 (2026-10-10)
+
+- Full fixed-source build and all 207 tests in 13 files passed.
+- All 40 package members matched the reviewed build. Initial archive hash rejection
+  exposed 0600 versus 0644 tar file modes caused by the private staging umask; the
+  builder now normalizes only packaged files inside the 0700 staging tree. The final
+  170,084-byte archive exactly matches the approved SHA-256 above.
+- The five publication safeguard tests pass. The initial sandbox attempt was blocked
+  executing esbuild; the normal host execution completed without data/API acquisition.
+- A local generation and `current` pointer were created under the example output path.
+  No remote publication, timer registration, installed-service change, or GitHub asset
+  deletion occurred. Full builds/tests remain local after the proposed CI change.

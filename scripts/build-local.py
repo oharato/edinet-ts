@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -40,7 +41,17 @@ with locked(root):
         run(['npm', 'ci', '--offline', '--no-audit', '--no-fund'], source, log)
         run(['npm', 'run', 'build'], source, log)
         run(['npm', 'test', '--', '--maxWorkers=1', '--testTimeout=60000'], source, log)
-        run(['npm', 'pack', '--ignore-scripts', '--pack-destination', str(stage)], source, log)
+        # Normalize package file modes to the reviewed archive. The containing
+        # output/staging directories remain 0700; no user checkout is modified.
+        for path in [source / 'LICENSE', source / 'README.md', source / 'package.json',
+                     *[p for p in (source / 'dist').rglob('*') if p.is_file()]]:
+            path.chmod(0o644)
+        previous_umask = os.umask(0o022)
+        try:
+            run(['npm', 'pack', '--ignore-scripts', '--pack-destination', str(stage)], source, log)
+        finally:
+            os.umask(previous_umask)
+
     packages = list(stage.glob('*.tgz'))
     if len(packages) != 1 or digest(packages[0]) != EXPECTED:
         raise RuntimeError('Fixed-SHA package hash mismatch; current unchanged')
