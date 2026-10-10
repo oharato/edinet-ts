@@ -1,4 +1,4 @@
-name: Test and Build
+name: Source checks
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-and-build:
+  source-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -28,7 +28,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Check types
         run: npx --no-install tsc --noEmit
-      - name: Build package
-        run: npm run build
-      - name: Run tests
-        run: npm test -- --maxWorkers=1
+      # ESM integration tests build dist; run the complete suite on nuc7 instead.
+      - name: Run source tests
+        run: npm test -- --maxWorkers=1 --exclude test/esm-imports.test.ts
+      - name: Test local artifact publication safeguards
+        run: python3 scripts/test_artifact_store.py
