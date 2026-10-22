@@ -10,7 +10,7 @@
 
 利用者は以下の環境を用意する必要があります。
 
-*   **Runtime**: Node.js (推奨 v18以上)
+*   **Runtime**: Node.js（開発環境はCIのruntime指定と依存パッケージのenginesに従ってください）
 *   **Language**: TypeScript / JavaScript
 *   **Network**: EDINET API (`api.edinet-fsa.go.jp`) へのHTTPSアクセスが可能であること
 *   **API Key**: EDINET API の利用には、金融庁への登録により発行される「サブスクリプションキー (API Key)」が必要です。
