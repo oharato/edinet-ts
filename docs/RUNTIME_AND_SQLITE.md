@@ -33,7 +33,7 @@
 
 [SheetJS公式導入資料](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/) はnpmの0.18.5を古い配布としているため、公式CDNの0.20.3へ固定し、lockfileのintegrityを記録する。ESMのfilesystemを明示設定する `scripts/utils/spreadsheet.ts` を生成スクリプトで共有する。合成workbookでsheet名・空行・列位置・文字列の保持を検証する。外部taxonomy全体の再取得・再生成は行わない。
 
-npm 12はregistry外URLと未許可install scriptを既定で制限する。`.npmrc`は直接宣言した公式URLだけを扱う`allow-remote=root`、package.jsonの`allowScripts`は開発ツールに必要なesbuildだけを許可する。全URL/全scriptを一括許可する設定にはしない。
+npm 12はregistry外URLと未許可install scriptを既定で制限する。`.npmrc`は直接宣言した公式URLだけを扱う`allow-remote=root`、package.jsonの`allowScripts`は開発ツールに必要なesbuildだけを許可する。全URL/全scriptを一括許可する設定にはしない。lockfileのregistry package取得先は公式registry.npmjs.orgに統一し、空cacheからのclean installでもintegrityを検証した。
 
 ## SQLite APIとDBの互換性
 
