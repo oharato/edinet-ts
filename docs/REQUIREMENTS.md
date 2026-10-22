@@ -10,7 +10,7 @@
 
 利用者は以下の環境を用意する必要があります。
 
-*   **Runtime**: Node.js (推奨 v18以上)
+*   **Runtime**: Node.js（開発環境はCIのruntime指定と依存パッケージのenginesに従ってください）
 *   **Language**: TypeScript / JavaScript
 *   **Network**: EDINET API (`api.edinet-fsa.go.jp`) へのHTTPSアクセスが可能であること
 *   **API Key**: EDINET API の利用には、金融庁への登録により発行される「サブスクリプションキー (API Key)」が必要です。
@@ -60,7 +60,7 @@ J-GAAP（日本基準）と IFRS（国際会計基準）の両方に対応して
 
 #### B. 定性情報の取得 (`getQualitativeInfo`)
 
-以下の定性情報（テキストブロック）を取得できます。各項目はHTMLタグを含む文字列として返されます。
+以下の定性情報（テキストブロック）を取得できます。各項目はHTMLタグとHTML実体を除去した文字列として返されます。
 
 | プロパティ名 | 日本語項目名 | 主な内容 |
 | :--- | :--- | :--- |
@@ -70,6 +70,11 @@ J-GAAP（日本基準）と IFRS（国際会計基準）の両方に対応して
 | `businessDescription` | 事業の内容 | 事業の系統図や内容の説明 |
 | `companyHistory` | 沿革 | 会社の沿革 |
 | `researchAndDevelopment`| 研究開発活動 | 研究開発の状況 |
+| `corporateGovernance` | ガバナンス | 統治の状況 |
+| `operationsOverview` | 業績概要 | 業績等の概要 |
+| `capitalResourcesAnalysis` | 資金流動性 | 資本の財源・資金流動性 |
+| `criticalContracts` | 重要契約 | 経営上の重要契約 |
+| `employeesInformation` | 従業員 | 従業員の状況 |
 
 **対応書類種別:**
 - 有価証券報告書（docTypeCode: 120）
@@ -77,6 +82,10 @@ J-GAAP（日本基準）と IFRS（国際会計基準）の両方に対応して
 - 半期報告書（docTypeCode: 160）
 
 四半期報告書や半期報告書では、文書固有の名前空間（例: `jpcrp040300-q2r_*`）が使用される場合がありますが、パーサーは名前空間を自動的に識別して正しくデータを抽出します。
+
+#### C. 来歴・オフライン横断検索
+
+`getKeyMetricsWithSources()` は既存18値と、選択されたfactのタグ/context・期間・scope・単純通貨単位を返します。`screenFinancialSnapshots()` とCLI `screen` は、明示snapshot集合に主要18値＋営業利益率/純利益率/FCFの条件・並べ替えを適用します。来歴不明や不整合な派生値は計算しません。全市場DBではありません。[入力形式・指標辞書・制約](EDINET_DB_COMPARISON.md) を参照してください。
 
 #### D. 大量保有報告書の解析 (`getLargeShareholdingInfo`)
 大量保有報告書（変更報告書・訂正報告書含む）から、以下の情報を抽出できます。
@@ -97,6 +106,8 @@ console.log(`${info.issuerName} の株を ${info.holdingRatio}% 保有`);
 
 *   **`get` コマンド**: ティッカーまたは日付指定で書類を取得・解析し、JSONを出力します。
 *   **`download` コマンド**: 書類を指定ディレクトリにダウンロードします。
+*   **`parse` コマンド**: 保存済みXBRLを解析します。
+*   **`screen` コマンド**: 保存済みsnapshot JSONをネットワーク取得なしで検索します。
 *   **ローカルDBキャッシュ**: メタデータをSQLiteにキャッシュし、高速な検索を実現します。
 
 ### 3.5 型安全なタクソノミアクセス (`getJppfsCor`)
@@ -115,4 +126,4 @@ console.log(taxonomy.BuildingAndStructures); // 建物及び構築物
 
 ## 4. 非機能要件
 *   **型安全性**: すべての主要APIは TypeScript で型定義され、開発時の補完と安全性を保証します。
-*   **依存関係**: 外部依存は最小限に抑え (`fast-xml-parser`, `adm-zip` 等)、軽量性を維持します。
+*   **依存関係**: 外部依存は最小限に抑え (`fast-xml-parser`, `jszip` 等)、軽量性を維持します。

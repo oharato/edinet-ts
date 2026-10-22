@@ -1,76 +1,39 @@
-# Fixed-source packages on nuc7
+# 固定source配布物のローカル作成・保持
 
-Build and retain distribution artifacts on nuc7 without paid GitHub storage, new tokens,
-self-hosted runners or public distribution. Existing packages/releases are not deleted.
-This draft changes GitHub CI to source type checks/tests only and replaces the manual
-publishing workflow with local-build instructions. The ESM integration suite builds
-`dist`, so it is excluded from GitHub source CI and retained in the full local suite.
-The manual workflow no longer creates tags, Releases, npm or GitHub Packages versions.
-These changes take effect only after merge; do not dispatch the old release workflow.
+状態: 現行の保存方針。更新日: 2026-10-22。[ADR 0001](adr/0001-local-distribution.md) を参照。
+GitHubの保存量を増やさず、固定sourceからローカルで配布物を再現する。既存の公開物は削除しない。手動workflowもtag・release・npm/GitHub Packages公開は行わない。
 
-## Reproducible input
+## 固定入力と実行
 
-`python3 scripts/build-local.py` archives exactly:
-
-- Source: `6301b404a5d09fec0c5ad10b2796e95ac64bd4e9`
-- Package SHA-256: `1c1e35c0348d24e1dbfc65d7586f6a9e5d1496ca1cfba49c9221e87c4c32f048`
-- Toolchain used for the approved package: Node v24.13.0 / npm 11.6.2, linux-x64.
-
-It uses a disposable checkout of that source, the committed lockfile, offline `npm ci`,
-full build and all tests (including ESM checks), then `npm pack --ignore-scripts`.
-The exact archive hash must match the reviewed stock-data dependency. A mismatch fails
-rather than overwriting it. Package version alone is not proof of source identity.
-No data fetching, API secrets, npm publish, tags or remote uploads are involved. Native
-SQLite dependencies may compile locally. Populate the npm cache from trusted locked
-dependencies before running; this builder does not silently fall back to network access.
-
-## Run and inspect
+`python3 scripts/build-local.py` は、実行時の作業ブランチではなく、明示的に固定されたsource `6301b404a5d09fec0c5ad10b2796e95ac64bd4e9` とlockfileを一時checkoutしてbuildする。期待する配布物SHA-256は `1c1e35c0348d24e1dbfc65d7586f6a9e5d1496ca1cfba49c9221e87c4c32f048`。現在のheadの配布物を自動で作るスクリプトではない。
 
 ```sh
-OUT=/home/oharato/Documents/Codex/2026-10-07/task-2/nuc7-artifacts/edinet-ts
+OUT=/absolute/private/path/edinet-ts-artifacts
 python3 scripts/build-local.py --output "$OUT" --dry-run
 python3 scripts/build-local.py --output "$OUT"
 python3 scripts/test_artifact_store.py
 ```
 
-Output is private (0700), guarded by a nonblocking process lock. Each successful build
-has a separate generation containing the `.tgz`, a build/test log, and a manifest with
-source/lockfile/builder hashes, toolchain and file checksums. After checks succeed,
-`current` is replaced atomically. Failed builds retain their staging log and do not
-change `current`. At least 2 GiB of free space is required; no previous generations are
-automatically pruned. Review disk use and retain at least three successful generations
-before any separately authorized cleanup. This is local retention, not off-host backup
-or a guarantee against sudden power loss.
+公開対象外の保存先を指定する。スクリプトはoffline npm cacheのみを使い、cache不足時にネットワークへ黙ってfallbackしない。固定sourceの依存にはnative SQLiteがあり、ローカルcompileが必要になる場合がある。新しいNode/依存版の採用は、この固定配布物の検証を置き換える意味ではない。
 
-Rollback verifies all hashes before moving the pointer:
+## 検証と世代保持
+
+完全なbuild・全テスト（ESM統合を含む）・`npm pack --ignore-scripts`を実行する。配布物hashの不一致は失敗とし、既存物を上書きしない。version番号だけでsourceの同一性を判断しない。
+
+出力先はprivate（0700）、nonblocking lockで二重実行を防ぐ。各成功世代にtgz・build/test log・source/lockfile/builder hash・toolchain・checksumを記録し、検証後にcurrentをatomicに切り替える。失敗時はstaging logと既存currentを残す。
+
+最低2 GiBの空き容量が必要。自動削除はなく、別途判断する整理までは少なくとも成功3世代を保持する。ローカル保存であり、別hostへのbackupや突然の電源断への保証ではない。
+
+rollbackはhashを確認してpointerを切り替える。
 
 ```sh
 python3 scripts/build-local.py --output "$OUT" --rollback GENERATION_BASENAME
 ```
 
-Pass `"$OUT/current"` as `--edinet-generation` to stock-data's local builder. That builder
-checks the fixed package against stock-data's existing provenance and uses these local
-bytes for its file dependency. It does not consume an unverified registry version.
+## 利用先更新
 
-## Upgrade and cutover
+stock-dataのlocal builderに `--edinet-generation "$OUT/current"` を渡す場合も、利用先の固定hash/provenanceとの一致確認が必要。未検証のregistry版を代用しない。
 
-A future source update must deliberately update the pinned SHA and approved archive hash,
-stock-data's provenance and dependency lock, then rerun the full suite and installed-package
-regressions. The current script intentionally continues to build the reviewed SHA even
-when the wrapper script changes. Never replace a package in-place based only on version.
-No local timer is added: this library only needs rebuilding when its reviewed source changes.
-The existing stock-data acquisition timer and GitHub schedule require a separate coordinated
-cutover, documented in stock-data; this library PR neither fetches data nor changes either.
+新sourceへ更新する際は、固定commit・期待配布物hash・利用先provenance/lockを明示的に更新し、完全なテストとinstalled-package回帰を行う。配布物をversion名だけで差し替えない。新しい定期実行や利用先の取得運用はこの手順に含めない。
 
-## Validation on nuc7 (2026-10-10)
-
-- Full fixed-source build and all 207 tests in 13 files passed.
-- All 40 package members matched the reviewed build. Initial archive hash rejection
-  exposed 0600 versus 0644 tar file modes caused by the private staging umask; the
-  builder now normalizes only packaged files inside the 0700 staging tree. The final
-  170,084-byte archive exactly matches the approved SHA-256 above.
-- The five publication safeguard tests pass. The initial sandbox attempt was blocked
-  executing esbuild; the normal host execution completed without data/API acquisition.
-- A local generation and `current` pointer were created under the example output path.
-  No remote publication, timer registration, installed-service change, or GitHub asset
-  deletion occurred. Full builds/tests remain local after the proposed CI change.
+当時の検証結果は [2026-10-10固定配布物の記録](history/2026-10-10-fixed-artifact-validation.md)、今後の統合計画は [改善計画](plans/EDINET_TS_ROADMAP.md) を参照。
