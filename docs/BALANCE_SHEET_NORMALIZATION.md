@@ -2,7 +2,7 @@
 
 状態: ローカル実装・検証済み。更新日: 2026-10-22。
 
-`BALANCE_SHEET_REGISTRY` と `EdinetXbrlObject.selectBalanceSheetMetric()` は、主要18指標とは別の3科目を返します。既存の `KeyMetrics`、`METRIC_REGISTRY`、`selectMetric()`、21指標のscreening集合には追加しません。
+`BALANCE_SHEET_REGISTRY` と `EdinetXbrlObject.selectBalanceSheetMetric()` は、主要18指標とは別の3科目を返します。既存の `KeyMetrics`、`METRIC_REGISTRY`、`selectMetric()`、21指標のscreening集合には追加しません。[別のBS横断検索API/CLI](BALANCE_SHEET_SCREENING.md)を利用できます。
 
 | 安定ID | 直接fact | 単位/期間 |
 |---|---|---|
@@ -55,6 +55,6 @@ console.log(BALANCE_SHEET_REGISTRY.currentAssets);
 
 この突合は**保存XML内の原factと来歴の一致**です。表示された元財務諸表との独立照合、複数年度の提出原本、全市場充足率、銀行/保険、新リース基準は未検証です。呼出元による誤ったJ-GAAP宣言の検出はしません。
 
-現預金と現金同等物（F06）、借入/リース（F12）、設備投資/償却（F13）、横断検索への登録（F16）、比率計算、IFRS mapping、永続索引は未実装です。単一銘柄の直接fact取得成功を横断検索対応済みとは扱いません。
+現預金と現金同等物（F06）、借入/リース（F12）、設備投資/償却（F13）、既存21指標横断検索への登録、比率計算、IFRS mapping、永続索引は未実装です。F16は別のBS横断検索APIでraw/来歴を検証します。既存21指標のscreening集合や全市場索引へ自動登録する意味ではありません。
 
 ローカル検証: Node 24.22.1 / npm 11でbuild、`tsc --noEmit`、16ファイル409テスト（BS専用73件）、関連Python 5テスト、相対リンク・差分検査が成功。依存・lockの変更、新規取得、remote反映・配布・利用先更新はありません。

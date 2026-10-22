@@ -18,6 +18,7 @@
 | [タクソノミ更新](TAXONOMY_UPDATE.md) | 取得・型/資料生成の手順 |
 | [jppfs_cor一覧](TAXONOMY_JPPFS_COR.md) / [jpcrp_cor一覧](TAXONOMY_JPCRP_COR.md) | 現行実装の生成済み型に対応する一覧。最新年度への対応を保証する意味ではない |
 
+- [BS3項目の横断検索](BALANCE_SHEET_SCREENING.md): 選択結果snapshotの検証、診断、ローカルmanifest CLI。
 - [J-GAAP BS3項目](BALANCE_SHEET_NORMALIZATION.md): 別registry/API、来歴・欠損・対応範囲。
 
 ## 計画と判断の履歴

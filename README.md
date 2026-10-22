@@ -402,3 +402,5 @@ See [local build, retention, validation and cutover](docs/nuc7-local-artifacts.m
 18指標の辞書 `METRIC_REGISTRY` と `xbrlObject.selectMetric(id, { accountingStandard, scope, period })` は、明示条件に適合するfactを `selected / missing / unsupported / ambiguous` と来歴付きで返します。巨大整数等はdecimal文字列の原値を保持し、numberへの安全な往復が確認できる場合だけ `safeNumber` を返します。会計基準は呼出元で確認が必要です。既存KeyMetricsの選択規則は維持します。利用例・単位・制約は [指標辞書・厳密選択](docs/METRIC_SELECTION.md) を参照してください。
 
 J-GAAPの流動資産・流動負債・負債合計は、既存主要指標とは別の `selectBalanceSheetMetric()` で取得できます。[BS直接fact正規化](docs/BALANCE_SHEET_NORMALIZATION.md)を参照してください。JPY・明示時点/scope限定で、IFRS・横断検索登録は未対応です。
+
+J-GAAP BS3項目の別横断検索は `screenBalanceSheetSnapshots()` / CLI `screen-bs` で利用できます。[BS横断検索の契約とmanifest](docs/BALANCE_SHEET_SCREENING.md)を参照してください。
