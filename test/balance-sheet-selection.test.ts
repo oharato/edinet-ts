@@ -35,7 +35,7 @@ describe("J-GAAP BS直接factの正規化", () => {
         const select = (facts = f(), contexts = context(), opts = options, units?: string) => parse(instance(facts, contexts, units)).selectBalanceSheetMetric(definition.id, opts);
         it("原値と完全な来歴を返す", () => {
             expect(select()).toMatchObject({ metricId: definition.id, status: "selected", raw: "120.00", safeNumber: 120,
-                source: { key, namespace: "jppfs_cor", contextRef: "current", period: { instant }, scope: "Consolidated", dimensions: [], unit: "iso4217:JPY", decimals: "INF", nil: false } });
+                source: { entity: { identifier: "TEST", scheme: "synthetic" }, key, namespace: "jppfs_cor", contextRef: "current", period: { instant }, scope: "Consolidated", dimensions: [], unit: "iso4217:JPY", decimals: "INF", nil: false } });
         });
         it.each(["0", "-10"])("有効な%sを保持する", raw => expect(select(f(raw))).toMatchObject({ status: "selected", raw, safeNumber: Number(raw) }));
         it("巨大整数はrawのみ返す", () => expect(select(f("9007199254740993"))).toMatchObject({ status: "selected", raw: "9007199254740993", safeNumber: undefined, reason: "selected-raw-only" }));
@@ -61,6 +61,14 @@ describe("J-GAAP BS直接factの正規化", () => {
         });
         it("単体に追加明細次元があれば拒否する", () => expect(select(f(), context("current", standalone + segment), { ...options, scope: "NonConsolidated" })).toMatchObject({ status: "unsupported", reason: "unsupported-dimensions" }));
         it.each(["IFRS", "US-GAAP"] as const)("%s宣言ならJ-GAAPタグでも未対応", accountingStandard => expect(select(f(), context(), { ...options, accountingStandard })).toMatchObject({ status: "unsupported", reason: "unsupported-standard" }));
+        it("entity不明・別entityの同居は拒否する", () => {
+            expect(select(f(), context().replace('<xbrli:entity><xbrli:identifier scheme="synthetic">TEST</xbrli:identifier></xbrli:entity>', ''))).toMatchObject({ status: "unsupported", reason: "unsupported-entity" });
+            expect(select(f(), context() + context("other").replace('>TEST<', '>OTHER<'))).toMatchObject({ status: "unsupported", reason: "unsupported-entity" });
+        });
+        it("instantとdurationが併存するcontextは拒否する", () => {
+            const invalid = context().replace('</xbrli:period>', '<xbrli:startDate>2024-04-01</xbrli:startDate><xbrli:endDate>2025-03-31</xbrli:endDate></xbrli:period>');
+            expect(select(f(), invalid)).toMatchObject({ status: "unsupported", reason: "unsupported-context" });
+        });
         it("Duration/不正時点は拒否する", () => {
             expect(select(f(), context(), { ...options, period: { startDate: "2024-04-01", endDate: instant } })).toMatchObject({ status: "unsupported", reason: "invalid-period" });
             expect(select(f(), context(), { ...options, period: { instant: "2025-02-30" } })).toMatchObject({ status: "unsupported", reason: "invalid-period" });
@@ -96,7 +104,7 @@ describe("J-GAAP BS直接factの正規化", () => {
                 const original = object.getDataByContextRef(d.candidates[0].key, id)!;
                 expect(original).not.toBeNull();
                 const selected = object.selectBalanceSheetMetric(d.id, { accountingStandard: "J-GAAP", scope, period: { instant: ctx.period.instant! } });
-                expect(selected).toMatchObject({ status: "selected", raw: original.rawValue, source: { key: original.key, contextRef: id, namespaceURI: original.namespaceURI, period: ctx.period, scope, unitRef: original.unitRef, unit: "iso4217:JPY", decimals: original.rawDecimals } });
+                expect(selected).toMatchObject({ status: "selected", raw: original.rawValue, source: { key: original.key, contextRef: id, namespaceURI: original.namespaceURI, period: ctx.period, entity: ctx.entity, scope, unitRef: original.unitRef, unit: "iso4217:JPY", decimals: original.rawDecimals } });
                 expect(selected.safeNumber).toBe(Number(original.rawValue));
             }
         }

@@ -1,6 +1,6 @@
 # J-GAAPのBS直接fact正規化
 
-状態: ローカル実装・検証対象。更新日: 2026-10-22。
+状態: ローカル実装・検証済み。更新日: 2026-10-22。
 
 `BALANCE_SHEET_REGISTRY` と `EdinetXbrlObject.selectBalanceSheetMetric()` は、主要18指標とは別の3科目を返します。既存の `KeyMetrics`、`METRIC_REGISTRY`、`selectMetric()`、21指標のscreening集合には追加しません。
 
@@ -41,17 +41,20 @@ console.log(BALANCE_SHEET_REGISTRY.currentAssets);
 
 - `selected` はraw、任意のsafeNumber、採用source、探索時点までのevidenceを返します。巨大整数・高精度decimalは `selected-raw-only`。decimalsは倍率ではありません。
 - `missing` はタグ不在・context不一致・nilを区別します。nil・空・欠損を0にせず、実値0・有効な負数は保持します。
-- `unsupported` は基準・単位・namespace・context・明細次元・不正decimal等の理由を持ちます。JPY以外や未定義unitを推測変換しません。
+- `unsupported` は基準・単位・namespace・context・entity・明細次元・不正decimal等の理由を持ちます。JPY以外や未定義unitを推測変換しません。
 - `ambiguous` は重複contextまたは複数適合factです。同値重複も先頭採用しません。
+- 文書内のcontextにentity identifier/schemeが不明なもの、または複数entityがあれば `unsupported-entity` として止めます。主提出者の推測は行いません。Instant/Durationの混在・不正contextも拒否します。
 - 全社factは明細次元なし、単体は公式の連結/単体axis/memberの対のみを許容します。部門・調整項目・typed dimension・未知scenarioは全社へ混ぜません。
 - 公式jppfs taxonomy URI形式を確認し、未知namespaceの同じlocal nameやprefixのURI偽装を代用しません。全taxonomy年度の意味確認を保証するものではありません。
 
 ## 検証と残る範囲
 
-[財務正規化計画](plans/FINANCIAL_NORMALIZATION.md)の最初の3項目について、F01〜F05/F07〜F11/F14/F15の適用範囲を合成/保存fixtureで検証します。InstantのみのAPIなのでF14は時点完全一致と期間型拒否が対象です。訂正書類選択やDurationの分類は未実装です。
+[財務正規化計画](plans/FINANCIAL_NORMALIZATION.md)の最初の3項目について、F01〜F05/F07〜F11/F14/F15の適用範囲を合成/保存fixtureで検証済みです。InstantのみのAPIなのでF14は時点完全一致と期間型拒否が対象です。訂正書類選択やDurationの分類は未実装です。
 
 保存済み2企業のXBRL（`CJ_2371_kakakucom.xbrl`、`S100TMMG/XBRL/PublicDoc/*.xbrl`）で、連結/単体それぞれ3項目のraw・元タグ・namespace URI・context・時点・単位・decimalsをraw取得APIと突合します。`3031_raccoon.xbrl`の連結負債は同じcontextのfactが重複しており、原値の一致を確認しつつ`ambiguous / multiple-facts`を維持します。金額はこの資料へ掲載しません。IFRS書類の単体jppfsがIFRS宣言で拒否されることも確認します。
 
 この突合は**保存XML内の原factと来歴の一致**です。表示された元財務諸表との独立照合、複数年度の提出原本、全市場充足率、銀行/保険、新リース基準は未検証です。呼出元による誤ったJ-GAAP宣言の検出はしません。
 
 現預金と現金同等物（F06）、借入/リース（F12）、設備投資/償却（F13）、横断検索への登録（F16）、比率計算、IFRS mapping、永続索引は未実装です。単一銘柄の直接fact取得成功を横断検索対応済みとは扱いません。
+
+ローカル検証: Node 24.22.1 / npm 11でbuild、`tsc --noEmit`、16ファイル409テスト（BS専用73件）、関連Python 5テスト、相対リンク・差分検査が成功。依存・lockの変更、新規取得、remote反映・配布・利用先更新はありません。
