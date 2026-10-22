@@ -20,6 +20,7 @@
 ## 計画と判断の履歴
 
 - [進行中の改善計画](plans/EDINET_TS_ROADMAP.md): 完了/ローカル検証/未実装/実データ未検証を分離。
+- [財務明細正規化計画](plans/FINANCIAL_NORMALIZATION.md): 保存fixtureのタグ・scope・基準、候補mapping、受入テストと最初の3項目。未実装。
 - [ADR 0001: ローカル配布物保持](adr/0001-local-distribution.md): 採用した保存・配布方針。
 - [履歴索引](history/README.md): 過去の依頼、失効した公開手順、過去比較と検証。現行の手順として実行しない。
 
