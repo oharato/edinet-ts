@@ -4,7 +4,7 @@ EDINETタクソノミが更新された場合（通常、毎年3月頃に新し�
 
 ## 前提条件
 
-*   Node.js (v18以上推奨)
+*   Node.js（CIおよびpackage.jsonのruntime指定に従う）
 *   `unzip` コマンド (Linux/Mac環境の場合、日本語ファイル名対応のために `unzip -O cp932` が使用されます)
 
 ## 手順

@@ -30,11 +30,32 @@ export class EdinetXbrlParser {
 
         // 1. 最初にコンテキストを解析
         this.parseContexts(parsed, xbrlObject);
+        this.parseUnits(parsed, xbrlObject);
 
         // 2. データをトラバースして解析
         this.traverse(parsed, xbrlObject);
 
         return xbrlObject;
+    }
+
+    private parseUnits(root: unknown, object: EdinetXbrlObject): void {
+        if (!this.isObject(root)) return;
+        // 名前空間の別名をISO 4217のURIから解決し、unit idの名前から通貨を推測しません。
+        for (const [key, value] of Object.entries(root)) {
+            if (!key.includes("xbrl") || !this.isObject(value)) continue;
+            const prefixes = Object.entries(value).filter(([name, uri]) =>
+                name.startsWith("@_xmlns:") && uri === "http://www.xbrl.org/2003/iso4217")
+                .map(([name]) => name.slice("@_xmlns:".length));
+            const units = value["xbrli:unit"];
+            for (const unit of Array.isArray(units) ? units : units ? [units] : []) {
+                if (!this.isObject(unit) || typeof unit["@_id"] !== "string") continue;
+                const measure = EdinetDataUtil.getValue(unit["xbrli:measure"]);
+                const [prefix, currency] = measure.split(":");
+                if (prefixes.includes(prefix) && /^[A-Z]{3}$/.test(currency ?? "")) {
+                    object.addUnit(unit["@_id"], `iso4217:${currency}`);
+                }
+            }
+        }
     }
 
     private parseContexts(root: unknown, xbrlObject: EdinetXbrlObject): void {

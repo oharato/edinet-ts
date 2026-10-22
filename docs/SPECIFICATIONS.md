@@ -28,7 +28,7 @@ graph TD
 ライブラリのエントリーポイントです。
 
 *   **役割**: ユーザーに対する高レベルなAPIを提供し、`Downloader`、`Parser`、`Repository` を透過的に組み合わせます。
-*   **ハイブリッド検索**: `findDocuments` 系メソッドでは、まずローカルDB (`EdinetRepository`) を検索し、ヒットしなければAPIにフォールバック、あるいは指定された期間のAPIデータを取得してDBを更新します。
+*   **検索と取得**: `findDocumentsByType` / `findDocumentsByFiler` はローカルDBを検索します。`getFinancialHistory` はローカルDBで書類を選び、各XBRLをdownloaderのキャッシュまたはAPIから取得します。検索だけでDBが自動補完されるわけではありません。
 
 ### 2.1 `EdinetXbrlDownloader`
 EDINET API v2 との通信を担当します。
@@ -122,3 +122,9 @@ XBRLの `xbrli:context` 要素を以下のように解析します。
 2.  カレントディレクトリにある `.xbrl`。
 3.  サブディレクトリを再帰的に探索（ここでも `PublicDoc` ディレクトリを優先的に探索）。
 
+
+## 4. 来歴とオフライン財務検索
+
+`getKeyMetricsWithSources()` は既存と同じ選択規則で値と来歴を返します。parserはISO 4217名前空間URIから単純通貨単位を解決し、unitRefの名前から通貨を推測しません。
+
+`screenFinancialSnapshots()` は、書類種別/cutoffで対象を限定して銘柄ごとの最新書類を選び、その後AND条件、ソート、offset/limitを適用します。派生値は同一context・期間・scope・通貨を検証できる場合だけ計算します。全市場の保存索引ではありません。詳細は [入力・指標辞書・欠損/比較の制約](EDINET_DB_COMPARISON.md) を参照してください。

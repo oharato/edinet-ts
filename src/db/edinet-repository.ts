@@ -45,7 +45,7 @@ export class EdinetRepository {
     }
 
     private initSchema() {
-        // docs/REQUESTS_04.md & REQUESTS_05.md で定義されたスキーマ
+        // 設計経緯: docs/history/requests/REQUESTS_04.md と REQUESTS_05.md
         const schema = `
         CREATE TABLE IF NOT EXISTS documents (
           doc_id TEXT PRIMARY KEY,

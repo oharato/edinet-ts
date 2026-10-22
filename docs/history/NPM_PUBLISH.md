@@ -1,3 +1,5 @@
+> 状態: 失効した旧公開手順。現在のworkflowは配布しません。この手順を実行しないでください。[現行手順](../nuc7-local-artifacts.md) と [設計判断](../adr/0001-local-distribution.md) を参照してください。
+
 # npmパブリッシュ運用の手順
 
 本ライブラリ `edinet-ts` の公開は、GitHub Actions の **Manual Release** を明示的に実行したときだけ行います。`master` への push・PR の作成・マージ・バージョン変更だけでは公開されません。

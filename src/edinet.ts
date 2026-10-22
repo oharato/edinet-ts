@@ -3,6 +3,7 @@ import { EdinetXbrlDownloader, EdinetClientOptions, EdinetDocument } from "./edi
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetMetadata } from "./db/edinet-metadata";
+import { KeyMetrics } from "./edinet-xbrl-object";
 
 export interface EdinetConfig extends EdinetClientOptions {
     dbPath?: string;
@@ -13,7 +14,7 @@ export interface FinancialHistory {
     submitDate: string;
     docID: string;
     filerName: string;
-    metrics: any; // KeyMetrics
+    metrics: KeyMetrics;
 }
 
 /**

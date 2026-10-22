@@ -66,6 +66,18 @@ import { EdinetDocumentType } from "edinet-ts";
 const tobDocs: EdinetMetadata[] = await edinet.findDocumentsByType(EdinetDocumentType.TenderOfferStatement, 30);
 ```
 
+### 保存済み財務値のオフライン横断検索
+
+`screenFinancialSnapshots` / CLI `screen` は、保存済み主要18指標と計算指標（営業利益率・純利益率・FCF）で、銘柄ごとの最新書類にAND条件・並べ替え・ページングを適用します。入力は明示的な `FinancialSnapshot[]` で、ネットワーク取得は行いません。
+
+```sh
+edinet-ts screen --file ./snapshots.json \
+  --conditions '[{"metric":"operatingMargin","operator":"gte","value":0.1}]' \
+  --sort-by freeCashFlow --limit 20 --pretty
+```
+
+利益率は小数（0.1=10%）、金額は入力の単位を保持します。派生値には `getKeyMetricsWithSources()` の来歴と `periodType` が必要で、同一context・期間・scope・通貨を検証できない場合は計算しません。入力の作成例、対応項目、EDINET DBとの二軸比較と制約は [比較・改善資料](docs/EDINET_DB_COMPARISON.md)。残作業・依存・受入条件は [改善計画](docs/plans/EDINET_TS_ROADMAP.md) を参照してください。
+
 ### セットアップ (DB構築)
 時系列分析や横断的検索を使用する場合、初回のみ以下のコマンドでデータベースを構築してください（所要時間: 約20分）。
 ```bash
@@ -364,16 +376,13 @@ npx edinet-ts parse --file ./downloads/report.xbrl --pretty
 
 ## ドキュメント (Documents)
 
-詳細な設計や運用に関するドキュメントは `docs/` ディレクトリにあります。
+[文書索引](docs/README.md) から、現行仕様・利用方法・比較と、計画・設計判断・履歴を参照できます。
 
-*   **[要件定義書 (REQUIREMENTS.md)](docs/REQUIREMENTS.md)**: 提供機能、システム要件、APIカバレッジ。
-*   **[技術仕様書 (SPECIFICATIONS.md)](docs/SPECIFICATIONS.md)**: アーキテクチャ、クラス設計、アルゴリズム詳細。
-*   **[タクソノミ更新手順 (TAXONOMY_UPDATE.md)](docs/TAXONOMY_UPDATE.md)**: 毎年更新されるEDINETタクソノミへの追従手順。
-*   **[npmパブリッシュ手順 (NPM_PUBLISH.md)](docs/NPM_PUBLISH.md)**: リリースとデプロイのフロー（Trusted Publishing設定含む）。
-*   **[会社四季報スクリーニング対応表 (SHIKIHO_SCREENING_MAP.md)](docs/SHIKIHO_SCREENING_MAP.md)**: 四季報オンラインのスクリーニング項目と本ライブラリでの取得方法の対応表。
-*   **タクソノミ定義書**:
-    *   **[財務諸表本表 (TAXONOMY_JPPFS_COR.md)](docs/TAXONOMY_JPPFS_COR.md)**: `jppfs_cor` 名前空間の全項目定義。
-    *   **[企業情報 (TAXONOMY_JPCRP_COR.md)](docs/TAXONOMY_JPCRP_COR.md)**: `jpcrp_cor` 名前空間の全項目定義。
+* [要件・提供機能](docs/REQUIREMENTS.md) / [技術仕様](docs/SPECIFICATIONS.md)
+* [EDINET DB比較・21指標辞書](docs/EDINET_DB_COMPARISON.md) / [他ライブラリ設計調査](docs/EDINET_LIBRARY_RESEARCH.md)
+* [改善計画と受入条件](docs/plans/EDINET_TS_ROADMAP.md)
+* [タクソノミ更新手順](docs/TAXONOMY_UPDATE.md) / [財務諸表本表](docs/TAXONOMY_JPPFS_COR.md) / [企業情報](docs/TAXONOMY_JPCRP_COR.md)
+* [ローカル配布物の作成・保持](docs/nuc7-local-artifacts.md)
 
 ## License
 
