@@ -1,7 +1,8 @@
 # edinet-ts 改善計画
 
+状態: 進行中（第1段階は実装・ローカル検証済み、後続は計画）。
 更新日: 2026-10-22。第1段階の基準は `b2adab511ffbf156a1e15810a0f5f400ccb0be7b`。
-比較の詳細・21指標の辞書は [EDINET DB比較資料](EDINET_DB_COMPARISON.md)、設計候補とライセンス上の境界は [EDINETライブラリ調査](EDINET_LIBRARY_RESEARCH.md) を参照。
+比較の詳細・21指標の辞書は [EDINET DB比較資料](../EDINET_DB_COMPARISON.md)、設計候補とライセンス上の境界は [EDINETライブラリ調査](../EDINET_LIBRARY_RESEARCH.md)、Node/SQLite・各用途の依存判断は [依存選定方針](../DEPENDENCY_DECISIONS.md) を参照。
 
 ## 目的と現在の到達点
 
