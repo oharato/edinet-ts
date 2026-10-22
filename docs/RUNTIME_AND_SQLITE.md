@@ -56,4 +56,4 @@ npm 12はregistry外URLと未許可install scriptを既定で制限する。`.np
 
 外部APIとの値の照合、全市場充足率、実taxonomy Excel全体の再生成、利用先vendor統合、複数OSの実機検証は別作業。XML/iXBRLの意味的な選択・decimal精度やZIP資源上限の全面再設計は、依存最新版の採用だけで完了したことにしない。
 
-検証結果: Node 26.12.1 / npm 12.2.1でoffline clean install、clean build、型検査、15ファイル/219テスト（既存207+追加12）、保存保護5テスト、built CLI JSONが成功。既存保存DBのbackupコピーでintegrity・件数・read-only hash不変・repository書込み/検索を確認。npm auditは本体のみ/開発込みとも検出0件（確認時点のregistry情報）。lint設定はないためlintは未実施。
+検証結果: Node 26.12.1 / npm 12.2.1でoffline clean install、clean build、型検査、16ファイル/267テスト（最新mainの255+追加12）、保存保護5テスト、built CLI JSONが成功。既存保存DBのbackupコピーでintegrity・件数・read-only hash不変・repository書込み/検索を確認。npm auditは本体のみ/開発込みとも検出0件（確認時点のregistry情報）。lint設定はないためlintは未実施。

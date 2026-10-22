@@ -12,6 +12,7 @@
 | [書類一覧API境界](DOCUMENT_LIST_VALIDATION.md) | 区分の正規化、エラーと空結果の区別 |
 | [EDINET DB比較・指標辞書](EDINET_DB_COMPARISON.md) | 単一銘柄/横断検索の二軸、21指標・入力・制約 |
 | [他EDINETライブラリ調査](EDINET_LIBRARY_RESEARCH.md) | 設計候補、ライセンス、独立実装の境界 |
+| [Node・標準SQLite](RUNTIME_AND_SQLITE.md) | 採用版、breaking change、DB互換と検証結果 |
 | [依存選定方針](DEPENDENCY_DECISIONS.md) | Node/SQLite・XML/ZIP/Excel・開発依存の判断 |
 | [ローカル配布物](nuc7-local-artifacts.md) | 固定sourceの再現、保持、rollback、利用先統合 |
 | [タクソノミ更新](TAXONOMY_UPDATE.md) | 取得・型/資料生成の手順 |
