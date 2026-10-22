@@ -36,6 +36,32 @@ describe("指標辞書と厳密選択", () => {
         expect(select(instance(fact("", 'xsi:nil="true"') + fact("99", "", "jpcrp_cor:NetSales")))).toMatchObject({ status: "missing", reason: "nil" });
     });
     it("実際のゼロを保持する", () => expect(select(instance(fact("0")))).toMatchObject({ status: "selected", safeNumber: 0 }));
+    it("採用factのentity identifierとschemeを来歴に残す", () => {
+        expect(select()).toMatchObject({ status: "selected", source: { entity: { identifier: "TEST", scheme: "synthetic" } } });
+    });
+    it.each([
+        context("other").replace(">TEST<", ">OTHER<"),
+        context("other").replace('scheme="synthetic"', 'scheme="other-scheme"'),
+        context("other").replace(/<xbrli:entity>.*?<\/xbrli:entity>/, "")
+    ])("別entityまたは不明entityのcontextがある文書は推測採用しない", other => {
+        const result = select(instance(fact("999", "", "jppfs_cor:NetSales", "other"), context() + other));
+        expect(result).toMatchObject({ status: "unsupported", reason: "unsupported-entity" });
+        expect(result.safeNumber).toBeUndefined();
+    });
+    it.each([
+        context().replace(/<xbrli:entity>.*?<\/xbrli:entity>/, ""),
+        context().replace('scheme="synthetic"', 'scheme=""'),
+        context().replace(">TEST<", "><"),
+        context().replace('</xbrli:identifier>', '</xbrli:identifier><xbrli:identifier scheme="synthetic">TEST</xbrli:identifier>')
+    ])("不明・重複entity identifierを厳密選択へ使わない", ctx => {
+        expect(select(instance(fact(), ctx))).toMatchObject({ status: "unsupported", reason: "unsupported-entity" });
+    });
+    it.each([
+        context().replace('</xbrli:period>', '<xbrli:instant>2025-03-31</xbrli:instant></xbrli:period>'),
+        context().replace('</xbrli:startDate>', '</xbrli:startDate><xbrli:startDate>2024-04-01</xbrli:startDate>')
+    ])("元contextのInstant/Duration混在や日付重複を拒否する", ctx => {
+        expect(select(instance(fact(), ctx))).toMatchObject({ status: "unsupported", reason: "unsupported-context" });
+    });
     it("タグ不在と期間不一致を分ける", () => {
         expect(select(instance(""))).toMatchObject({ status: "missing", reason: "tag-absent" });
         expect(select(instance(), { ...options, period: { startDate: "2023-04-01", endDate: "2024-03-31" } })).toMatchObject({ status: "missing", reason: "context-mismatch" });
@@ -64,7 +90,7 @@ describe("指標辞書と厳密選択", () => {
         expect(select(instance(fact("55", "", "jpcrp_cor:RevenueIFRSSummaryOfBusinessResults")), { ...options, accountingStandard: "IFRS" })).toMatchObject({ status: "selected", safeNumber: 55 });
     });
     it("IFRS親会社持分を純資産の代用にしない", () => {
-        const xml = instance(fact("5", "", "jpcrp_cor:EquityAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"), '<xbrli:context id="current"><xbrli:period><xbrli:instant>2025-03-31</xbrli:instant></xbrli:period></xbrli:context>');
+        const xml = instance(fact("5", "", "jpcrp_cor:EquityAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"), '<xbrli:context id="current"><xbrli:entity><xbrli:identifier scheme="synthetic">TEST</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:instant>2025-03-31</xbrli:instant></xbrli:period></xbrli:context>');
         expect(parse(xml).selectMetric("netAssets", { ...options, accountingStandard: "IFRS", period: { instant: "2025-03-31" } })).toMatchObject({ status: "unsupported", reason: "unsupported-semantics" });
     });
     it.each([{ instant: "2025-03-31" }, { startDate: "2025-04-01", endDate: "2025-03-31" }, { startDate: "2025-02-30", endDate: "2025-03-31" }])("期間型/日付の不整合を拒否する", period => expect(select(instance(), { ...options, period })).toMatchObject({ status: "unsupported", reason: "invalid-period" }));
@@ -75,7 +101,7 @@ describe("指標辞書と厳密選択", () => {
     it.each(Object.values(METRIC_REGISTRY))("$idの単位・期間型の契約を検証する", definition => {
         const unit = definition.unit === "JPY" ? "iso4217:JPY" : definition.unit === "shares" ? "xbrli:shares" : "xbrli:pure";
         const units = definition.unit === "JPY/share" ? '<xbrli:unit id="money"><xbrli:divide><xbrli:unitNumerator><xbrli:measure>iso4217:JPY</xbrli:measure></xbrli:unitNumerator><xbrli:unitDenominator><xbrli:measure>xbrli:shares</xbrli:measure></xbrli:unitDenominator></xbrli:divide></xbrli:unit>' : `<xbrli:unit id="money"><xbrli:measure>${unit}</xbrli:measure></xbrli:unit>`;
-        const instant = '<xbrli:context id="current"><xbrli:period><xbrli:instant>2025-03-31</xbrli:instant></xbrli:period></xbrli:context>';
+        const instant = '<xbrli:context id="current"><xbrli:entity><xbrli:identifier scheme="synthetic">TEST</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:instant>2025-03-31</xbrli:instant></xbrli:period></xbrli:context>';
         const xml = instance(fact("12.5", "", definition.candidates.find(c => c.standard === "J-GAAP")!.key), definition.periodType === "instant" ? instant : context(), units);
         expect(parse(xml).selectMetric(definition.id, { ...options, period: definition.periodType === "instant" ? { instant: "2025-03-31" } : period })).toMatchObject({ status: "selected", safeNumber: 12.5 });
     });

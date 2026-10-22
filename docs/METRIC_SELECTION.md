@@ -58,7 +58,7 @@ US-GAAPと企業拡張タグの対応は未実装です。銀行・保険専用�
 |---|---|
 | selected | `selected` または `selected-raw-only`。原値と採用元を返す |
 | missing | `tag-absent`、`context-mismatch`、`nil`。0で補わない |
-| unsupported | `unsupported-standard`、`unsupported-semantics`、`unknown-namespace`、`unknown-context`、`unsupported-context`、`unsupported-dimensions`、`unsupported-unit`、`invalid-period`、`invalid-decimal`、`invalid-decimals`、`raw-unavailable` |
+| unsupported | `unsupported-standard`、`unsupported-semantics`、`unknown-namespace`、`unknown-context`、`unsupported-context`、`unsupported-entity`、`unsupported-dimensions`、`unsupported-unit`、`invalid-period`、`invalid-decimal`、`invalid-decimals`、`raw-unavailable` |
 | ambiguous | `duplicate-context`、`multiple-facts`。XML内の順序で値を決めない |
 
 `selected` 以外ではraw/numberを結果の採用値として公開しません。未採用factの原値は `evidence` に残ります。
@@ -66,7 +66,7 @@ US-GAAPと企業拡張タグの対応は未実装です。銀行・保険専用�
 同じcontext IDの重複は同値でも曖昧です。同じ期間・scopeの別context IDや同一context内に複数の適合factがある場合も曖昧です。
 明細次元のfactは全社合計の候補から除外して理由を残し、全社値があればそちらを採用します。
 
-採用元/証跡は元キー、namespace prefix/URI、contextRef、period、scope、dimensionsと元scenario/segment、unitRef/解決単位、raw、decimals、nil、reasonを持ちます。
+採用元/証跡は元キー、namespace prefix/URI、contextRef、entity identifier/scheme、period、scope、dimensionsと元scenario/segment、unitRef/解決単位、raw、decimals、nil、reasonを持ちます。
 単位ID重複やunit/measure内の未知xbrli URIは単位未対応とします。単体次元は公式jppfs URIの `ConsolidatedOrNonConsolidatedAxis` / `NonConsolidatedMember` の対だけを採用します。context定義の欠落、typed dimension、不明scenario、context内の局所namespace再定義も保守的に拒否します。
 標準prefixと公式EDINET taxonomy URIの形式を照合しますが、全taxonomy年度で意味・充足率を検証した保証ではありません。
 別prefixのtaxonomyタグは現段階で標準タグの代用にしません。
@@ -85,6 +85,6 @@ US-GAAPと企業拡張タグの対応は未実装です。銀行・保険専用�
 
 ## 検証の範囲
 
-合成fixtureで18指標の単位/期間型、J-GAAP/限定IFRS/未対応US、nil/0、巨大整数・高精度decimal、重複context/fact/unit、外貨、単体、明細/typed dimension、不明namespace、不正日付、同日終了の半期と通年を検証します。
+合成fixtureで18指標の単位/期間型、J-GAAP/限定IFRS/未対応US、entity不明/混在・scheme差、period構造の混在/重複、nil/0、巨大整数・高精度decimal、重複context/fact/unit、外貨、単体、明細/typed dimension、不明namespace、不正日付、同日終了の半期と通年を検証します。
 同梱カカクコムXBRLの売上を旧APIと照合しています。外部取得・認証・新依存はありません。
 これはP0の小さな基盤であり、全市場充足率、銀行/保険、全IFRS対応、基準自動判定、訂正履歴、元書類照合の全領域を完了した意味ではありません。

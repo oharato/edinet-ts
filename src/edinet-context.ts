@@ -22,6 +22,10 @@ export interface EdinetContext {
     namespaceVerified?: boolean;
     /** 元のaxis/memberを含むscenario/segment。 */
     rawDimensions?: unknown;
+    /** 元のentity identifier。未確認の場合は厳密選択へ利用しません。 */
+    entity?: { identifier: string; scheme: string };
+    /** Instant/Durationの混在・重複等を厳密選択で拒否します。 */
+    periodValid?: boolean;
 }
 
 export class ContextParser {
@@ -65,6 +69,18 @@ export class ContextParser {
             Object.entries(value).some(([key, child]) => key.startsWith("@_xmlns:") || hasLocalNamespace(child));
         const namespaceVerified = !!namespaces && namespaces.xbrli === "http://www.xbrl.org/2003/instance" &&
             (!scenario && !segment || namespaces.xbrldi === "http://xbrl.org/2006/xbrldi") && !hasLocalNamespace(node);
+        const identifierNode = node["xbrli:entity"]?.["xbrli:identifier"];
+        const identifier = EdinetDataUtil.getValue(identifierNode);
+        const scheme = identifierNode?.["@_scheme"];
+        const entity = !Array.isArray(node["xbrli:entity"]) && identifierNode && !Array.isArray(identifierNode) &&
+            typeof identifier === "string" && identifier.trim() && typeof scheme === "string" && scheme.trim()
+            ? { identifier, scheme } : undefined;
+        const rawPeriod = node["xbrli:period"];
+        const simpleDate = (key: string): boolean => typeof rawPeriod?.[key] === "string";
+        const periodValid = !!rawPeriod && !Array.isArray(rawPeriod) &&
+            Object.keys(rawPeriod).every(key => ["xbrli:startDate", "xbrli:endDate", "xbrli:instant"].includes(key)) &&
+            (simpleDate("xbrli:instant") && Object.keys(rawPeriod).length === 1 ||
+                simpleDate("xbrli:startDate") && simpleDate("xbrli:endDate") && Object.keys(rawPeriod).length === 2);
         const context: EdinetContext = {
             id,
             period,
@@ -72,6 +88,8 @@ export class ContextParser {
             dimensions,
             unsupportedDimensions: unsupported || JSON.stringify(node).includes("xbrldi:typedMember"),
             namespaceVerified,
+            entity,
+            periodValid,
             rawDimensions: { scenario: node["xbrli:scenario"], segment: node["xbrli:entity"]?.["xbrli:segment"] }
         };
         return context;

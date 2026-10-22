@@ -10,7 +10,7 @@ export interface MetricSelectionOptions {
 }
 export type SelectionReason = "selected" | "selected-raw-only" | "tag-absent" | "context-mismatch" |
     "nil" | "unsupported-standard" | "unsupported-semantics" | "unknown-namespace" | "unknown-context" |
-    "unsupported-dimensions" | "unsupported-context" | "unsupported-unit" | "invalid-decimal" | "invalid-decimals" |
+    "unsupported-dimensions" | "unsupported-context" | "unsupported-entity" | "unsupported-unit" | "invalid-decimal" | "invalid-decimals" |
     "raw-unavailable" | "duplicate-context" | "multiple-facts" | "invalid-period";
 export interface FactSelectionEvidence {
     key: string;
@@ -19,6 +19,7 @@ export interface FactSelectionEvidence {
     contextRef: string;
     period?: EdinetContext["period"];
     scope?: EdinetContext["scope"];
+    entity?: EdinetContext["entity"];
     dimensions?: readonly string[];
     rawDimensions?: unknown;
     unitRef: string;
@@ -69,6 +70,10 @@ export function selectMetricFact(id: MetricId, options: MetricSelectionOptions,
     const candidates = definition.candidates.filter(c => c.standard === options.accountingStandard);
     if (!candidates.length) return finish("unsupported", "unsupported-standard");
     const expectedUnit = definition.unit === "JPY" ? "iso4217:JPY" : definition.unit === "shares" ? "xbrli:shares" : definition.unit === "pure" ? "xbrli:pure" : "iso4217:JPY/xbrli:shares";
+    // 主提出者を推測しない。文書内に複数/不明entityがあれば採用を止めます。
+    const documentEntities = new Set(Array.from(contexts.values(), context => context.entity
+        ? JSON.stringify([context.entity.scheme, context.entity.identifier]) : ""));
+    const singleKnownEntity = documentEntities.size === 1 && !documentEntities.has("");
     for (const candidate of candidates) {
         const matches: FactSelectionEvidence[] = [];
         // 同じlocal nameの企業拡張も記録しますが、標準namespaceの代用にはしません。
@@ -81,14 +86,17 @@ export function selectMetricFact(id: MetricId, options: MetricSelectionOptions,
                     key, namespace: key.split(":")[0], namespaceURI: fact.namespaceURI,
                     contextRef: fact.contextRef, period: context ? { ...context.period } : undefined,
                     scope: context?.scope, dimensions: context ? [...context.dimensions] : undefined,
+                    entity: context?.entity ? { ...context.entity } : undefined,
                     rawDimensions: context?.rawDimensions, unitRef: fact.unitRef, unit: units.get(fact.unitRef),
                     raw: fact.rawValue, decimals: fact.rawDecimals, nil: fact.nil, reason: "context-mismatch"
                 };
                 evidence.push(item);
                 if (!context) { item.reason = "unknown-context"; continue; }
+                if (!context.periodValid) { item.reason = "unsupported-context"; matches.push(item); continue; }
                 if (context.scope !== options.scope || context.period.instant !== period.instant ||
                     context.period.startDate !== period.startDate || context.period.endDate !== period.endDate) continue;
                 if (!context.namespaceVerified) { item.reason = "unsupported-context"; matches.push(item); continue; }
+                if (!singleKnownEntity) { item.reason = "unsupported-entity"; matches.push(item); continue; }
                 if (context.unsupportedDimensions || (options.scope === "Consolidated" ? context.dimensions.length !== 0 : context.dimensions.length !== 1 || context.dimensions[0] !== "NonConsolidatedMember")) {
                     item.reason = "unsupported-dimensions";
                     continue;
