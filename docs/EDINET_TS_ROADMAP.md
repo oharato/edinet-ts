@@ -1,7 +1,7 @@
 # edinet-ts 改善計画
 
 更新日: 2026-10-22。第1段階の基準は `b2adab511ffbf156a1e15810a0f5f400ccb0be7b`。
-比較の詳細・21指標の辞書は [EDINET DB比較資料](EDINET_DB_COMPARISON.md) を参照。
+比較の詳細・21指標の辞書は [EDINET DB比較資料](EDINET_DB_COMPARISON.md)、設計候補とライセンス上の境界は [EDINETライブラリ調査](EDINET_LIBRARY_RESEARCH.md) を参照。
 
 ## 目的と現在の到達点
 
@@ -176,6 +176,18 @@
 - 株価の基準時点、分割調整、自己株式・発行済株式の定義、実績/予想/修正予想を区別する。
 - PDF/AI値には原文位置、抽出方法/version、信頼度と検証状態を付ける。非支持の値を通常の財務指標に昇格させない。
 - 明示した小規模テスト集合で照合・コスト・失敗率を計測し、ライセンスと運用条件が確定するまでは取得・定期運用を開始しない。
+
+## 他ライブラリ調査を反映した優先候補
+
+段階1と8のP0に、Metric registry、Fact selection result（selected/missing/unsupported/ambiguousと採用/不採用理由）、decimal文字列/safe number、parserVersion/mappingVersionと再解析diffを追加する。XML外部entity/networkとZIP traversal/展開資源上限も先に検証する。
+
+受入条件は、J-GAAP/IFRS/US・銀行/保険・単体・訂正・外貨・重複context・nil・巨大整数の境界fixtureで、原値/採用理由/欠損/精度を追跡でき、同じ原本を再解析した差分を説明できること。
+
+段階7および取得APIのP1に、日付1回list、bounded concurrency、Retry-After/jitter/timeout/AbortSignal、業務エラーと空結果の区別、原本/解析cache分離とatomic writeを加える。CLIはstable JSON/exit code/部分成功を契約化する。受入条件は、429/一時障害/破損cache/中断書込みで壊れた結果を正常cacheにせず、成功分と失敗理由を再現できること。
+
+P2としてlinkbase三表階層/検算、rawquery/CSV、必要になった場合のMCP薄いadapterを候補とする。外部Python/MCP基盤や第三者mappingをcoreの依存にはしない。ライセンスと出所を確認し、一般的設計の参照とコードコピーを区別する。
+
+Node・依存更新/標準SQLite移行は、第1段階の21指標PRとは分離して検証する。default branchがmainになったため、既存CIのbranch filterとruntime指定の整合もその変更で確認する。配布・release・定期運用を自動的に開始する意味ではない。
 
 ## 進め方と判断が必要な境界
 
