@@ -16,6 +16,12 @@ export interface EdinetContext {
     scope: "Consolidated" | "NonConsolidated";
     /** 明示的なメンバーのリスト (例: "NonConsolidatedMember") */
     dimensions: string[];
+    /** 未解釈のtyped dimension等がある場合は厳密選択を拒否します。 */
+    unsupportedDimensions?: boolean;
+    /** XML名前空間を検証できたcontextにだけ付与します。 */
+    namespaceVerified?: boolean;
+    /** 元のaxis/memberを含むscenario/segment。 */
+    rawDimensions?: unknown;
 }
 
 export class ContextParser {
@@ -24,7 +30,7 @@ export class ContextParser {
      * @param node XMLノード
      * @returns パースされた EdinetContext。無効なノードの場合は null。
      */
-    public static parse(node: any): EdinetContext | null {
+    public static parse(node: any, namespaces?: Readonly<Record<string, string>>): EdinetContext | null {
         if (!node || !node["@_id"]) return null;
 
         const id = node["@_id"];
@@ -35,11 +41,38 @@ export class ContextParser {
         // scope のロジックは findExplicitMembers の結果に基づいて直接統合されました。
         const scope = dimensions.includes("NonConsolidatedMember") ? "NonConsolidated" : "Consolidated";
 
+        const scenario = node["xbrli:scenario"], segment = node["xbrli:entity"]?.["xbrli:segment"];
+        const validStandaloneDimension = (part: any): boolean => {
+            const members = part?.["xbrldi:explicitMember"];
+            if (!members) return true;
+            return (Array.isArray(members) ? members : [members]).every(member => {
+                if (!member || typeof member !== "object") return false;
+                const axis = member["@_dimension"];
+                const value = EdinetDataUtil.getValue(member);
+                if (typeof axis !== "string") return false;
+                const [axisPrefix, axisName, axisExtra] = axis.split(":");
+                const [memberPrefix, memberName, memberExtra] = value.split(":");
+                const official = /^http:\/\/disclosure\.edinet-fsa\.go\.jp\/taxonomy\/jppfs\/\d{4}-\d{2}-\d{2}\/jppfs_cor$/;
+                return !axisExtra && !memberExtra && axisName === "ConsolidatedOrNonConsolidatedAxis" &&
+                    memberName === "NonConsolidatedMember" && official.test(namespaces?.[axisPrefix] ?? "") &&
+                    namespaces?.[axisPrefix] === namespaces?.[memberPrefix];
+            });
+        };
+        const unsupported = [scenario, segment].some(part => part && (typeof part !== "object" ||
+            Object.keys(part).some(key => key !== "xbrldi:explicitMember" && !key.startsWith("@_xmlns:")) || !validStandaloneDimension(part)));
+        // 内部でnamespaceを再定義したcontextはこの段階では解釈しません。
+        const hasLocalNamespace = (value: any): boolean => value && typeof value === "object" &&
+            Object.entries(value).some(([key, child]) => key.startsWith("@_xmlns:") || hasLocalNamespace(child));
+        const namespaceVerified = !!namespaces && namespaces.xbrli === "http://www.xbrl.org/2003/instance" &&
+            (!scenario && !segment || namespaces.xbrldi === "http://xbrl.org/2006/xbrldi") && !hasLocalNamespace(node);
         const context: EdinetContext = {
             id,
             period,
             scope,
-            dimensions
+            dimensions,
+            unsupportedDimensions: unsupported || JSON.stringify(node).includes("xbrldi:typedMember"),
+            namespaceVerified,
+            rawDimensions: { scenario: node["xbrli:scenario"], segment: node["xbrli:entity"]?.["xbrli:segment"] }
         };
         return context;
     }

@@ -396,3 +396,7 @@ You may obtain a copy of the License at
 ## nuc7 local artifacts
 
 See [local build, retention, validation and cutover](docs/nuc7-local-artifacts.md).
+
+### 指標の原値・採用理由を取得する追加API
+
+18指標の辞書 `METRIC_REGISTRY` と `xbrlObject.selectMetric(id, { accountingStandard, scope, period })` は、明示条件に適合するfactを `selected / missing / unsupported / ambiguous` と来歴付きで返します。巨大整数等はdecimal文字列の原値を保持し、numberへの安全な往復が確認できる場合だけ `safeNumber` を返します。会計基準は呼出元で確認が必要です。既存KeyMetricsの選択規則は維持します。利用例・単位・制約は [指標辞書・厳密選択](docs/METRIC_SELECTION.md) を参照してください。
