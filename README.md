@@ -62,6 +62,18 @@ import { EdinetDocumentType } from "edinet-ts";
 const tobDocs: EdinetMetadata[] = await edinet.findDocumentsByType(EdinetDocumentType.TenderOfferStatement, 30);
 ```
 
+### 保存済み財務値のオフライン横断検索
+
+`screenFinancialSnapshots` / CLI `screen` は、保存済み主要18指標と計算指標（営業利益率・純利益率・FCF）で、銘柄ごとの最新書類にAND条件・並べ替え・ページングを適用します。入力は明示的な `FinancialSnapshot[]` で、ネットワーク取得は行いません。
+
+```sh
+edinet-ts screen --file ./snapshots.json \
+  --conditions '[{"metric":"operatingMargin","operator":"gte","value":0.1}]' \
+  --sort-by freeCashFlow --limit 20 --pretty
+```
+
+利益率は小数（0.1=10%）、金額は入力の単位を保持します。派生値には `getKeyMetricsWithSources()` の来歴と `periodType` が必要で、同一context・期間・scope・通貨を検証できない場合は計算しません。入力の作成例、対応項目、EDINET DBとの二軸比較と制約は [比較・改善資料](docs/EDINET_DB_COMPARISON.md)。残作業・依存・受入条件は [改善計画](docs/EDINET_TS_ROADMAP.md) を参照してください。
+
 ### セットアップ (DB構築)
 時系列分析や横断的検索を使用する場合、初回のみ以下のコマンドでデータベースを構築してください（所要時間: 約20分）。
 ```bash

@@ -44,9 +44,23 @@ export class EdinetData {
     }
 }
 
+/** 主要指標で実際に選択されたfactの来歴。unitは単純なXBRL measureです。 */
+export interface KeyMetricSource {
+    key: string;
+    contextRef: string;
+    unitRef: string;
+    unit?: string;
+    periodStart?: string;
+    periodEnd?: string;
+    instant?: string;
+    scope?: "Consolidated" | "NonConsolidated";
+}
+export type KeyMetricSources = Partial<Record<keyof KeyMetrics, KeyMetricSource>>;
+
 export class EdinetXbrlObject {
     private _dataMap: Map<string, EdinetData[]> = new Map();
     private contextMap: Map<string, EdinetContext> = new Map();
+    private unitMap = new Map<string, string>();
     private _docID: string;
 
     constructor(docID: string = "") {
@@ -59,12 +73,16 @@ export class EdinetXbrlObject {
     public clear(): void {
         this._dataMap.clear();
         this.contextMap.clear();
+        this.unitMap.clear();
         this._docID = "";
     }
 
-    /**
-     * コンテキスト定義を追加します。
-     */
+    /** パーサーが解決した単純単位を登録します。複合単位は未登録です。 */
+    public addUnit(unitRef: string, measure: string): void {
+        this.unitMap.set(unitRef, measure);
+    }
+
+    /** コンテキスト定義を追加します。 */
     public addContext(context: EdinetContext): void {
         this.contextMap.set(context.id, context);
     }
@@ -142,6 +160,16 @@ export class EdinetXbrlObject {
    * コンテキスト（連結/単体、期間）を自動的に解析し、最適なデータを検索します。
    */
     public getKeyMetrics(): KeyMetrics {
+        return this.extractKeyMetrics();
+    }
+
+    /** 既存と同じ値の選択規則で、値と元factのcontext・期間・単位を返します。 */
+    public getKeyMetricsWithSources(): { metrics: KeyMetrics; metricSources: KeyMetricSources } {
+        const metricSources: KeyMetricSources = {};
+        return { metrics: this.extractKeyMetrics(metricSources), metricSources };
+    }
+
+    private extractKeyMetrics(sources?: KeyMetricSources): KeyMetrics {
         // 金額・CFは連結/単体の探索範囲を先に確定し、タグの欠落を理由に範囲を変えません。
         // 1株当たり・株式数・配当・比率は互換性のため従来の連結→単体探索を維持します。
 
@@ -190,33 +218,48 @@ export class EdinetXbrlObject {
         const { scoped: durationIds, flat: durationIdsFlat } = getContextIds("Duration");
         const { scoped: instantIds, flat: instantIdsFlat } = getContextIds("Instant");
 
+        const read = (metric: keyof KeyMetrics, keys: string[], ids: string[]): number | undefined => {
+            const data = this.getNumberData(keys, ids);
+            if (!data) return undefined;
+            if (sources) {
+                const context = this.contextMap.get(data.contextRef);
+                sources[metric] = {
+                    key: data.key, contextRef: data.contextRef, unitRef: data.unitRef,
+                    unit: this.unitMap.get(data.unitRef),
+                    periodStart: context?.period.startDate, periodEnd: context?.period.endDate,
+                    instant: context?.period.instant, scope: context?.scope
+                };
+            }
+            return parseFloat(data.value);
+        };
+
         return {
-            netSales: this.getNumberValue(["jppfs_cor:NetSales", "jpcrp_cor:NetSales", "jpcrp_cor:RevenueIFRSSummaryOfBusinessResults"], durationIds),
-            operatingIncome: this.getNumberValue(["jppfs_cor:OperatingIncome", "jpcrp_cor:OperatingIncomeIFRSSummaryOfBusinessResults"], durationIds), // Note: OperatingIncome might be company-specific in IFRS
-            ordinaryIncome: this.getNumberValue(["jppfs_cor:OrdinaryIncome"], durationIds), // IFRS doesn't usually have OrdinaryIncome
-            netIncome: this.getNumberValue(["jppfs_cor:ProfitLossAttributableToOwnersOfParent", "jpcrp_cor:ProfitLossAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"], durationIds),
-            netAssets: this.getNumberValue(["jppfs_cor:NetAssets", "jpcrp_cor:EquityAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"], instantIds),
-            totalAssets: this.getNumberValue(["jppfs_cor:Assets", "jpcrp_cor:TotalAssetsIFRSSummaryOfBusinessResults"], instantIds),
+            netSales: read("netSales", ["jppfs_cor:NetSales", "jpcrp_cor:NetSales", "jpcrp_cor:RevenueIFRSSummaryOfBusinessResults"], durationIds),
+            operatingIncome: read("operatingIncome", ["jppfs_cor:OperatingIncome", "jpcrp_cor:OperatingIncomeIFRSSummaryOfBusinessResults"], durationIds), // Note: OperatingIncome might be company-specific in IFRS
+            ordinaryIncome: read("ordinaryIncome", ["jppfs_cor:OrdinaryIncome"], durationIds), // IFRS doesn't usually have OrdinaryIncome
+            netIncome: read("netIncome", ["jppfs_cor:ProfitLossAttributableToOwnersOfParent", "jpcrp_cor:ProfitLossAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"], durationIds),
+            netAssets: read("netAssets", ["jppfs_cor:NetAssets", "jpcrp_cor:EquityAttributableToOwnersOfParentIFRSSummaryOfBusinessResults"], instantIds),
+            totalAssets: read("totalAssets", ["jppfs_cor:Assets", "jpcrp_cor:TotalAssetsIFRSSummaryOfBusinessResults"], instantIds),
 
             // Cash Flows
-            operatingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInOperatingActivities", "jpcrp_cor:NetCashProvidedByUsedInOperatingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInOperatingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
-            investingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInInvestmentActivities", "jppfs_cor:NetCashProvidedByUsedInInvestingActivities", "jpcrp_cor:NetCashProvidedByUsedInInvestingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInInvestingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
-            financingCashFlow: this.getNumberValue(["jppfs_cor:NetCashProvidedByUsedInFinancingActivities", "jpcrp_cor:NetCashProvidedByUsedInFinancingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInFinancingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
-            cashAndEquivalents: this.getNumberValue(["jppfs_cor:CashAndCashEquivalents", "jppfs_cor:CashAndCashEquivalentsEndOfPeriod", "jpcrp_cor:CashAndCashEquivalentsIFRSSummaryOfBusinessResults"], instantIds),
+            operatingCashFlow: read("operatingCashFlow", ["jppfs_cor:NetCashProvidedByUsedInOperatingActivities", "jpcrp_cor:NetCashProvidedByUsedInOperatingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInOperatingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
+            investingCashFlow: read("investingCashFlow", ["jppfs_cor:NetCashProvidedByUsedInInvestmentActivities", "jppfs_cor:NetCashProvidedByUsedInInvestingActivities", "jpcrp_cor:NetCashProvidedByUsedInInvestingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInInvestingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
+            financingCashFlow: read("financingCashFlow", ["jppfs_cor:NetCashProvidedByUsedInFinancingActivities", "jpcrp_cor:NetCashProvidedByUsedInFinancingActivitiesSummaryOfBusinessResults", "jpcrp_cor:CashFlowsFromUsedInFinancingActivitiesIFRSSummaryOfBusinessResults"], durationIds),
+            cashAndEquivalents: read("cashAndEquivalents", ["jppfs_cor:CashAndCashEquivalents", "jppfs_cor:CashAndCashEquivalentsEndOfPeriod", "jpcrp_cor:CashAndCashEquivalentsIFRSSummaryOfBusinessResults"], instantIds),
 
             // 1株当たり指標（以下は単体値も使う従来の互換探索）
-            earningsPerShare: this.getNumberValue(["jppfs_cor:BasicEarningsLossPerShare", "jpcrp_cor:BasicEarningsLossPerShareSummaryOfBusinessResults", "jpcrp_cor:BasicEarningsLossPerShareIFRSSummaryOfBusinessResults"], durationIdsFlat),
-            bookValuePerShare: this.getNumberValue(["jppfs_cor:NetAssetsPerShare", "jpcrp_cor:NetAssetsPerShareSummaryOfBusinessResults", "jpcrp_cor:EquityAttributableToOwnersOfParentPerShareIFRSSummaryOfBusinessResults"], instantIdsFlat),
+            earningsPerShare: read("earningsPerShare", ["jppfs_cor:BasicEarningsLossPerShare", "jpcrp_cor:BasicEarningsLossPerShareSummaryOfBusinessResults", "jpcrp_cor:BasicEarningsLossPerShareIFRSSummaryOfBusinessResults"], durationIdsFlat),
+            bookValuePerShare: read("bookValuePerShare", ["jppfs_cor:NetAssetsPerShare", "jpcrp_cor:NetAssetsPerShareSummaryOfBusinessResults", "jpcrp_cor:EquityAttributableToOwnersOfParentPerShareIFRSSummaryOfBusinessResults"], instantIdsFlat),
 
             // 比率
-            equityToTotalAssetsRatio: this.getNumberValue(["jpcrp_cor:EquityToAssetRatioSummaryOfBusinessResults", "jpcrp_cor:EquityToTotalAssetsRatioSummaryOfBusinessResults", "jppfs_cor:EquityToTotalAssetsRatio", "jpcrp_cor:RatioOfOwnersEquityToGrossAssetsIFRSSummaryOfBusinessResults"], instantIdsFlat),
-            rateOfReturnOnEquity: this.getNumberValue(["jpcrp_cor:RateOfReturnOnEquitySummaryOfBusinessResults", "jpcrp_cor:RateOfReturnOnEquityIFRSSummaryOfBusinessResults", "jppfs_cor:RateOfReturnOnEquity"], durationIdsFlat),
-            priceEarningsRatio: this.getNumberValue(["jpcrp_cor:PriceEarningsRatioSummaryOfBusinessResults", "jpcrp_cor:PriceEarningsRatioIFRSSummaryOfBusinessResults"], durationIdsFlat), // Less common in XBRL
-            payoutRatio: this.getNumberValue(["jpcrp_cor:PayoutRatioSummaryOfBusinessResults", "jpcrp_cor:PayoutRatioIFRSSummaryOfBusinessResults"], durationIdsFlat),
+            equityToTotalAssetsRatio: read("equityToTotalAssetsRatio", ["jpcrp_cor:EquityToAssetRatioSummaryOfBusinessResults", "jpcrp_cor:EquityToTotalAssetsRatioSummaryOfBusinessResults", "jppfs_cor:EquityToTotalAssetsRatio", "jpcrp_cor:RatioOfOwnersEquityToGrossAssetsIFRSSummaryOfBusinessResults"], instantIdsFlat),
+            rateOfReturnOnEquity: read("rateOfReturnOnEquity", ["jpcrp_cor:RateOfReturnOnEquitySummaryOfBusinessResults", "jpcrp_cor:RateOfReturnOnEquityIFRSSummaryOfBusinessResults", "jppfs_cor:RateOfReturnOnEquity"], durationIdsFlat),
+            priceEarningsRatio: read("priceEarningsRatio", ["jpcrp_cor:PriceEarningsRatioSummaryOfBusinessResults", "jpcrp_cor:PriceEarningsRatioIFRSSummaryOfBusinessResults"], durationIdsFlat), // Less common in XBRL
+            payoutRatio: read("payoutRatio", ["jpcrp_cor:PayoutRatioSummaryOfBusinessResults", "jpcrp_cor:PayoutRatioIFRSSummaryOfBusinessResults"], durationIdsFlat),
 
             // 株式数・配当
-            numberOfIssuedShares: this.getNumberValue(["jpcrp_cor:TotalNumberOfIssuedSharesSummaryOfBusinessResults", "jppfs_cor:TotalNumberOfIssuedShares"], instantIdsFlat),
-            dividendPaidPerShare: this.getNumberValue(["jpcrp_cor:DividendPaidPerShareSummaryOfBusinessResults"], durationIdsFlat)
+            numberOfIssuedShares: read("numberOfIssuedShares", ["jpcrp_cor:TotalNumberOfIssuedSharesSummaryOfBusinessResults", "jppfs_cor:TotalNumberOfIssuedShares"], instantIdsFlat),
+            dividendPaidPerShare: read("dividendPaidPerShare", ["jpcrp_cor:DividendPaidPerShareSummaryOfBusinessResults"], durationIdsFlat)
         };
     }
 
@@ -291,13 +334,13 @@ export class EdinetXbrlObject {
         return candidates.slice(offset);
     }
 
-    private getNumberValue(keys: string[], contextRefs: string[]): number | undefined {
+    private getNumberData(keys: string[], contextRefs: string[]): EdinetData | undefined {
         for (const contextRef of contextRefs) {
             for (const key of keys) {
                 const data = this.getDataByContextRef(key, contextRef);
                 if (data && data.value) {
                     const parsed = parseFloat(data.value);
-                    if (!isNaN(parsed)) return parsed;
+                    if (!isNaN(parsed)) return data;
                 }
             }
         }

@@ -6,6 +6,7 @@ import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
+import { screenFinancialSnapshots } from "./financial-screening";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -107,6 +108,37 @@ program.command("download")
             } catch (e: any) {
                 console.error(`Failed to download ${ticker}:`, e.message);
             }
+        }
+    });
+
+program.command("screen")
+    .description("保存済み主要指標JSONをオフライン横断検索します（データ取得なし）")
+    .requiredOption("-f, --file <path>", "FinancialSnapshot[] 形式のJSONファイル")
+    .option("--conditions <json>", "AND条件配列（metric/operator/value）", "[]")
+    .option("--tickers <codes>", "証券コード（カンマ区切り）")
+    .option("--type <code>", "書類種別コード", "120")
+    .option("--as-of <date>", "提出日・決算日の上限（YYYY-MM-DD または YYYY-MM-DD HH:mm:ss）")
+    .option("--sort-by <metric>", "並べ替え指標（例: operatingMargin）")
+    .option("--order <order>", "asc / desc", "desc")
+    .option("--limit <count>", "最大件数（0も可）")
+    .option("--offset <count>", "開始位置", "0")
+    .option("--pretty", "JSONを整形して出力")
+    .action(options => {
+        try {
+            const results = screenFinancialSnapshots(JSON.parse(fs.readFileSync(options.file, "utf-8")), {
+                conditions: JSON.parse(options.conditions),
+                secCodes: options.tickers?.split(",").map((code: string) => code.trim()),
+                docTypeCode: options.type,
+                asOf: options.asOf,
+                sortBy: options.sortBy,
+                order: options.order,
+                limit: options.limit === undefined ? undefined : Number(options.limit),
+                offset: Number(options.offset)
+            });
+            console.log(JSON.stringify(results, null, options.pretty ? 2 : undefined));
+        } catch (error) {
+            console.error("横断検索に失敗しました:", error instanceof Error ? error.message : error);
+            process.exitCode = 1;
         }
     });
 
