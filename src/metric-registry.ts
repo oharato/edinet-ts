@@ -4,8 +4,8 @@ import type { KeyMetrics } from "./edinet-xbrl-object";
 export type MetricId = keyof KeyMetrics;
 export type AccountingStandard = "J-GAAP" | "IFRS" | "US-GAAP";
 export type MetricUnit = "JPY" | "JPY/share" | "shares" | "pure";
-export interface MetricDefinition {
-    readonly id: MetricId;
+export interface MetricDefinition<Id extends string = MetricId> {
+    readonly id: Id;
     readonly valueType: "decimal";
     readonly unit: MetricUnit;
     readonly periodType: "instant" | "duration";

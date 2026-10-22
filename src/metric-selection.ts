@@ -1,6 +1,6 @@
 import type { EdinetContext } from "./edinet-context";
 import type { EdinetData } from "./edinet-xbrl-object";
-import { AccountingStandard, METRIC_REGISTRY, MetricId } from "./metric-registry";
+import { AccountingStandard, METRIC_REGISTRY, MetricDefinition, MetricId } from "./metric-registry";
 
 /** 会計基準は呼出元が元書類で確認した宣言。自動判定や年次推測はしません。 */
 export interface MetricSelectionOptions {
@@ -30,8 +30,8 @@ export interface FactSelectionEvidence {
     reason: SelectionReason;
 }
 /** numberはdecimal文字列への往復が一致し、安全整数範囲内の場合だけ付与します。 */
-export type FactSelectionResult = {
-    metricId: MetricId;
+export type FactSelectionResult<Id extends string = MetricId> = {
+    metricId: Id;
     reason: SelectionReason;
     evidence: readonly FactSelectionEvidence[];
 } & ({ status: "selected"; raw: string; safeNumber?: number; source: FactSelectionEvidence } |
@@ -58,9 +58,16 @@ const validDate = (date: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(date) &&
 export function selectMetricFact(id: MetricId, options: MetricSelectionOptions,
     facts: ReadonlyMap<string, readonly EdinetData[]>, contexts: ReadonlyMap<string, EdinetContext>,
     units: ReadonlyMap<string, string>, duplicateContexts: ReadonlySet<string> = new Set()): FactSelectionResult {
-    const definition = METRIC_REGISTRY[id];
+    return selectDefinedMetricFact(METRIC_REGISTRY[id], options, facts, contexts, units, duplicateContexts);
+}
+
+/** 辞書間で共用する選択器。既存18項目のID集合を拡張せず定義を受け取ります。 */
+export function selectDefinedMetricFact<Id extends string>(definition: MetricDefinition<Id>, options: MetricSelectionOptions,
+    facts: ReadonlyMap<string, readonly EdinetData[]>, contexts: ReadonlyMap<string, EdinetContext>,
+    units: ReadonlyMap<string, string>, duplicateContexts: ReadonlySet<string> = new Set()): FactSelectionResult<Id> {
+    const id = definition.id;
     const evidence: FactSelectionEvidence[] = [];
-    const finish = (status: "missing" | "unsupported" | "ambiguous", reason: SelectionReason): FactSelectionResult =>
+    const finish = (status: "missing" | "unsupported" | "ambiguous", reason: SelectionReason): FactSelectionResult<Id> =>
         ({ metricId: id, status, reason, evidence });
     const period = options.period;
     if (definition.periodType === "instant" ? !period.instant || !validDate(period.instant) || !!period.startDate || !!period.endDate :

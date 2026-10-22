@@ -13,3 +13,4 @@ export * from "./utils/html-cleaner";
 export * from "./financial-screening";
 export * from "./metric-registry";
 export * from "./metric-selection";
+export * from "./balance-sheet-registry";
