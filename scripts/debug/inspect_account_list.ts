@@ -1,5 +1,5 @@
 
-import XLSX from "xlsx";
+import { XLSX } from "../utils/spreadsheet";
 import path from "path";
 
 const EXCEL_PATH = path.resolve(__dirname, "../taxonomy/AccountList.xlsx");

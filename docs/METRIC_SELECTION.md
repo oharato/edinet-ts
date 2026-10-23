@@ -1,18 +1,26 @@
-# 指標辞書と厳密なfact選択
+# 会社の数値と元の記載を確認する
+
+## このページで分かること
+
+- **何ができる**: 1社の書類から、売上高などの値を対象期間・連結/単体の範囲を指定して選び、採用元と理由を確認できます。
+- **いつ使う**: 値だけでなく「どの元データから選んだか」を確認したいときや、前期・単体の値の混入を避けたいときに使います。
+- **何が必要・未対応**: 解析するXBRLと、呼出元で確認した会計基準・対象期間・範囲が必要です。書類の取得や基準の自動判定は行いません。全市場・全会計基準への対応でもありません。
+
+`fact`はXBRLに記録された1件の値、`context`はその値の対象企業・期間・範囲などの定義です。このAPIは条件に合うfactを選びます。`registry`（辞書）は、その選択に使う指標と元タグの対応表です。用語を調べるときは[用語集](GLOSSARY.md)を参照してください。
 
 `METRIC_REGISTRY` と `EdinetXbrlObject.selectMetric()` は主要18指標のための追加APIです。
 既存 `getKeyMetrics()` / `getKeyMetricsWithSources()` の選択順・fallback・number返値は維持しています。
 この追加APIをscreeningへ自動適用する変更は含みません。
 
-## 利用例
+## 開発者向け: 利用例
 
 ```ts
-import { EdinetXbrlParser, METRIC_REGISTRY } from "edinet-ts";
+import { EdinetXbrlParser, METRIC_REGISTRY, MetricId, AccountingStandard, ConsolidationScope } from "edinet-ts";
 
 const object = new EdinetXbrlParser().parse(xml);
-const result = object.selectMetric("netSales", {
-    accountingStandard: "J-GAAP",
-    scope: "Consolidated",
+const result = object.selectMetric(MetricId.NetSales, {
+    accountingStandard: AccountingStandard.JGAAP,
+    scope: ConsolidationScope.Consolidated,
     period: { startDate: "2024-04-01", endDate: "2025-03-31" }
 });
 if (result.status === "selected") {
@@ -24,8 +32,14 @@ console.log(result.reason, result.evidence);
 console.log(METRIC_REGISTRY.netSales);
 ```
 
+`MetricId.NetSales`・`AccountingStandard.JGAAP` は、エディターの候補から選べる定数です。TypeScriptではタイプミスの検出にも使えます。同名の `MetricId`・`AccountingStandard` 型もexport（ライブラリの外へ公開）しています。
+
+従来の `"netSales"`・`"J-GAAP"` も、候補を限定する文字列union型の有効値として使えます。`ConsolidationScope.Consolidated` / `.NonConsolidated`も利用できます。定数を使ってもJSONの値や指標IDは変わりません。[他の入力定数と直書きの調査結果](TYPED_OPTIONS.md)も参照してください。
+
+`test/types/metric-selection.ts` は正常な指定が通り、誤字は型エラーになることを確認するテストです。CI（変更時などに自動で走る検査）でも型検査します。
+
 会計基準は**呼出元が元書類で確認した宣言**です。DEIからの自動判定・宣言の照合は未実装です。
-単体は `scope: "NonConsolidated"`、時点指標は `period: { instant: "2025-03-31" }` を明示します。
+単体は `scope: ConsolidationScope.NonConsolidated`、時点指標は `period: { instant: "2025-03-31" }` を明示します。
 期間は開始日と終了日の両方を照合するため、終了日が同じ半期と通年を混ぜません。
 年次・YTD・単四半期の自動分類、最新年度の推測、過去の訂正書類選択は行いません。
 
@@ -53,6 +67,8 @@ US-GAAPと企業拡張タグの対応は未実装です。銀行・保険専用�
 連結→単体、期間、通貨、会計基準、namespaceをまたぐfallbackは行いません。
 
 ## 結果と理由
+
+`status`は「採用できたか」の区分、`reason`はその理由です。採用元は`source`、探索時点までの候補と理由は`evidence`に入ります。値の解析後の元表記を保つ文字列が`raw`、安全にnumberへ変換できた場合の値が`safeNumber`です。
 
 | status | 意味と主なreason |
 |---|---|

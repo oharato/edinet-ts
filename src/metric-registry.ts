@@ -2,7 +2,29 @@ import type { KeyMetrics } from "./edinet-xbrl-object";
 
 /** 安定IDは既存KeyMetricsの18項目と一致します。 */
 export type MetricId = keyof KeyMetrics;
-export type AccountingStandard = "J-GAAP" | "IFRS" | "US-GAAP";
+/** 補完可能な値定数。従来の文字列リテラル指定も同じ型で使えます。 */
+export const MetricId = Object.freeze({
+    NetSales: "netSales",
+    OperatingIncome: "operatingIncome",
+    OrdinaryIncome: "ordinaryIncome",
+    NetIncome: "netIncome",
+    NetAssets: "netAssets",
+    TotalAssets: "totalAssets",
+    OperatingCashFlow: "operatingCashFlow",
+    InvestingCashFlow: "investingCashFlow",
+    FinancingCashFlow: "financingCashFlow",
+    CashAndEquivalents: "cashAndEquivalents",
+    EarningsPerShare: "earningsPerShare",
+    BookValuePerShare: "bookValuePerShare",
+    EquityToTotalAssetsRatio: "equityToTotalAssetsRatio",
+    RateOfReturnOnEquity: "rateOfReturnOnEquity",
+    PriceEarningsRatio: "priceEarningsRatio",
+    PayoutRatio: "payoutRatio",
+    NumberOfIssuedShares: "numberOfIssuedShares",
+    DividendPaidPerShare: "dividendPaidPerShare"
+} as const satisfies Record<string, MetricId>);
+export const AccountingStandard = Object.freeze({ JGAAP: "J-GAAP", IFRS: "IFRS", USGAAP: "US-GAAP" } as const);
+export type AccountingStandard = typeof AccountingStandard[keyof typeof AccountingStandard];
 export type MetricUnit = "JPY" | "JPY/share" | "shares" | "pure";
 export interface MetricDefinition<Id extends string = MetricId> {
     readonly id: Id;

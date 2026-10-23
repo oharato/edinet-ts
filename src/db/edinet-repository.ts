@@ -1,4 +1,5 @@
-import Database from "better-sqlite3";
+import type { SQLInputValue } from "node:sqlite";
+import { Database, type NativeDatabase } from "./node-sqlite";
 import * as path from "path";
 import * as fs from "fs";
 import { EdinetDocument } from "../edinet-xbrl-downloader";
@@ -14,21 +15,33 @@ export interface DocumentSearchCriteria {
 }
 
 
-export class EdinetRepository {
-    private db: Database.Database;
+export interface EdinetRepositoryOptions {
+    /** 既存DBを変更せず開きます。schema初期化・親directory作成も行いません。 */
+    readOnly?: boolean;
+    /** lock待ち時間(ms)。従来のbetter-sqlite3既定値と同じ5000ms。 */
+    timeout?: number;
+}
 
-    constructor(dbPath?: string) {
+export class EdinetRepository {
+    private db: NativeDatabase;
+
+    constructor(dbPath?: string, options: EdinetRepositoryOptions = {}) {
         const defaultPath = path.resolve(process.cwd(), "data", "edinet.db");
         const targetPath = dbPath || defaultPath;
 
         // データの保存ディレクトリを確保
         const dir = path.dirname(targetPath);
-        if (!fs.existsSync(dir)) {
+        if (!options.readOnly && !fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        this.db = new Database(targetPath);
-        this.initSchema();
+        this.db = new Database(targetPath, { readOnly: options.readOnly ?? false, timeout: options.timeout ?? 5000 });
+        try {
+            if (!options.readOnly) this.initSchema();
+        } catch (error) {
+            this.db.close();
+            throw error;
+        }
     }
 
     private initSchema() {
@@ -57,52 +70,55 @@ export class EdinetRepository {
         this.db.exec(schema);
     }
 
-    public insertDocument(doc: EdinetDocument, submitDate: string) {
-        const stmt = this.db.prepare(`
-            INSERT OR IGNORE INTO documents 
+    private documentValues(doc: EdinetDocument, submitDate: string): SQLInputValue[] {
+        return [doc.docID, doc.secCode, doc.filerName, doc.docTypeCode, submitDate, doc.periodEnd, doc.docDescription]
+            .map(value => {
+                if (value === null || value === undefined) return null;
+                if (typeof value !== "string") throw new TypeError("書類メタデータは文字列またはnullで指定してください");
+                return value;
+            });
+    }
+
+    private prepareInsert() {
+        return this.db.prepare(`
+            INSERT OR IGNORE INTO documents
             (doc_id, sec_code, filer_name, doc_type_code, submit_date, period_end, doc_description)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         `);
+    }
 
-        stmt.run(
-            doc.docID,
-            doc.secCode,
-            doc.filerName,
-            doc.docTypeCode,
-            submitDate,
-            doc.periodEnd,
-            doc.docDescription
-        );
+    public insertDocument(doc: EdinetDocument, submitDate: string) {
+        const statement = this.prepareInsert();
+        try {
+            statement.run(...this.documentValues(doc, submitDate));
+        } finally {
+            statement.close();
+        }
     }
 
     public insertBatch(docs: EdinetDocument[], submitDate: string) {
-        const insert = this.db.prepare(`
-            INSERT OR IGNORE INTO documents 
-            (doc_id, sec_code, filer_name, doc_type_code, submit_date, period_end, doc_description)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        const insertMany = this.db.transaction((documents: EdinetDocument[]) => {
-            for (const doc of documents) {
-                insert.run(
-                    doc.docID,
-                    doc.secCode,
-                    doc.filerName,
-                    doc.docTypeCode,
-                    submitDate,
-                    doc.periodEnd,
-                    doc.docDescription
-                );
+        const statement = this.prepareInsert();
+        try {
+            this.db.exec("BEGIN");
+            try {
+                for (const doc of docs) statement.run(...this.documentValues(doc, submitDate));
+                this.db.exec("COMMIT");
+            } catch (error) {
+                if (this.db.isTransaction) this.db.exec("ROLLBACK");
+                throw error;
             }
-        });
-
-        insertMany(docs);
+        } finally {
+            statement.close();
+        }
     }
 
     public hasMetadataForDate(dateStr: string): boolean {
         const stmt = this.db.prepare("SELECT 1 FROM documents WHERE submit_date = ? LIMIT 1");
-        const result = stmt.get(dateStr);
-        return !!result;
+        try {
+            return !!stmt.get(dateStr);
+        } finally {
+            stmt.close();
+        }
     }
 
     public findDocuments(criteria: DocumentSearchCriteria): EdinetMetadata[] {
@@ -117,7 +133,7 @@ export class EdinetRepository {
                 doc_description as docDescription
             FROM documents WHERE 1=1
         `;
-        const params: any[] = [];
+        const params: SQLInputValue[] = [];
 
         if (criteria.secCode) {
             query += " AND sec_code = ?";
@@ -152,7 +168,13 @@ export class EdinetRepository {
             params.push(criteria.limit);
         }
 
-        return this.db.prepare(query).all(...params) as EdinetMetadata[];
+        const statement = this.db.prepare(query);
+        try {
+            // node:sqliteのnull-prototype行を、従来と同じ通常のオブジェクトで公開します。
+            return statement.all(...params).map(row => ({ ...row })) as unknown as EdinetMetadata[];
+        } finally {
+            statement.close();
+        }
     }
 
     public close() {

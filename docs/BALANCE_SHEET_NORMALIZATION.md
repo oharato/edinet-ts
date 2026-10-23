@@ -1,6 +1,16 @@
-# J-GAAPのBS直接fact正規化
+# 流動資産・流動負債・負債合計を読み取る
 
-状態: ローカル実装・検証済み。更新日: 2026-10-22。
+状態: PR #24で確認中（未merge・未release）。更新日: 2026-10-23。
+
+## できることと使う前の準備
+
+1社の提出書類から、流動資産・流動負債・負債合計の3つを読み取ります。日本の会計基準であるJ-GAAP、金額は円、指定した日付の数値が対象です。[財務用語の説明](GLOSSARY.md)も参照してください。
+
+手元のXBRLファイルを用意し、「連結（グループ全体）か単体（その会社だけ）」「どの日付の数値か」を指定します。読めないときは0を返さず、記載なし・未対応・候補が複数ある等の理由を返します。元の項目名・日付・単位も一緒に確認できます。
+
+保存した2企業の書類にある数値とは照らし合わせました。画面上の元の財務諸表との別途照合や、複数年度・全市場での確認は未完了です。先行PR #24は数値を読む機能です。このPR #25では、その3項目を使う[横断検索](BALANCE_SHEET_SCREENING.md)を追加しています。
+
+## 開発者向け: 関数と戻り値
 
 `BALANCE_SHEET_REGISTRY` と `EdinetXbrlObject.selectBalanceSheetMetric()` は、主要18指標とは別の3科目を返します。既存の `KeyMetrics`、`METRIC_REGISTRY`、`selectMetric()`、21指標のscreening集合には追加しません。[別のBS横断検索API/CLI](BALANCE_SHEET_SCREENING.md)を利用できます。
 
@@ -10,7 +20,7 @@
 | `currentLiabilities` | `jppfs_cor:CurrentLiabilities` | JPY / Instant |
 | `totalLiabilities` | `jppfs_cor:Liabilities` | JPY / Instant |
 
-辞書versionは `BALANCE_SHEET_REGISTRY_VERSION`（現在 `"1"`）。定義・候補配列・辞書はfreezeしています。負債純資産合計や内訳の加算、資産から純資産を引く差額補完は行いません。
+指標の対応表（registry）のversionは `BALANCE_SHEET_REGISTRY_VERSION`（現在 `"1"`）。定義・候補配列・辞書はfreezeしています。負債純資産合計や内訳の加算、資産から純資産を引く差額補完は行いません。
 
 ## 利用方法
 
@@ -25,7 +35,7 @@ const result = object.selectBalanceSheetMetric(BALANCE_SHEET_REGISTRY.currentAss
 if (result.status === "selected") {
     console.log(result.raw);        // decimal文字列
     console.log(result.safeNumber); // 安全に往復できる場合だけnumber
-    console.log(result.source);    // 元タグ/context/期間/scope/単位等
+    console.log(result.source);    // 元の項目名/記載範囲/日付/連結か単体/単位等
 }
 console.log(result.reason, result.evidence);
 console.log(BALANCE_SHEET_REGISTRY.currentAssets);
@@ -49,7 +59,7 @@ console.log(BALANCE_SHEET_REGISTRY.currentAssets);
 
 ## 検証と残る範囲
 
-[財務正規化計画](https://github.com/oharato/edinet-ts/blob/docs/financial-normalization-plan/docs/plans/FINANCIAL_NORMALIZATION.md)の最初の3項目について、F01〜F05/F07〜F11/F14/F15の適用範囲を合成/保存fixtureで検証済みです。InstantのみのAPIなのでF14は時点完全一致と期間型拒否が対象です。訂正書類選択やDurationの分類は未実装です。
+[財務正規化計画](plans/FINANCIAL_NORMALIZATION.md)の最初の3項目について、F01〜F05/F07〜F11/F14/F15の適用範囲を合成/保存fixtureで検証済みです。InstantのみのAPIなのでF14は時点完全一致と期間型拒否が対象です。訂正書類選択やDurationの分類は未実装です。
 
 保存済み2企業のXBRL（`CJ_2371_kakakucom.xbrl`、`S100TMMG/XBRL/PublicDoc/*.xbrl`）で、連結/単体それぞれ3項目のraw・元タグ・namespace URI・context・時点・単位・decimalsをraw取得APIと突合します。`3031_raccoon.xbrl`の連結負債は同じcontextのfactが重複しており、原値の一致を確認しつつ`ambiguous / multiple-facts`を維持します。金額はこの資料へ掲載しません。IFRS書類の単体jppfsがIFRS宣言で拒否されることも確認します。
 
@@ -57,6 +67,6 @@ console.log(BALANCE_SHEET_REGISTRY.currentAssets);
 
 現預金と現金同等物（F06）、借入/リース（F12）、設備投資/償却（F13）、既存21指標横断検索への登録、比率計算、IFRS mapping、永続索引は未実装です。F16は別のBS横断検索APIでraw/来歴を検証します。既存21指標のscreening集合や全市場索引へ自動登録する意味ではありません。
 
-ローカル検証: Node 24.22.1 / npm 11でbuild、`tsc --noEmit`、16ファイル409テスト（BS専用73件）、関連Python 5テスト、相対リンク・差分検査が成功。依存・lockの変更、新規取得、remote反映・配布・利用先更新はありません。
+ローカル検証（2026-10-23）: mainのNode 26.12.1 / npm 12.2.1へ同期し、build、`tsc --noEmit`、型の使用例の検査、19ファイル426テスト（BS専用73件）、関連Python 5テストが成功しました。文書の相対リンク・差分も検査しています。この財務機能による依存・lockの追加変更、新規取得、配布・利用先更新はありません。
 
-補完用定数は先行PR #23の[型付き入力定数](https://github.com/oharato/edinet-ts/blob/improve/metric-foundation/docs/TYPED_OPTIONS.md)を参照。文字列union型とJSON値は維持し、APIのscope等には同じ定数値を渡せます。
+補完用定数はmainへ統合済みの[入力候補を選ぶ方法](TYPED_OPTIONS.md)を参照。文字列union型とJSON値は維持し、APIのscope等には同じ定数値を渡せます。

@@ -1,6 +1,18 @@
 # ドキュメント索引
 
-更新日: 2026-10-22。直下には現行の仕様・利用方法・比較を置く。計画はplans、設計判断はadr、失効した手順・過去の提案はhistoryへ分離する。
+更新日: 2026-10-23。使い方・現在の仕様はこの階層、計画はplans、過去の経緯はadr/historyに置きます。
+
+まずは「何をしたいか」から選んでください。言葉に迷ったら[用語集](GLOSSARY.md)を参照できます。
+
+| やりたいこと | 最初に読む資料 |
+|---|---|
+| 会社の数値を読み、元の記載も確認したい | [数値の取り出し方](METRIC_SELECTION.md) |
+| 流動資産・流動負債・負債合計を読みたい | [今回の3項目](BALANCE_SHEET_NORMALIZATION.md) |
+| 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目の検索は[後続PR #25](https://github.com/oharato/edinet-ts/pull/25) |
+| 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
+| 次に何を作るか知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md) |
+
+以下は、実装・確認する人向けの詳しい資料一覧です。
 
 ## 現行の入口
 
@@ -8,11 +20,13 @@
 |---|---|
 | [利用方法](../README.md) / [DBセットアップ](../SETUP_DB.md) | ライブラリ・CLI・書類メタデータDB |
 | [要件・提供機能](REQUIREMENTS.md) | 現行機能と環境。未実装の範囲は計画と区別 |
+| [型付き入力定数](TYPED_OPTIONS.md) | scope・比較・並び順・期間分類と、文字列指定の互換性 |
 | [指標辞書・厳密選択](METRIC_SELECTION.md) | 18指標の追加API、raw/number・欠損理由・未対応境界 |
 | [技術仕様](SPECIFICATIONS.md) | パーサー、主要指標、scope、DB、探索規則 |
 | [書類一覧API境界](DOCUMENT_LIST_VALIDATION.md) | 区分の正規化、エラーと空結果の区別 |
 | [EDINET DB比較・指標辞書](EDINET_DB_COMPARISON.md) | 単一銘柄/横断検索の二軸、21指標・入力・制約 |
 | [他EDINETライブラリ調査](EDINET_LIBRARY_RESEARCH.md) | 設計候補、ライセンス、独立実装の境界 |
+| [Node・標準SQLite](RUNTIME_AND_SQLITE.md) | 採用版、breaking change、DB互換と検証結果 |
 | [依存選定方針](DEPENDENCY_DECISIONS.md) | Node/SQLite・XML/ZIP/Excel・開発依存の判断 |
 | [ローカル配布物](nuc7-local-artifacts.md) | 固定sourceの再現、保持、rollback、利用先統合 |
 | [タクソノミ更新](TAXONOMY_UPDATE.md) | 取得・型/資料生成の手順 |
@@ -24,7 +38,7 @@
 ## 計画と判断の履歴
 
 - [進行中の改善計画](plans/EDINET_TS_ROADMAP.md): 完了/ローカル検証/未実装/実データ未検証を分離。
-- [財務明細正規化計画](https://github.com/oharato/edinet-ts/blob/docs/financial-normalization-plan/docs/plans/FINANCIAL_NORMALIZATION.md): 最初の3項目と後続候補・受入条件。
+- [財務明細正規化計画](plans/FINANCIAL_NORMALIZATION.md): 追加する数値と確認項目。最初の3項目はこのPRで実装し、残りは計画。
 - [ADR 0001: ローカル配布物保持](adr/0001-local-distribution.md): 採用した保存・配布方針。
 - [履歴索引](history/README.md): 過去の依頼、失効した公開手順、過去比較と検証。現行の手順として実行しない。
 
