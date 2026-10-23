@@ -13,6 +13,10 @@ Pythonライブラリ [BuffettCode/edinet_xbrl](https://github.com/BuffettCode/e
 *   **ZIP自動解凍**: ダウンロードした書類のZIP解凍とファイル特定を自動化します。
 *   **Human/AI Friendly**: `--help-types` で型定義とドキュメントを生成可能。開発者の参照用としてはもちろん、AIエージェントに仕様を理解させるためのコンテキストとしても最適です。
 
+## Runtime
+
+このruntime更新では **Node.js 26.12.1以上 / npm 12.2.1以上** が必要です。従来Nodeからのbreaking changeです。外部SQLite依存を標準 `node:sqlite` に置換しています。採用版・既存DB互換・型定義の制約・開発環境の分離は [Node・SQLiteの手順](docs/RUNTIME_AND_SQLITE.md) を参照してください。
+
 ## インストール
 
 ```bash

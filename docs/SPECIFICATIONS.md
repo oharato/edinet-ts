@@ -65,7 +65,7 @@ XMLノードから属性や値を安全に取り出すためのユーティリ�
 ### 2.5 `EdinetRepository` (SQLite)
 メタデータ管理を担当します。
 
-*   **技術スタック**: `better-sqlite3` を使用。
+*   **技術スタック**: Node標準 `node:sqlite` の同期Databaseを使用。[runtime/DB互換](RUNTIME_AND_SQLITE.md) を参照。
 *   **スキーマ (edinet.db)**:
     *   `documents`: 書類管理ID、提出者名、書類種別、提出日、決算期末などを格納。
 *   **役割**: 過去の日付指定検索を高速化し、APIの負荷を軽減します。

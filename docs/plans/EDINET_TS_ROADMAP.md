@@ -71,7 +71,7 @@ P0基盤追加時はNode24で15ファイル/326テスト（既存255+追加71）
 
 ### 2. 財務明細の正規化
 
-J-GAAPの流動資産・流動負債・負債合計は別registry/APIへローカル実装。[現行API仕様](../BALANCE_SHEET_NORMALIZATION.md)と[候補・受入計画](https://github.com/oharato/edinet-ts/blob/docs/financial-normalization-plan/docs/plans/FINANCIAL_NORMALIZATION.md)を参照。保存2企業のraw fact/来歴の突合が対象で、表示原表の独立照合、複数年度原本、IFRS・横断検索・後続明細は未達。
+財務明細の追加は[個別計画](FINANCIAL_NORMALIZATION.md)で管理する。このPRでは、J-GAAP（日本の会計基準）の流動資産・流動負債・負債合計を取り出す機能を実装した。[使い方と制約](../BALANCE_SHEET_NORMALIZATION.md)を参照。保存2企業のXBRLにある数値と取り出した数値を照らし合わせたが、画面に表示された元の財務諸表との別途照合や、複数年度・IFRS・横断検索・後続科目の対応は完了していない。
 
 **目的**: 主要指標以外の財務条件を扱えるようにする。
 

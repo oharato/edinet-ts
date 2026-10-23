@@ -1,4 +1,5 @@
 import { KeyMetrics, KeyMetricSources, KeyMetricSource } from "./edinet-xbrl-object";
+import { ComparisonOperator, ConsolidationScope, FinancialPeriodType, SortOrder } from "./financial-options";
 
 /** 元factの期間・scope・通貨が一致する場合だけ計算します。来歴不明なら未定義です。 */
 export function calculateFinancialMetrics(metrics: KeyMetrics, sources?: KeyMetricSources): DerivedFinancialMetrics {
@@ -7,7 +8,7 @@ export function calculateFinancialMetrics(metrics: KeyMetrics, sources?: KeyMetr
         return !!x && !!y && !!x.contextRef && x.contextRef === y.contextRef &&
             !!x.periodStart && validDate(x.periodStart) && x.periodStart === y.periodStart &&
             !!x.periodEnd && validDate(x.periodEnd) && x.periodEnd === y.periodEnd && x.periodStart <= x.periodEnd &&
-            !!x.scope && ["Consolidated", "NonConsolidated"].includes(x.scope) && x.scope === y.scope && !!x.unit && /^iso4217:[A-Z]{3}$/.test(x.unit) && x.unit === y.unit;
+            !!x.scope && Object.values(ConsolidationScope).includes(x.scope) && x.scope === y.scope && !!x.unit && /^iso4217:[A-Z]{3}$/.test(x.unit) && x.unit === y.unit;
     };
     const ratio = (numerator?: number, denominator?: number): number | undefined => {
         if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator! <= 0) return undefined;
@@ -55,12 +56,12 @@ export interface FinancialSnapshot {
     /** getKeyMetricsWithSources()から取得。来歴なしでは派生値を計算しません。 */
     metricSources?: KeyMetricSources;
     /** 不明の場合は派生値を自動計算しません。書類種別だけから推測しません。 */
-    periodType?: "annual" | "ytd" | "quarterly";
+    periodType?: FinancialPeriodType;
 }
 
 export interface FinancialCondition {
     metric: FinancialScreeningMetric;
-    operator: "gte" | "lte" | "gt" | "lt" | "eq";
+    operator: ComparisonOperator;
     value: number;
 }
 
@@ -72,7 +73,7 @@ export interface FinancialScreeningOptions {
     /** 提出日と決算日の両方に適用。時刻指定の場合は提出時刻まで比較します。 */
     asOf?: string;
     sortBy?: FinancialScreeningMetric;
-    order?: "asc" | "desc";
+    order?: SortOrder;
     offset?: number;
     limit?: number;
 }
@@ -85,7 +86,7 @@ export interface FinancialScreeningResult extends FinancialSnapshot {
 
 const metricsSet = new Set<string>(FINANCIAL_SCREENING_METRICS);
 const sourceMetrics = FINANCIAL_SCREENING_METRICS.filter(key => !["operatingMargin", "netMargin", "freeCashFlow"].includes(key));
-const operators = new Set(["gte", "lte", "gt", "lt", "eq"]);
+const operators = new Set<string>(Object.values(ComparisonOperator));
 const normalizeCode = (code: string) => {
     if (!/^[0-9A-Z]{4}0?$/.test(code)) throw new Error(`不正な証券コード: ${code}`);
     return code.length === 4 ? `${code}0` : code;
@@ -120,7 +121,7 @@ export function screenFinancialSnapshots(
             !Number.isFinite(condition.value)) throw new Error("不正な財務条件です");
     }
     if (options.sortBy !== undefined && !metricsSet.has(options.sortBy)) throw new Error("不正な並べ替え指標です");
-    if (options.order !== undefined && !["asc", "desc"].includes(options.order)) throw new Error("不正な並べ替え順です");
+    if (options.order !== undefined && !Object.values(SortOrder).includes(options.order)) throw new Error("不正な並べ替え順です");
     for (const value of [options.limit, options.offset]) {
         if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) throw new Error("limit/offset は0以上の整数です");
     }
@@ -136,12 +137,12 @@ export function screenFinancialSnapshots(
             !/^\d{4}-\d{2}-\d{2}$/.test(row.periodEnd) || !validDate(row.periodEnd) ||
             typeof row.submitDate !== "string" || !validTimestamp(row.submitDate) ||
             !row.metrics || typeof row.metrics !== "object" || Array.isArray(row.metrics)) throw new Error("不正な財務スナップショットです");
-        if (row.periodType !== undefined && !["annual", "ytd", "quarterly"].includes(row.periodType)) throw new Error("不正なperiodTypeです");
+        if (row.periodType !== undefined && !Object.values(FinancialPeriodType).includes(row.periodType)) throw new Error("不正なperiodTypeです");
         if (row.metricSources !== undefined && (!row.metricSources || typeof row.metricSources !== "object" || Array.isArray(row.metricSources))) throw new Error("不正なmetricSourcesです");
         for (const source of Object.values(row.metricSources ?? {}) as KeyMetricSource[]) {
             if (!source || typeof source !== "object" ||
                 [source.contextRef, source.unit, source.periodStart, source.periodEnd, source.instant, source.scope].some(value => value !== undefined && typeof value !== "string") ||
-                source.scope !== undefined && !["Consolidated", "NonConsolidated"].includes(source.scope)) throw new Error("不正な指標来歴です");
+                source.scope !== undefined && !Object.values(ConsolidationScope).includes(source.scope)) throw new Error("不正な指標来歴です");
         }
         const code = normalizeCode(row.secCode);
         for (const key of sourceMetrics) {
@@ -201,11 +202,11 @@ export function screenFinancialSnapshots(
             const value = getMetric(row, condition.metric);
             if (value === undefined) return false;
             switch (condition.operator) {
-                case "gte": return value >= condition.value;
-                case "lte": return value <= condition.value;
-                case "gt": return value > condition.value;
-                case "lt": return value < condition.value;
-                case "eq": return value === condition.value;
+                case ComparisonOperator.GreaterThanOrEqual: return value >= condition.value;
+                case ComparisonOperator.LessThanOrEqual: return value <= condition.value;
+                case ComparisonOperator.GreaterThan: return value > condition.value;
+                case ComparisonOperator.LessThan: return value < condition.value;
+                case ComparisonOperator.Equal: return value === condition.value;
             }
         }));
     results.sort((a, b) => {
@@ -213,7 +214,7 @@ export function screenFinancialSnapshots(
             const av = getMetric(a, options.sortBy), bv = getMetric(b, options.sortBy);
             if (av === undefined && bv !== undefined) return 1;
             if (bv === undefined && av !== undefined) return -1;
-            if (av !== undefined && bv !== undefined && av !== bv) return (av < bv ? -1 : 1) * (options.order === "asc" ? 1 : -1);
+            if (av !== undefined && bv !== undefined && av !== bv) return (av < bv ? -1 : 1) * (options.order === SortOrder.Ascending ? 1 : -1);
         }
         return a.secCode.localeCompare(b.secCode);
     });

@@ -1,4 +1,5 @@
 import { EdinetDataUtil } from "./edinet-data-util";
+import { ConsolidationScope } from "./financial-options";
 
 export interface EdinetContext {
     /** コンテキストのID (例: "CurrentYearDuration") */
@@ -13,7 +14,7 @@ export interface EdinetContext {
         instant?: string;
     };
     /** 連結範囲 ("Consolidated" または "NonConsolidated") */
-    scope: "Consolidated" | "NonConsolidated";
+    scope: ConsolidationScope;
     /** 明示的なメンバーのリスト (例: "NonConsolidatedMember") */
     dimensions: string[];
     /** 未解釈のtyped dimension等がある場合は厳密選択を拒否します。 */
@@ -43,7 +44,7 @@ export class ContextParser {
         // findExplicitMembers メソッドは明示的なメンバーを抽出します。
         const dimensions = ContextParser.findExplicitMembers(node);
         // scope のロジックは findExplicitMembers の結果に基づいて直接統合されました。
-        const scope = dimensions.includes("NonConsolidatedMember") ? "NonConsolidated" : "Consolidated";
+        const scope = dimensions.includes("NonConsolidatedMember") ? ConsolidationScope.NonConsolidated : ConsolidationScope.Consolidated;
 
         const scenario = node["xbrli:scenario"], segment = node["xbrli:entity"]?.["xbrli:segment"];
         const validStandaloneDimension = (part: any): boolean => {

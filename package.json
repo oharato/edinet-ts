@@ -1,60 +1,66 @@
 {
-    "name": "edinet-ts",
-    "version": "1.1.17",
-    "description": "TypeScript port of edinet_xbrl for parsing EDINET XBRL files",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "exports": {
-        ".": {
-            "import": "./dist/index.js",
-            "require": "./dist/index.js",
-            "types": "./dist/index.d.ts"
-        }
-    },
-    "bin": {
-        "edinet-ts": "dist/cli.js"
-    },
-    "scripts": {
-        "build": "npm run generate-type-docs && tsc && npm run add-js-extensions",
-        "generate-type-docs": "node --import tsx scripts/generate-type-docs.ts",
-        "add-js-extensions": "node scripts/add-js-extensions.js",
-        "test": "vitest run"
-    },
-    "keywords": [
-        "edinet",
-        "xbrl",
-        "typescript"
-    ],
-    "author": "oharato",
-    "license": "Apache-2.0",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/oharato/edinet-ts.git"
-    },
-    "files": [
-        "dist",
-        "LICENSE",
-        "README.md",
-        "package.json"
-    ],
-    "dependencies": {
-        "better-sqlite3": "^12.5.0",
-        "cli-progress": "^3.12.0",
-        "commander": "^14.0.2",
-        "dayjs": "^1.11.19",
-        "dotenv": "^17.2.3",
-        "fast-xml-parser": "^5.3.2",
-        "jszip": "^3.10.1"
-    },
-    "devDependencies": {
-        "@types/better-sqlite3": "^7.6.13",
-        "@types/cli-progress": "^3.11.6",
-        "@types/jszip": "^3.4.0",
-        "@types/node": "^24.10.1",
-        "ts-morph": "^27.0.2",
-        "tsx": "4.23.15",
-        "typescript": "^5.9.3",
-        "vitest": "^4.0.15",
-        "xlsx": "^0.18.5"
+  "name": "edinet-ts",
+  "version": "1.1.17",
+  "description": "TypeScript port of edinet_xbrl for parsing EDINET XBRL files",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
+  },
+  "bin": {
+    "edinet-ts": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "npm run clean && npm run generate-type-docs && tsc && npm run add-js-extensions",
+    "generate-type-docs": "node --import tsx scripts/generate-type-docs.ts",
+    "add-js-extensions": "node scripts/add-js-extensions.js",
+    "test": "vitest run",
+    "clean": "node -e \"require('node:fs').rmSync('dist', {recursive:true, force:true})\""
+  },
+  "keywords": [
+    "edinet",
+    "xbrl",
+    "typescript"
+  ],
+  "author": "oharato",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oharato/edinet-ts.git"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "dependencies": {
+    "commander": "15.0.0",
+    "dayjs": "1.11.23",
+    "dotenv": "18.0.8",
+    "fast-xml-parser": "5.11.2",
+    "jszip": "3.10.2"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "3.11.6",
+    "@types/node": "26.6.5",
+    "cli-progress": "3.12.0",
+    "ts-morph": "28.0.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "engines": {
+    "node": ">=26.12.1",
+    "npm": ">=12.2.1"
+  },
+  "packageManager": "npm@12.2.1",
+  "allowScripts": {
+    "esbuild": true
+  }
 }

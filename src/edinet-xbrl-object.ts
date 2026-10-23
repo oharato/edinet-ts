@@ -2,6 +2,7 @@ import { BALANCE_SHEET_REGISTRY, BalanceSheetMetricId } from "./balance-sheet-re
 import { selectDefinedMetricFact, selectMetricFact, MetricSelectionOptions, FactSelectionResult } from "./metric-selection";
 import { MetricId } from "./metric-registry";
 import { EdinetDataUtil } from "./edinet-data-util";
+import type { ConsolidationScope } from "./financial-options";
 import { EdinetContext } from "./edinet-context";
 import { JppfsCorTaxonomy } from "./types/jppfs_cor_taxonomy";
 import { cleanHtml } from "./utils/html-cleaner";
@@ -65,7 +66,7 @@ export interface KeyMetricSource {
     periodStart?: string;
     periodEnd?: string;
     instant?: string;
-    scope?: "Consolidated" | "NonConsolidated";
+    scope?: ConsolidationScope;
 }
 export type KeyMetricSources = Partial<Record<keyof KeyMetrics, KeyMetricSource>>;
 
@@ -295,7 +296,7 @@ export class EdinetXbrlObject {
     public getData(key: string, options: {
         year?: "Current" | "Prior1Year" | "Prior2Year",
         type: "Duration" | "Instant",
-        scope: "Consolidated" | "NonConsolidated"
+        scope: ConsolidationScope
     }): EdinetData | undefined {
         const context = this.findContext(options);
         if (!context) return undefined;
@@ -312,7 +313,7 @@ export class EdinetXbrlObject {
     public findContext(options: {
         year?: "Current" | "Prior1Year" | "Prior2Year",
         type: "Duration" | "Instant",
-        scope: "Consolidated" | "NonConsolidated"
+        scope: ConsolidationScope
     }): EdinetContext | undefined {
         const candidates = this.findContexts(options);
         return candidates[0];
@@ -324,7 +325,7 @@ export class EdinetXbrlObject {
     public findContexts(options: {
         year?: "Current" | "Prior1Year" | "Prior2Year",
         type: "Duration" | "Instant",
-        scope: "Consolidated" | "NonConsolidated"
+        scope: ConsolidationScope
     }): EdinetContext[] {
         let candidates = Array.from(this.contextMap.values()).filter(c => c.scope === options.scope);
 

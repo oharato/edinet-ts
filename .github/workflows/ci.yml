@@ -3,7 +3,7 @@ name: Source checks
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [main, master]
 
 permissions:
   contents: read
@@ -22,12 +22,16 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
-          node-version: '24'
+          node-version-file: .node-version
           cache: npm
+      - name: Use declared npm version
+        run: npm install --global npm@12.2.1 --no-audit --no-fund
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Check types
         run: npx --no-install tsc --noEmit
+      - name: Check public API type examples
+        run: npx --no-install tsc --project test/types/tsconfig.json
       # ESM integration tests build dist; run the complete suite on nuc7 instead.
       - name: Run source tests
         run: npm test -- --maxWorkers=1 --exclude test/esm-imports.test.ts
