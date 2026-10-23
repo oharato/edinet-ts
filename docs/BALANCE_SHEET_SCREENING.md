@@ -7,14 +7,15 @@
 ## API
 
 ```ts
-import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots } from "edinet-ts";
+import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots,
+    AccountingStandard, BALANCE_SHEET_REGISTRY, ComparisonOperator, ConsolidationScope, SortOrder } from "edinet-ts";
 const row = createBalanceSheetSnapshot(xml, {
     secCode: "1001", docID: "SYNTHETIC1", instant: "2025-03-31",
-    scope: "Consolidated", accountingStandard: "J-GAAP", currency: "JPY"
+    scope: ConsolidationScope.Consolidated, accountingStandard: AccountingStandard.JGAAP, currency: "JPY"
 });
 const result = screenBalanceSheetSnapshots([row], {
-    conditions: [{ metric: "currentAssets", operator: "gte", value: 100 }],
-    sortBy: "totalLiabilities", order: "desc", offset: 0, limit: 20
+    conditions: [{ metric: BALANCE_SHEET_REGISTRY.currentAssets.id, operator: ComparisonOperator.GreaterThanOrEqual, value: 100 }],
+    sortBy: BALANCE_SHEET_REGISTRY.totalLiabilities.id, order: SortOrder.Descending, offset: 0, limit: 20
 });
 ```
 

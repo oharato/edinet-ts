@@ -15,11 +15,11 @@
 ## 利用方法
 
 ```ts
-import { EdinetXbrlParser, BALANCE_SHEET_REGISTRY } from "edinet-ts";
+import { EdinetXbrlParser, BALANCE_SHEET_REGISTRY, AccountingStandard, ConsolidationScope } from "edinet-ts";
 const object = new EdinetXbrlParser().parse(xml);
-const result = object.selectBalanceSheetMetric("currentAssets", {
-    accountingStandard: "J-GAAP",
-    scope: "Consolidated",
+const result = object.selectBalanceSheetMetric(BALANCE_SHEET_REGISTRY.currentAssets.id, {
+    accountingStandard: AccountingStandard.JGAAP,
+    scope: ConsolidationScope.Consolidated,
     period: { instant: "2025-03-31" }
 });
 if (result.status === "selected") {
@@ -33,7 +33,7 @@ console.log(BALANCE_SHEET_REGISTRY.currentAssets);
 
 会計基準は**呼出元が対象factの元書類・表で確認して宣言**します。DEIの自動判定/照合は未実装です。IFRS書類の単体J-GAAP factを、書類全体のIFRS宣言だけで連結IFRSに採用しないでください。`accountingStandard: "IFRS"` / `"US-GAAP"` はタグがあっても `unsupported-standard` です。
 
-単体は `scope: "NonConsolidated"` を明示します。対象時点は日付の完全一致です。最新時点の推定、連結から単体、当期から前期、通貨・基準のfallbackはありません。Duration・不正日付は `unsupported / invalid-period` です。
+単体は `scope: ConsolidationScope.NonConsolidated` を明示します。対象時点は日付の完全一致です。最新時点の推定、連結から単体、当期から前期、通貨・基準のfallbackはありません。Duration・不正日付は `unsupported / invalid-period` です。
 
 ## 共通の選択契約
 
@@ -58,3 +58,5 @@ console.log(BALANCE_SHEET_REGISTRY.currentAssets);
 現預金と現金同等物（F06）、借入/リース（F12）、設備投資/償却（F13）、既存21指標横断検索への登録、比率計算、IFRS mapping、永続索引は未実装です。F16は別のBS横断検索APIでraw/来歴を検証します。既存21指標のscreening集合や全市場索引へ自動登録する意味ではありません。
 
 ローカル検証: Node 24.22.1 / npm 11でbuild、`tsc --noEmit`、16ファイル409テスト（BS専用73件）、関連Python 5テスト、相対リンク・差分検査が成功。依存・lockの変更、新規取得、remote反映・配布・利用先更新はありません。
+
+補完用定数は先行PR #23の[型付き入力定数](https://github.com/oharato/edinet-ts/blob/improve/metric-foundation/docs/TYPED_OPTIONS.md)を参照。文字列union型とJSON値は維持し、APIのscope等には同じ定数値を渡せます。
