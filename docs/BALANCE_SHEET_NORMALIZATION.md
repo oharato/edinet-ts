@@ -49,7 +49,7 @@ console.log(BALANCE_SHEET_REGISTRY.currentAssets);
 
 ## 検証と残る範囲
 
-[財務正規化計画](plans/FINANCIAL_NORMALIZATION.md)の最初の3項目について、F01〜F05/F07〜F11/F14/F15の適用範囲を合成/保存fixtureで検証済みです。InstantのみのAPIなのでF14は時点完全一致と期間型拒否が対象です。訂正書類選択やDurationの分類は未実装です。
+[財務正規化計画](https://github.com/oharato/edinet-ts/blob/docs/financial-normalization-plan/docs/plans/FINANCIAL_NORMALIZATION.md)の最初の3項目について、F01〜F05/F07〜F11/F14/F15の適用範囲を合成/保存fixtureで検証済みです。InstantのみのAPIなのでF14は時点完全一致と期間型拒否が対象です。訂正書類選択やDurationの分類は未実装です。
 
 保存済み2企業のXBRL（`CJ_2371_kakakucom.xbrl`、`S100TMMG/XBRL/PublicDoc/*.xbrl`）で、連結/単体それぞれ3項目のraw・元タグ・namespace URI・context・時点・単位・decimalsをraw取得APIと突合します。`3031_raccoon.xbrl`の連結負債は同じcontextのfactが重複しており、原値の一致を確認しつつ`ambiguous / multiple-facts`を維持します。金額はこの資料へ掲載しません。IFRS書類の単体jppfsがIFRS宣言で拒否されることも確認します。
 
