@@ -6,6 +6,7 @@ import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
+import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots } from "./balance-sheet-screening";
 import { screenFinancialSnapshots } from "./financial-screening";
 import * as fs from "fs";
 import * as path from "path";
@@ -108,6 +109,38 @@ program.command("download")
             } catch (e: any) {
                 console.error(`Failed to download ${ticker}:`, e.message);
             }
+        }
+    });
+
+program.command("screen-bs")
+    .description("ローカルXBRL manifestを厳密選択し、J-GAAP BS3科目を検索します")
+    .requiredOption("--manifest <path>", "ローカルXBRL一覧JSON（相対fileはmanifest基準）")
+    .option("--conditions <json>", "AND条件のJSON配列", "[]")
+    .option("--sort-by <metric>", "BS科目で並べ替え")
+    .option("--order <order>", "ascまたはdesc", "desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifestPath = path.resolve(options.manifest);
+            const entries = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+            if (!Array.isArray(entries)) throw new Error("manifestは配列です");
+            const snapshots = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.file !== "string" || !entry.file.trim() ||
+                    Object.keys(entry).some(key => !["secCode", "docID", "file", "instant", "scope", "accountingStandard"].includes(key))) throw new Error("不正なmanifest項目です");
+                const xml = fs.readFileSync(path.resolve(path.dirname(manifestPath), entry.file), "utf8");
+                return createBalanceSheetSnapshot(xml, { secCode: entry.secCode, docID: entry.docID, instant: entry.instant, scope: entry.scope, accountingStandard: entry.accountingStandard, currency: "JPY" });
+            });
+            for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error("offset/limitは0以上の整数です");
+            const result = screenBalanceSheetSnapshots(snapshots, {
+                conditions: JSON.parse(options.conditions), sortBy: options.sortBy, order: options.order,
+                offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit)
+            });
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+        } catch (error) {
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exitCode = 1;
         }
     });
 
