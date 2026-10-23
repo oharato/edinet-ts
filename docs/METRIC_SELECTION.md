@@ -1,8 +1,4 @@
-# 指標辞書と厳密なfact選択
-
-`METRIC_REGISTRY` と `EdinetXbrlObject.selectMetric()` は主要18指標のための追加APIです。
-既存 `getKeyMetrics()` / `getKeyMetricsWithSources()` の選択順・fallback・number返値は維持しています。
-この追加APIをscreeningへ自動適用する変更は含みません。
+# 会社の数値と元の記載を確認する
 
 ## このページで分かること
 
@@ -12,7 +8,11 @@
 
 `fact`はXBRLに記録された1件の値、`context`はその値の対象企業・期間・範囲などの定義です。このAPIは条件に合うfactを選びます。`registry`（辞書）は、その選択に使う指標と元タグの対応表です。用語を調べるときは[用語集](GLOSSARY.md)を参照してください。
 
-## 利用例
+`METRIC_REGISTRY` と `EdinetXbrlObject.selectMetric()` は主要18指標のための追加APIです。
+既存 `getKeyMetrics()` / `getKeyMetricsWithSources()` の選択順・fallback・number返値は維持しています。
+この追加APIをscreeningへ自動適用する変更は含みません。
+
+## 開発者向け: 利用例
 
 ```ts
 import { EdinetXbrlParser, METRIC_REGISTRY, MetricId, AccountingStandard, ConsolidationScope } from "edinet-ts";
