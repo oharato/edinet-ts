@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
-import { METRIC_REGISTRY } from "../src/metric-registry";
+import { AccountingStandard, MetricId, METRIC_REGISTRY } from "../src/metric-registry";
 import { MetricSelectionOptions, toSafeMetricNumber } from "../src/metric-selection";
 import { context, fact, instance, period, standalone } from "./fixtures/metric-boundaries";
 const options: MetricSelectionOptions = { accountingStandard: "J-GAAP", scope: "Consolidated", period };
@@ -9,6 +9,13 @@ const parse = (xml: string) => new EdinetXbrlParser().parse(xml);
 const select = (xml = instance(), opts = options) => parse(xml).selectMetric("netSales", opts);
 
 describe("指標辞書と厳密選択", () => {
+    it("補完用の値定数が全18指標・会計基準と一致し、従来の文字列と同じ結果になる", () => {
+        expect(Object.values(MetricId).sort()).toEqual(Object.keys(METRIC_REGISTRY).sort());
+        expect(Object.values(AccountingStandard)).toEqual(["J-GAAP", "IFRS", "US-GAAP"]);
+        expect(Object.isFrozen(MetricId)).toBe(true);
+        expect(Object.isFrozen(AccountingStandard)).toBe(true);
+        expect(parse(instance()).selectMetric(MetricId.NetSales, { ...options, accountingStandard: AccountingStandard.JGAAP })).toEqual(select());
+    });
     it("18個の安定ID・候補・型・単位・fallbackを固定する", () => {
         expect(Object.keys(METRIC_REGISTRY)).toHaveLength(18);
         for (const [id, definition] of Object.entries(METRIC_REGISTRY)) {

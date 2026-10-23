@@ -7,11 +7,11 @@
 ## 利用例
 
 ```ts
-import { EdinetXbrlParser, METRIC_REGISTRY } from "edinet-ts";
+import { EdinetXbrlParser, METRIC_REGISTRY, MetricId, AccountingStandard } from "edinet-ts";
 
 const object = new EdinetXbrlParser().parse(xml);
-const result = object.selectMetric("netSales", {
-    accountingStandard: "J-GAAP",
+const result = object.selectMetric(MetricId.NetSales, {
+    accountingStandard: AccountingStandard.JGAAP,
     scope: "Consolidated",
     period: { startDate: "2024-04-01", endDate: "2025-03-31" }
 });
@@ -23,6 +23,8 @@ if (result.status === "selected") {
 console.log(result.reason, result.evidence);
 console.log(METRIC_REGISTRY.netSales);
 ```
+
+`MetricId.NetSales`・`AccountingStandard.JGAAP` は、値の補完とタイプミス検出に使える定数です。同名の `MetricId`・`AccountingStandard` 型もexportしています。従来の `"netSales"`・`"J-GAAP"` も同じ文字列union型で使えます。JSONの値や指標IDは変わりません。`test/types/metric-selection.ts` で正常例と誤字の型エラーを固定し、CIでも型検査します。
 
 会計基準は**呼出元が元書類で確認した宣言**です。DEIからの自動判定・宣言の照合は未実装です。
 単体は `scope: "NonConsolidated"`、時点指標は `period: { instant: "2025-03-31" }` を明示します。
