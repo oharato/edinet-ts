@@ -1,4 +1,7 @@
+import { selectMetricFact, MetricSelectionOptions, FactSelectionResult } from "./metric-selection";
+import { MetricId } from "./metric-registry";
 import { EdinetDataUtil } from "./edinet-data-util";
+import type { ConsolidationScope } from "./financial-options";
 import { EdinetContext } from "./edinet-context";
 import { JppfsCorTaxonomy } from "./types/jppfs_cor_taxonomy";
 import { cleanHtml } from "./utils/html-cleaner";
@@ -26,7 +29,11 @@ export class EdinetData {
         public readonly value: string,
         public readonly decimals: number = 0,
         public readonly unitRef: string = "",
-        public readonly contextRef: string = ""
+        public readonly contextRef: string = "",
+        public readonly rawValue?: string,
+        public readonly rawDecimals?: string,
+        public readonly nil: boolean = false,
+        public readonly namespaceURI?: string
     ) { }
 
     /**
@@ -34,17 +41,22 @@ export class EdinetData {
      * @param node パース済みのXMLノード
      * @param key XBRLタグ名 (例: "jpcrp_cor:NetSales")
      */
-    public static create(node: unknown, key: string): EdinetData {
+    public static create(node: unknown, key: string, namespaces: Readonly<Record<string, string>> = {}): EdinetData {
         const value = EdinetDataUtil.getValue(node);
         const decimals = EdinetDataUtil.getDecimals(node);
         const unitRef = EdinetDataUtil.getUnitRef(node);
         const contextRef = EdinetDataUtil.getContextRef(node);
 
-        return new EdinetData(key, value, decimals, unitRef, contextRef);
+        const attrs = typeof node === "object" && node !== null ? node as Record<string, unknown> : {};
+        const nil = Object.entries(namespaces).some(([prefix, uri]) => uri === "http://www.w3.org/2001/XMLSchema-instance" && ["true", "1"].includes(String(attrs[`@_${prefix}:nil`])));
+        return new EdinetData(key, value, decimals, unitRef, contextRef,
+            typeof attrs["#text"] === "string" ? attrs["#text"] : undefined,
+            typeof attrs["@_decimals"] === "string" ? attrs["@_decimals"] : undefined,
+            nil, namespaces[key.split(":")[0]]);
     }
 }
 
-/** 主要指標で実際に選択されたfactの来歴。unitは単純なXBRL measureです。 */
+/** 主要指標で実際に選択されたfactの来歴。unitは解決したXBRL単位です。 */
 export interface KeyMetricSource {
     key: string;
     contextRef: string;
@@ -53,13 +65,14 @@ export interface KeyMetricSource {
     periodStart?: string;
     periodEnd?: string;
     instant?: string;
-    scope?: "Consolidated" | "NonConsolidated";
+    scope?: ConsolidationScope;
 }
 export type KeyMetricSources = Partial<Record<keyof KeyMetrics, KeyMetricSource>>;
 
 export class EdinetXbrlObject {
     private _dataMap: Map<string, EdinetData[]> = new Map();
     private contextMap: Map<string, EdinetContext> = new Map();
+    private duplicateContextIds = new Set<string>();
     private unitMap = new Map<string, string>();
     private _docID: string;
 
@@ -73,17 +86,19 @@ export class EdinetXbrlObject {
     public clear(): void {
         this._dataMap.clear();
         this.contextMap.clear();
+        this.duplicateContextIds.clear();
         this.unitMap.clear();
         this._docID = "";
     }
 
-    /** パーサーが解決した単純単位を登録します。複合単位は未登録です。 */
+    /** パーサーが解決した単位を登録します。重複IDは厳密選択で拒否します。 */
     public addUnit(unitRef: string, measure: string): void {
-        this.unitMap.set(unitRef, measure);
+        this.unitMap.set(unitRef, this.unitMap.has(unitRef) ? "unsupported:duplicate-unit" : measure);
     }
 
     /** コンテキスト定義を追加します。 */
     public addContext(context: EdinetContext): void {
+        if (this.contextMap.has(context.id)) this.duplicateContextIds.add(context.id);
         this.contextMap.set(context.id, context);
     }
 
@@ -169,6 +184,11 @@ export class EdinetXbrlObject {
         return { metrics: this.extractKeyMetrics(metricSources), metricSources };
     }
 
+    /** 明示した会計基準・期間・scopeだけを対象に、理由と原値を返します。 */
+    public selectMetric(id: MetricId, options: MetricSelectionOptions): FactSelectionResult {
+        return selectMetricFact(id, options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+    }
+
     private extractKeyMetrics(sources?: KeyMetricSources): KeyMetrics {
         // 金額・CFは連結/単体の探索範囲を先に確定し、タグの欠落を理由に範囲を変えません。
         // 1株当たり・株式数・配当・比率は互換性のため従来の連結→単体探索を維持します。
@@ -225,7 +245,7 @@ export class EdinetXbrlObject {
                 const context = this.contextMap.get(data.contextRef);
                 sources[metric] = {
                     key: data.key, contextRef: data.contextRef, unitRef: data.unitRef,
-                    unit: this.unitMap.get(data.unitRef),
+                    unit: this.unitMap.get(data.unitRef)?.startsWith("unsupported:") ? undefined : this.unitMap.get(data.unitRef),
                     periodStart: context?.period.startDate, periodEnd: context?.period.endDate,
                     instant: context?.period.instant, scope: context?.scope
                 };
@@ -270,7 +290,7 @@ export class EdinetXbrlObject {
     public getData(key: string, options: {
         year?: "Current" | "Prior1Year" | "Prior2Year",
         type: "Duration" | "Instant",
-        scope: "Consolidated" | "NonConsolidated"
+        scope: ConsolidationScope
     }): EdinetData | undefined {
         const context = this.findContext(options);
         if (!context) return undefined;
@@ -287,7 +307,7 @@ export class EdinetXbrlObject {
     public findContext(options: {
         year?: "Current" | "Prior1Year" | "Prior2Year",
         type: "Duration" | "Instant",
-        scope: "Consolidated" | "NonConsolidated"
+        scope: ConsolidationScope
     }): EdinetContext | undefined {
         const candidates = this.findContexts(options);
         return candidates[0];
@@ -299,7 +319,7 @@ export class EdinetXbrlObject {
     public findContexts(options: {
         year?: "Current" | "Prior1Year" | "Prior2Year",
         type: "Duration" | "Instant",
-        scope: "Consolidated" | "NonConsolidated"
+        scope: ConsolidationScope
     }): EdinetContext[] {
         let candidates = Array.from(this.contextMap.values()).filter(c => c.scope === options.scope);
 
