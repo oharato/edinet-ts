@@ -1,5 +1,5 @@
 
-import XLSX from "xlsx";
+import { XLSX } from "./utils/spreadsheet";
 import fs from "fs";
 import path from "path";
 
