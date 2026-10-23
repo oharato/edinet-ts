@@ -8,11 +8,11 @@
 
 手元のXBRLファイルを用意し、「連結（グループ全体）か単体（その会社だけ）」「どの日付の数値か」を指定します。読めないときは0を返さず、記載なし・未対応・候補が複数ある等の理由を返します。元の項目名・日付・単位も一緒に確認できます。
 
-保存した2企業の書類にある数値とは照らし合わせました。画面上の元の財務諸表との別途照合や、複数年度・全市場での確認は未完了です。このPRは数値を読む機能で、3項目の横断検索は[後続PR #25](https://github.com/oharato/edinet-ts/pull/25)で扱います。
+保存した2企業の書類にある数値とは照らし合わせました。画面上の元の財務諸表との別途照合や、複数年度・全市場での確認は未完了です。先行PR #24は数値を読む機能です。このPR #25では、その3項目を使う[横断検索](BALANCE_SHEET_SCREENING.md)を追加しています。
 
 ## 開発者向け: 関数と戻り値
 
-`BALANCE_SHEET_REGISTRY` と `EdinetXbrlObject.selectBalanceSheetMetric()` は、主要18指標とは別の3科目を返します。既存の `KeyMetrics`、`METRIC_REGISTRY`、`selectMetric()`、21指標のscreening集合には追加しません。
+`BALANCE_SHEET_REGISTRY` と `EdinetXbrlObject.selectBalanceSheetMetric()` は、主要18指標とは別の3科目を返します。既存の `KeyMetrics`、`METRIC_REGISTRY`、`selectMetric()`、21指標のscreening集合には追加しません。[別のBS横断検索API/CLI](BALANCE_SHEET_SCREENING.md)を利用できます。
 
 | 安定ID | 直接fact | 単位/期間 |
 |---|---|---|
@@ -65,7 +65,7 @@ console.log(BALANCE_SHEET_REGISTRY.currentAssets);
 
 この突合は**保存XML内の原factと来歴の一致**です。表示された元財務諸表との独立照合、複数年度の提出原本、全市場充足率、銀行/保険、新リース基準は未検証です。呼出元による誤ったJ-GAAP宣言の検出はしません。
 
-現預金と現金同等物（F06）、借入/リース（F12）、設備投資/償却（F13）、横断検索への登録（F16）、比率計算、IFRS mapping、永続索引は未実装です。単一銘柄の直接fact取得成功を横断検索対応済みとは扱いません。
+現預金と現金同等物（F06）、借入/リース（F12）、設備投資/償却（F13）、既存21指標横断検索への登録、比率計算、IFRS mapping、永続索引は未実装です。F16は別のBS横断検索APIでraw/来歴を検証します。既存21指標のscreening集合や全市場索引へ自動登録する意味ではありません。
 
 ローカル検証（2026-10-23）: mainのNode 26.12.1 / npm 12.2.1へ同期し、build、`tsc --noEmit`、型の使用例の検査、19ファイル426テスト（BS専用73件）、関連Python 5テストが成功しました。文書の相対リンク・差分も検査しています。この財務機能による依存・lockの追加変更、新規取得、配布・利用先更新はありません。
 
