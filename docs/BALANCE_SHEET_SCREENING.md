@@ -75,6 +75,6 @@ edinet-ts screen-bs --manifest ./inputs/manifest.json \
 
 合成fixtureで条件・順序・ページ境界・欠損診断・不正入力・来歴改変・entity/期間/scope混在を検証します。保存2企業を同じ日付へ書き換えず、各原本の時点でrawと検索返値を突合し、両原本の時点混在は拒否するテストを持ちます。CLIは一時ディレクトリの合成XBRL/manifestだけを使います。
 
-新取得、外部認証、DB、依存追加、IFRS mapping、巨大decimal比較、書類版選択、DEI/企業マスター照合は対象外です。表示原表との独立照合、複数年度提出原本、全市場品質、公開・利用先更新は未達です。ローカルbranchは厳密選択基盤とBS正規化branchを先行依存とし、PR22の計画文書を含みます。PR22統合後の文書・索引の差分整理と[未公開branchの依存関係](plans/PENDING_BRANCHES.md)の確認が、公開前に必要です。
+新取得、外部認証、DB、依存追加、IFRS mapping、巨大decimal比較、書類版選択、DEI/企業マスター照合は対象外です。表示原表との独立照合、複数年度提出原本、全市場品質、release・利用先更新は未達です。このbranchは厳密選択基盤（PR #23）とBS正規化（PR #24）へ積み上げます。PR #22の計画文書は重複させず、先行branchへの参照に統一しています。[branchの依存関係と統合順](plans/PENDING_BRANCHES.md)を確認し、先行PRのmain統合後にbase・差分・CIを再確認してください。
 
-ローカル検証結果: Node 24.22.1 / npm 11でbuild・`tsc --noEmit`・17ファイル472テスト（BS横断検索専用63件、既存screen CLI回帰を含む）・関連Python 5テスト・相対リンク・差分検査が成功。依存/lock変更、新規取得、remote操作はありません。
+ローカル検証結果: Node 24.22.1 / npm 11でbuild・`tsc --noEmit`・17ファイル472テスト（BS横断検索専用63件、既存screen CLI回帰を含む）・関連Python 5テスト・相対リンク・差分検査が成功。依存/lock変更、新規取得はありません。
