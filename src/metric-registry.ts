@@ -26,8 +26,8 @@ export const MetricId = Object.freeze({
 export const AccountingStandard = Object.freeze({ JGAAP: "J-GAAP", IFRS: "IFRS", USGAAP: "US-GAAP" } as const);
 export type AccountingStandard = typeof AccountingStandard[keyof typeof AccountingStandard];
 export type MetricUnit = "JPY" | "JPY/share" | "shares" | "pure";
-export interface MetricDefinition {
-    readonly id: MetricId;
+export interface MetricDefinition<Id extends string = MetricId> {
+    readonly id: Id;
     readonly valueType: "decimal";
     readonly unit: MetricUnit;
     readonly periodType: "instant" | "duration";

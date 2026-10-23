@@ -1,21 +1,28 @@
 # edinet-ts
 
-`edinet-ts` は、金融庁の EDINET API v2 を利用して有価証券報告書等のXBRLファイルをダウンロード・解析するための TypeScript ライブラリです。
+`edinet-ts` は、会社が金融庁のEDINETへ提出した書類を読み、売上・利益・資産などの数値をプログラムから使えるようにする道具です。
 Pythonライブラリ [BuffettCode/edinet_xbrl](https://github.com/BuffettCode/edinet_xbrl) のロジックをベースに、TypeScript/Node.js 環境向けに移植・最適化を行いました。
-複雑なXBRLの構造（Context、Namespace）を意識することなく、主要な財務指標を簡単に抽出できるように設計されています。
+1社の数値を読む使い方と、手元に保存した複数社の数値を条件で探す使い方があります。数値が書かれた日付や会社の範囲を指定し、元の記載も確認できます。
+
+## 初めて使う方へ
+
+- まず [用語集](docs/GLOSSARY.md) で、連結・単体・欠損などの意味を確認できます。
+- 使い方を選ぶときは [資料の入口](docs/README.md) を参照してください。
+- 複数社の検索には、利用者が用意した保存データを使います。取り出せなかった数値は0に置き換えず、理由を確認します。
+- 今回の追加機能はまだreleaseしていません。npm配布版の説明と、作業中の機能の説明を区別してください。
 
 ## 特徴
 
 *   **TypeScript完全対応**: 型定義完備で、安全な開発が可能です。
-*   **EDINET API v2 対応**: 最新のAPI仕様（2024年現在）に対応しています。
-*   **主要指標の自動抽出**: 売上高、営業利益などを、連結/単体や期間を自動判定して `number` 型で取得できます。
-*   **ハイブリッド検索**: ローカルDB（SQLite）とAPIを組み合わせた高速な過去データ検索が可能です。
+*   **EDINET API v2 対応**: 金融庁の書類一覧・ダウンロード機能を利用します。
+*   **財務数値の取得**: 主要数値を手早く読む既存機能と、会社の範囲・日付を指定して元の記載を確認する機能があります。
+*   **書類の検索**: 手元のデータベース（SQLite）に保存した書類一覧を検索できます。
 *   **ZIP自動解凍**: ダウンロードした書類のZIP解凍とファイル特定を自動化します。
-*   **Human/AI Friendly**: `--help-types` で型定義とドキュメントを生成可能。開発者の参照用としてはもちろん、AIエージェントに仕様を理解させるためのコンテキストとしても最適です。
+*   **操作の説明**: `--help`・`--help-types` でコマンドや出力項目を確認できます。
 
-## Runtime
+## 必要な実行環境
 
-このruntime更新では **Node.js 26.12.1以上 / npm 12.2.1以上** が必要です。従来Nodeからのbreaking changeです。外部SQLite依存を標準 `node:sqlite` に置換しています。採用版・既存DB互換・型定義の制約・開発環境の分離は [Node・SQLiteの手順](docs/RUNTIME_AND_SQLITE.md) を参照してください。
+**Node.js 26.12.1以上 / npm 12.2.1以上** が必要です。以前のNode.jsでは動かなくなる変更です。外部SQLite依存を標準 `node:sqlite` に置換しています。採用版・既存DB互換・型定義の制約・開発環境の分離は [Node・SQLiteの手順](docs/RUNTIME_AND_SQLITE.md) を参照してください。
 
 ## インストール
 
@@ -404,3 +411,5 @@ See [local build, retention, validation and cutover](docs/nuc7-local-artifacts.m
 ### 指標の原値・採用理由を取得する追加API
 
 18指標の辞書 `METRIC_REGISTRY` と `xbrlObject.selectMetric(id, { accountingStandard, scope, period })` は、明示条件に適合するfactを `selected / missing / unsupported / ambiguous` と来歴付きで返します。巨大整数等はdecimal文字列の原値を保持し、numberへの安全な往復が確認できる場合だけ `safeNumber` を返します。会計基準は呼出元で確認が必要です。既存KeyMetricsの選択規則は維持します。利用例・単位・制約は [指標辞書・厳密選択](docs/METRIC_SELECTION.md) を参照してください。
+
+J-GAAPの流動資産・流動負債・負債合計は、既存主要指標とは別の `selectBalanceSheetMetric()` で取得できます。[BS直接fact正規化](docs/BALANCE_SHEET_NORMALIZATION.md)を参照してください。JPY・明示時点/scope限定で、IFRS・横断検索登録は未対応です。

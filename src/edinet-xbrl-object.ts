@@ -1,4 +1,5 @@
-import { selectMetricFact, MetricSelectionOptions, FactSelectionResult } from "./metric-selection";
+import { BALANCE_SHEET_REGISTRY, BalanceSheetMetricId } from "./balance-sheet-registry";
+import { selectDefinedMetricFact, selectMetricFact, MetricSelectionOptions, FactSelectionResult } from "./metric-selection";
 import { MetricId } from "./metric-registry";
 import { EdinetDataUtil } from "./edinet-data-util";
 import type { ConsolidationScope } from "./financial-options";
@@ -187,6 +188,11 @@ export class EdinetXbrlObject {
     /** 明示した会計基準・期間・scopeだけを対象に、理由と原値を返します。 */
     public selectMetric(id: MetricId, options: MetricSelectionOptions): FactSelectionResult {
         return selectMetricFact(id, options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+    }
+
+    /** J-GAAP・JPY・明示した時点/scopeのBS直接factを正規化します。 */
+    public selectBalanceSheetMetric(id: BalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<BalanceSheetMetricId> {
+        return selectDefinedMetricFact(BALANCE_SHEET_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
     }
 
     private extractKeyMetrics(sources?: KeyMetricSources): KeyMetrics {
