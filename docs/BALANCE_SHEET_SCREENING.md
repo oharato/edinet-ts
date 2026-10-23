@@ -1,10 +1,20 @@
-# BS3科目のオフライン横断検索
+# 保存した会社データを3項目で検索する
 
-状態: ローカル実装・検証済み。更新日: 2026-10-22。公開・配布は未実施。
+状態: PR #25で確認中（未merge・未release）。更新日: 2026-10-23。
 
 `createBalanceSheetSnapshot()` と `screenBalanceSheetSnapshots()` / CLI `screen-bs` は、[J-GAAP BS3科目](BALANCE_SHEET_NORMALIZATION.md)の別検索APIです。既存 `KeyMetrics`・主要18指標registry・21指標の `screen` は変更しません。ローカルXBRLと明示集合を使い、取得API・DB・全市場索引には接続しません。
 
-## API
+## できることと使う前の準備
+
+保存した複数社の書類を、流動資産・流動負債・負債合計の条件で絞り込み、金額順に並べます。たとえば「流動資産が指定額以上の会社を、負債合計の多い順に見る」といった使い方です。金額の単位は円です。[用語集](GLOSSARY.md)に財務用語と開発用語をまとめています。
+
+使う人が各社のXBRLファイルと対象の日付・連結か単体かを用意します。比較する書類は同じ日付・範囲・会計基準・通貨に揃える必要があります。日付の違う書類から最新値を自動で選んだり、全市場の書類を集めたりする機能ではありません。
+
+値が読めない会社を0として並べず、検索から外した理由と件数を返します。保存した2企業の書類では個別の値と元の記載を確認していますが、2社は日付が異なるため、同じ日付の複数社検索は合成データで確認しています。
+
+以下では、1社分の数値と対象日などをまとめたデータを `snapshot`、使えなかった値の理由一覧を `diagnostics` と呼びます。
+
+## 開発者向け: API
 
 ```ts
 import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots,
@@ -55,7 +65,9 @@ snapshotは `secCode / docID / instant / scope / accountingStandard / currency /
 
 sortByの既定順はdesc、`order: "asc"` も指定可能です。同値またはsort未指定では正規化証券コードの辞書順、次にdocID順です。offset/limitは0以上の安全整数。limit=0はrowsを空にしtotalを保持します。入力順を変えても並びが決まり、入力snapshotを変更しません。
 
-## CLIのローカルmanifest
+## 端末から使う: 入力ファイル一覧（manifest）
+
+まず、各社のファイルと対象条件を次のJSON形式で一覧にし、`manifest.json`として保存します。`file`以外の値は説明用です。実際の書類に合う証券コード・書類ID・対象日・範囲・基準を指定してください。新しい書類の取得はこのコマンドでは行いません。
 
 ```json
 [
@@ -72,10 +84,10 @@ edinet-ts screen-bs --manifest ./inputs/manifest.json \
 
 相対fileは実行cwdではなくmanifestのディレクトリ基準です。currencyはCLIがJPYに固定します。CLIはmanifestのローカルXBRLを解析して厳密選択を行います。serialized選択結果や余分なmanifestフィールドを受け付けません。manifest/file/条件/来歴の不正はstderr・非0終了、成功はstdoutへJSONです。`--conditions null`も入力エラーです。
 
-## 検証と残る範囲
+## 何を確認し、何が残っているか
 
 合成fixtureで条件・順序・ページ境界・欠損診断・不正入力・来歴改変・entity/期間/scope混在を検証します。保存2企業を同じ日付へ書き換えず、各原本の時点でrawと検索返値を突合し、両原本の時点混在は拒否するテストを持ちます。CLIは一時ディレクトリの合成XBRL/manifestだけを使います。
 
-新取得、外部認証、DB、依存追加、IFRS mapping、巨大decimal比較、書類版選択、DEI/企業マスター照合は対象外です。表示原表との独立照合、複数年度提出原本、全市場品質、release・利用先更新は未達です。このbranchは厳密選択基盤（PR #23）とBS正規化（PR #24）へ積み上げます。PR #22の計画文書は重複させず、先行branchへの参照に統一しています。[branchの依存関係と統合順](plans/PENDING_BRANCHES.md)を確認し、先行PRのmain統合後にbase・差分・CIを再確認してください。
+新取得、外部認証、DB、依存追加、IFRS mapping、巨大decimal比較、書類版選択、DEI/企業マスター照合は対象外です。表示原表との独立照合、複数年度提出原本、全市場品質、release・利用先更新は未達です。数値を選ぶ基盤（PR #23）はmainへ統合済みです。このPRは先行PR #24の財務3項目を使います。計画文書はmainにあるものを共有し、コピーを増やしません。[branchの依存関係と統合順](plans/PENDING_BRANCHES.md)を確認し、先行PRのmain統合後にbase・差分・CIを再確認してください。
 
-ローカル検証結果: Node 24.22.1 / npm 11でbuild・`tsc --noEmit`・17ファイル472テスト（BS横断検索専用63件、既存screen CLI回帰を含む）・関連Python 5テスト・相対リンク・差分検査が成功。依存/lock変更、新規取得はありません。
+ローカル検証結果（2026-10-23）: mainのNode 26.12.1 / npm 12.2.1と先行PR #24へ同期し、build・`tsc --noEmit`・型の使用例の検査・20ファイル489テスト（この検索機能専用63件、既存screen CLIの確認を含む）・関連Python 5テストが成功しました。文書リンク・差分も検査しています。この検索機能による依存・lockの追加変更、新規取得はありません。

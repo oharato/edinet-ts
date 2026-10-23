@@ -8,7 +8,7 @@
 |---|---|
 | 会社の数値を読み、元の記載も確認したい | [数値の取り出し方](METRIC_SELECTION.md) |
 | 流動資産・流動負債・負債合計を読みたい | [今回の3項目](BALANCE_SHEET_NORMALIZATION.md) |
-| 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目の検索は[後続PR #25](https://github.com/oharato/edinet-ts/pull/25) |
+| 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（このPR #25で確認中） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
 | 次に何を作るか知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md) |
 
@@ -32,7 +32,7 @@
 | [タクソノミ更新](TAXONOMY_UPDATE.md) | 取得・型/資料生成の手順 |
 | [jppfs_cor一覧](TAXONOMY_JPPFS_COR.md) / [jpcrp_cor一覧](TAXONOMY_JPCRP_COR.md) | 現行実装の生成済み型に対応する一覧。最新年度への対応を保証する意味ではない |
 
-- [BS3項目の横断検索](BALANCE_SHEET_SCREENING.md): 選択結果snapshotの検証、診断、ローカルmanifest CLI。
+- [BS3項目の横断検索](BALANCE_SHEET_SCREENING.md): 保存ファイルの一覧を使う検索方法、使えなかった理由と件数。
 - [J-GAAP BS3項目](BALANCE_SHEET_NORMALIZATION.md): 別registry/API、来歴・欠損・対応範囲。
 
 ## 計画と判断の履歴

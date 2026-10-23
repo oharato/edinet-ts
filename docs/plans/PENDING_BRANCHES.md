@@ -1,54 +1,45 @@
-# レビュー中の変更と統合順
+# 確認中の変更と取り込む順序
 
-更新日: 2026-10-23。状態: Draft PRレビュー対象（未merge・未release）。
-この一覧は先行PRと積み上げた変更の依存を記録する。以下の順序はレビュー・統合の提案であり、mergeを実行する指示ではない。
+更新日: 2026-10-23。#24と#25はDraft PR（確認途中の変更提案）です。まだmainへの取り込み・配布は済んでいません。用語は[用語集](../GLOSSARY.md)を参照してください。
 
-## 変更の依存関係
+## 現在の状態
 
-| 変更 | branch / 検証基準commit | 状態・依存 |
+| 変更 | 状態 | 使えるようになること |
 |---|---|---|
-| 21指標・比較資料・文書整理 | main / `a501ec1` | PR #20・#21・#22統合済み。実装の共通基準は`ec49152` |
-| Node26・依存更新・標準SQLite | `modernize/node-sqlite` / `bd6381e` | [PR #21](https://github.com/oharato/edinet-ts/pull/21)はmainへ統合済み。最低Node版の引き上げを伴う |
-| 財務明細の受入計画 | `docs/financial-normalization-plan` / `3072e2b` | [PR #22](https://github.com/oharato/edinet-ts/pull/22)はmainへ統合済み。計画作成は後続実装完了を意味しない |
-| 18指標辞書・厳密選択 | `improve/metric-foundation` / `216b988` | [Draft PR #23](https://github.com/oharato/edinet-ts/pull/23)。baseはmain。別entity/不正period拒否と、指標・基準・scope・比較・並び順・期間分類の補完用定数を含む |
-| J-GAAP BS3科目 | `improve/jgaap-balance-sheet` / `eaa49f3` | [Draft PR #24](https://github.com/oharato/edinet-ts/pull/24)。baseはimprove/metric-foundation（#23） |
-| BS3科目の横断検索API/CLI | `improve/balance-sheet-screening` / `8c69593`（API/CLI） | [Draft PR #25](https://github.com/oharato/edinet-ts/pull/25)。baseはimprove/jgaap-balance-sheet（#24）。既存21指標screenと別API/command |
+| [PR #20](https://github.com/oharato/edinet-ts/pull/20) | mainへ取り込み済み | 保存データの21指標検索、比較資料・計画 |
+| [PR #21](https://github.com/oharato/edinet-ts/pull/21) | mainへ取り込み済み | Node26・依存更新、Node標準SQLite。必要Node版の引き上げあり |
+| [PR #22](https://github.com/oharato/edinet-ts/pull/22) | mainへ取り込み済み | 財務明細を増やすための受入計画。計画の存在は機能の完成を意味しない |
+| [PR #23](https://github.com/oharato/edinet-ts/pull/23) | mainへ取り込み済み（`3084e33`） | 数値の元記載・採用理由を確認する18指標の選択APIと入力候補の定数 |
+| [PR #24](https://github.com/oharato/edinet-ts/pull/24) | 確認中。branch: `improve/jgaap-balance-sheet`、base: `main` | 流動資産・流動負債・負債合計を1社の書類から読む。用語集・平易な説明も追加 |
+| [PR #25](https://github.com/oharato/edinet-ts/pull/25) | 確認中。branch: `improve/balance-sheet-screening`、base: `improve/jgaap-balance-sheet` | 同じ条件の保存書類を3項目で絞り、並べ替える。既存21指標検索とは別の入口 |
 
-初回公開前に未公開履歴を整理し、基盤修正を#23の`859f349`へ統一した。BSの旧`d390751`と横断検索の旧`551b745`からコード・テスト・依存の内容は変わらない。PR #22計画書のコピーも除き、先行branchへの参照へ統一した。force pushやmainへのmergeは行っていない。
+## 次に確認する順序
 
-## 推奨するレビューとPRの順序
+1. **#24をmain向けに確認する。** #23のmain統合後に最新mainを作業ブランチへ同期しました。文書索引と全体計画の重複・競合は、両方の内容を残して解消しています。従来の18指標を変えず、3項目の読み方と対応範囲を確認します。
+2. **#25を#24との差分で確認する。** #24の更新と用語集を取り込み済みです。比較条件の混在拒否、値が使えない理由、並び順・ページ指定を確認します。
+3. **#24がmainへ入ったら、#25のbaseをmainへ変更する。** その時点のmainを使い、差分・文書リンク・テスト・CIを再確認します。現在のbaseは差分を分けて読むためのもので、#25を#24の作業ブランチへマージする提案ではありません。
 
-1. PR #22の計画はmainへ統合済み。定義・受入条件を基準とする。
-2. PR #21のruntime変更はmainへ統合済み。標準SQLite APIの安定度が現状Release candidateである点、既存固定配布物・利用先vendorへ自動反映されない点を確認する。
-3. PR #23の厳密選択基盤をレビューする。legacy API回帰、raw精度、namespace・scope・entity・曖昧性を優先する。
-4. 基盤の後にBS3科目を別PRでレビューする。既存18指標の集合を拡張せず、共通選択器へ定義を渡す小さな抽象化だけを確認する。
-5. BS3科目の後に横断検索API/CLIを別PRでレビューする。検索対象・除外理由・比較条件・入力整合性を確認する。
+mainへの取り込みは利用者が判断します。この更新ではPRのマージ、ブランチ削除、リリース、定期運用の変更は行っていません。自動検査（CI）の最新結果は各PRのChecksを参照してください。
 
-先行PRがmainへ統合された後は、後続PRのbaseをmainへ変更し、差分・競合・文書リンク・関連テスト・CIを再確認する。積み上げbaseのまま先行branchへmergeしない。mainとの一時tree比較では、`docs/README.md`と`docs/plans/EDINET_TS_ROADMAP.md`の文書競合を確認した。mainへの付け替え時に両方の記述を保持して解消する必要がある。コード・テストには競合を検出していない。実行済みCIの最新headと結果は各PRのChecksを参照する。ローカルテストや一時treeの成功はCI成功と区別する。merge、branch削除、release、定期運用の変更は今回行わない。
-
-## ローカル検証の区切り
+## 同期後のローカル検証
 
 | 対象 | 環境 | 確認結果 |
 |---|---|---|
-| 厳密選択基盤`216b988` | Node24.22.1・既存mainの依存 | 341テスト、build、型fixture、型検査、保存保護5テスト成功 |
-| BS3科目（公開head `eaa49f3`） | Node24.22.1・既存mainの依存 | 409テスト、build、型検査、保存保護5テスト成功 |
-| BS3科目＋Node更新の一時tree | Node26.12.1/npm12.2.1・PR #21依存 | 421テスト、build、型検査、保存保護5テスト成功 |
-| BS横断検索（API/CLI `8c69593`） | Node24.22.1・既存mainの依存 | 472テスト（専用63件）、build、型検査、保存保護5テスト成功 |
-| BS横断検索＋Node更新の一時tree | Node26.12.1/npm12.2.1・PR #21依存 | 484テスト、build、型検査、保存保護5テスト、build済みCLIの成功JSON/不正条件終了を確認 |
-| 型付き定数`fe08f1e`＋後続2API＋最新main runtimeの一時tree | Node26.12.1/npm12.2.1 | 485テスト、build、型fixture、型検査、保存保護5テスト成功。BS科目・検索条件の誤字拒否と新定数の組合せも型検査 |
+| #24 | Node 26.12.1 / npm 12.2.1 | build、型検査、型の使用例、426テスト（3項目専用73件）、保存保護のPython 5テスト成功 |
+| #25 | Node 26.12.1 / npm 12.2.1 | build、型検査、型の使用例、489テスト（検索専用63件）、保存保護のPython 5テスト成功 |
 
-追加のscope/検索option定数`216b988`と後続2APIを最新main runtimeで組み合わせた一時treeでも、489テスト・build・型fixture・型検査・保存保護5テストが成功。後続のTypeScript例も定数と型付きregistry ID参照へ更新した。JSON/CLIの値と既存API型は維持する。
+これはmainと実際の作業ブランチを同期した後の確認です。過去の一時的な組合せ検証の件数とは区別します。lintの設定はありません。
 
-一時treeの検証はbranch/mainへのmergeではない。新規APIは保存2企業の原fact/来歴と合成fixtureを使い、新規取得・全市場の母集団・永続索引・実データ配布を追加していない。原factとの一致は、表示された財務諸表の独立照合や全市場充足率の証明ではない。
+## 使う前に知っておきたい制約
 
-## 今回の完了範囲と残る課題
+1社から読む対象はJ-GAAP（日本の会計基準）の3項目、金額は円です。複数社を比べる場合は、同じ日付・連結か単体か・基準・通貨に揃えた保存書類を渡します。値が読めない場合は0で埋めません。
 
-単一銘柄ではJ-GAAPの流動資産・流動負債・負債合計の直接factを厳密選択できる。横断検索では、明示した保存書類集合の同じ時点・JPY・scope・J-GAAPだけを比較する。通期損益の検索、最新書類の自動探索、全市場DB、IFRS、企業マスターとの照合は含まない。
+保存2企業の元の数値と採用元は確認しています。2企業は日付が異なるため、同一日の複数社検索は合成データで確認し、実書類の日付混在は拒否しています。表示された財務諸表との別途照合、複数年度・全市場での品質確認は未完了です。
 
-会計基準・銘柄ラベルの原本照合、単一entityと主提出者の同一性確認、複数年度原本の検証、IFRSの意味対応、比率計算、企業属性、人的資本、差分更新、固定vendor統合は引き続き別段階である。価格・短信・IR/PDF/AIの取得も今回開始しない。
+会計基準・証券コード・書類IDと原本との対応は利用者が確認します。IFRSの追加対応、比率計算、企業属性、人的資本、差分更新、固定vendorの利用先への反映は別の段階です。株価・短信・IR/PDF/AIの取得も今回開始していません。
 
-- [BS横断検索の仕様とCLI](../BALANCE_SHEET_SCREENING.md)
-- [BS3科目の仕様](../BALANCE_SHEET_NORMALIZATION.md)
-- [厳密選択基盤](../METRIC_SELECTION.md)
-- [財務明細の受入計画](https://github.com/oharato/edinet-ts/blob/main/docs/plans/FINANCIAL_NORMALIZATION.md)
+- [3項目を読む方法](../BALANCE_SHEET_NORMALIZATION.md)
+- [保存ファイルから検索する方法とCLI](../BALANCE_SHEET_SCREENING.md)
+- [元の記載と数値の選び方](../METRIC_SELECTION.md)
+- [財務明細の受入計画](FINANCIAL_NORMALIZATION.md)
 - [全体計画](EDINET_TS_ROADMAP.md)
