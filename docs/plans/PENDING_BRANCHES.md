@@ -7,24 +7,24 @@
 
 | 変更 | branch / 検証基準commit | 状態・依存 |
 |---|---|---|
-| 21指標・比較資料・文書整理 | main / `ec49152` | PR #20統合済み。後続の共通基準 |
+| 21指標・比較資料・文書整理 | main / `0be4e30` | PR #20・#22統合済み。実装の共通基準は`ec49152` |
 | Node26・依存更新・標準SQLite | `modernize/node-sqlite` / `bd6381e` | [Draft PR #21](https://github.com/oharato/edinet-ts/pull/21)。最低Node版の引き上げを伴う独立変更 |
-| 財務明細の受入計画 | `docs/financial-normalization-plan` / `3072e2b` | [Draft PR #22](https://github.com/oharato/edinet-ts/pull/22)。計画作成は後続実装完了を意味しない |
+| 財務明細の受入計画 | `docs/financial-normalization-plan` / `3072e2b` | [PR #22](https://github.com/oharato/edinet-ts/pull/22)はmainへ統合済み。計画作成は後続実装完了を意味しない |
 | 18指標辞書・厳密選択 | `improve/metric-foundation` / `859f349` | [Draft PR #23](https://github.com/oharato/edinet-ts/pull/23)。baseはmain。別entity/不正period拒否を含む |
 | J-GAAP BS3科目 | `improve/jgaap-balance-sheet` / `8214c7a` | [Draft PR #24](https://github.com/oharato/edinet-ts/pull/24)。baseはimprove/metric-foundation（#23） |
-| BS3科目の横断検索API/CLI | `improve/balance-sheet-screening` / `8c69593`（API/CLI） | この文書を含むDraft PR（main未統合）。baseはimprove/jgaap-balance-sheet（#24）。既存21指標screenと別API/command |
+| BS3科目の横断検索API/CLI | `improve/balance-sheet-screening` / `8c69593`（API/CLI） | [Draft PR #25](https://github.com/oharato/edinet-ts/pull/25)。baseはimprove/jgaap-balance-sheet（#24）。既存21指標screenと別API/command |
 
 初回公開前に未公開履歴を整理し、基盤修正を#23の`859f349`へ統一した。BSの旧`d390751`と横断検索の旧`551b745`からコード・テスト・依存の内容は変わらない。PR #22計画書のコピーも除き、先行branchへの参照へ統一した。force pushやmainへのmergeは行っていない。
 
 ## 推奨するレビューとPRの順序
 
-1. PR #22の計画は単独レビュー可能。定義・受入条件を確認する。
+1. PR #22の計画はmainへ統合済み。定義・受入条件を基準とする。
 2. PR #21でruntime互換性の変更をレビューする。標準SQLite APIの安定度が現状Release candidateである点、既存固定配布物・利用先vendorへ自動反映されない点を確認する。
 3. PR #23の厳密選択基盤をレビューする。legacy API回帰、raw精度、namespace・scope・entity・曖昧性を優先する。
 4. 基盤の後にBS3科目を別PRでレビューする。既存18指標の集合を拡張せず、共通選択器へ定義を渡す小さな抽象化だけを確認する。
 5. BS3科目の後に横断検索API/CLIを別PRでレビューする。検索対象・除外理由・比較条件・入力整合性を確認する。
 
-先行PRがmainへ統合された後は、後続PRのbaseをmainへ変更し、差分・競合・文書リンク・関連テスト・CIを再確認する。実行済みCIの最新headと結果は各PRのChecksを参照する。ローカルテストや一時treeの成功はCI成功と区別する。merge、branch削除、release、定期運用の変更は今回行わない。
+先行PRがmainへ統合された後は、後続PRのbaseをmainへ変更し、差分・競合・文書リンク・関連テスト・CIを再確認する。積み上げbaseのまま先行branchへmergeしない。main `0be4e30`との一時tree比較では、`docs/README.md`と`docs/plans/EDINET_TS_ROADMAP.md`の文書競合を確認した。mainへの付け替え時に両方の記述を保持して解消する必要がある。コード・テストには競合を検出していない。実行済みCIの最新headと結果は各PRのChecksを参照する。ローカルテストや一時treeの成功はCI成功と区別する。merge、branch削除、release、定期運用の変更は今回行わない。
 
 ## ローカル検証の区切り
 
@@ -47,5 +47,5 @@
 - [BS横断検索の仕様とCLI](../BALANCE_SHEET_SCREENING.md)
 - [BS3科目の仕様](../BALANCE_SHEET_NORMALIZATION.md)
 - [厳密選択基盤](../METRIC_SELECTION.md)
-- [財務明細の受入計画](https://github.com/oharato/edinet-ts/blob/docs/financial-normalization-plan/docs/plans/FINANCIAL_NORMALIZATION.md)
+- [財務明細の受入計画](https://github.com/oharato/edinet-ts/blob/main/docs/plans/FINANCIAL_NORMALIZATION.md)
 - [全体計画](EDINET_TS_ROADMAP.md)
