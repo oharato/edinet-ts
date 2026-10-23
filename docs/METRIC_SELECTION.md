@@ -7,12 +7,12 @@
 ## 利用例
 
 ```ts
-import { EdinetXbrlParser, METRIC_REGISTRY, MetricId, AccountingStandard } from "edinet-ts";
+import { EdinetXbrlParser, METRIC_REGISTRY, MetricId, AccountingStandard, ConsolidationScope } from "edinet-ts";
 
 const object = new EdinetXbrlParser().parse(xml);
 const result = object.selectMetric(MetricId.NetSales, {
     accountingStandard: AccountingStandard.JGAAP,
-    scope: "Consolidated",
+    scope: ConsolidationScope.Consolidated,
     period: { startDate: "2024-04-01", endDate: "2025-03-31" }
 });
 if (result.status === "selected") {
@@ -24,10 +24,10 @@ console.log(result.reason, result.evidence);
 console.log(METRIC_REGISTRY.netSales);
 ```
 
-`MetricId.NetSales`・`AccountingStandard.JGAAP` は、値の補完とタイプミス検出に使える定数です。同名の `MetricId`・`AccountingStandard` 型もexportしています。従来の `"netSales"`・`"J-GAAP"` も同じ文字列union型で使えます。JSONの値や指標IDは変わりません。`test/types/metric-selection.ts` で正常例と誤字の型エラーを固定し、CIでも型検査します。
+`MetricId.NetSales`・`AccountingStandard.JGAAP` は、値の補完とタイプミス検出に使える定数です。同名の `MetricId`・`AccountingStandard` 型もexportしています。従来の `"netSales"`・`"J-GAAP"` も同じ文字列union型で使えます。`ConsolidationScope.Consolidated` / `.NonConsolidated`も利用できます。JSONの値や指標IDは変わりません。[他の入力定数と直書きの調査結果](TYPED_OPTIONS.md)も参照してください。`test/types/metric-selection.ts` で正常例と誤字の型エラーを固定し、CIでも型検査します。
 
 会計基準は**呼出元が元書類で確認した宣言**です。DEIからの自動判定・宣言の照合は未実装です。
-単体は `scope: "NonConsolidated"`、時点指標は `period: { instant: "2025-03-31" }` を明示します。
+単体は `scope: ConsolidationScope.NonConsolidated`、時点指標は `period: { instant: "2025-03-31" }` を明示します。
 期間は開始日と終了日の両方を照合するため、終了日が同じ半期と通年を混ぜません。
 年次・YTD・単四半期の自動分類、最新年度の推測、過去の訂正書類選択は行いません。
 

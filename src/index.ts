@@ -11,5 +11,6 @@ export * from "./types/jppfs_cor_taxonomy";
 export * from "./edinet-seeder";
 export * from "./utils/html-cleaner";
 export * from "./financial-screening";
+export * from "./financial-options";
 export * from "./metric-registry";
 export * from "./metric-selection";
