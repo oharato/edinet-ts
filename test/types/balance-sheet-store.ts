@@ -16,3 +16,18 @@ store.search({ ...cohort, currency: "USD" });
 store.putMany([{ snapshot, provenance: { mappingVersion: "1", sourceSha256: "a".repeat(64) } }]);
 // @ts-expect-error 検索項目の綴り誤り
 store.search(cohort, { sortBy: "currentRation" });
+
+import { planBalanceSheetImport, importBalanceSheets, BalanceSheetImportStatus, type BalanceSheetImportSource } from "../../src/index";
+const source: BalanceSheetImportSource = { metadata: { secCode: "1001", docID: "SYNTHETIC1", instant: cohort.instant,
+    scope: cohort.scope, accountingStandard: cohort.accountingStandard, currency: cohort.currency }, provenance: input.provenance };
+const plan = planBalanceSheetImport(store, [source]);
+const status: BalanceSheetImportStatus = plan.items[0].status;
+if (status === BalanceSheetImportStatus.Changed) { const ids: string[] = plan.items[0].previousIds; }
+const imported = importBalanceSheets(store, [source], () => new Uint8Array());
+store.putMany([], { expectedInventoryFingerprint: store.inventory().fingerprint });
+// @ts-expect-error 原本はbyte列で渡す
+importBalanceSheets(store, [source], () => "XML");
+// @ts-expect-error 解析版は必須
+planBalanceSheetImport(store, [{ metadata: source.metadata, provenance: { mappingVersion: "1", sourceSha256: "a".repeat(64) } }]);
+// @ts-expect-error ステータスの綴り誤り
+const invalidStatus: BalanceSheetImportStatus = "change";
