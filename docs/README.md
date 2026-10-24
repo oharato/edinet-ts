@@ -66,3 +66,5 @@ Markdownのファイルを移す際は、README・相対リンク・スクリプ
 XML原本を読む際のサイズ・構文・DOCTYPEの制約とCLIの読み取り上限は[仕様書](SPECIFICATIONS.md#22-edinetxbrlparser)を参照してください。
 
 ZIPの形式・容量・保存先の制約、既存キャッシュと失敗時の扱いは[ZIP取得と保存時の保護](DOWNLOAD_SAFETY.md)を参照してください。
+
+取得の待ちを制限・中断したい場合は[本文受信までの期限とsignal](DOWNLOAD_SAFETY.md#本文受信までの時間制限と中断)、サーバーの待ち指定は[再試行待ち](DOWNLOAD_SAFETY.md#サーバーが指定する再試行待ちと追加待ち)を参照してください。
