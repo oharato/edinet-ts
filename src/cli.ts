@@ -4,6 +4,7 @@ import { analyzeDocumentRelations } from "./document-relations";
 import { createCompanyProfile, CompanyProfileFieldId } from "./company-profile";
 import { screenCompanyDocuments, CompanyProfileOperator } from "./company-screening";
 import { screenWorkforceDocuments } from "./workforce-screening";
+import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
 import "dotenv/config";
 import { EdinetXbrlDownloader } from "./edinet-xbrl-downloader";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
@@ -177,6 +178,35 @@ program.command("explain-document-relations")
         }
     });
 
+
+program.command("screen-ifrs-bs")
+    .description("同じ期末のIFRS連結・円の直接3項目で、明示した会社を検索します")
+    .requiredOption("--manifest <path>", "fileとIFRS metadataを持つJSON配列")
+    .option("--conditions <json>", "currentAssets/currentLiabilities/totalLiabilitiesのAND条件", "[]")
+    .option("--sort-by <id>", "並べ替える直接項目ID")
+    .option("--order <order>", "asc/desc")
+    .option("--offset <number>", "条件一致後に読み飛ばす件数", Number)
+    .option("--limit <number>", "返す最大件数", Number)
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifestPath = path.resolve(options.manifest);
+            const entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifestPath, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error("入力件数の上限です");
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(key => !["file", "metadata"].includes(key)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error("入力項目が不正です");
+                const input = readRegularFile(path.resolve(path.dirname(manifestPath), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
+                bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), metadata: entry.metadata };
+            });
+            const result = screenIfrsBalanceSheetDocuments(documents, { conditions: JSON.parse(options.conditions), sortBy: options.sortBy, order: options.order, offset: options.offset, limit: options.limit });
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+        } catch {
+            console.error("IFRS検索の入力を確認してください（同一期末・IFRS連結・JPYの明示一覧と有効な検索条件が必要です）");
+            process.exitCode = 1;
+        }
+    });
 
 program.command("screen-workforce")
     .description("提出会社単体の給与・明示した年齢/勤続年数/従業員数を検索します（期末指定）")

@@ -1,0 +1,20 @@
+import {describe,it,expect} from 'vitest';
+import {mkdtempSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {instance,fact} from './fixtures/metric-boundaries';
+function fixtures(action:(dir:string,run:(args?:string[])=>ReturnType<typeof spawnSync>)=>void){const d=mkdtempSync(join(tmpdir(),'edinet-ifrs-cli-'));try{
+ const entries=['1001','1002'].map((code,i)=>{const c=`<xbrli:context id="current"><xbrli:entity><xbrli:identifier scheme="synthetic">${code}</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:instant>2025-03-31</xbrli:instant></xbrli:period></xbrli:context>`;const f=fact(String((i+1)*100),'','jpigp_cor:CurrentAssetsIFRS')+fact('80','','jpigp_cor:TotalCurrentLiabilitiesIFRS')+fact('160','','jpigp_cor:LiabilitiesIFRS');writeFileSync(join(d,code+'.xbrl'),instance(f,c).replace('<xbrli:xbrl ','<xbrli:xbrl xmlns:jpigp_cor="http://disclosure.edinet-fsa.go.jp/taxonomy/jpigp/2025-11-01/jpigp_cor" '));return {file:code+'.xbrl',metadata:{secCode:code,docID:'SYNTHETIC-'+code,instant:'2025-03-31',scope:'Consolidated',accountingStandard:'IFRS',currency:'JPY'}};});writeFileSync(join(d,'files.json'),JSON.stringify(entries));
+ const run=(args:string[]=[])=>spawnSync(process.execPath,['--import',resolve('node_modules/tsx/dist/loader.mjs'),resolve('src/cli.ts'),'screen-ifrs-bs','--manifest',join(d,'files.json'),...args],{cwd:'/tmp',encoding:'utf8'});action(d,run);
+ }finally{rmSync(d,{recursive:true,force:true});}}
+describe('明示IFRS原本の検索CLI',()=>{
+ it('直接原値・条件・出典hashを返す',()=>fixtures((d,run)=>{const r=run(['--conditions',JSON.stringify([{metric:'currentAssets',operator:'gte',value:150}]),'--sort-by','currentAssets']);expect(r.status,String(r.stderr)).toBe(0);const o=JSON.parse(String(r.stdout));expect(o.total).toBe(1);expect(o.rows[0].metadata.secCode).toBe('10020');expect(o.rows[0].selections.currentAssets.raw).toBe('200');expect(o.rows[0].inputXmlSha256).toBe(createHash('sha256').update(readFileSync(join(d,'1002.xbrl'))).digest('hex'));}));
+ it('両社の順序・ページと入力不変を確認する',()=>fixtures((d,run)=>{const p=join(d,'1001.xbrl'),before=readFileSync(p),r=run(['--sort-by','currentAssets','--order','asc','--offset','1','--limit','1']);expect(r.status,String(r.stderr)).toBe(0);const o=JSON.parse(String(r.stdout));expect(o.total).toBe(2);expect(o.rows.map(x=>x.metadata.secCode)).toEqual(['10020']);expect(readFileSync(p)).toEqual(before);}));
+ it('日本基準をIFRSへ読み替えず入力全体を拒否する',()=>fixtures((d,run)=>{const p=join(d,'files.json'),a=JSON.parse(readFileSync(p,'utf8'));a[0].metadata.accountingStandard='J-GAAP';writeFileSync(p,JSON.stringify(a));const r=run();expect(r.status).toBe(1);expect(String(r.stdout)).toBe('');}));
+ it('必要な同値重複を曖昧として除外し件数を返す',()=>fixtures((d,run)=>{const p=join(d,'1001.xbrl'),s=readFileSync(p,'utf8');writeFileSync(p,s.replace('</xbrli:xbrl>',fact('100','','jpigp_cor:CurrentAssetsIFRS')+'</xbrli:xbrl>'));const r=run(['--sort-by','currentAssets']);expect(r.status,String(r.stderr)).toBe(0);const o=JSON.parse(String(r.stdout));expect(o.total).toBe(1);expect(o.excludedRows).toBe(1);expect(o.reasonCounts.ambiguous).toBe(1);}));
+ it('DOCTYPE入力を解析せず、元内容をstderrへ出さない',()=>fixtures((d,run)=>{const p=join(d,'1001.xbrl');writeFileSync(p,'<!DOCTYPE x [<!ENTITY secret "PRIVATE-EXAMPLE">]><x/>');const r=run();expect(r.status).toBe(1);expect(String(r.stderr)).not.toContain('PRIVATE-EXAMPLE');expect(String(r.stdout)).toBe('');}));
+ it('未対応比率や不正条件を無条件検索に変えない',()=>fixtures((_d,run)=>{expect(run(['--sort-by','currentRatio']).status).toBe(1);expect(run(['--conditions','{"private-example":']).status).toBe(1);}));
+ it('XMLのUTF-8 BOMをhashの前に落とさない',()=>fixtures((d,run)=>{const p=join(d,'1001.xbrl');writeFileSync(p,Buffer.concat([Buffer.from([0xef,0xbb,0xbf]),readFileSync(p)]));const r=run();expect(r.status,String(r.stderr)).toBe(0);const o=JSON.parse(String(r.stdout));const row=o.rows.find(x=>x.metadata.secCode==='10010');expect(row.inputXmlSha256).toBe(createHash('sha256').update(readFileSync(p)).digest('hex'));}));
+});
