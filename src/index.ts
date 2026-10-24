@@ -33,3 +33,5 @@ export * from "./workforce-registry";
 export * from "./workforce-screening";
 
 export * from "./financial-detail-snapshots";
+
+export * from "./db/financial-detail-store";

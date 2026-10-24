@@ -14,6 +14,7 @@
         "company-profile.ts",
         "workforce.ts",
         "company-screening.ts",
-        "financial-detail-snapshots.ts"
+        "financial-detail-snapshots.ts",
+        "financial-detail-store.ts"
     ]
 }
