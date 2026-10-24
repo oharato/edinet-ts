@@ -7,6 +7,7 @@ import type { ConsolidationScope } from "./financial-options";
 import { EdinetContext } from "./edinet-context";
 import { JppfsCorTaxonomy } from "./types/jppfs_cor_taxonomy";
 import { cleanHtml } from "./utils/html-cleaner";
+import { selectCompanyProfile, type CompanyProfile } from "./company-profile";
 
 /**
  * 共通メタデータ
@@ -80,6 +81,11 @@ export class EdinetXbrlObject {
 
     constructor(docID: string = "") {
         this._docID = docID;
+    }
+
+    /** 元のXMLを保持しない読み取り専用の会社情報。XML hash付き入口はcreateCompanyProfileです。 */
+    public getCompanyProfile(): CompanyProfile {
+        return selectCompanyProfile(this._docID, this._dataMap, this.contextMap, this.duplicateContextIds);
     }
 
     /**

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { createCompanyProfile } from "./company-profile";
 import "dotenv/config";
 import { EdinetXbrlDownloader } from "./edinet-xbrl-downloader";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
@@ -148,6 +149,22 @@ program.command("diff-bs")
             const result = runLocalBalanceSheetDiff(options);
             console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
             if (result.status === "incomparable") process.exitCode = 1;
+        } catch (error) {
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exitCode = 1;
+        }
+    });
+
+program.command("company-profile")
+    .description("明示した原本から会社情報を出典付きで読みます（取得・DB更新なし）")
+    .requiredOption("--file <path>", "通常ファイルのローカルXBRL（64MiB以下）")
+    .requiredOption("--doc-id <id>", "利用者が原本と対応を確認した書類ID")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const input = readRegularFile(path.resolve(options.file), LOCAL_IMPORT_LIMITS.sourceBytes);
+            const xml = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes);
+            console.log(JSON.stringify(createCompanyProfile(xml, options.docId), null, options.pretty ? 2 : undefined));
         } catch (error) {
             console.error(error instanceof Error ? error.message : String(error));
             process.exitCode = 1;
