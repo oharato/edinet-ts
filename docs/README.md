@@ -62,3 +62,5 @@
 - 生成先は変更していない。`.github/workflows/auto-release.yml` が案内する `docs/nuc7-local-artifacts.md` も維持する。
 
 Markdownのファイルを移す際は、README・相対リンク・スクリプト・CI参照・大小文字を同時に確認する。過去資料の削除ではなく移動を基本とし、明らかな重複だけを根拠付きで統合する。
+
+XML原本を読む際のサイズ・構文・DOCTYPEの制約とCLIの読み取り上限は[仕様書](SPECIFICATIONS.md#22-edinetxbrlparser)を参照してください。

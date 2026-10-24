@@ -1,3 +1,4 @@
+import { assertXmlInput } from "./xml-input";
 import { XMLParser } from "fast-xml-parser";
 import { EdinetXbrlObject, EdinetData } from "./edinet-xbrl-object";
 import { EdinetDataUtil } from "./edinet-data-util";
@@ -26,6 +27,7 @@ export class EdinetXbrlParser {
      * @returns パース済みのオブジェクト
      */
     public parse(xmlContent: string, docID: string = ""): EdinetXbrlObject {
+        assertXmlInput(xmlContent);
         const parsed = this.parser.parse(xmlContent);
         const xbrlObject = new EdinetXbrlObject(docID);
 

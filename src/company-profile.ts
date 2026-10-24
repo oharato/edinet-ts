@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { XMLValidator } from "fast-xml-parser";
 import type { EdinetContext } from "./edinet-context";
 import type { EdinetData } from "./edinet-xbrl-object";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
@@ -108,7 +107,6 @@ export function selectCompanyProfile(docID: string, facts: ReadonlyMap<string, r
 /** 明示した原本だけを構文検査して解析します。ファイル・通信・DBには触れません。 */
 export function createCompanyProfile(xml: string, docID: string): CompanyProfile & { sourceXmlHash: string } {
     if (typeof docID !== "string" || !docID || /[\s\x00-\x1f\x7f]/.test(docID)) throw new Error("空白のない明示docIDが必要です");
-    if (typeof xml !== "string" || /<!DOCTYPE\b/i.test(xml) || XMLValidator.validate(xml) !== true) throw new Error("整形式の原本XMLが必要です（DOCTYPE非対応）");
     const profile = new EdinetXbrlParser().parse(xml, docID).getCompanyProfile();
     return { ...profile, sourceXmlHash: createHash("sha256").update(xml).digest("hex") };
 }

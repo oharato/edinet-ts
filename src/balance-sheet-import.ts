@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { XMLValidator } from "fast-xml-parser";
 import { createBalanceSheetSnapshot, type BalanceSheetSnapshotMetadata } from "./balance-sheet-screening";
 import { BalanceSheetSqliteStore, type BalanceSheetProvenance } from "./db/balance-sheet-store";
 
@@ -96,7 +95,6 @@ export function importBalanceSheets(store: BalanceSheetSqliteStore, sources: rea
         if (createHash("sha256").update(bytes).digest("hex") !== source.provenance.sourceSha256) throw new Error("原本byte列のSHA256が計画と一致しません");
         const xml = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
         if (/<\?xml[^>]*encoding\s*=\s*["'](?!utf-8["'])[^"']+["']/i.test(xml)) throw new Error("UTF-8以外のXML宣言は未対応です");
-        if (XMLValidator.validate(xml) !== true) throw new Error("原本XMLが整形式ではありません");
         return { snapshot: createBalanceSheetSnapshot(xml, source.metadata), provenance: source.provenance };
     });
     // callback中の別接続更新も、変更0件の場合も、write lock下で一覧を再検査します。

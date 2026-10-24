@@ -1,4 +1,3 @@
-import { XMLValidator } from "fast-xml-parser";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { normalizeFinancialDetailMetadata, type FinancialDetailMetadata } from "./financial-detail-metadata";
 import type { FactSelectionResult } from "./metric-selection";
@@ -43,7 +42,6 @@ function normalizeMetadata(metadata: WorkforceMetadata): WorkforceMetadata {
 /** 指定原本のみを厳格に解析。給与の集計期間や注記は補完しません。 */
 export function createWorkforceSnapshot(xml: string, metadata: WorkforceMetadata, metricIds?: readonly WorkforceMetricId[]): WorkforceSnapshot {
     const normalized = normalizeMetadata(metadata), requested = projection(metricIds);
-    if (typeof xml !== "string" || /<!DOCTYPE\b/i.test(xml) || XMLValidator.validate(xml) !== true) throw new Error("整形式の原本XMLが必要です（DOCTYPE非対応）");
     const object = new EdinetXbrlParser().parse(xml, normalized.docID);
     const options = { scope: normalized.scope, accountingStandard: normalized.accountingStandard, period: normalized.period };
     const selections: WorkforceSnapshot["selections"] = {

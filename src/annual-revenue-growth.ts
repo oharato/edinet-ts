@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { XMLValidator } from "fast-xml-parser";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { MetricId } from "./metric-registry";
 import type { FactSelectionResult } from "./metric-selection";
@@ -28,7 +27,6 @@ const record=(v:unknown):v is Record<string,any>=>!!v&&typeof v==="object"&&!Arr
 function point(document:AnnualRevenueDocument):AnnualRevenuePoint {
     if(!record(document)||Object.keys(document).some(key=>!["xml","metadata"].includes(key)))throw new Error("原本XMLとmetadataが必要です");
     const metadata=normalizeFinancialDetailMetadata(document.metadata);
-    if(typeof document.xml!=="string"||XMLValidator.validate(document.xml)!==true)throw new Error("整形式の原本XMLが必要です");
     const object=new EdinetXbrlParser().parse(document.xml,metadata.docID);
     return {metadata,selection:object.selectMetric(MetricId.NetSales,{accountingStandard:metadata.accountingStandard,scope:metadata.scope,period:metadata.period}),inputXmlSha256:createHash("sha256").update(document.xml).digest("hex")};
 }

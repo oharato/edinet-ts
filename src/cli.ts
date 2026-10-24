@@ -339,12 +339,15 @@ program.command("screen-bs")
     .action(options => {
         try {
             const manifestPath = path.resolve(options.manifest);
-            const entries = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-            if (!Array.isArray(entries)) throw new Error("manifestは配列です");
+            const entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifestPath, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error("manifestは100件以下の配列です");
+            let bytes = 0;
             const snapshots = entries.map(entry => {
                 if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.file !== "string" || !entry.file.trim() ||
                     Object.keys(entry).some(key => !["secCode", "docID", "file", "instant", "scope", "accountingStandard"].includes(key))) throw new Error("不正なmanifest項目です");
-                const xml = fs.readFileSync(path.resolve(path.dirname(manifestPath), entry.file), "utf8");
+                const input = readRegularFile(path.resolve(path.dirname(manifestPath), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
+                bytes += input.bytes.byteLength;
+                const xml = new TextDecoder("utf-8", { fatal: true }).decode(input.bytes);
                 return createBalanceSheetSnapshot(xml, { secCode: entry.secCode, docID: entry.docID, instant: entry.instant, scope: entry.scope, accountingStandard: entry.accountingStandard, currency: "JPY" });
             });
             for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error("offset/limitは0以上の整数です");
