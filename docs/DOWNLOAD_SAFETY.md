@@ -53,6 +53,67 @@ JSZipは読込み時に`..`を正規化し、同じ名前の項目を統合し�
 
 合成ZIP・試験フォルダ・モックHTTP応答だけで、通常の日本語名/フォルダ/STORE/DEFLATE、危険なパス・重複・リンク・サイズ偽装・CRC破損、既存ファイル不変、途中失敗の片付けを検証します。実原本・実金額・実キャッシュ・秘密情報はGitへ含めません。
 
-CPU時間、圧縮率、厳密なメモリ使用量、ネットの待ち時間全体に上限を付ける機能ではありません。展開停止までにライブラリ内部が使う処理資源もゼロにはできません。HTTPのtimeout・AbortSignal・Retry-After等は元計画の別工程です。取得量や全市場性能を保証せず、実API・実ZIPの新規取得検証も今回追加しません。
+CPU時間、圧縮率、厳密なメモリ使用量、ネットの待ち時間全体に上限を付ける機能ではありません。展開停止までにライブラリ内部が使う処理資源もゼロにはできません。HTTPの時間制限と中断は下記の明示設定で利用します。Retry-After・jitterは元計画の次工程です。取得量や全市場性能を保証せず、実API・実ZIPの新規取得検証も今回追加しません。
 
 ローカル最終検証では、追加171件（ZIP形式76・保存71・公開API/応答24）を含む全1,728テスト、本体/利用例の型検査、clean build、Python保存保護5件が成功しました。独立レビューで見つかった本文例外の非表示、正規化したパスの一貫利用、初回とキャッシュのXBRL選択順を修正し、再確認しました。公開CIと統合状態は対応PRを参照してください。
+
+
+## 本文受信までの時間制限と中断
+
+`requestTimeoutMs`を指定すると、1回の通信を開始してから本文を受け取り終えるまでに期限を付けられます。待ち行列や再試行までの待ち時間は、この期限に含めません。受信本文が止まった場合も対象です。**省略時は従来どおり無制限**なので、期限が必要な利用では明示設定してください。
+
+```ts
+import {
+  EdinetXbrlDownloader, EdinetRequestError, EdinetRequestErrorCode
+} from "edinet-ts";
+
+const client = new EdinetXbrlDownloader({
+  apiKey: process.env.EDINET_API_KEY,
+  requestTimeoutMs: 30_000,
+  maxRetries: 2 // 最初の1回に加えて最大2回、合計3回まで
+});
+const controller = new AbortController();
+try {
+  const documents = await client.search("2026-01-01", undefined, {
+    signal: controller.signal
+  });
+  console.log(documents.length);
+} catch (error) {
+  if (error instanceof EdinetRequestError) {
+    if (error.code === EdinetRequestErrorCode.Aborted) console.error("中断しました");
+    else if (error.code === EdinetRequestErrorCode.Timeout) console.error("通信が時間切れです");
+    else console.error("通信に失敗しました");
+  } else {
+    throw error; // HTTP状態や応答の不正などは別のエラー
+  }
+}
+// 利用側が止めたい時に controller.abort() を呼びます。
+```
+
+`requestTimeoutMs`は1〜2,147,483,647msの整数です。これは1回ごとの期限であり、再試行を含む全処理の30秒保証ではありません。中断用の`signal`を使うと、待ち行列・通信中・再試行待ちでも利用側から止められます。任意の中断理由をログやエラーへ転載しません。
+
+既存の引数と戻り値は保ち、次の末尾に省略可能な`{ signal }`を追加します。不要なら従来の呼び方のままです。
+
+| メソッド | 中断指定の位置 |
+|---|---|
+| `search(date, typeFilter?, request?)` | 第3引数 |
+| `download(docID, targetDir?, request?)` | 第3引数 |
+| `fetchXbrl(docID, request?)` | 第2引数 |
+| `searchPeriod(start, end, typeFilter?, request?)` | 第4引数 |
+| `findLatest(ticker, type, lookbackDays?, request?)` | 第4引数 |
+| `downloadByTicker(ticker, targetDir?, date?, type?, request?)` | 第5引数 |
+| `Edinet.getFinancialHistory(ticker, years?, docType?, request?)` | 第4引数 |
+
+`EdinetRequestErrorCode.Aborted`は利用側の中断、`Timeout`は設定した通信期限の超過、`Network`は通信障害です。HTTPの非成功状態、不正JSON、業務エラー、不正ZIPはこれらと区別して失敗を返します。エラー文面の一致より型と定数を使って判定してください。
+
+### 再試行・後片付けと範囲
+
+本文受信が終わるまでRateLimiterの枠を保持します。既定の並列数1が本文受信にも適用されるため、以前のようにヘッダーだけ受け取って次の本文受信を並行開始しません。期限未設定で先頭の本文が止まると、後続も待つ可能性があります。
+
+呼出元の中断は再試行しません。通信障害・時間超過と429/5xxは、残り回数がある場合だけ再試行します。不要な本文を取り消し、最後の試行の後には待ちません。不正JSON・業務応答・不正ZIPの解釈を通信再試行の外に置きます。タイマー・signalのlistener・readerのlockを片付け、本文の取消し完了が返らなくても操作を永久待ちにしません。
+
+この期限はJSON・ZIP本文の受信までです。**XML/ZIP解析、同期ファイル操作、キャッシュ保存、DB処理までを含む総時間や強制中断は保証しません。** JSON本文の新しい容量上限も今回追加していません。実APIの待ち時間・速度は測定せず、合成Response/ReadableStreamと仮の時計で確認します。本番側の設定、取得予定、認証、保存済みデータは変更しません。
+
+標準APIの参照: [Node.js AbortController](https://nodejs.org/api/globals.html#class-abortcontroller)、[Fetch仕様](https://fetch.spec.whatwg.org/)、[Streams仕様](https://streams.spec.whatwg.org/)。
+
+通信制御の最終ローカル検証は、追加59件を含む全1,787テスト、本体/利用例の型検査、clean build、Python保存保護5件が成功しました。独立確認はsource59件、ビルド済み59件とCJS等6件、別レビューのキュー/cleanup等6件が成功しています。実通信や実データ変更はしていません。公開CIと統合状態は対応PRを参照してください。

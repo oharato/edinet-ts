@@ -49,14 +49,14 @@ function parseDocumentList(data: unknown): EdinetDocument[] {
 
     // API ゲートウェイのエラー形式と、EDINET 本体の metadata.status を両方確認します。
     if (data.statusCode !== undefined && data.statusCode !== 200 && data.statusCode !== "200") {
-        throw new Error(`API Error: ${String(data.statusCode)} - ${typeof data.message === "string" ? data.message : "Unknown error"}`);
+        throw new Error(`API Error: ${safeStatus(data.statusCode)}`);
     }
     const metadata = data.metadata;
     if (!isRecord(metadata) || (typeof metadata.status !== "string" && typeof metadata.status !== "number")) {
         throw new Error("Invalid EDINET documents response: missing metadata.status");
     }
     if (metadata.status !== "200" && metadata.status !== 200) {
-        throw new Error(`API Error: ${String(metadata.status)} - ${typeof metadata.message === "string" ? metadata.message : "Unknown error"}`);
+        throw new Error(`API Error: ${safeStatus(metadata.status)}`);
     }
     if (!Array.isArray(data.results)) {
         throw new Error("Invalid EDINET documents response: results must be an array");
@@ -105,6 +105,62 @@ function parseDocumentList(data: unknown): EdinetDocument[] {
     });
 }
 
+/** 中断理由や元例外を含めない、通信エラーの安定した分類。 */
+export const EdinetRequestErrorCode = Object.freeze({ Aborted: "aborted", Timeout: "timeout", Network: "network" } as const);
+export type EdinetRequestErrorCode = typeof EdinetRequestErrorCode[keyof typeof EdinetRequestErrorCode];
+export class EdinetRequestError extends Error {
+    constructor(public readonly code: EdinetRequestErrorCode) {
+        super(code === "aborted" ? "EDINET通信が中断されました" : code === "timeout" ? "EDINET通信が時間制限を超えました" : "EDINET応答の受信に失敗しました（詳細は非表示）");
+        this.name = "EdinetRequestError";
+    }
+}
+export interface EdinetRequestOptions { signal?: AbortSignal; }
+/** 呼出元のgetterや後からの差替えを非同期処理へ持ち込みません。 */
+function snapshotRequest(request?: EdinetRequestOptions): EdinetRequestOptions | undefined {
+    if (request === undefined) return undefined;
+    let signal: AbortSignal | undefined;
+    try { signal = request.signal; }
+    catch { throw new Error("signalはAbortSignalまたはundefinedで指定してください"); }
+    if (signal !== undefined && !(signal instanceof AbortSignal)) throw new Error("signalはAbortSignalまたはundefinedで指定してください");
+    return { signal };
+}
+class ResponseValidationError extends Error {}
+function safeStatus(value: unknown): string {
+    return (typeof value === "number" && Number.isSafeInteger(value) && value >= 100 && value <= 599) ||
+        (typeof value === "string" && /^[1-5]\d{2}$/.test(value)) ? String(value) : "不正な状態値";
+}
+function abortError(signal?: AbortSignal): EdinetRequestError {
+    // この関数に渡す内部signalのreasonだけを利用し、任意の呼出元reasonは公開しません。
+    return signal?.reason instanceof EdinetRequestError ? signal.reason : new EdinetRequestError(EdinetRequestErrorCode.Aborted);
+}
+function checkAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) throw new EdinetRequestError(EdinetRequestErrorCode.Aborted);
+}
+function cancelBody(response: Response): void {
+    try { void response.body?.cancel().catch(() => {}); } catch { /* 本文・元例外は公開しません。 */ }
+}
+function withAbort<T>(operation: Promise<T>, signal?: AbortSignal): Promise<T> {
+    if (!signal) return operation;
+    return new Promise<T>((resolve, reject) => {
+        const stop = () => { signal.removeEventListener("abort", stop); reject(abortError(signal)); };
+        signal.addEventListener("abort", stop, { once: true });
+        operation.then(value => { signal.removeEventListener("abort", stop); resolve(value); }, () => {
+            signal.removeEventListener("abort", stop);
+            reject(signal.aborted ? abortError(signal) : new EdinetRequestError(EdinetRequestErrorCode.Network));
+        });
+        if (signal.aborted) stop();
+    });
+}
+function waitForRequest(ms: number, signal?: AbortSignal): Promise<void> {
+    checkAborted(signal);
+    return new Promise<void>((resolve, reject) => {
+        const stop = () => { clearTimeout(timer); signal?.removeEventListener("abort", stop); reject(new EdinetRequestError(EdinetRequestErrorCode.Aborted)); };
+        const timer = setTimeout(() => { signal?.removeEventListener("abort", stop); resolve(); }, ms);
+        signal?.addEventListener("abort", stop, { once: true });
+    });
+}
+interface ReceivedResponse { ok: boolean; status: number; contentType: string | null; bytes: Uint8Array; }
+
 export interface EdinetClientOptions {
     apiKey?: string;
     rootDir?: string;
@@ -114,6 +170,8 @@ export interface EdinetClientOptions {
     requestsPerSecond?: number;
     /** 429/5xx エラー発生時の最大リトライ回数 (デフォルト: 3) */
     maxRetries?: number;
+    /** 1回の通信開始から本文受信完了までの上限ms。省略時は従来どおり無制限。待ち行列/再試行待ちは含みません。 */
+    requestTimeoutMs?: number;
 }
 
 /**
@@ -132,7 +190,10 @@ export class EdinetXbrlDownloader {
      * @param options Configuration options
      */
     constructor(options?: EdinetClientOptions) {
-        this.options = options || {};
+        this.options = { ...options };
+        if (this.options.maxRetries !== undefined && (!Number.isSafeInteger(this.options.maxRetries) || this.options.maxRetries < 0)) throw new Error("maxRetriesは0以上の安全な整数で指定してください");
+        const timeout = this.options.requestTimeoutMs;
+        if (timeout !== undefined && (!Number.isInteger(timeout) || timeout < 1 || timeout > 2147483647)) throw new Error("requestTimeoutMsは1以上2147483647以下の整数で指定してください");
         this.apiKey = this.options.apiKey || process.env.EDINET_API_KEY || "";
 
         if (!this.apiKey) {
@@ -149,40 +210,64 @@ export class EdinetXbrlDownloader {
         this.rateLimiter = new RateLimiter(1, interval);
     }
 
-    private async fetchWithRetry(url: string, options?: RequestInit): Promise<Response> {
+    /** fetchと本文受信を同じslot内に置き、解析・保存はこの再試行の外で行います。 */
+    private async fetchWithRetry(url: string, request?: EdinetRequestOptions, format: "json" | "zip" = "json"): Promise<ReceivedResponse> {
+        const signal = snapshotRequest(request)?.signal;
         const maxRetries = this.options.maxRetries ?? 3;
-        let attempt = 0;
-
-        while (attempt <= maxRetries) {
+        for (let attempt = 0; ; attempt++) {
+            checkAborted(signal);
+            let received: ReceivedResponse | undefined;
+            let failure: EdinetRequestError | undefined;
             try {
-                // レートリミッター経由で実行
-                const response = await this.rateLimiter.schedule(() => fetch(url, options));
-
-                if (response.ok) {
-                    return response;
-                }
-
-                // 429 (Too Many Requests) または 5xx (Server Error) のハンドリング
-                if (response.status === 429 || response.status >= 500) {
-                    const delay = 1000 * Math.pow(2, attempt);
-                    console.warn(`API Error ${response.status}. Retrying in ${delay}ms...`);
-                    await new Promise(r => setTimeout(r, delay));
-                    attempt++;
-                    continue;
-                }
-
-                return response; // その他のエラー (400, 404 等) はそのまま返す
-
-            } catch (e) {
-                // ネットワークエラー
-                const delay = 1000 * Math.pow(2, attempt);
-                console.warn(`EDINET通信エラー。${delay}ms後に再試行します。`);
-                await new Promise(r => setTimeout(r, delay));
-                attempt++;
+                received = await this.rateLimiter.schedule(async () => {
+                    checkAborted(signal);
+                    const controller = new AbortController();
+                    const stop = () => controller.abort(new EdinetRequestError(EdinetRequestErrorCode.Aborted));
+                    signal?.addEventListener("abort", stop, { once: true });
+                    if (signal?.aborted) stop();
+                    const timeout = this.options.requestTimeoutMs;
+                    const timer = timeout === undefined ? undefined : setTimeout(() => controller.abort(new EdinetRequestError(EdinetRequestErrorCode.Timeout)), timeout);
+                    let response: Response | undefined;
+                    try {
+                        const pending = Promise.resolve().then(() => { if (controller.signal.aborted) throw abortError(controller.signal); return fetch(url, { signal: controller.signal }); });
+                        // fetch実装がsignalを無視して遅れて返っても、本文を破棄します。
+                        void pending.then(response => { if (controller.signal.aborted) cancelBody(response); }, () => {});
+                        response = await withAbort(pending, controller.signal);
+                        const contentType = response.headers.get("content-type");
+                        if (!response.ok || (format === "zip" && contentType?.toLowerCase().includes("application/json"))) {
+                            cancelBody(response);
+                            return { ok: response.ok, status: response.status, contentType, bytes: new Uint8Array() };
+                        }
+                        const bytes = await this.readResponse(response, format === "zip" ? ZIP_LIMITS.compressedBytes : undefined, controller.signal);
+                        if (controller.signal.aborted) throw abortError(controller.signal);
+                        return { ok: response.ok, status: response.status, contentType, bytes };
+                    } catch (error) {
+                        if (response) cancelBody(response);
+                        if (error instanceof EdinetRequestError || error instanceof ResponseValidationError) throw error;
+                        throw new EdinetRequestError(EdinetRequestErrorCode.Network);
+                    } finally {
+                        if (timer !== undefined) clearTimeout(timer);
+                        signal?.removeEventListener("abort", stop);
+                    }
+                }, signal);
+            } catch (error) {
+                checkAborted(signal);
+                if (!(error instanceof EdinetRequestError)) throw error;
+                if (error.code === EdinetRequestErrorCode.Aborted) throw error;
+                failure = error;
             }
+            checkAborted(signal);
+            const retryableStatus = received && (received.status === 429 || (received.status >= 500 && received.status <= 599));
+            if (!failure && !retryableStatus) return received!;
+            if (attempt >= maxRetries) {
+                if (failure) throw failure;
+                return received!;
+            }
+            // 大きなretry設定でもNodeのtimer整数overflowで1msへ短縮しません。
+            const delay = Math.min(2147483647, 1000 * 2 ** attempt);
+            console.warn(`EDINET通信を${delay}ms後に再試行します。`);
+            await waitForRequest(delay, signal);
         }
-
-        throw new Error(`EDINET通信に失敗しました（最大再試行${maxRetries}回）。`);
     }
 
     /**
@@ -196,15 +281,18 @@ export class EdinetXbrlDownloader {
      * @param typeFilter 取得する書類種別 (オプション)。指定した場合、その種別のみを返します。
      * @returns 書類情報のリスト
      */
-    public async search(date: string, typeFilter?: EdinetDocumentType | EdinetDocumentType[]): Promise<EdinetDocument[]> {
+    public async search(date: string, typeFilter?: EdinetDocumentType | EdinetDocumentType[], request?: EdinetRequestOptions): Promise<EdinetDocument[]> {
+        request = snapshotRequest(request);
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents.json?date=${date}&type=2&Subscription-Key=${this.apiKey}`;
-        const response = await this.fetchWithRetry(url);
+        const response = await this.fetchWithRetry(url, request);
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch documents list: ${response.statusText}`);
+            throw new Error(`Failed to fetch documents list: HTTP ${response.status}`);
         }
 
-        const data: unknown = await response.json();
+        let data: unknown;
+        try { data = JSON.parse(new TextDecoder().decode(response.bytes)); }
+        catch { throw new Error("Invalid EDINET documents response: invalid JSON（詳細は非表示）"); }
         const results = parseDocumentList(data);
 
         if (typeFilter) {
@@ -224,21 +312,27 @@ export class EdinetXbrlDownloader {
      * @returns 展開された .xbrl ファイルの絶対パス
      * @throws ディレクトリが未指定の場合や、ダウンロード/展開に失敗した場合
      */
-    public async download(docId: string, targetDir?: string): Promise<string> {
+    public async download(docId: string, targetDir?: string, request?: EdinetRequestOptions): Promise<string> {
+        request = snapshotRequest(request);
+        checkAborted(request?.signal);
         assertDownloadDocId(docId);
         const dir = targetDir || this.rootDir;
         if (!dir) throw new Error("Target directory is not specified.");
         let cache: typeof import("./zip-cache");
         try { cache = await import("./zip-cache"); }
         catch { throw new Error("File system access is not available. Use fetchXbrl() instead."); }
+        checkAborted(request?.signal);
         const cached = cache.findCachedXbrl(dir, docId);
         if (cached) return cached;
-        const archive = await this.loadDocumentArchive(docId);
+        const archive = await this.loadDocumentArchive(docId, request);
+        checkAborted(request?.signal);
         return cache.persistZipArchive(dir, docId, archive, this.xbrlEntryName(archive));
     }
 
     /** 明示書類の安全に検査したZIP、または通常ファイルのキャッシュからUTF-8本文を返します。 */
-    public async fetchXbrl(docId: string): Promise<string> {
+    public async fetchXbrl(docId: string, request?: EdinetRequestOptions): Promise<string> {
+        request = snapshotRequest(request);
+        checkAborted(request?.signal);
         assertDownloadDocId(docId);
         if (this.rootDir) {
             let cache: typeof import("./zip-cache") | undefined;
@@ -247,13 +341,16 @@ export class EdinetXbrlDownloader {
                 // Nodeでの権限/実装エラーを、キャッシュなしへ変換して通信しません。
                 if (typeof process !== "undefined" && process.versions?.node) throw error;
             }
+            checkAborted(request?.signal);
             if (cache) {
                 const cached = cache.findCachedXbrl(this.rootDir, docId);
                 if (cached) return cache.readCachedXbrl(cached);
             }
         }
-        const archive = await this.loadDocumentArchive(docId);
+        const archive = await this.loadDocumentArchive(docId, request);
+        checkAborted(request?.signal);
         const bytes = await archive.readEntry(this.xbrlEntryName(archive));
+        checkAborted(request?.signal);
         if (bytes.byteLength === 0) throw new Error("XBRL本文が空です");
         return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
     }
@@ -269,39 +366,44 @@ export class EdinetXbrlDownloader {
     /** 圧縮応答もstreamで上限まで読み、応答本文や鍵をエラーメッセージへ混ぜません。 */
     private async readZipResponse(response: Response, maxBytes = ZIP_LIMITS.compressedBytes): Promise<Uint8Array> {
         if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > ZIP_LIMITS.compressedBytes) throw new Error("ZIP受信上限が不正です");
-        if (!response.body || typeof response.body.getReader !== "function") throw new Error("ZIP応答に読み取り可能なbodyがありません");
-        const reader = response.body.getReader();
+        return this.readResponse(response, maxBytes);
+    }
+
+    private async readResponse(response: Response, maxBytes?: number, signal?: AbortSignal): Promise<Uint8Array> {
+        let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
         const chunks: Uint8Array[] = []; let total = 0;
         try {
+            if (!response.body) return new Uint8Array();
+            reader = response.body.getReader();
             const declared = response.headers.get("content-length");
-            if (declared && /^\d+$/.test(declared) && Number(declared) > maxBytes) throw new Error("ZIP受信量が上限を超えています");
+            if (maxBytes !== undefined && declared && /^\d+$/.test(declared) && Number(declared) > maxBytes) throw new ResponseValidationError("ZIP受信量が上限を超えています");
             for (;;) {
                 let item: ReadableStreamReadResult<Uint8Array>;
-                try { item = await reader.read(); }
-                catch { throw new Error("ZIP応答の受信に失敗しました（詳細は非表示）"); }
+                try { item = await withAbort(reader.read(), signal); }
+                catch (error) { throw error instanceof EdinetRequestError ? error : new EdinetRequestError(EdinetRequestErrorCode.Network); }
+                if (signal?.aborted) throw abortError(signal);
                 const { done, value } = item;
                 if (done) break;
-                if (!(value instanceof Uint8Array) || value.byteLength > maxBytes - total) throw new Error("ZIP受信量が上限を超えています");
+                if (!(value instanceof Uint8Array) || (maxBytes !== undefined && value.byteLength > maxBytes - total)) throw new ResponseValidationError("ZIP受信量が上限を超えています");
                 total += value.byteLength; chunks.push(new Uint8Array(value));
             }
             const bytes = new Uint8Array(total); let offset = 0;
             for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
             return bytes;
         } catch (error) {
-            try { await reader.cancel(); } catch { /* 元の検査エラーを保持します。 */ }
-            throw error;
-        } finally { reader.releaseLock(); }
+            try { void reader?.cancel().catch(() => {}); } catch { /* 取消し完了を待たず、元の検査エラーを保持します。 */ }
+            if (error instanceof EdinetRequestError || error instanceof ResponseValidationError) throw error;
+            throw new EdinetRequestError(EdinetRequestErrorCode.Network);
+        } finally { try { reader?.releaseLock(); } catch { /* pending readの取消し後も永久待ちしません。 */ } }
     }
 
-    private async loadDocumentArchive(docId: string): Promise<LoadedZipArchive> {
+    private async loadDocumentArchive(docId: string, request?: EdinetRequestOptions): Promise<LoadedZipArchive> {
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
-        const response = await this.fetchWithRetry(url);
+        const response = await this.fetchWithRetry(url, request, "zip");
         if (!response.ok) throw new Error(`Failed to download document ${docId}: HTTP ${response.status}`);
-        if (response.headers.get("content-type")?.toLowerCase().includes("application/json")) {
-            try { await response.body?.cancel(); } catch { /* 応答本文は出力しません。 */ }
-            throw new Error("EDINETのZIP取得応答がJSONでした（本文は非表示）");
-        }
-        return loadZipArchive(await this.readZipResponse(response));
+        if (response.contentType?.toLowerCase().includes("application/json")) throw new Error("EDINETのZIP取得応答がJSONでした（本文は非表示）");
+        checkAborted(request?.signal);
+        return loadZipArchive(response.bytes);
     }
 
     /**
@@ -311,7 +413,9 @@ export class EdinetXbrlDownloader {
      * @param typeFilter 書類種別 (オプション)
      * @returns 書類リスト
      */
-    public async searchPeriod(startDate: string, endDate: string, typeFilter?: EdinetDocumentType): Promise<EdinetDocument[]> {
+    public async searchPeriod(startDate: string, endDate: string, typeFilter?: EdinetDocumentType, request?: EdinetRequestOptions): Promise<EdinetDocument[]> {
+        request = snapshotRequest(request);
+        checkAborted(request?.signal);
         const start = new Date(startDate);
         const end = new Date(endDate);
         const results: EdinetDocument[] = [];
@@ -319,14 +423,15 @@ export class EdinetXbrlDownloader {
         for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
             const dateStr = d.toISOString().split("T")[0];
             try {
-                const docs = await this.search(dateStr, typeFilter);
+                const docs = await (request === undefined ? this.search(dateStr, typeFilter) : this.search(dateStr, typeFilter, request));
                 results.push(...docs);
             } catch (e) {
-                console.warn(`Failed to search on ${dateStr}:`, e);
+                if (e instanceof EdinetRequestError && e.code !== EdinetRequestErrorCode.Network) throw e;
+                console.warn("EDINET書類一覧の検索に失敗しました（詳細は非表示）");
             }
             // 範囲が広い場合、レートリミットを避けるための待機
             if (d.getTime() < end.getTime()) {
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await waitForRequest(100, request?.signal);
             }
         }
 
@@ -340,7 +445,9 @@ export class EdinetXbrlDownloader {
      * @param lookbackDays 遡る日数 (デフォルト: 90日)
      * @returns 見つかった書類情報、または null
      */
-    public async findLatest(ticker: string, type: EdinetDocumentType | EdinetDocumentType[], lookbackDays: number = 90): Promise<EdinetDocument | null> {
+    public async findLatest(ticker: string, type: EdinetDocumentType | EdinetDocumentType[], lookbackDays: number = 90, request?: EdinetRequestOptions): Promise<EdinetDocument | null> {
+        request = snapshotRequest(request);
+        checkAborted(request?.signal);
         const today = new Date();
         const secCode = ticker + "0";
 
@@ -354,18 +461,19 @@ export class EdinetXbrlDownloader {
                 // searchメソッド内でフィルタリングされるため、通信量は削減できませんが、
                 // クライアント側で無駄なループを回すよりは良いでしょう。
                 // 日付ごとにAPIコールが発生するため、長期間の遡及は時間がかかります。
-                const docs = await this.search(dateStr, type);
+                const docs = await (request === undefined ? this.search(dateStr, type) : this.search(dateStr, type, request));
                 const match = docs.find(doc => doc.secCode === secCode && doc.docInfoEditStatus === 0);
 
                 if (match) {
                     return match;
                 }
             } catch (e) {
-                console.warn(`Error searching on ${dateStr}:`, e);
+                if (e instanceof EdinetRequestError && e.code !== EdinetRequestErrorCode.Network) throw e;
+                console.warn("EDINET書類一覧の検索に失敗しました（詳細は非表示）");
             }
 
             // レート制限への配慮
-            await new Promise(resolve => setTimeout(resolve, 100));
+            if (i + 1 < lookbackDays) await waitForRequest(100, request?.signal);
         }
 
         return null;
@@ -387,9 +495,11 @@ export class EdinetXbrlDownloader {
         ticker: string,
         targetDir?: string,
         date: string = new Date().toISOString().split("T")[0],
-        type: EdinetDocumentType | EdinetDocumentType[] = EdinetDocumentType.AnnualCards
+        type: EdinetDocumentType | EdinetDocumentType[] = EdinetDocumentType.AnnualCards,
+        request?: EdinetRequestOptions
     ): Promise<string | null> {
-        const docs = await this.search(date);
+        request = snapshotRequest(request);
+        const docs = await (request === undefined ? this.search(date) : this.search(date, undefined, request));
 
         // secCodeは通常、証券コード+0（例: 72030）となります
         // 指定された書類種別かつ、書類情報修正区分が 0 の書類を選びます。
@@ -402,11 +512,11 @@ export class EdinetXbrlDownloader {
         );
 
         if (!targetDoc) {
-            console.warn(`No document of type ${type} found for ticker ${ticker} on ${date}.`);
+            console.warn("対象書類が見つかりませんでした。");
             return null;
         }
 
-        console.log(`Found document for ${ticker}: ${targetDoc.docDescription} (${targetDoc.docID})`);
-        return this.download(targetDoc.docID, targetDir);
+        console.log("対象書類を取得します。");
+        return request === undefined ? this.download(targetDoc.docID, targetDir) : this.download(targetDoc.docID, targetDir, request);
     }
 }

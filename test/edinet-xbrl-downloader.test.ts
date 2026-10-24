@@ -66,10 +66,7 @@ describe("EdinetXbrlDownloader", () => {
 
             // "Target directory is missing" エラーにならないことを確認します（fetchエラー等別のエラーになるのは許容）
             // fetchMock needs to return a response structure that doesn't crash before the directory check logic (if any) or confirms logic proceeds
-            fetchMock.mockResolvedValueOnce({
-                ok: false,
-                statusText: "Mock Fail"
-            });
+            fetchMock.mockResolvedValueOnce(new Response(null, { status: 400, statusText: "Mock Fail" }));
 
             await expect(downloader.download("doc1")).rejects.toThrow("Failed to download document doc1");
         });
