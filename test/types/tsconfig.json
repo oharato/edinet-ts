@@ -23,6 +23,7 @@
         "document-relations.ts",
         "ifrs-balance-sheet-selection.ts",
         "ifrs-balance-sheet-screening.ts",
-        "context-dimension-traces.ts"
+        "context-dimension-traces.ts",
+        "subsidiary-human-capital-labels.ts"
     ]
 }

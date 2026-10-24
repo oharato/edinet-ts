@@ -44,3 +44,7 @@ export * from "./ifrs-balance-sheet-screening";
 
 export type { ContextDimensionsTraceResult, ContextDimensionTraceCandidate, ContextDimensionEntryTrace, ContextDimensionTraceMap,
     DimensionQNameTrace, DimensionNamespaceBinding, DimensionTraceDiagnostic, DimensionTraceDiagnosticCode, TypedDimensionElementTrace } from "./context-dimension-traces";
+export { extractSubsidiaryHumanCapitalLabels, searchSubsidiaryHumanCapitalLabels, SubsidiaryHumanCapitalLabelOperator, SUBSIDIARY_HUMAN_CAPITAL_LABEL_LIMITS } from "./subsidiary-human-capital-labels";
+export type { SubsidiaryHumanCapitalLabelMetadata, SubsidiaryHumanCapitalLabelDocument, SubsidiaryHumanCapitalLabelDimension,
+    SubsidiaryHumanCapitalLabelReason, SubsidiaryHumanCapitalLabelEvidence, SubsidiaryHumanCapitalLabelTrace, SubsidiaryHumanCapitalLabelRow, SubsidiaryHumanCapitalLabelDiagnostic,
+    SubsidiaryHumanCapitalLabelExtraction, SubsidiaryHumanCapitalLabelCondition, SubsidiaryHumanCapitalLabelSearchOptions, SubsidiaryHumanCapitalLabelSearchResult } from "./subsidiary-human-capital-labels";

@@ -11,6 +11,7 @@ import { EdinetContext } from "./edinet-context";
 import { JppfsCorTaxonomy } from "./types/jppfs_cor_taxonomy";
 import { cleanHtml } from "./utils/html-cleaner";
 import { selectCompanyProfile, type CompanyProfile } from "./company-profile";
+import { selectSubsidiaryHumanCapitalLabels, type SubsidiaryHumanCapitalLabelMetadata, type SubsidiaryHumanCapitalLabelExtraction } from "./subsidiary-human-capital-labels";
 
 /**
  * 共通メタデータ
@@ -102,6 +103,11 @@ export class EdinetXbrlObject {
     /** 元のXMLを保持しない読み取り専用の会社情報。XML hash付き入口はcreateCompanyProfileです。 */
     public getCompanyProfile(): CompanyProfile {
         return selectCompanyProfile(this._docID, this._dataMap, this.contextMap, this.duplicateContextIds);
+    }
+
+    /** 人的資本表の解析済み会社ラベル専用。金融selectorの次元/scope契約は変更しません。 */
+    public selectSubsidiaryHumanCapitalLabels(metadata: SubsidiaryHumanCapitalLabelMetadata): SubsidiaryHumanCapitalLabelExtraction {
+        return selectSubsidiaryHumanCapitalLabels(metadata, this._dataMap, this.contextMap, id => this.traceContextDimensions(id), this._docID);
     }
 
     /**
