@@ -158,10 +158,11 @@ program.command("diff-bs")
     });
 
 program.command("screen-workforce")
-    .description("提出会社単体の平均年間給与を明示原本集合で検索します（円、期末指定）")
+    .description("提出会社単体の給与・明示した年齢/勤続年数を検索します（期末指定）")
     .requiredOption("--manifest <path>", "fileとmetadataを持つJSON配列（相対fileは一覧基準）")
-    .option("--conditions <json>", "averageAnnualSalaryのAND条件", "[]")
-    .option("--sort-by <metric>", "averageAnnualSalary")
+    .option("--metrics <ids>", "追加して読むIDをカンマ区切りで明示（省略は給与のみ）")
+    .option("--conditions <json>", "選択した人的資本項目のAND条件", "[]")
+    .option("--sort-by <metric>", "選択した人的資本項目のID")
     .option("--order <order>", "ascまたはdesc", "desc")
     .option("--offset <number>", "開始位置", "0")
     .option("--limit <number>", "最大件数")
@@ -181,6 +182,7 @@ program.command("screen-workforce")
             });
             for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error("offset/limitは0以上の整数です");
             console.log(JSON.stringify(screenWorkforceDocuments(documents, {
+                metricIds: options.metrics === undefined ? undefined : options.metrics.split(",").map((id: string) => id.trim()),
                 conditions: JSON.parse(options.conditions), sortBy: options.sortBy, order: options.order,
                 offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit)
             }), null, options.pretty ? 2 : undefined));

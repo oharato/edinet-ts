@@ -209,10 +209,10 @@ export class EdinetXbrlObject {
         return selectDefinedMetricFact(FINANCIAL_DETAIL_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
     }
 
-    /** 給与は提出会社単体のみ。負値は原値をevidenceへ残し不採用とします。 */
-    public selectWorkforceMetric(id: WorkforceMetricId, options: MetricSelectionOptions): FactSelectionResult<WorkforceMetricId> {
+    /** 人的資本は提出会社単体のみ。負値は原値をevidenceへ残し不採用とします。 */
+    public selectWorkforceMetric<Id extends WorkforceMetricId>(id: Id, options: MetricSelectionOptions): FactSelectionResult<Id> {
         if (!Object.prototype.hasOwnProperty.call(WORKFORCE_REGISTRY, id)) throw new Error("不正な人的資本IDです");
-        const result = selectDefinedMetricFact(WORKFORCE_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        const result = selectDefinedMetricFact<Id>(WORKFORCE_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
         // numberへ変換する前に符号を検証。-0/-0.0はゼロとして保持します。
         if (options.scope !== "NonConsolidated" || result.status === "selected" && /^-/.test(result.raw) && /[1-9]/.test(result.raw)) {
             return { metricId: id, status: "unsupported", reason: "unsupported-semantics",
