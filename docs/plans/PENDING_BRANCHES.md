@@ -1,6 +1,6 @@
 # 確認中の変更と取り込み先
 
-更新日: 2026-10-23。この資料は、複数社の保存書類を3項目で検索する変更の経緯を説明します。[用語集](../GLOSSARY.md)も参照してください。
+更新日: 2026-10-24。この資料は、財務3項目の検索と、その後の検証記録・流動比率の提案順を説明します。[用語集](../GLOSSARY.md)も参照してください。
 
 ## mainに入ったものと、まだ確認中のもの
 
@@ -15,7 +15,14 @@
 
 Stacked PRは、依存する複数のPRをGitHub上で正式にひとまとまりにする機能です。単に取り込み先を別の作業ブランチへ変えただけでは、正式なstackを作成した意味にはなりません。
 
-[GitHub公式説明](https://docs.github.com/en/pull-requests/get-started/about-stacked-prs)では2件以上のPRが対象です。リポジトリの正式なstack読取APIは利用可能で、確認時点のstackは0件でした。先行#24は取り込み済みで、今回残っている提案は1件のため、正式なstackを作る組合せはありません。将来、依存する複数PRを同時に提案する際は[正式な作成手順](https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/creating-stacked-pull-requests)で関連付けとstack表示を確認します。
+[GitHub公式説明](https://docs.github.com/en/pull-requests/get-started/about-stacked-prs)では2件以上のPRが対象です。PR #26の再提案時点では残り1件だったため、正式なstackを作る組合せはありませんでした。今回の検証記録と流動比率は、検証記録を下段（取り込み先main）、流動比率を上段（取り込み先は検証記録のブランチ）として正式stackへ登録し、関連付けを確認します。今後も依存する複数PRを同時に提案する際は[正式な作成手順](https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/creating-stacked-pull-requests)で関連付けとstack表示を確認します。
+
+## 今回の確認順
+
+1. 検証記録: 実資料との一致・表示変更・訂正・未確認範囲を読む提案。コードは変更しません。
+2. 流動比率: その記録を参照し、比率の計算・検索・CLIを追加する提案。文書の重複・競合は上段へ同期する際に解消します。
+
+単なるbaseの連鎖ではなく、GitHubの正式stack登録を確認します。取り込みは下段から順にmainへ行うか、正式stackをmainへまとめて取り込む方法で判断してください。先行PRがmainへ入った後に、上段を古い作業ブランチへ取り込む操作は避け、取り込み先とstackの自動調整を確認します。今回こちらからマージはしません。
 
 ## 同期後のローカル検証
 
