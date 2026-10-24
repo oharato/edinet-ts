@@ -11,7 +11,7 @@ async function flush() { for (let i = 0; i < 30; i++) await Promise.resolve(); }
 function stoppedBody(cancel: () => unknown = () => {}) {
     return new ReadableStream<Uint8Array>({ pull: () => never(), cancel });
 }
-beforeEach(() => { vi.useFakeTimers(); vi.spyOn(console, "warn").mockImplementation(() => {}); vi.spyOn(console, "error").mockImplementation(() => {}); });
+beforeEach(() => { vi.useFakeTimers(); vi.spyOn(Math, "random").mockReturnValue(0); vi.spyOn(console, "warn").mockImplementation(() => {}); vi.spyOn(console, "error").mockImplementation(() => {}); });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("通信の本文完了までの時間制限と中断（合成応答のみ）", () => {

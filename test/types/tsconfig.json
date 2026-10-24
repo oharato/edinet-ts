@@ -17,6 +17,7 @@
         "financial-detail-snapshots.ts",
         "financial-detail-store.ts",
         "http-request-lifecycle.ts",
-        "annual-operating-income-growth.ts"
+        "annual-operating-income-growth.ts",
+        "http-retry-guidance.ts"
     ]
 }

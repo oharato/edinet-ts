@@ -159,7 +159,26 @@ function waitForRequest(ms: number, signal?: AbortSignal): Promise<void> {
         signal?.addEventListener("abort", stop, { once: true });
     });
 }
-interface ReceivedResponse { ok: boolean; status: number; contentType: string | null; bytes: Uint8Array; }
+/** Retry-Afterの整数秒と現行IMF-fixdateだけを扱います。原文はログ・例外へ出しません。 */
+function retryAfterDelay(value: string | null, now: number): number | undefined {
+    if (value === null) return undefined;
+    if (/^\d+$/.test(value)) return Number(value) * 1000;
+    // 旧式HTTP-dateは解釈を推測せず、自動再試行を止めて早い再送を避けます。
+    if (/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), \d{2}-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{2} [0-2]\d:[0-5]\d:(?:[0-5]\d|60) GMT$/.test(value) ||
+        /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (?: \d|\d{2}) [0-2]\d:[0-5]\d:(?:[0-5]\d|60) \d{4}$/.test(value)) return Infinity;
+    // Date.parseの寛容な補正に頼らず、曜日・日付・時刻をUTC表記と照合します。
+    if (!/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} [0-2]\d:[0-5]\d:(?:[0-5]\d|60) GMT$/.test(value)) return undefined;
+    const year = Number(value.slice(12, 16));
+    if (year < 1900) return undefined;
+    const leapSecond = value.endsWith(":60 GMT");
+    const ordinary = leapSecond ? value.slice(0, -6) + "59 GMT" : value;
+    const date = new Date(ordinary);
+    if (!Number.isFinite(date.getTime()) || date.toUTCString() !== ordinary) return undefined;
+    // JS Dateではうるう秒を正確に表せないため、こちらも自動再試行しません。
+    if (leapSecond) return Infinity;
+    return Math.max(0, date.getTime() - now);
+}
+interface ReceivedResponse { ok: boolean; status: number; contentType: string | null; retryAfter: string | null; bytes: Uint8Array; }
 
 export interface EdinetClientOptions {
     apiKey?: string;
@@ -172,6 +191,8 @@ export interface EdinetClientOptions {
     maxRetries?: number;
     /** 1回の通信開始から本文受信完了までの上限ms。省略時は従来どおり無制限。待ち行列/再試行待ちは含みません。 */
     requestTimeoutMs?: number;
+    /** 再試行待ちの上限ms（既定60000）。サーバーの指定がこれを超える場合は再試行せず終了します。 */
+    maxRetryDelayMs?: number;
 }
 
 /**
@@ -194,6 +215,8 @@ export class EdinetXbrlDownloader {
         if (this.options.maxRetries !== undefined && (!Number.isSafeInteger(this.options.maxRetries) || this.options.maxRetries < 0)) throw new Error("maxRetriesは0以上の安全な整数で指定してください");
         const timeout = this.options.requestTimeoutMs;
         if (timeout !== undefined && (!Number.isInteger(timeout) || timeout < 1 || timeout > 2147483647)) throw new Error("requestTimeoutMsは1以上2147483647以下の整数で指定してください");
+        const maxDelay = this.options.maxRetryDelayMs;
+        if (maxDelay !== undefined && (!Number.isInteger(maxDelay) || maxDelay < 1 || maxDelay > 2147483647)) throw new Error("maxRetryDelayMsは1以上2147483647以下の整数で指定してください");
         this.apiKey = this.options.apiKey || process.env.EDINET_API_KEY || "";
 
         if (!this.apiKey) {
@@ -234,13 +257,14 @@ export class EdinetXbrlDownloader {
                         void pending.then(response => { if (controller.signal.aborted) cancelBody(response); }, () => {});
                         response = await withAbort(pending, controller.signal);
                         const contentType = response.headers.get("content-type");
+                        const retryAfter = response.headers.get("retry-after");
                         if (!response.ok || (format === "zip" && contentType?.toLowerCase().includes("application/json"))) {
                             cancelBody(response);
-                            return { ok: response.ok, status: response.status, contentType, bytes: new Uint8Array() };
+                            return { ok: response.ok, status: response.status, contentType, retryAfter, bytes: new Uint8Array() };
                         }
                         const bytes = await this.readResponse(response, format === "zip" ? ZIP_LIMITS.compressedBytes : undefined, controller.signal);
                         if (controller.signal.aborted) throw abortError(controller.signal);
-                        return { ok: response.ok, status: response.status, contentType, bytes };
+                        return { ok: response.ok, status: response.status, contentType, retryAfter, bytes };
                     } catch (error) {
                         if (response) cancelBody(response);
                         if (error instanceof EdinetRequestError || error instanceof ResponseValidationError) throw error;
@@ -263,8 +287,14 @@ export class EdinetXbrlDownloader {
                 if (failure) throw failure;
                 return received!;
             }
-            // 大きなretry設定でもNodeのtimer整数overflowで1msへ短縮しません。
-            const delay = Math.min(2147483647, 1000 * 2 ** attempt);
+            const maxDelay = this.options.maxRetryDelayMs ?? 60000;
+            const serverWait = retryableStatus ? retryAfterDelay(received!.retryAfter, Date.now()) : undefined;
+            // 長いサーバー指定を上限へ切り詰めると、指定時刻より前に再送してしまいます。
+            if (serverWait !== undefined && serverWait > maxDelay) return received!;
+            const ownBackoff = Math.min(maxDelay, 1000 * 2 ** attempt);
+            const jitterRoom = Math.min(maxDelay - ownBackoff, ownBackoff * 0.25);
+            const ownJitter = ownBackoff + Math.floor(Math.random() * (Math.floor(jitterRoom) + 1));
+            const delay = Math.max(ownJitter, serverWait ?? 0);
             console.warn(`EDINET通信を${delay}ms後に再試行します。`);
             await waitForRequest(delay, signal);
         }
