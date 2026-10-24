@@ -49,6 +49,7 @@ export function createWorkforceSnapshot(xml: string, metadata: WorkforceMetadata
     };
     if (requested.includes(WorkforceMetricId.AverageAgeYears)) selections.averageAgeYears = object.selectWorkforceMetric(WorkforceMetricId.AverageAgeYears, options);
     if (requested.includes(WorkforceMetricId.AverageLengthOfServiceYears)) selections.averageLengthOfServiceYears = object.selectWorkforceMetric(WorkforceMetricId.AverageLengthOfServiceYears, options);
+    if (requested.includes(WorkforceMetricId.NumberOfEmployees)) selections.numberOfEmployees = object.selectWorkforceMetric(WorkforceMetricId.NumberOfEmployees, options);
     return { metadata: normalized, selections };
 }
 /** 明示した複数社をメモリ検索。各社のentity整合を確認し、同一entityの別コード使用を拒否します。 */

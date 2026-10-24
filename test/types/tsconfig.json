@@ -18,6 +18,7 @@
         "financial-detail-store.ts",
         "http-request-lifecycle.ts",
         "annual-operating-income-growth.ts",
-        "http-retry-guidance.ts"
+        "http-retry-guidance.ts",
+        "workforce-employee-count.ts"
     ]
 }
