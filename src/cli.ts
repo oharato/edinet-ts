@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { createCompanyProfile } from "./company-profile";
+import { createCompanyProfile, CompanyProfileFieldId } from "./company-profile";
+import { screenCompanyDocuments, CompanyProfileOperator } from "./company-screening";
 import { screenWorkforceDocuments } from "./workforce-screening";
 import "dotenv/config";
 import { EdinetXbrlDownloader } from "./edinet-xbrl-downloader";
@@ -182,6 +183,51 @@ program.command("screen-workforce")
             console.log(JSON.stringify(screenWorkforceDocuments(documents, {
                 conditions: JSON.parse(options.conditions), sortBy: options.sortBy, order: options.order,
                 offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit)
+            }), null, options.pretty ? 2 : undefined));
+        } catch (error) {
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exitCode = 1;
+        }
+    });
+
+program.command("screen-companies")
+    .description("明示原本の会社名・コード・決算月を検索します（最新選択・企業結合なし）")
+    .requiredOption("--manifest <path>", "fileとdocIDを持つJSON配列（相対fileは一覧基準）")
+    .option("--name-contains <text>", "原本の会社名に含まれる文字列")
+    .option("--edinet-code <code>", "原本のEDINETコードに完全一致")
+    .option("--security-code <code>", "原本の証券コードに完全一致（文字列のまま）")
+    .option("--fiscal-year-end-month <number>", "当期終了日の月（1〜12）")
+    .option("--conditions <json>", "会社情報のAND条件", "[]")
+    .option("--sort-by <field>", "会社情報6項目のID", "edinetCode")
+    .option("--order <order>", "ascまたはdesc", "asc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifestPath = path.resolve(options.manifest);
+            const entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifestPath, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error("manifestは100件以下の配列です");
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(key => !["file", "docID"].includes(key)) ||
+                    typeof entry.file !== "string" || !entry.file.trim() || typeof entry.docID !== "string") throw new Error("不正な会社情報manifestです");
+                const input = readRegularFile(path.resolve(path.dirname(manifestPath), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
+                bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), docID: entry.docID };
+            });
+            const conditions = JSON.parse(options.conditions);
+            if (!Array.isArray(conditions)) throw new Error("conditionsは配列です");
+            for (const [value, field, operator] of [
+                [options.nameContains, CompanyProfileFieldId.FilerName, CompanyProfileOperator.Contains],
+                [options.edinetCode, CompanyProfileFieldId.EdinetCode, CompanyProfileOperator.Equal],
+                [options.securityCode, CompanyProfileFieldId.SecurityCode, CompanyProfileOperator.Equal]
+            ]) if (value !== undefined) conditions.push({ field, operator, value });
+            for (const value of [options.offset, options.limit, options.fiscalYearEndMonth])
+                if (value !== undefined && !/^\d+$/.test(value)) throw new Error("月/offset/limitは整数で指定してください");
+            console.log(JSON.stringify(screenCompanyDocuments(documents, {
+                conditions, fiscalYearEndMonth: options.fiscalYearEndMonth === undefined ? undefined : Number(options.fiscalYearEndMonth),
+                sortBy: options.sortBy, order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit)
             }), null, options.pretty ? 2 : undefined));
         } catch (error) {
             console.error(error instanceof Error ? error.message : String(error));

@@ -72,3 +72,57 @@ node dist/cli.js company-profile --file /tmp/local-source/source.xbrl --doc-id S
 Node26.12.1で全933テスト（既存898＋追加35）、本体/公開API例の型検査・build・保存保護Python5件が成功しました。全体テストはCIと同じ`--maxWorkers=1`を使用し、既存の統合テストの制限時間や期待値は変更していません。lint設定はありません。
 
 独立レビューではsource41確認・build済みESM/root/CLI42確認・CJS export1確認が成功し、未解決の必須修正はありませんでした。BOMと内部空白を含む書類IDの境界も再確認しています。
+
+## 明示した複数社の情報を探す
+
+この版は、会社名・コード・決算月を使う`screenCompanyDocuments()`とCLI `screen-companies`を追加します。入力は`[{xml, docID}, ...]`です。各原本から6項目すべてを採用でき、項目間の整合性も確認できた会社情報だけを検索します。名前だけ読めても、他の必要情報が欠けた行は対象外となり、理由を返します。
+
+```ts
+import { screenCompanyDocuments, CompanyProfileFieldId, CompanyProfileOperator, SortOrder } from "edinet-ts";
+const result = screenCompanyDocuments(documents, {
+    conditions: [{ field: CompanyProfileFieldId.FilerName,
+        operator: CompanyProfileOperator.Contains, value: "合成" }],
+    fiscalYearEndMonth: 3,
+    sortBy: CompanyProfileFieldId.EdinetCode, order: SortOrder.Ascending,
+    offset: 0, limit: 20
+});
+```
+
+`CompanyProfileOperator.Equal`は原文の完全一致、`Contains`は部分一致です。6項目のいずれも文字列として比較します。正規表現、大文字小文字の同一視、全角半角の統一、証券コードの4桁から5桁への変換はしません。コードの先頭0や英字を保ちます。決算月は採用済みの当期終了日から得る月で、1〜12を指定します。過去の決算月変更を追う履歴機能ではありません。
+
+条件はANDです。空の条件値や不明な項目・演算子、不正な月/ページ指定は設定エラーです。条件なしでは、明示集合内で採用可能なすべての行を返します。
+
+並べ替えの既定はEDINETコードの昇順です。指定項目をJavaScriptの原文文字列比較順（UTF-16コード単位順）で比較し、同値ならEDINETコード/書類ID順で安定させます。日本語の読み・辞書順や数値順へ変換しません。日付も採用済みのISO文字列として比較します。
+
+- `rows`は採用可能で条件に合う会社情報。原文字列・出典・XML文字列の指紋も保持します。
+- `total`はページ前の条件一致件数、`excludedRows`は6項目不足/不整合の行数、`filteredRows`は採用できたが条件に合わなかった行数です。
+- `diagnostics`は除外した書類ID、`incomplete`/`inconsistent`、不足項目の候補と理由、整合性の診断を返します。`reasonCounts`は項目数ではなく除外行数です。
+
+同じdocIDは原本解析前に拒否します。採用可能な行でEDINETコードの原文またはentityが重複する場合も、条件適用前に拒否します。複数年度の同じ会社を黙って最新1件へ絞ったり、自動結合したりしません。除外済みの不完全な行は、この採用可能行の重複判定には使いません。
+
+異なる会社の提出時点や期末が違っても、利用者が明示した企業属性の集合として検索できます。財務の比較可能性や、特定日時の会社マスターを保証するものではありません。原本の提出時刻・有効期間を推測せず、コード制度の有効性も認証しません。業種・市場・上場状態の補完はありません。
+
+### 検索CLI
+
+一覧JSONの例:
+
+```json
+[
+  { "file": "source.xbrl", "docID": "SYNTHETIC1" }
+]
+```
+
+```sh
+node dist/cli.js screen-companies --manifest /tmp/local-companies/files.json --name-contains 合成 --fiscal-year-end-month 3 --pretty
+node dist/cli.js screen-companies --manifest /tmp/local-companies/files.json --security-code 012A0 --sort-by filerName --order asc --limit 20
+```
+
+名称・コードは合成例です。`--edinet-code`/`--security-code`は原文完全一致、`--name-contains`は文字列部分一致です。`--conditions`にAPIと同じJSON配列も指定でき、便利なフラグで追加した条件とANDで組み合わせます。
+
+相対fileは一覧JSONのフォルダ基準です。一覧100件/2MiB、原本1件64MiB/合計256MiBの小規模な手元検索で、通常ファイルへ解決される入力だけを読みます。UTF-8のBOMも保持します。取得・DB更新・フォルダ探索はしません。正常はJSONと終了0、設定/入力の不正や重複候補はstderrと終了1です。除外行があること自体は入力失敗とはせず、JSONの理由を確認できるようにします。性能は未測定です。
+
+検索の検証では、保存済み2原本の12項目がPython標準XML処理で読んだ記載と一致しました。会社名/コード/月/順序/ページの12検索も別に作った期待値と一致し、原本不変を確認しました。公式企業マスターとの独立照合、過去時点の履歴、全市場の充足率を検証した意味ではありません。
+
+Node26.12.1で全1,114テスト（既存1,055＋追加59）、本体/使用例の型検査・build・保存保護Python5件が成功しました。検査条件や既存の制限時間は変更していません。
+
+独立レビューではsourceとbuild済み公開API/CLI各74確認、CJSルート公開が成功しました。更新文書の相対リンク98件にも欠損はありませんでした。レビューは合成入力によるものです。
