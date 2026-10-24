@@ -421,3 +421,5 @@ mainで使える検索機能は、保存した複数社を流動資産・流動�
 指定したローカル原本を財務DBへ取り込むAPIは#33でmainへ統合済みです。原本のハッシュ計算と取り込み予定の確認を行うCLI `import-bs --dry-run`も#34でmainへ統合済みです。[入力例・使い方・試験DBの保護](docs/FINANCIAL_INCREMENTAL_IMPORT.md)を参照してください。
 
 この版では、保存済みの2つの解析結果について、数値・採用状態・出典の違いを説明するAPIとCLI `diff-bs`も利用できます。[比較できる条件と使い方](docs/BALANCE_SHEET_VERSION_DIFF.md)を参照してください。
+
+保存済み原本を使って、取り込み→再open検索→同一コードでの版ラベル変更→版比較を一続きに確認できます。[明示入力だけのオフライン検証手順](docs/OFFLINE_FINANCIAL_VERIFICATION.md)を参照してください。原本と金額入り期待値はGit外で指定し、一時DBだけを使います。
