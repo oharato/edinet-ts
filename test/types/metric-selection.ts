@@ -45,3 +45,16 @@ const badCondition: FinancialCondition = { ...condition, operator: "greater" };
 const badOrder: FinancialScreeningOptions = { ...search, order: "descending" };
 // @ts-expect-error 未知の期間分類
 const badPeriod: FinancialSnapshot["periodType"] = "yearly";
+
+import { BalanceSheetScreeningMetric, calculateCurrentRatio, screenBalanceSheetSnapshots, type BalanceSheetSnapshot, type BalanceSheetCondition } from "../../src/index";
+declare const balanceSheet: BalanceSheetSnapshot;
+const currentRatioCondition: BalanceSheetCondition = { metric: BalanceSheetScreeningMetric.CurrentRatio, operator: ComparisonOperator.GreaterThanOrEqual, value: 2 };
+screenBalanceSheetSnapshots([balanceSheet], { conditions: [currentRatioCondition], sortBy: BalanceSheetScreeningMetric.CurrentRatio, order: SortOrder.Descending });
+const ratio = calculateCurrentRatio(balanceSheet);
+if (ratio.status === "calculated") { const value: number = ratio.value; const exact: string = ratio.exact.numerator; }
+// @ts-expect-error 計算指標の補完memberの誤字
+BalanceSheetScreeningMetric.CurrentRation;
+// @ts-expect-error 百分率の別metricや誤字は受け付けない
+const wrongRatioCondition: BalanceSheetCondition = { ...currentRatioCondition, metric: "currentRatioPct" };
+// @ts-expect-error 計算値を直接factの取得APIへ渡さない
+object.selectBalanceSheetMetric(BalanceSheetScreeningMetric.CurrentRatio, { accountingStandard: AccountingStandard.JGAAP, scope: ConsolidationScope.Consolidated, period: { instant: "2025-03-31" } });

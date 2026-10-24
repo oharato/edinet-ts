@@ -113,10 +113,10 @@ program.command("download")
     });
 
 program.command("screen-bs")
-    .description("ローカルXBRL manifestを厳密選択し、J-GAAP BS3科目を検索します")
+    .description("ローカルXBRL一覧から財務3項目・流動比率を検索します（currentRatio: 1=100%）")
     .requiredOption("--manifest <path>", "ローカルXBRL一覧JSON（相対fileはmanifest基準）")
     .option("--conditions <json>", "AND条件のJSON配列", "[]")
-    .option("--sort-by <metric>", "BS科目で並べ替え")
+    .option("--sort-by <metric>", "財務3項目またはcurrentRatioで並べ替え")
     .option("--order <order>", "ascまたはdesc", "desc")
     .option("--offset <number>", "開始位置", "0")
     .option("--limit <number>", "最大件数")
