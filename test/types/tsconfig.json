@@ -11,6 +11,7 @@
         "annual-growth.ts",
         "balance-sheet-store.ts",
         "../../scripts/verify-offline-financial-flow.ts",
-        "company-profile.ts"
+        "company-profile.ts",
+        "workforce.ts"
     ]
 }

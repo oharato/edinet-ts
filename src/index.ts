@@ -27,3 +27,6 @@ export * from "./financial-detail-screening";
 
 export * from "./annual-revenue-growth";
 export * from "./company-profile";
+
+export * from "./workforce-registry";
+export * from "./workforce-screening";
