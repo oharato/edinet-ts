@@ -10,7 +10,7 @@
 | 会社の数値を読み、元の記載も確認したい | [数値の取り出し方](METRIC_SELECTION.md) |
 | 流動資産・流動負債・負債合計を読みたい | [今回の3項目](BALANCE_SHEET_NORMALIZATION.md) |
 | 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（#26でmainへ統合済み） |
-| 固定資産/固定負債/現預金/売上原価/販管費を読み・比べたい | [直接財務5項目](FINANCIAL_DETAILS.md)（この版で追加、メモリ検索） |
+| 固定資産/固定負債/現預金/売上原価/販管費・CF明細を読み比べたい | [直接財務項目](FINANCIAL_DETAILS.md)（既定5項目＋明示CF3項目、メモリ検索） |
 | 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（#28でmainへ統合済み） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
 | 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（#31でmainへ統合済み） |

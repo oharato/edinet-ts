@@ -10,3 +10,9 @@ createFinancialDetailSnapshot("",{...common,period:{startDate:"2024-04-01",endDa
 createFinancialDetailSnapshot("",{...instant,periodType:FinancialPeriodType.Annual});
 // @ts-expect-error 明細IDの綴りを検査
 screenFinancialDetailDocuments([],{sortBy:"cashAndEquivalent"});
+
+const cfIds=[FinancialDetailMetricId.DepreciationOperatingCashFlow,FinancialDetailMetricId.PropertyPlantEquipmentPurchaseCashFlow];
+createFinancialDetailSnapshot("",duration,cfIds);
+screenFinancialDetailDocuments([{xml:"",metadata:duration}],{metricIds:cfIds,sortBy:FinancialDetailMetricId.DepreciationOperatingCashFlow});
+// @ts-expect-error CFの綴りを検査
+createFinancialDetailSnapshot("",duration,["depreciationCashFlow"]);

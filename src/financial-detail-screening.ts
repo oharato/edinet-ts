@@ -2,18 +2,18 @@ import { XMLValidator } from "fast-xml-parser";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import type { FactSelectionResult, MetricSelectionOptions } from "./metric-selection";
 import { ComparisonOperator, SortOrder } from "./financial-options";
-import { FINANCIAL_DETAIL_REGISTRY, type FinancialDetailMetricId } from "./financial-detail-registry";
+import { DEFAULT_FINANCIAL_DETAIL_METRICS, FINANCIAL_DETAIL_REGISTRY, type FinancialDetailMetricId } from "./financial-detail-registry";
 
 import { normalizeFinancialDetailMetadata as normalizeMetadata, type FinancialDetailMetadata } from "./financial-detail-metadata";
 export type { FinancialDetailMetadata } from "./financial-detail-metadata";
 export interface FinancialDetailDocument { xml: string; metadata: FinancialDetailMetadata; }
 export interface FinancialDetailSnapshot {
     metadata: FinancialDetailMetadata;
-    /** 対象期間型の項目だけを返します（instant3項目、duration2項目）。 */
+    /** 既定instant3/duration2を維持。CF等はmetricIdsで明示した項目だけ。 */
     selections: Partial<Record<FinancialDetailMetricId, FactSelectionResult<FinancialDetailMetricId>>>;
 }
 export interface FinancialDetailCondition { metric: FinancialDetailMetricId; operator: ComparisonOperator; value: number; }
-export interface FinancialDetailScreeningOptions { conditions?: readonly FinancialDetailCondition[]; sortBy?: FinancialDetailMetricId; order?: SortOrder; offset?: number; limit?: number; }
+export interface FinancialDetailScreeningOptions { metricIds?: readonly FinancialDetailMetricId[]; conditions?: readonly FinancialDetailCondition[]; sortBy?: FinancialDetailMetricId; order?: SortOrder; offset?: number; limit?: number; }
 export interface FinancialDetailDiagnostic { secCode: string; docID: string; metric: FinancialDetailMetricId;
     reason: "missing" | "unsupported" | "ambiguous" | "unsafe-number"; selectionReason: string; required: boolean; }
 export interface FinancialDetailScreeningResult {
@@ -24,22 +24,34 @@ const record = (v: unknown): v is Record<string, any> => !!v && typeof v === "ob
 const known = (v: unknown): v is FinancialDetailMetricId => typeof v === "string" && Object.prototype.hasOwnProperty.call(FINANCIAL_DETAIL_REGISTRY, v);
 const ids = Object.keys(FINANCIAL_DETAIL_REGISTRY) as FinancialDetailMetricId[];
 const periodKind = (metadata: FinancialDetailMetadata) => metadata.period.instant === undefined ? "duration" : "instant";
+function projection(metadata: FinancialDetailMetadata | undefined, metricIds?: readonly FinancialDetailMetricId[]): FinancialDetailMetricId[] {
+    if (metricIds === undefined) return DEFAULT_FINANCIAL_DETAIL_METRICS.filter(id =>
+        !metadata || FINANCIAL_DETAIL_REGISTRY[id].periodType === periodKind(metadata));
+    if (!Array.isArray(metricIds)) throw new Error("metricIdsは配列です");
+    const requested: FinancialDetailMetricId[] = Array.from(metricIds as readonly FinancialDetailMetricId[]);
+    if (!requested.length || requested.some(id => !known(id)) || new Set(requested).size !== requested.length)
+        throw new Error("metricIdsに空・未知・重複項目があります");
+    const kinds = new Set(requested.map(id => FINANCIAL_DETAIL_REGISTRY[id].periodType));
+    if (kinds.size > 1 || metadata && requested.some(id => FINANCIAL_DETAIL_REGISTRY[id].periodType !== periodKind(metadata)))
+        throw new Error("明示項目の期間型が対象と異なります");
+    return requested;
+}
 const cohortKey = (metadata: FinancialDetailMetadata) => JSON.stringify([metadata.scope, metadata.accountingStandard, metadata.currency, metadata.periodType,
     metadata.period.instant, metadata.period.startDate, metadata.period.endDate]);
 /** 指定した期間の直接科目だけを選択。期間分類は呼出側の宣言で、自動推定しません。 */
-export function createFinancialDetailSnapshot(xml: string, metadata: FinancialDetailMetadata): FinancialDetailSnapshot {
-    const normalized = normalizeMetadata(metadata);
+export function createFinancialDetailSnapshot(xml: string, metadata: FinancialDetailMetadata, metricIds?: readonly FinancialDetailMetricId[]): FinancialDetailSnapshot {
+    const normalized = normalizeMetadata(metadata), selectedIds = projection(normalized, metricIds);
     if (typeof xml !== "string" || XMLValidator.validate(xml) !== true) throw new Error("整形式の原本XMLが必要です");
     const object = new EdinetXbrlParser().parse(xml, normalized.docID);
     const selections: FinancialDetailSnapshot["selections"] = {};
-    for (const id of ids) if (FINANCIAL_DETAIL_REGISTRY[id].periodType === periodKind(normalized)) selections[id] = object.selectFinancialDetail(id, {
+    for (const id of selectedIds) selections[id] = object.selectFinancialDetail(id, {
         scope: normalized.scope, accountingStandard: normalized.accountingStandard, period: normalized.period as MetricSelectionOptions["period"]
     });
     return { metadata: normalized, selections };
 }
 /** 明示XML集合のメモリ検索。最新選択・SQL保存・内訳合算は行いません。 */
 export function screenFinancialDetailDocuments(documents: readonly FinancialDetailDocument[], options: FinancialDetailScreeningOptions = {}): FinancialDetailScreeningResult {
-    if (!Array.isArray(documents) || !record(options) || Object.keys(options).some(key => !["conditions","sortBy","order","offset","limit"].includes(key))) throw new Error("不正な財務明細検索入力です");
+    if (!Array.isArray(documents) || !record(options) || Object.keys(options).some(key => !["metricIds","conditions","sortBy","order","offset","limit"].includes(key))) throw new Error("不正な財務明細検索入力です");
     if (options.conditions !== undefined && !Array.isArray(options.conditions)) throw new Error("conditionsは配列です");
     const conditions = Array.from(options.conditions ?? []) as FinancialDetailCondition[];
     for (const condition of conditions) if (!record(condition) || Object.keys(condition).some(key => !["metric","operator","value"].includes(key)) ||
@@ -58,12 +70,14 @@ export function screenFinancialDetailDocuments(documents: readonly FinancialDeta
     }
     const required = new Set<FinancialDetailMetricId>([...conditions.map(c => c.metric), ...(options.sortBy ? [options.sortBy] : [])]);
     if (new Set([...required].map(id => FINANCIAL_DETAIL_REGISTRY[id].periodType)).size > 1 || metadata[0] && [...required].some(id => FINANCIAL_DETAIL_REGISTRY[id].periodType !== periodKind(metadata[0]))) throw new Error("検索項目の期間型が対象と異なります");
-    if (!required.size && metadata[0]) ids.filter(id => FINANCIAL_DETAIL_REGISTRY[id].periodType === periodKind(metadata[0])).forEach(id => required.add(id));
+    const selectedIds = projection(metadata[0], options.metricIds);
+    if([...required].some(id=>!selectedIds.includes(id)))throw new Error("条件/並び項目をmetricIdsへ明示してください（既定5項目は変更しません）");
+    if (!required.size) selectedIds.forEach(id => required.add(id));
     const diagnostics: FinancialDetailDiagnostic[] = [], reasonCounts: FinancialDetailScreeningResult["reasonCounts"] = { missing:0, unsupported:0, ambiguous:0,"unsafe-number":0 };
     const rows: FinancialDetailSnapshot[] = []; let excludedRows = 0, filteredRows = 0;
     const compare = (a: number, operator: ComparisonOperator, b: number) => operator === "gte" ? a >= b : operator === "lte" ? a <= b : operator === "gt" ? a > b : operator === "lt" ? a < b : a === b;
     for (let i = 0; i < documents.length; i++) {
-        const row = createFinancialDetailSnapshot(documents[i].xml, metadata[i]); let unavailable = false;
+        const row = createFinancialDetailSnapshot(documents[i].xml, metadata[i], selectedIds); let unavailable = false;
         for (const id of ids) {
             const selection = row.selections[id]; if (!selection) continue;
             const reason = selection.status !== "selected" ? selection.status : selection.safeNumber === undefined ? "unsafe-number" : undefined;

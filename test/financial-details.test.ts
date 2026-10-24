@@ -3,10 +3,10 @@ import { mkdtempSync,writeFileSync,readFileSync,rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join,resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { EdinetXbrlParser,FinancialDetailMetricId,FINANCIAL_DETAIL_REGISTRY,createFinancialDetailSnapshot,screenFinancialDetailDocuments,
+import { EdinetXbrlParser,FinancialDetailMetricId,DEFAULT_FINANCIAL_DETAIL_METRICS,FINANCIAL_DETAIL_REGISTRY,createFinancialDetailSnapshot,screenFinancialDetailDocuments,
     type FinancialDetailDocument,type FinancialDetailMetadata } from "../src/index";
 import { instance,fact,standalone } from "./fixtures/metric-boundaries";
-const idList=Object.values(FinancialDetailMetricId);
+const idList=[...DEFAULT_FINANCIAL_DETAIL_METRICS];
 const metadata=(kind:"instant"|"duration"="instant",code="1001"):FinancialDetailMetadata=>({secCode:code,docID:`SYNTHETIC${code}`,scope:"Consolidated",accountingStandard:"J-GAAP",currency:"JPY",
     ...(kind==="instant"?{period:{instant:"2025-03-31"}}:{period:{startDate:"2024-04-01",endDate:"2025-03-31"},periodType:"annual"})});
 function xml(value="120",opts:{absent?:string[];nil?:string;unit?:string;entity?:string;scope?:string;extra?:string;namespace?:string;durationOnly?:boolean;instantOnly?:boolean}={}){
