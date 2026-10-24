@@ -16,6 +16,19 @@ export interface BalanceSheetProvenance {
 }
 export interface BalanceSheetStoreInput { snapshot: BalanceSheetSnapshot; provenance: BalanceSheetProvenance; }
 export interface StoredBalanceSheetSnapshot extends BalanceSheetStoreInput { id: string; }
+export interface BalanceSheetInventoryEntry {
+    id: string;
+    metadata: Omit<BalanceSheetSnapshot, "selections">;
+    provenance: BalanceSheetProvenance;
+}
+export interface BalanceSheetStoreInventory {
+    fingerprint: string;
+    entries: BalanceSheetInventoryEntry[];
+}
+export interface BalanceSheetPutOptions {
+    /** inventory取得後の他接続による変更を、書込トランザクション内で拒否します。 */
+    expectedInventoryFingerprint?: string;
+}
 export interface BalanceSheetStoreCohort {
     instant: string;
     scope: BalanceSheetSnapshot["scope"];
@@ -151,14 +164,18 @@ export class BalanceSheetSqliteStore {
             content_sha256 <> edinet_record_hash(${columns.map(c => `s.${c}`).join(",")}) LIMIT 1`, params).length) throw new Error("保存内容のハッシュが一致しません");
     }
     /** 同一版・同一原本・同一内容は追加しません。同じIDの異なる内容は更新せず、バッチを戻します。 */
-    putMany(inputs: readonly BalanceSheetStoreInput[]): { inserted: number; unchanged: number; ids: string[] } {
+    putMany(inputs: readonly BalanceSheetStoreInput[], options: BalanceSheetPutOptions = {}): { inserted: number; unchanged: number; ids: string[] } {
         this.assertOpen(); if (this.readOnly) throw new Error("readOnlyの財務DBです");
         if (!Array.isArray(inputs)) throw new Error("入力は配列です");
+        if (!options || typeof options !== "object" || Array.isArray(options) ||
+            Object.keys(options).some(k => k !== "expectedInventoryFingerprint") ||
+            options.expectedInventoryFingerprint !== undefined && (typeof options.expectedInventoryFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(options.expectedInventoryFingerprint))) throw new Error("不正なinventory条件です");
         const records = inputs.map(prepareRecord); let inserted = 0, unchanged = 0;
         const insert = this.db.prepare(`INSERT INTO financial_snapshots (${columns.join(",")}, content_sha256) VALUES (${placeholders(columns.length + 1)})`);
         let transaction = false;
         try {
             this.db.exec("BEGIN IMMEDIATE"); transaction = true;
+            if (options.expectedInventoryFingerprint !== undefined && this.inventoryInTransaction().fingerprint !== options.expectedInventoryFingerprint) throw new Error("取り込み計画後にDBが変更されました。再計画してください");
             for (const record of records) {
                 const existing = this.all("SELECT content_sha256 FROM financial_snapshots WHERE id = ?", [record.id]);
                 if (existing.length) {
@@ -171,6 +188,22 @@ export class BalanceSheetSqliteStore {
             this.db.exec("COMMIT"); transaction = false;
         } catch (error) { if (transaction) this.db.exec("ROLLBACK"); throw error; } finally { insert.close(); }
         return { inserted, unchanged, ids: records.map(r => r.id) };
+    }
+    /** 全保存行を検証した、差分計画用の一覧。原本XMLは解析しません。 */
+    inventory(): BalanceSheetStoreInventory {
+        this.assertOpen(); this.db.exec("BEGIN");
+        try { const result = this.inventoryInTransaction(); this.db.exec("COMMIT"); return result; }
+        catch (error) { this.db.exec("ROLLBACK"); throw error; }
+    }
+    private inventoryInTransaction(): BalanceSheetStoreInventory {
+        this.checkIntegrity("1", []);
+        const rows = this.all("SELECT * FROM financial_snapshots ORDER BY id");
+        const entries = rows.map(row => {
+            const { id, snapshot, provenance } = this.decode(row);
+            const { selections: _selections, ...metadata } = snapshot;
+            return { id, metadata, provenance };
+        });
+        return { fingerprint: digest(...rows.map(r => [r.id, r.content_sha256])), entries };
     }
     private decode(row: SqlRow): StoredBalanceSheetSnapshot {
         const input = JSON.parse(row.record_json as string) as BalanceSheetStoreInput;
