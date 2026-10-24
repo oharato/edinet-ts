@@ -1,8 +1,8 @@
-# 連続する12か月決算の売上高前年比を比べる
+# 連続する12か月決算の売上高・営業利益前年比を比べる
 
-状態: #38でmainへ統合済みのAPI/CLIです。未リリース。2026-10-24更新。
+状態: 売上高は#38でmain統合済み。この変更で営業利益の別API/CLIを追加します。未リリース。公開CI・統合状態は対応PRを参照してください。
 
-同じ会社の前年と当年の売上高から、`(当年−前年)/前年`を計算します。単位は小数で、`0.2`が20%増、`0`が変化なし、`-0.2`が20%減です。今回はJ-GAAP・JPYの一般事業売上高だけで、純利益・EPS・配当・CAGRへ一般化しません。既存18指標/21検索、BS3、SQLite形式を変更しません。
+同じ会社の前年と当年の売上高から、`(当年−前年)/前年`を計算します。単位は小数で、`0.2`が20%増、`0`が変化なし、`-0.2`が20%減です。対象はJ-GAAP・JPYの一般事業の売上高と営業利益です。APIと条件IDはそれぞれ独立し、純利益・EPS・配当・CAGRへ一般化しません。既存18指標/21検索、BS3、SQLite形式を変更しません。
 
 ## 比較する期間と原本を明示する
 
@@ -91,3 +91,53 @@ node dist/cli.js screen-sales-growth --manifest /tmp/local-growth/pairs.json --c
 実データの重複採用方針、2025年独立提出原本、全市場充足率、52/53週・変則年度対応、純利益/EPS/配当/CAGR/ROA、SQL保存、性能は未検証/別段階です。株式分割調整情報のないEPS/配当を自動計算しません。既存原本・DB・cacheは変更せず、原本・金額をGitへ入れていません。
 
 Node26.12.1で全869テスト（既存821＋新規48）、本体/公開API例の型、build、保存保護Python5件が成功。独立レビュー77件、ビルド済みCLIの算出/除外/不正入力3確認も成功しました。lint設定はありません。
+
+
+## 営業利益の前年比を比べる
+
+営業利益は、主な営業活動で得た利益です。ここでは`MetricId.OperatingIncome`の日本基準の直接記載`jppfs_cor:OperatingIncome`を使います。企業独自の似た名前の項目や、セグメント別の利益を合算・代用しません。連結と単体、対象企業、期間、円の単位がそろう条件は売上高と同じです。
+
+```ts
+import {
+  calculateAnnualOperatingIncomeGrowth, screenAnnualOperatingIncomeGrowth,
+  AnnualOperatingIncomeGrowthMetricId, ComparisonOperator, SortOrder,
+  type AnnualOperatingIncomePair
+} from "edinet-ts";
+
+declare const pair: AnnualOperatingIncomePair;
+const result = calculateAnnualOperatingIncomeGrowth(pair);
+if (result.status === "calculated") console.log(result.value, result.exact);
+else console.log(result.reason);
+
+const found = screenAnnualOperatingIncomeGrowth([pair], {
+  conditions: [{ metric: AnnualOperatingIncomeGrowthMetricId.OperatingIncomeGrowth,
+    operator: ComparisonOperator.GreaterThanOrEqual, value: 0.2 }],
+  order: SortOrder.Descending, offset: 0, limit: 20
+});
+```
+
+単位は同じ小数比率で、`0.2`が20%増です。前期が正なら当期0は-100%、当期が負なら-100%未満も保持します。**前期が0または赤字なら算出しません。** 赤字から黒字への回復を、通常の成長率として勝手に表現しないためです。欠損・曖昧な値も0にせず、元の選択理由とともに除外します。
+
+入力は上の売上高用pair一覧と同じ形式です。コマンドと条件IDだけを変えます。
+
+```sh
+node dist/cli.js screen-operating-income-growth --manifest /tmp/local-growth/pairs.json --conditions '[{"metric":"operatingIncomeGrowth","operator":"gte","value":0.2}]' --order desc --limit 20 --pretty
+```
+
+API・CLIの両方で、条件は5演算のAND、順序は正確な分数で比較し、同率は会社コード順です。ページ前件数・除外理由を返します。売上高用の`AnnualGrowthMetricId.NetSalesGrowth`と`screen-sales-growth`は維持し、新しい条件IDを旧APIへ混ぜません。保存JSONの21指標やSQLiteの形式は変更していません。
+
+### 入力と出典の固定
+
+両APIはpair・metadata・period・検索設定を一度取得して固定し、XML文字列も一度取得した同じ値を解析とhashに使います。遅延読込みのgetterが違うXMLを返しても、解析した値と記録したhashが食い違うことを防ぎます。
+
+入力の会社コード・書類ID・会計基準は利用側の宣言です。同じ書類IDでも、渡された2つのXMLが同じbytesである保証はありません。各XMLのhashを個別に返しますが、公式原本との対応や原本真正性の認証にはなりません。
+
+### 営業利益で確認した実データの範囲
+
+保存済み2社の2026年有報にある2025/2026年度の**単体**の4原値を、別のPython ElementTreeで読み取った値・context・企業識別と照合しました。2組の率は独立したPython Fractionと一致し、16通りの条件・順序・ページも一致しました。ビルド済みCLIでも2社の順序・ページを確認し、原本2件は不変でした。
+
+同じ2社の**連結**は両期とも営業利益の候補が複数あるため、2組とも`unavailable-input`として除外しました。候補を勝手に一つ選ぶ規則は追加していません。単体の確認を連結へ一般化しません。
+
+これは2026年有報の前年列を含むXML突合と算術確認です。2025年に別提出されたXBRL原本、今回の営業利益のPDF表示値との独立照合、全市場の充足率は未確認です。実原本・金額・計算結果データをGitへ含めず、新規取得・DB/cache変更もしていません。
+
+追加60件（営業利益API56・CLI4）を含む全1,847テスト、本体/公開API例の型検査、clean build、Python保存保護5件が成功。独立合成1,070確認とビルド済み/CJS1,126確認も成功しました。上の869件は#38当時の検証記録です。

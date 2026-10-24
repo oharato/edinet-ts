@@ -16,11 +16,11 @@
 | 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（#28でmainへ統合済み） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
 | 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（#31でmainへ統合済み） |
-| 固定資産・固定負債・現金及び預金を保存したい | [直接財務3項目の専用Store](FINANCIAL_DETAIL_STORE.md)（この変更で追加する試験API、CLIなし） |
+| 固定資産・固定負債・現金及び預金を保存したい | [直接財務3項目の専用Store](FINANCIAL_DETAIL_STORE.md)（#46でmain統合済みの試験API、CLIなし） |
 | 財務DBへ必要な書類だけ取り込みたい | [差分取り込み](FINANCIAL_INCREMENTAL_IMPORT.md)（APIは#33、`import-bs --dry-run`は#34でmain統合済み） |
-| 保存した旧版と新版の違いを知りたい | [数値・採用状態・出典の比較](BALANCE_SHEET_VERSION_DIFF.md)（この版で追加） |
-| 保存原本で取り込みから比較まで通るか確認したい | [オフライン品質確認](OFFLINE_FINANCIAL_VERIFICATION.md)（この版で追加、明示入力・一時DB専用） |
-| 売上高の前年からの増減で会社を比べたい | [12暦月の売上高前年比](ANNUAL_REVENUE_GROWTH.md)（この版で追加、曖昧な入力は計算しない） |
+| 保存した旧版と新版の違いを知りたい | [数値・採用状態・出典の比較](BALANCE_SHEET_VERSION_DIFF.md)（#35でmain） |
+| 保存原本で取り込みから比較まで通るか確認したい | [オフライン品質確認](OFFLINE_FINANCIAL_VERIFICATION.md)（#36でmain、明示入力・一時DB専用） |
+| 売上高・営業利益の前年からの増減で会社を比べたい | [12暦月の前年比](ANNUAL_REVENUE_GROWTH.md)（売上は#38でmain、営業利益を別APIで追加。曖昧な入力は計算しない） |
 | 現在地と次の方針を知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md)。main完了・PR確認待ち・未着手・未検証を区別 |
 | 変更の経緯を知りたい | [#27 検証記録](https://github.com/oharato/edinet-ts/pull/27)・[#28 流動比率](https://github.com/oharato/edinet-ts/pull/28)は正式stack #29でmainへ統合済み |
 
