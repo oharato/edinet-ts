@@ -35,3 +35,5 @@ export * from "./workforce-screening";
 export * from "./financial-detail-snapshots";
 
 export * from "./db/financial-detail-store";
+
+export * from "./annual-operating-income-growth";
