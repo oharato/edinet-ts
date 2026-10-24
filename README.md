@@ -418,4 +418,6 @@ mainで使える検索機能は、保存した複数社を流動資産・流動�
 
 流動比率は、mainの `calculateCurrentRatio()` と検索項目 `currentRatio` を使います。単位は小数で、`2`が200%です。[計算・検索・CLIの使い方](docs/CURRENT_RATIO.md)を参照してください（#28でmainへ統合済み）。
 
-指定したローカル原本を財務DBへ取り込むAPIは#33でmainへ統合済みです。今回の確認用PRでは、原本のハッシュ計算と取り込み予定の確認を行うCLI `import-bs --dry-run`を追加します。[入力例・使い方・試験DBの保護](docs/FINANCIAL_INCREMENTAL_IMPORT.md)を参照してください。
+指定したローカル原本を財務DBへ取り込むAPIは#33でmainへ統合済みです。原本のハッシュ計算と取り込み予定の確認を行うCLI `import-bs --dry-run`も#34でmainへ統合済みです。[入力例・使い方・試験DBの保護](docs/FINANCIAL_INCREMENTAL_IMPORT.md)を参照してください。
+
+この版では、保存済みの2つの解析結果について、数値・採用状態・出典の違いを説明するAPIとCLI `diff-bs`も利用できます。[比較できる条件と使い方](docs/BALANCE_SHEET_VERSION_DIFF.md)を参照してください。

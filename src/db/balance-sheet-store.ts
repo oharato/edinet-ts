@@ -218,6 +218,22 @@ export class BalanceSheetSqliteStore {
         this.checkIntegrity("s.id = ?", [id]); const rows = this.all("SELECT * FROM financial_snapshots WHERE id = ?", [id]);
         return rows.length ? this.decode(rows[0]) : undefined;
     }
+    /** 同じ読み取り時点で複数IDを検証して返します。不明IDがあれば全体を拒否します。 */
+    getMany(ids: readonly string[]): StoredBalanceSheetSnapshot[] {
+        this.assertOpen();
+        if (!Array.isArray(ids)) throw new Error("snapshot IDは配列です");
+        const requested = Array.from(ids);
+        if (requested.some(id => typeof id !== "string" || !/^[a-f0-9]{64}$/.test(id))) throw new Error("不正なsnapshot IDです");
+        this.db.exec("BEGIN");
+        try {
+            const result = requested.map(id => {
+                const row = this.get(id);
+                if (!row) throw new Error("指定されたsnapshot IDがありません");
+                return row;
+            });
+            this.db.exec("COMMIT"); return result;
+        } catch (error) { this.db.exec("ROLLBACK"); throw error; }
+    }
     search(cohort: BalanceSheetStoreCohort, options: BalanceSheetScreeningOptions = {}): BalanceSheetScreeningResult {
         this.assertOpen(); this.db.exec("BEGIN");
         try { const result = this.searchInTransaction(cohort, options); this.db.exec("COMMIT"); return result; }

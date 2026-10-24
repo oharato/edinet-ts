@@ -31,3 +31,19 @@ importBalanceSheets(store, [source], () => "XML");
 planBalanceSheetImport(store, [{ metadata: source.metadata, provenance: { mappingVersion: "1", sourceSha256: "a".repeat(64) } }]);
 // @ts-expect-error ステータスの綴り誤り
 const invalidStatus: BalanceSheetImportStatus = "change";
+
+import { compareBalanceSheetVersions, BalanceSheetDiffStatus, BalanceSheetValueComparison } from "../../src/index";
+const comparison = compareBalanceSheetVersions(store, saved.ids[0], saved.ids[0]);
+const comparisonStatus: BalanceSheetDiffStatus = comparison.status;
+const valueComparison: BalanceSheetValueComparison = comparison.metrics.currentAssets.valueComparison;
+const exactRaw: string | undefined = comparison.metrics.currentAssets.before.raw;
+if (comparison.currentRatio.before.status === "calculated") {
+    const exactNumerator: string = comparison.currentRatio.before.exact.numerator;
+}
+const versions = store.getMany(saved.ids);
+// @ts-expect-error snapshot IDは文字列
+compareBalanceSheetVersions(store, 123, saved.ids[0]);
+// @ts-expect-error 状態の綴り誤り
+const wrongDiffStatus: BalanceSheetDiffStatus = "change";
+// @ts-expect-error 不明な財務科目を返さない
+comparison.metrics.totalAsset;
