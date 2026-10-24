@@ -11,6 +11,7 @@ import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
 import { screenAnnualRevenueGrowth } from "./annual-revenue-growth";
 import { screenFinancialDetailDocuments } from "./financial-detail-screening";
+import { screenFinancialDetailSnapshots } from "./financial-detail-snapshots";
 import { readRegularFile, LOCAL_IMPORT_LIMITS } from "./local-balance-sheet-import";
 import { runLocalBalanceSheetImport, runLocalBalanceSheetDiff } from "./local-balance-sheet-import";
 import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots } from "./balance-sheet-screening";
@@ -247,6 +248,33 @@ program.command("company-profile")
             const input = readRegularFile(path.resolve(options.file), LOCAL_IMPORT_LIMITS.sourceBytes);
             const xml = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes);
             console.log(JSON.stringify(createCompanyProfile(xml, options.docId), null, options.pretty ? 2 : undefined));
+        } catch (error) {
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exitCode = 1;
+        }
+    });
+
+program.command("screen-details-json")
+    .description("保存済み財務snapshotの原値・出典の整合を検査して検索します")
+    .requiredOption("--file <path>", "FinancialDetailSnapshotのJSON配列（100件/64MiB以下）")
+    .option("--metrics <ids>", "保存済みの項目IDをカンマ区切りで明示（省略は従来5項目）")
+    .option("--conditions <json>", "AND条件のJSON配列", "[]")
+    .option("--sort-by <metric>", "選択した直接財務項目のID")
+    .option("--order <order>", "ascまたはdesc", "desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const bytes = readRegularFile(path.resolve(options.file), LOCAL_IMPORT_LIMITS.sourceBytes).bytes;
+            const snapshots = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+            if (!Array.isArray(snapshots) || snapshots.length > LOCAL_IMPORT_LIMITS.entries) throw new Error("snapshotは100件以下の配列です");
+            for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error("offset/limitは0以上の整数です");
+            console.log(JSON.stringify(screenFinancialDetailSnapshots(snapshots, {
+                metricIds: options.metrics === undefined ? undefined : options.metrics.split(",").map((id: string) => id.trim()),
+                conditions: JSON.parse(options.conditions), sortBy: options.sortBy, order: options.order,
+                offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit)
+            }), null, options.pretty ? 2 : undefined));
         } catch (error) {
             console.error(error instanceof Error ? error.message : String(error));
             process.exitCode = 1;

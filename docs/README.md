@@ -12,10 +12,11 @@
 | 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（#26でmainへ統合済み） |
 | 提出会社単体の給与・年齢・勤続年数を読み比べたい | [人的資本](WORKFORCE.md)（期末と範囲を揃えた検索） |
 | 原本の会社名・コード・基準を読み、会社名・決算月で探したい | [会社情報](COMPANY_PROFILE.md)（原記載・採用理由、明示集合の検索） |
-| 固定資産/費用/CF明細・借入/社債/リース残高を読み比べたい | [直接財務項目](FINANCIAL_DETAILS.md)（既定5項目＋明示CF3/残高7項目、メモリ検索） |
+| 固定資産/費用/CF明細・借入/社債/リース残高を読み比べたい | [直接財務項目](FINANCIAL_DETAILS.md)（既定5項目＋明示CF3/残高7項目、XML/保存JSON検索） |
 | 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（#28でmainへ統合済み） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
 | 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（#31でmainへ統合済み） |
+| 固定資産・固定負債・現金及び預金を保存したい | [直接財務3項目の専用Store](FINANCIAL_DETAIL_STORE.md)（この変更で追加する試験API、CLIなし） |
 | 財務DBへ必要な書類だけ取り込みたい | [差分取り込み](FINANCIAL_INCREMENTAL_IMPORT.md)（APIは#33、`import-bs --dry-run`は#34でmain統合済み） |
 | 保存した旧版と新版の違いを知りたい | [数値・採用状態・出典の比較](BALANCE_SHEET_VERSION_DIFF.md)（この版で追加） |
 | 保存原本で取り込みから比較まで通るか確認したい | [オフライン品質確認](OFFLINE_FINANCIAL_VERIFICATION.md)（この版で追加、明示入力・一時DB専用） |
