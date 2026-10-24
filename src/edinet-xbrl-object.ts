@@ -1,3 +1,4 @@
+import { FINANCIAL_DETAIL_REGISTRY, FinancialDetailMetricId } from "./financial-detail-registry";
 import { BALANCE_SHEET_REGISTRY, BalanceSheetMetricId } from "./balance-sheet-registry";
 import { selectDefinedMetricFact, selectMetricFact, MetricSelectionOptions, FactSelectionResult } from "./metric-selection";
 import { MetricId } from "./metric-registry";
@@ -193,6 +194,12 @@ export class EdinetXbrlObject {
     /** J-GAAP・JPY・明示した時点/scopeのBS直接factを正規化します。 */
     public selectBalanceSheetMetric(id: BalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<BalanceSheetMetricId> {
         return selectDefinedMetricFact(BALANCE_SHEET_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+    }
+
+    /** 一般事業J-GAAPの直接5科目。現預金/同等物・内訳を混同しません。 */
+    public selectFinancialDetail(id: FinancialDetailMetricId, options: MetricSelectionOptions): FactSelectionResult<FinancialDetailMetricId> {
+        if (!Object.prototype.hasOwnProperty.call(FINANCIAL_DETAIL_REGISTRY, id)) throw new Error("不正な財務明細IDです");
+        return selectDefinedMetricFact(FINANCIAL_DETAIL_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
     }
 
     private extractKeyMetrics(sources?: KeyMetricSources): KeyMetrics {

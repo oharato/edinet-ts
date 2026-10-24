@@ -1,0 +1,92 @@
+# 直接記載された財務5項目を読む・複数社で探す
+
+状態: main `a8f8bd1`（#36統合済み）を基準に、この版で追加するAPI/CLIです。未リリース。2026-10-24更新。
+
+固定資産・固定負債・現金及び預金・売上原価・販管費を、原本XBRLから出典付きで読みます。指定した会社集合で条件検索・並べ替えもできます。一般事業のJ-GAAP直接タグを対象にし、既存の主要18指標/21指標検索、BS3、SQLite保存形式は変更しません。
+
+## 対象の5項目
+
+| 定数 `FinancialDetailMetricId` | ID | 元の直接タグ `jppfs_cor:` | 対象 |
+|---|---|---|---|
+| `NoncurrentAssets` | `noncurrentAssets` | `NoncurrentAssets` | 指定日現在の固定資産 |
+| `NoncurrentLiabilities` | `noncurrentLiabilities` | `NoncurrentLiabilities` | 指定日現在の固定負債 |
+| `CashAndDeposits` | `cashAndDeposits` | `CashAndDeposits` | 指定日現在の現金及び預金 |
+| `CostOfSales` | `costOfSales` | `CostOfSales` | 明示期間の売上原価 |
+| `SellingGeneralAndAdministrativeExpenses` | `sellingGeneralAndAdministrativeExpenses` | `SellingGeneralAndAdministrativeExpenses` | 明示期間の販売費及び一般管理費（販管費） |
+
+金額はJPY、元値のdecimal文字列を保持します。`FINANCIAL_DETAIL_REGISTRY_VERSION`は`"1"`です。候補・定義はfreezeしています。対応は既存生成型と公式taxonomy由来の定義、保存原本の存在確認を基に、共有の厳密選択器を使って独立実装しています。
+
+現金及び預金と現金同等物は別です。総資産や繰延資産を固定資産へ足したり、工事原価・部門費用・営業費用を売上原価へ代用したりしません。内訳合算・差額補完・符号の反転は行いません。銀行・保険向け別mapping、IFRS/US-GAAPの候補はありません。対象タグがなければ欠損等の理由を返します。
+
+## 1社から読むAPI
+
+```ts
+import { createFinancialDetailSnapshot, screenFinancialDetailDocuments, FinancialDetailMetricId, ComparisonOperator, SortOrder,
+    ConsolidationScope, AccountingStandard, FinancialPeriodType } from "edinet-ts";
+
+const current = createFinancialDetailSnapshot(xml, {
+    secCode: "1001", docID: "SYNTHETIC1", scope: ConsolidationScope.Consolidated,
+    accountingStandard: AccountingStandard.JGAAP, currency: "JPY",
+    period: { instant: "2025-03-31" }
+});
+const cash = current.selections[FinancialDetailMetricId.CashAndDeposits];
+if (cash?.status === "selected") console.log(cash.raw, cash.safeNumber, cash.source);
+
+const expenses = createFinancialDetailSnapshot(xml, {
+    secCode: "1001", docID: "SYNTHETIC1", scope: ConsolidationScope.Consolidated,
+    accountingStandard: AccountingStandard.JGAAP, currency: "JPY",
+    period: { startDate: "2024-04-01", endDate: "2025-03-31" },
+    periodType: FinancialPeriodType.Annual
+});
+```
+
+識別子は合成例です。時点指定ではinstantの3項目、開始/終了日指定ではdurationの2項目だけを`selections`へ返します。期間を持つ値は`annual`/`ytd`/`quarterly`も利用側が明示します。原本の書類種類や期間長からの自動分類ではなく、年次と宣言した期間が12か月あることまで証明する機能ではありません。時系列計算の連続性検査は別段階です。
+
+既存の`EdinetXbrlObject`から1項目を読む場合は`object.selectFinancialDetail(id, { accountingStandard, scope, period })`です。選択器は[厳密な数値選択](METRIC_SELECTION.md)と同じで、元タグ・namespace/context・entity・期間・単位・decimals・候補と理由を返します。基準や会社コードと公式原本の対応は利用側の宣言で、自動証明はしません。
+
+`selected`でも安全なnumberが作れなければrawだけを保持します。nil/不在/単位不明/複数候補を0にしません。実際の0や負数は保持します。連結→単体、当期→前期、未知namespace→同名タグへのfallbackはありません。同値重複も曖昧として止めます。XML文字列を受けるsnapshot APIは構文を検査しますが、XBRLスキーマ検証ではありません。
+
+## 複数社の検索とCLI
+
+`screenFinancialDetailDocuments([{ xml, metadata }, ...], options)`に対象原本を明示します。対象日/開始終了日・期間分類・連結/単体・会計基準・通貨が異なる集合は先に拒否します。同じ会社または書類の複数候補も拒否し、最新/訂正後を自動選択しません。instant項目とduration項目を同じ検索へ混ぜる指定は設定エラーです。
+
+```ts
+const result = screenFinancialDetailDocuments(documents, {
+    conditions: [{ metric: FinancialDetailMetricId.CashAndDeposits,
+        operator: ComparisonOperator.GreaterThanOrEqual, value: 100 }],
+    sortBy: FinancialDetailMetricId.CashAndDeposits,
+    order: SortOrder.Descending, offset: 0, limit: 20
+});
+```
+
+上例の`ComparisonOperator`と`SortOrder`もpackage rootからimportできます。条件はAND、演算子はgte/lte/gt/lt/eqです。条件/並べ替えで要求した項目だけを行の採用条件とし、未使用項目が欠けても行を落としません。何も指定しない場合は対象期間型の全項目を要求します。unsafe rawは検索用numberへ丸めず、その必要項目を持つ行を除外します。
+
+`total`は条件一致後・ページ前の件数、`excludedRows`は必要値が使えない行、`filteredRows`は値が使えても条件不一致だった行です。`diagnostics`には非採用理由と`required`（検索に必要か）を残します。`reasonCounts`は**行数ではなく項目の診断件数**なので、1社で複数件になることがあります。結果は原値と出典を含み、数値だけの表ではありません。
+
+CLI `screen-details`は、次のような一覧を指定します。相対fileは一覧JSONのフォルダが基準です。
+
+```json
+[
+  { "file": "source.xbrl", "metadata": {
+      "secCode": "1001", "docID": "SYNTHETIC1", "scope": "Consolidated",
+      "accountingStandard": "J-GAAP", "currency": "JPY", "period": { "instant": "2025-03-31" }
+  } }
+]
+```
+
+```sh
+npm run build
+node dist/cli.js screen-details --manifest /tmp/local-details/files.json --sort-by cashAndDeposits --order desc --limit 20 --pretty
+```
+
+正常はJSONと終了0、入力や期間の不一致はstderrと終了1です。一覧100件/2MiB、原本1件64MiB/合計256MiBの手元作業用上限があり、通常ファイルだけを読みます。取得・保存・DB更新・フォルダ探索は行いません。元ファイルを変更しないでください。性能は未測定です。
+
+## 確認した範囲
+
+合成fixtureで5タグの選択、現金同等物や業種別費用の非代用、scope/期間/基準/JPY、0/負数/nil/巨大整数、未知namespace/次元/重複、5演算のAND検索・両順/ページ・未使用欠損、CLIを検証しています。
+
+Git外の既存2社・当期/前年の2時点では、instant 12項目・duration 8項目の計20項目が採用され、元XMLの同じタグ/contextの原数値と一致しました。5項目×2期間の10検索も実行可能で、2原本は不変でした。これは**原本内のraw/factとの突合**で、追加5項目の公式PDF表示値との独立照合ではありません。新規取得や金額の公開はしていません。
+
+元書類との独立照合、他企業/業種・他taxonomy年度の充足率、IFRS等、5項目のSQL保存や既存21指標への登録、前年比/合算・財務比率の追加は別段階です。合成fixtureで仕様を実装したことと、実市場での品質保証を分けています。
+
+Node26.12.1で全821テスト（既存756＋新規65）、本体/公開API例の型検査、build、保存保護Python5件が成功。独立レビュー49件とビルド済みCLIのinstant/duration/期間型拒否3確認も成功しました。lint設定はありません。
