@@ -57,4 +57,3 @@ export function resolveCliDocumentType(input: string): EdinetDocumentType | Edin
     // Default to Annual if unknown
     return EdinetDocumentType.AnnualCards;
 }
-
