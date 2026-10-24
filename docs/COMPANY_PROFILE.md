@@ -75,7 +75,7 @@ Node26.12.1で全933テスト（既存898＋追加35）、本体/公開API例の
 
 ## 明示した複数社の情報を探す
 
-この版は、会社名・コード・決算月を使う`screenCompanyDocuments()`とCLI `screen-companies`を追加します。入力は`[{xml, docID}, ...]`です。各原本から6項目すべてを採用でき、項目間の整合性も確認できた会社情報だけを検索します。名前だけ読めても、他の必要情報が欠けた行は対象外となり、理由を返します。
+#43でmainへ統合済みの`screenCompanyDocuments()`とCLI `screen-companies`で、会社名・コード・決算月を検索できます。入力は`[{xml, docID}, ...]`です。各原本から6項目すべてを採用でき、項目間の整合性も確認できた会社情報だけを検索します。名前だけ読めても、他の必要情報が欠けた行は対象外となり、理由を返します。
 
 ```ts
 import { screenCompanyDocuments, CompanyProfileFieldId, CompanyProfileOperator, SortOrder } from "edinet-ts";
