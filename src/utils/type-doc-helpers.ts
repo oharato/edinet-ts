@@ -42,7 +42,9 @@ export function generateFullHelpMarkdown(): string {
     md += `## 書類種別の指定方法\n\n`;
     md += `--type オプションには、以下のいずれかの形式で指定できます:\n`;
     md += `- エイリアス名 (例: annual, quarterly, largeshareholding)\n`;
-    md += `- 書類種別コード (例: 120, 140, 340)\n\n`;
+    md += `- 書類種別コード (例: 120, 140, 030)\n\n`;
+    md += `通知書は securities-notice / 010、有価証券届出書は registration-statement / 030 です。旧 registration は互換用に010のままです。\n`;
+    md += `未知の入力は従来どおり120へ戻ります。3桁の書類種別と6桁の様式コードは別です。\n\n`;
 
     for (const docType of DOCUMENT_TYPE_RESPONSES) {
         md += generateDocumentTypeMarkdown(docType);

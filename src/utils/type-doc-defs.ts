@@ -4395,7 +4395,7 @@ export const DOCUMENT_TYPE_RESPONSES: DocumentTypeResponse[] = [
             responseIncludes: [COMMON_METADATA_DOC, LARGE_SHAREHOLDING_INFO_DOC]
         },
         {
-            documentType: "SecuritiesRegistration (有価証券届出書) [010]",
+            documentType: "registration-statement (有価証券届出書) [030]",
             japaneseLabel: "有価証券届出書",
             description: "有価証券届出書。財務情報を含む場合があります。",
             responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]

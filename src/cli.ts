@@ -9,7 +9,6 @@ import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening"
 import "dotenv/config";
 import { EdinetXbrlDownloader } from "./edinet-xbrl-downloader";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
-import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
 import { screenAnnualRevenueGrowth } from "./annual-revenue-growth";
@@ -23,6 +22,7 @@ import { screenFinancialSnapshots } from "./financial-screening";
 import * as fs from "fs";
 import * as path from "path";
 
+import { resolveCliDocumentType } from "./cli-document-type";
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,70 +37,17 @@ program
     .description("EDINET XBRLファイルをダウンロードおよび解析するためのCLI")
     .version(packageJson.version);
 
-const DOCUMENT_TYPE_MAP: Record<string, EdinetDocumentType | EdinetDocumentType[]> = {
-    // Aliases
-    "annual": EdinetDocumentType.AnnualCards,
-    "quarterly": EdinetDocumentType.QuarterlyReport,
-    "semiannual": EdinetDocumentType.SemiAnnualReport,
-    "extraordinary": EdinetDocumentType.ExtraordinaryReport,
-    "registration": EdinetDocumentType.SecuritiesRegistrationStatement,
-    "amended": EdinetDocumentType.AmendedSecuritiesRegistrationStatement,
-    "confirmation": EdinetDocumentType.ConfirmationLetter,
-    "internalcontrol": EdinetDocumentType.InternalControlReport,
-    "largeshareholding": [
-        EdinetDocumentType.LargeShareholdingReport,
-        EdinetDocumentType.ChangeReport,
-        EdinetDocumentType.CorrectionReport
-    ],
-    "change": EdinetDocumentType.ChangeReport,
-    "correction": EdinetDocumentType.CorrectionReport,
-    "tenderoffer": EdinetDocumentType.TenderOfferStatement,
-    "tenderofferreport": EdinetDocumentType.TenderOfferReport,
-    // Short codes
-    "120": EdinetDocumentType.AnnualCards,
-    "140": EdinetDocumentType.QuarterlyReport,
-    "160": EdinetDocumentType.SemiAnnualReport,
-    "180": EdinetDocumentType.ExtraordinaryReport,
-    "010": EdinetDocumentType.SecuritiesRegistrationStatement,
-    "040": EdinetDocumentType.AmendedSecuritiesRegistrationStatement,
-    "135": EdinetDocumentType.ConfirmationLetter,
-    "235": EdinetDocumentType.InternalControlReport,
-    "340": EdinetDocumentType.LargeShareholdingReport,
-    "350": EdinetDocumentType.ChangeReport,
-    "360": EdinetDocumentType.CorrectionReport,
-    "240": EdinetDocumentType.TenderOfferStatement,
-    "270": EdinetDocumentType.TenderOfferReport,
-};
-
-function resolveDocumentType(input: string): EdinetDocumentType | EdinetDocumentType[] {
-    const lower = input.toLowerCase();
-
-    // Check aliases
-    if (DOCUMENT_TYPE_MAP[lower]) {
-        return DOCUMENT_TYPE_MAP[lower];
-    }
-
-    // Check if raw value exists in Enum
-    const values = Object.values(EdinetDocumentType);
-    if (values.includes(input as EdinetDocumentType)) {
-        return input as EdinetDocumentType;
-    }
-
-    // Default to Annual if unknown
-    return EdinetDocumentType.AnnualCards;
-}
-
 program.command("download")
     .description("EDINET書類をダウンロードします")
     .option("-t, --ticker <codes>", "証券コード（カンマ区切り、例: 7203,9984）")
     .option("-d, --date <date>", "対象日 (YYYY-MM-DD)。デフォルトは当日")
-    .option("--type <type>", "書類種別 (例: Annual, Quarterly, 120...)。デフォルト: Annual", "Annual")
+    .option("--type <type>", "書類種別 (例: Annual, registration-statement/030, securities-notice/010)。既定: Annual", "Annual")
     .option("--dir <path>", "出力先ディレクトリ", "./downloads")
     .action(async (options) => {
         const downloader = new EdinetXbrlDownloader({ rootDir: options.dir });
         const date = options.date || new Date().toISOString().split("T")[0];
 
-        const docType = resolveDocumentType(options.type);
+        const docType = resolveCliDocumentType(options.type);
 
         const tickers = options.ticker ? options.ticker.split(",") : [];
         if (tickers.length === 0) {
@@ -520,7 +467,7 @@ const getCommand = program.command("get")
     .option("-t, --ticker <code>", "証券コード (例: 7203)")
     .option("-d, --date <date>", "対象日 (YYYY-MM-DD)。デフォルトは当日")
     .option("-l, --lookback <days>", "対象日に見つからない場合に遡る日数 (デフォルト: 90)", "90")
-    .option("--type <type>", "書類種別 (例: Annual, Quarterly, 120...)。デフォルト: Annual", "Annual")
+    .option("--type <type>", "書類種別 (例: Annual, registration-statement/030, securities-notice/010)。既定: Annual", "Annual")
     .option("--save-dir <path>", "ダウンロードファイルの保存先ディレクトリ")
     .option("--pretty", "JSONを整形して出力")
     .option("-v, --verbose", "進捗ログを表示")
@@ -537,7 +484,7 @@ const getCommand = program.command("get")
         const downloader = new EdinetXbrlDownloader({ rootDir: saveDir });
         const parser = new EdinetXbrlParser();
 
-        const docType = resolveDocumentType(options.type);
+        const docType = resolveCliDocumentType(options.type);
 
         try {
             let docsToProcess: any[] = [];

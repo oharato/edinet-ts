@@ -11,7 +11,11 @@ export enum EdinetDocumentType {
     SemiAnnualReport = "160",
     /** 臨時報告書 (Extraordinary Report) */
     ExtraordinaryReport = "180",
-    /** 有価証券届出書 (Securities Registration Statement) */
+    /** 通知書。書類種別コード010。 */
+    SecuritiesNotice = "010",
+    /** 有価証券届出書。書類種別コード030。 */
+    RegistrationStatement = "030",
+    /** @deprecated 互換用の旧名。値010は通知書です。届出書にはRegistrationStatementを使ってください。 */
     SecuritiesRegistrationStatement = "010",
     /** 訂正有価証券届出書 */
     AmendedSecuritiesRegistrationStatement = "040",
