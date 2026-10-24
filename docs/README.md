@@ -9,6 +9,7 @@
 | 実際の決算書との一致・未確認範囲を知りたい | [実データの確認結果](REAL_DATA_VALIDATION.md) |
 | 会社の数値を読み、元の記載も確認したい | [数値の取り出し方](METRIC_SELECTION.md) |
 | 流動資産・流動負債・負債合計を読みたい | [今回の3項目](BALANCE_SHEET_NORMALIZATION.md) |
+| IFRSの連結BS3項目を原記載から読みたい | [IFRSの専用抽出](IFRS_BALANCE_SHEET_SELECTION.md)（本変更で追加、検索・保存は対象外） |
 | 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（#26でmainへ統合済み） |
 | 提出会社単体の給与・年齢・勤続年数・従業員数を読み比べたい | [人的資本](WORKFORCE.md)（期末と範囲を揃えた検索。従業員数は#53でmainへ統合済み） |
 | 原本の会社名・コード・基準を読み、会社名・決算月で探したい | [会社情報](COMPANY_PROFILE.md)（原記載・採用理由、明示集合の検索） |

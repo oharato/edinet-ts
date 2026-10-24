@@ -1,3 +1,4 @@
+import { IFRS_BALANCE_SHEET_REGISTRY, IfrsBalanceSheetMetricId } from "./ifrs-balance-sheet-registry";
 import { WORKFORCE_REGISTRY, WorkforceMetricId } from "./workforce-registry";
 import { FINANCIAL_DETAIL_REGISTRY, FinancialDetailMetricId } from "./financial-detail-registry";
 import { BALANCE_SHEET_REGISTRY, BalanceSheetMetricId } from "./balance-sheet-registry";
@@ -201,6 +202,20 @@ export class EdinetXbrlObject {
     /** J-GAAP・JPY・明示した時点/scopeのBS直接factを正規化します。 */
     public selectBalanceSheetMetric(id: BalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<BalanceSheetMetricId> {
         return selectDefinedMetricFact(BALANCE_SHEET_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+    }
+
+    /** IFRS・JPY・連結・明示期末の直接3科目。単体・合算・通貨換算は未対応です。 */
+    public selectIfrsBalanceSheetMetric(id: IfrsBalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<IfrsBalanceSheetMetricId> {
+        if (!Object.prototype.hasOwnProperty.call(IFRS_BALANCE_SHEET_REGISTRY, id)) throw new Error("不正なIFRS貸借対照表IDです");
+        // getterや呼出元の変更を後続の条件検証へ持ち込まず、入口で確認した範囲を固定します。
+        const accountingStandard = options.accountingStandard;
+        const scope = options.scope;
+        const inputPeriod = options.period;
+        const period = { instant: inputPeriod.instant, startDate: inputPeriod.startDate, endDate: inputPeriod.endDate } as MetricSelectionOptions["period"];
+        if (accountingStandard !== "IFRS") return { metricId: id, status: "unsupported", reason: "unsupported-standard", evidence: [] };
+        if (scope !== "Consolidated") return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
+        // 不正なinstant/duration混在も消さずに共用の期間検証へ渡します。
+        return selectDefinedMetricFact(IFRS_BALANCE_SHEET_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
     }
 
     /** 一般事業J-GAAPの直接5科目。現預金/同等物・内訳を混同しません。 */
