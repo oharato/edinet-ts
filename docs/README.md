@@ -15,6 +15,7 @@
 | 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（#31でmainへ統合済み） |
 | 財務DBへ必要な書類だけ取り込みたい | [差分取り込み](FINANCIAL_INCREMENTAL_IMPORT.md)（APIは#33、`import-bs --dry-run`は#34でmain統合済み） |
 | 保存した旧版と新版の違いを知りたい | [数値・採用状態・出典の比較](BALANCE_SHEET_VERSION_DIFF.md)（この版で追加） |
+| 保存原本で取り込みから比較まで通るか確認したい | [オフライン品質確認](OFFLINE_FINANCIAL_VERIFICATION.md)（この版で追加、明示入力・一時DB専用） |
 | 現在地と次の方針を知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md)。main完了・PR確認待ち・未着手・未検証を区別 |
 | 変更の経緯を知りたい | [#27 検証記録](https://github.com/oharato/edinet-ts/pull/27)・[#28 流動比率](https://github.com/oharato/edinet-ts/pull/28)は正式stack #29でmainへ統合済み |
 

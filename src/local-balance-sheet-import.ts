@@ -16,7 +16,8 @@ export interface LocalBalanceSheetImportOptions {
 }
 interface LocalFile { path: string; identity: string; bytes: Uint8Array; }
 const identity = (stat: fs.BigIntStats) => `${stat.dev}:${stat.ino}`;
-function readRegularFile(file: string, maxBytes: number): LocalFile {
+/** ローカル検証runnerでも共用する内部用の上限付きread。package rootの公開APIではありません。 */
+export function readRegularFile(file: string, maxBytes: number): LocalFile {
     const fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
     try {
         const stat = fs.fstatSync(fd, { bigint: true });
