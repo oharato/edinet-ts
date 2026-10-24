@@ -13,6 +13,7 @@
         "../../scripts/verify-offline-financial-flow.ts",
         "company-profile.ts",
         "workforce.ts",
-        "company-screening.ts"
+        "company-screening.ts",
+        "financial-detail-snapshots.ts"
     ]
 }

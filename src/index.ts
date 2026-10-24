@@ -31,3 +31,5 @@ export * from "./company-screening";
 
 export * from "./workforce-registry";
 export * from "./workforce-screening";
+
+export * from "./financial-detail-snapshots";
