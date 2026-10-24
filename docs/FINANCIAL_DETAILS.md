@@ -216,7 +216,7 @@ node dist/cli.js screen-details-json --file /tmp/local-details/cf-rows.json --me
 | `screen-details` | 原本ファイルとmetadataの一覧 | XMLを解析して直接項目を選び検索 |
 | `screen-details-json` | 保存した財務snapshotの配列 | 保存証跡を検査して検索 |
 
-SQLへの永続保存・差分更新・解析版管理は、このJSON検索の完成とは別です。既存BS3 StoreとDB形式は変更していません。
+SQLへの永続保存・差分更新・解析版管理は、このJSON検索の完成とは別です。この変更では、固定資産・固定負債・現金及び預金のinstant3項目だけを保存する[専用SQLite Store](FINANCIAL_DETAIL_STORE.md)を試験用APIとして追加します。APIのみで、他12項目の保存や差分取り込みは含みません。既存BS3 StoreとDB形式は変更していません。
 
 保存済み2社・2時点・2範囲・2期間型の16snapshot、計120選択結果（80採用・40欠損）がJSON往復で保持されました。XML検索とJSON検索の46条件も一致し、原本2件は不変でした。これは既存XML経路との同等性確認で、新たなPDF表示値との独立照合ではありません。
 

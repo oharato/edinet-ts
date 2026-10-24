@@ -23,6 +23,7 @@
 - **mainで完了した会社検索**: #43で 明示した原本集合から、会社名の文字列検索・EDINET/証券コード完全一致・決算月、並べ替えとページング。最新書類の選択や企業結合はしません。
 - **mainで完了した人的資本の追加**: #44で 提出会社単体の平均年齢/平均勤続年数の年タグ2項目。既定給与は維持し、明示選択だけで追加・検索します。
 - **この版で追加する保存JSON検索**: 直接財務15項目のsnapshotを原値・source/evidenceとmetadataの内部整合から検査し、XML版と同じ条件で検索します。元XMLの真正性を認証する機能とは区別します。
+- **この変更で追加する試験Store（PRで提供）**: [固定資産・固定負債・現金及び預金のSQLite保存](../FINANCIAL_DETAIL_STORE.md)。専用kind/schema1のAPIで保存・再open・SQL検索を扱い、既存BS3 DBは変更しません。115追加を含む全1,493テスト・型/build・保存保護と独立レビューは成功。実8snapshot/180検索一致、200行試験ではJSON検索より遅い結果でした。公開CI・統合状態は対応PRを参照してください。
 - **未着手**: 本番用の財務DB設計・移行、訂正履歴全体の自動解決、全市場充足率、利用先の固定vendor更新。上記5項目とCF3項目と残高7科目以外のPL/CF追加明細・企業属性履歴/分類・給与と年齢/勤続以外の人的資本などの元計画も残っています。
 - **未検証・取得待ち**: 両社の2025年提出XBRL原本。対象は特定済みですが、正規APIがメンテナンス画面へ転送され、追加取得は0件です。復旧時刻は未確認。今回の文書整理では取得を再試行しません。
 
@@ -438,4 +439,12 @@ metricIdsを明示した場合は給与+requestedを返し、必要値はrequest
 
 保存済み2社・2時点・2scope・2期間型の16snapshot/120選択結果（80採用・40欠損）がJSON往復で保持され、XML検索とJSON検索の46条件が一致しました。原本は不変、PDF独立照合は今回追加していません。全1,378テスト（追加219）・型/build・保存保護5件が成功。次のStoreは既定instant3だけの別kind/schema1試験DBとして切り出し、既存DBの移行・全市場運用・他12科目のSQL保存とは分けます。
 
-このJSON検索と、それに依存する専用試験Storeを同時公開する場合は、新しい正式GitHub Stackとして登録します。両PRの最終CI・レビューを確認してから、merge commit方式でstack全体を取り込み、main CIを確認します。GitHub公式の[stack登録API](https://docs.github.com/en/rest/pulls/stacks?apiVersion=2026-03-10#create-a-pull-request-stack)と[非同期merge API](https://docs.github.com/en/rest/pulls/pulls?apiVersion=2026-03-10#merge-a-pull-request-asynchronously)を利用し、閉じたstackを流用しません。新しい権限設定や手動force pushは行いません。
+このJSON検索と、それに依存する専用試験Storeを同時公開する場合は、新しい正式GitHub Stackとして登録します。両PRの最終CI・レビューを確認してから、merge commit方式でstack全体を取り込み、main CIを確認します。GitHub公式の[stack登録API](https://docs.github.com/en/rest/pulls/stacks?apiVersion=2026-03-10#create-a-pull-request-stack)と[非同期merge API](https://docs.github.com/en/rest/pulls/pulls?apiVersion=2026-03-10#merge-a-pull-request-asynchronously)を利用し、閉じたstackを流用しません。新しい権限設定やforce pushは行いません。
+
+### 段階7の追加試作: 直接財務の時点3項目だけを保存する
+
+[直接財務の専用Store](../FINANCIAL_DETAIL_STORE.md)を、この変更で追加する試験用APIとして提供します。固定資産・固定負債・現金及び預金だけを別kind/schema1へ保存し、原値・候補・出典と解析/対応表の版を保持します。既存BS3 DBは変更せず、CLIもまだ追加しません。保存JSON検索の下段PR #45に依存する構成です。正式stackへの所属、取り込み順、公開CI・統合状態は対応PRを参照してください。
+
+SQLで条件・順序・件数・ページを処理しますが、その前にTypeScriptで全保存行を検査し、返却ページもJSON検索と再照合します。readOnlyは停止済み256MiB以下のDBの一時コピーを読み、開いた時点に固定されます。再実行で重複せず、同docIDの会社/原本hash矛盾や同じ版の内容変更は上書きせず停止します。本番DB移行・他12項目・訂正履歴・全市場運用は含みません。
+
+全1,493テスト・型/build・Python保存保護5件、独立source229/ビルド済み229/CJSが成功しました。保存済み2社2時点2範囲の8snapshot/24項目と、再open後の180検索・再取り込み8件不変を確認。2026年有報の前年列を含み、2025年別提出XBRL・追加3項目のPDF独立照合は未確認です。200行の試験複製ではSQLiteの方が遅く、高速化を保証しません。条件付きの実測は利用文書へ記録します。

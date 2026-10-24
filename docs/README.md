@@ -16,6 +16,7 @@
 | 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（#28でmainへ統合済み） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
 | 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（#31でmainへ統合済み） |
+| 固定資産・固定負債・現金及び預金を保存したい | [直接財務3項目の専用Store](FINANCIAL_DETAIL_STORE.md)（この変更で追加する試験API、CLIなし） |
 | 財務DBへ必要な書類だけ取り込みたい | [差分取り込み](FINANCIAL_INCREMENTAL_IMPORT.md)（APIは#33、`import-bs --dry-run`は#34でmain統合済み） |
 | 保存した旧版と新版の違いを知りたい | [数値・採用状態・出典の比較](BALANCE_SHEET_VERSION_DIFF.md)（この版で追加） |
 | 保存原本で取り込みから比較まで通るか確認したい | [オフライン品質確認](OFFLINE_FINANCIAL_VERIFICATION.md)（この版で追加、明示入力・一時DB専用） |
