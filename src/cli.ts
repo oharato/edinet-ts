@@ -155,10 +155,11 @@ program.command("diff-bs")
     });
 
 program.command("screen-details")
-    .description("明示したローカル原本から直接財務5項目を検索します（時点/期間を混在させません）")
+    .description("明示原本から直接財務項目を検索します（既定5項目、CFは--metricsで明示）")
     .requiredOption("--manifest <path>", "fileとmetadataを持つJSON配列（相対fileは一覧基準）")
+    .option("--metrics <ids>", "読む項目IDをカンマ区切りで明示（省略は従来5項目）")
     .option("--conditions <json>", "AND条件のJSON配列", "[]")
-    .option("--sort-by <metric>", "直接財務5項目のID")
+    .option("--sort-by <metric>", "選択した直接財務項目のID")
     .option("--order <order>", "ascまたはdesc", "desc")
     .option("--offset <number>", "開始位置", "0")
     .option("--limit <number>", "最大件数")
@@ -175,7 +176,7 @@ program.command("screen-details")
                 return {xml:new TextDecoder("utf-8",{fatal:true}).decode(input.bytes),metadata:entry.metadata};
             });
             for (const value of [options.offset,options.limit]) if (value!==undefined&&!/^\d+$/.test(value)) throw new Error("offset/limitは0以上の整数です");
-            console.log(JSON.stringify(screenFinancialDetailDocuments(documents,{conditions:JSON.parse(options.conditions),sortBy:options.sortBy,order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)}),null,options.pretty?2:undefined));
+            console.log(JSON.stringify(screenFinancialDetailDocuments(documents,{metricIds:options.metrics===undefined?undefined:options.metrics.split(",").map((id:string)=>id.trim()),conditions:JSON.parse(options.conditions),sortBy:options.sortBy,order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)}),null,options.pretty?2:undefined));
         } catch(error) { console.error(error instanceof Error?error.message:String(error));process.exitCode=1; }
     });
 
