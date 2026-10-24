@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { analyzeDocumentRelations } from "./document-relations";
 import { createCompanyProfile, CompanyProfileFieldId } from "./company-profile";
 import { screenCompanyDocuments, CompanyProfileOperator } from "./company-screening";
 import { screenWorkforceDocuments } from "./workforce-screening";
@@ -158,6 +159,24 @@ program.command("diff-bs")
             process.exitCode = 1;
         }
     });
+
+program.command("explain-document-relations")
+    .description("明示した一覧JSONの親子関係・複数観測を説明します（取得・最新版選択なし）")
+    .requiredOption("--file <path>", "観測IDとdocumentを持つJSON配列、2MiB以下")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const bytes = readRegularFile(path.resolve(options.file), LOCAL_IMPORT_LIMITS.manifestBytes).bytes;
+            const input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+            const result = analyzeDocumentRelations(input);
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+        } catch {
+            // 元JSON・例外・書類情報をエラー出力へ転載しません。
+            console.error("書類関係の入力を確認してください（通常JSONファイル・2MiB以下・有効な観測一覧が必要です）");
+            process.exitCode = 1;
+        }
+    });
+
 
 program.command("screen-workforce")
     .description("提出会社単体の給与・明示した年齢/勤続年数/従業員数を検索します（期末指定）")

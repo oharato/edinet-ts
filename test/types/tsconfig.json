@@ -19,6 +19,7 @@
         "http-request-lifecycle.ts",
         "annual-operating-income-growth.ts",
         "http-retry-guidance.ts",
-        "workforce-employee-count.ts"
+        "workforce-employee-count.ts",
+        "document-relations.ts"
     ]
 }
