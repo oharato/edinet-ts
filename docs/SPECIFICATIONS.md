@@ -33,7 +33,8 @@ graph TD
 ### 2.1 `EdinetXbrlDownloader`
 EDINET API v2 との通信を担当します。
 
-*   **役割**: 書類一覧API (`/api/v2/documents.json`) から特定企業の最新書類（コード: 030000 など）を検索し、書類取得API (`/api/v2/documents/{docID}`) からZIPを取得します。
+*   **役割**: 書類一覧API (`/api/v2/documents.json`) から特定企業の書類を3桁の`docTypeCode`（例: 有報120、届出書030）で検索し、書類取得API (`/api/v2/documents/{docID}`) からZIPを取得します。
+*   **書類の分類**: `docTypeCode`と6桁の`formCode`は別です。[010通知書/030届出書と互換名](DOCUMENT_LIST_VALIDATION.md#通知書010と有価証券届出書030の指定)を確認してください。最新書類の選択は別処理で、種類のコードだけでは決まりません。
 *   **ZIP処理**: classic ZIPの名前・形式・件数・宣言サイズを展開前に検査し、`jszip`で上限付きに展開します。新規保存は一時フォルダで完了させ、既存書類フォルダを置換しません。詳しい制約は[ZIP取得と保存時の保護](DOWNLOAD_SAFETY.md)を参照してください。
     *   **優先順位**: `PublicDoc` ディレクトリ内のXBRLを最優先とし、次にルートディレクトリ、サブディレクトリの順で探索します。これにより、監査報告書 (`AuditDoc`) などのノイズを除去します。
 *   **認証**: APIキーを `Subscription-Key` ヘッダーまたはクエリパラメータとして付与します。

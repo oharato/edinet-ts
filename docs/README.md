@@ -24,6 +24,7 @@
 | 売上高・営業利益の前年からの増減で会社を比べたい | [12暦月の前年比](ANNUAL_REVENUE_GROWTH.md)（売上は#38でmain、営業利益を別APIで追加。曖昧な入力は計算しない） |
 | 現在地と次の方針を知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md)。main完了・PR確認待ち・未着手・未検証を区別 |
 | 変更の経緯を知りたい | [#27 検証記録](https://github.com/oharato/edinet-ts/pull/27)・[#28 流動比率](https://github.com/oharato/edinet-ts/pull/28)は正式stack #29でmainへ統合済み |
+| 通知書010・届出書030を正しく指定したい | [書類種別と旧名の互換性](DOCUMENT_LIST_VALIDATION.md#通知書010と有価証券届出書030の指定) |
 | 書類一覧の親番号や状態の違いを確認したい | [書類の関係と観測](DOCUMENT_RELATIONS.md)（明示JSONのみ。最新版を自動選択しません） |
 | 人的資本表に書かれた会社名を探したい | [会社ラベルの抽出・検索](SUBSIDIARY_HUMAN_CAPITAL_LABELS.md)（一般子会社マスターとは別） |
 | 表の行や対象を区別する指定の出典を確認したい | [次元の名前の追跡](CONTEXT_DIMENSION_TRACES.md)（解析後の証跡。元の字面・DTSの検証ではありません） |
