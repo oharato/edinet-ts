@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { createCompanyProfile } from "./company-profile";
+import { screenWorkforceDocuments } from "./workforce-screening";
 import "dotenv/config";
 import { EdinetXbrlDownloader } from "./edinet-xbrl-downloader";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
@@ -149,6 +150,39 @@ program.command("diff-bs")
             const result = runLocalBalanceSheetDiff(options);
             console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
             if (result.status === "incomparable") process.exitCode = 1;
+        } catch (error) {
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exitCode = 1;
+        }
+    });
+
+program.command("screen-workforce")
+    .description("提出会社単体の平均年間給与を明示原本集合で検索します（円、期末指定）")
+    .requiredOption("--manifest <path>", "fileとmetadataを持つJSON配列（相対fileは一覧基準）")
+    .option("--conditions <json>", "averageAnnualSalaryのAND条件", "[]")
+    .option("--sort-by <metric>", "averageAnnualSalary")
+    .option("--order <order>", "ascまたはdesc", "desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifestPath = path.resolve(options.manifest);
+            const entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifestPath, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error("manifestは100件以下の配列です");
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(key => !["file", "metadata"].includes(key)) || typeof entry.file !== "string" || !entry.file.trim())
+                    throw new Error("不正な人的資本manifestです");
+                const input = readRegularFile(path.resolve(path.dirname(manifestPath), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
+                bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), metadata: entry.metadata };
+            });
+            for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error("offset/limitは0以上の整数です");
+            console.log(JSON.stringify(screenWorkforceDocuments(documents, {
+                conditions: JSON.parse(options.conditions), sortBy: options.sortBy, order: options.order,
+                offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit)
+            }), null, options.pretty ? 2 : undefined));
         } catch (error) {
             console.error(error instanceof Error ? error.message : String(error));
             process.exitCode = 1;
