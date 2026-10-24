@@ -13,7 +13,7 @@
 | 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（#28でmainへ統合済み） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
 | 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（#31でmainへ統合済み） |
-| 財務DBへ必要な書類だけ取り込みたい | [差分取り込み](FINANCIAL_INCREMENTAL_IMPORT.md)（ローカル実装、main未反映） |
+| 財務DBへ必要な書類だけ取り込みたい | [差分取り込み](FINANCIAL_INCREMENTAL_IMPORT.md)（Draft PRレビュー対象、main未反映） |
 | 現在地と次の方針を知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md)。main完了・PR確認待ち・未着手・未検証を区別 |
 | 変更の経緯を知りたい | [#27 検証記録](https://github.com/oharato/edinet-ts/pull/27)・[#28 流動比率](https://github.com/oharato/edinet-ts/pull/28)は正式stack #29でmainへ統合済み |
 
