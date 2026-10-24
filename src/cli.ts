@@ -6,6 +6,7 @@ import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
+import { runLocalBalanceSheetImport } from "./local-balance-sheet-import";
 import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots } from "./balance-sheet-screening";
 import { screenFinancialSnapshots } from "./financial-screening";
 import * as fs from "fs";
@@ -109,6 +110,27 @@ program.command("download")
             } catch (e: any) {
                 console.error(`Failed to download ${ticker}:`, e.message);
             }
+        }
+    });
+
+program.command("import-bs")
+    .description("指定したローカル原本だけを財務試験DBへ差分取り込みします（ネット取得なし）")
+    .requiredOption("--manifest <path>", "原本の一覧JSON（相対fileはmanifest基準、100件以下）")
+    .requiredOption("--db <path>", "専用の試験用財務DB")
+    .requiredOption("--extractor-version <version>", "利用する解析器の版（利用側の宣言）")
+    .option("--mapping-version <version>", "対応表の版（既定: 現行BS3辞書の版）")
+    .option("--source-commit <sha>", "解析器ソースの40桁commit、小文字16進")
+    .option("--dry-run", "全指定原本のhashを計算して計画だけ返す。DBを作成・変更しない")
+    .option("--create", "未作成の試験用DBを排他的に新規作成する")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const result = runLocalBalanceSheetImport(options);
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+            if (result.plan.counts.conflict) process.exitCode = 1;
+        } catch (error) {
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exitCode = 1;
         }
     });
 

@@ -414,6 +414,8 @@ See [local build, retention, validation and cutover](docs/nuc7-local-artifacts.m
 
 J-GAAPの流動資産・流動負債・負債合計は、既存主要指標とは別の `selectBalanceSheetMetric()` で取得できます。[BS直接fact正規化](docs/BALANCE_SHEET_NORMALIZATION.md)を参照してください。円・指定日・連結か単体かの指定が必要です。IFRSと、既存21指標検索への登録は未対応です。
 
-このPRで追加する検索機能は、保存した複数社を流動資産・流動負債・負債合計で絞り、金額順に並べます。`screenBalanceSheetSnapshots()` / CLI `screen-bs`を使い、同じ日付・範囲の書類を自分で揃えます。[使い方と入力ファイル一覧](docs/BALANCE_SHEET_SCREENING.md)を参照してください。
+mainで使える検索機能は、保存した複数社を流動資産・流動負債・負債合計で絞り、金額順に並べます。`screenBalanceSheetSnapshots()` / CLI `screen-bs`を使い、同じ日付・範囲の書類を自分で揃えます。[使い方と入力ファイル一覧](docs/BALANCE_SHEET_SCREENING.md)を参照してください。
 
-流動比率は、このPRで追加した `calculateCurrentRatio()` と検索項目 `currentRatio` を使います。単位は小数で、`2`が200%です。[計算・検索・CLIの使い方](docs/CURRENT_RATIO.md)を参照してください（確認中・未マージ）。
+流動比率は、mainの `calculateCurrentRatio()` と検索項目 `currentRatio` を使います。単位は小数で、`2`が200%です。[計算・検索・CLIの使い方](docs/CURRENT_RATIO.md)を参照してください（#28でmainへ統合済み）。
+
+指定したローカル原本を財務DBへ取り込むAPIは#33でmainへ統合済みです。今回の確認用PRでは、原本のハッシュ計算と取り込み予定の確認を行うCLI `import-bs --dry-run`を追加します。[入力例・使い方・試験DBの保護](docs/FINANCIAL_INCREMENTAL_IMPORT.md)を参照してください。
