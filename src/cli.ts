@@ -6,7 +6,7 @@ import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
-import { runLocalBalanceSheetImport } from "./local-balance-sheet-import";
+import { runLocalBalanceSheetImport, runLocalBalanceSheetDiff } from "./local-balance-sheet-import";
 import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots } from "./balance-sheet-screening";
 import { screenFinancialSnapshots } from "./financial-screening";
 import * as fs from "fs";
@@ -128,6 +128,23 @@ program.command("import-bs")
             const result = runLocalBalanceSheetImport(options);
             console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
             if (result.plan.counts.conflict) process.exitCode = 1;
+        } catch (error) {
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exitCode = 1;
+        }
+    });
+
+program.command("diff-bs")
+    .description("同一原本の2つの保存版について財務値・採用状態・出典を読み取り比較します")
+    .requiredOption("--db <path>", "停止済みの専用試験用財務DB")
+    .requiredOption("--before <id>", "比較元のsnapshot ID")
+    .requiredOption("--after <id>", "比較先のsnapshot ID（新旧を自動判断しません）")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const result = runLocalBalanceSheetDiff(options);
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+            if (result.status === "incomparable") process.exitCode = 1;
         } catch (error) {
             console.error(error instanceof Error ? error.message : String(error));
             process.exitCode = 1;

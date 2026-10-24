@@ -1,3 +1,4 @@
+import { compareBalanceSheetVersions } from "./balance-sheet-version-diff";
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -116,4 +117,12 @@ export function runLocalBalanceSheetImport(options: LocalBalanceSheetImportOptio
         const result = importBalanceSheets(store, sources, source => readRegularFile(paths.get(key(source))!, LOCAL_IMPORT_LIMITS.sourceBytes).bytes);
         return { mode: "import" as const, bytesRead, ...result };
     } finally { store.close(); }
+}
+
+/** 停止済み試験DBのコピー上で2つの保存版を比較。元DBをSQLiteで開きません。 */
+export function runLocalBalanceSheetDiff(options: { db: string; before: string; after: string }) {
+    if (typeof options.db !== "string" || !options.db.trim()) throw new Error("dbのパスが必要です");
+    const dbPath = path.resolve(options.db);
+    if (!protectDb(dbPath, [])) throw new Error("比較するDBがありません。作成はしません");
+    return withPreviewStore(dbPath, store => compareBalanceSheetVersions(store, options.before, options.after));
 }

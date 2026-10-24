@@ -19,3 +19,5 @@ export * from "./balance-sheet-screening";
 export * from "./db/balance-sheet-store";
 
 export * from "./balance-sheet-import";
+
+export * from "./balance-sheet-version-diff";
