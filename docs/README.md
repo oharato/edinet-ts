@@ -12,6 +12,7 @@
 | 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（このPRで確認中） |
 | 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（このPRで追加、確認中） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
+| 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（このローカルブランチで追加、未公開） |
 | 次に何を作るか知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md) |
 
 以下は、実装・確認する人向けの詳しい資料一覧です。
