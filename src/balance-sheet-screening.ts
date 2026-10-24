@@ -2,6 +2,19 @@ import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import type { EdinetXbrlObject } from "./edinet-xbrl-object";
 import { BALANCE_SHEET_REGISTRY, BalanceSheetMetricId } from "./balance-sheet-registry";
 import { FactSelectionResult, MetricSelectionOptions, toSafeMetricNumber } from "./metric-selection";
+import { compareFractions, decimalFraction, reduceFraction, type DecimalFraction } from "./decimal-fraction";
+
+/** 検索項目の補完用定数。金額3項目の辞書は変更せず、計算値を別項目として扱います。 */
+export const BalanceSheetScreeningMetric = Object.freeze({
+    CurrentAssets: "currentAssets", CurrentLiabilities: "currentLiabilities",
+    TotalLiabilities: "totalLiabilities", CurrentRatio: "currentRatio"
+} as const);
+export type BalanceSheetScreeningMetric = typeof BalanceSheetScreeningMetric[keyof typeof BalanceSheetScreeningMetric];
+
+export const CURRENT_RATIO_DEFINITION = Object.freeze({
+    id: "currentRatio", unit: "ratio", periodType: "instant", formula: "currentAssets / currentLiabilities",
+    inputs: Object.freeze(["currentAssets", "currentLiabilities"] as const)
+} as const);
 
 export interface BalanceSheetSnapshotMetadata {
     secCode: string;
@@ -15,13 +28,13 @@ export interface BalanceSheetSnapshot extends BalanceSheetSnapshotMetadata {
     selections: Record<BalanceSheetMetricId, FactSelectionResult<BalanceSheetMetricId>>;
 }
 export interface BalanceSheetCondition {
-    metric: BalanceSheetMetricId;
+    metric: BalanceSheetScreeningMetric;
     operator: "gte" | "lte" | "gt" | "lt" | "eq";
     value: number;
 }
 export interface BalanceSheetScreeningOptions {
     conditions?: readonly BalanceSheetCondition[];
-    sortBy?: BalanceSheetMetricId;
+    sortBy?: BalanceSheetScreeningMetric;
     order?: "asc" | "desc";
     offset?: number;
     limit?: number;
@@ -29,14 +42,14 @@ export interface BalanceSheetScreeningOptions {
 export interface BalanceSheetDiagnostic {
     secCode: string;
     docID: string;
-    metric: BalanceSheetMetricId;
+    metric: BalanceSheetScreeningMetric;
     reason: "missing" | "unsupported" | "ambiguous" | "unsafe-number";
     selectionReason: string;
     /** この検索の必要指標かどうか。不要指標の欠損だけでは行を除外しません。 */
     required: boolean;
 }
 export interface BalanceSheetScreeningResult {
-    rows: BalanceSheetSnapshot[];
+    rows: BalanceSheetScreeningRow[];
     /** 条件一致後・ページング前の件数。 */
     total: number;
     excludedRows: number;
@@ -45,8 +58,23 @@ export interface BalanceSheetScreeningResult {
     /** 行数ではなく指標診断の件数。 */
     reasonCounts: Record<BalanceSheetDiagnostic["reason"], number>;
 }
+export type CurrentRatioUnavailableReason = "missing-input" | "ambiguous-input" | "unsupported-input" |
+    "unsafe-input" | "zero-denominator" | "negative-input" | "unsafe-result";
+export type CurrentRatioResult = {
+    metricId: "currentRatio";
+    /** 小数。1=100%、2=200%。元金額の報告精度を高める計算ではありません。 */
+    unit: "ratio";
+    inputs: Pick<BalanceSheetSnapshot["selections"], "currentAssets" | "currentLiabilities">;
+} & ({ status: "calculated"; reason: "calculated"; value: number;
+    /** 報告された十進値の商。表示用valueと異なり、検索・並べ替えに使う約分済み分数。 */
+    exact: { numerator: string; denominator: string } } |
+    { status: "unavailable"; reason: CurrentRatioUnavailableReason; value?: never; exact?: never });
+export interface BalanceSheetScreeningRow extends BalanceSheetSnapshot {
+    /** currentRatioを条件・sortで要求した場合だけ付与。入力の計算済み値は使わず再計算します。 */
+    derivedMetrics?: { currentRatio: CurrentRatioResult };
+}
 const ids = Object.keys(BALANCE_SHEET_REGISTRY) as BalanceSheetMetricId[];
-const metricSet = new Set<string>(ids);
+const metricSet = new Set<string>(Object.values(BalanceSheetScreeningMetric));
 const operators = new Set(["gte", "lte", "gt", "lt", "eq"]);
 const reasons = new Set(["selected", "selected-raw-only", "tag-absent", "context-mismatch", "nil", "unsupported-standard", "unsupported-semantics", "unknown-namespace", "unknown-context", "unsupported-dimensions", "unsupported-context", "unsupported-entity", "unsupported-unit", "invalid-decimal", "invalid-decimals", "raw-unavailable", "duplicate-context", "multiple-facts", "invalid-period"]);
 const record = (value: unknown): value is Record<string, any> => !!value && typeof value === "object" && !Array.isArray(value);
@@ -146,6 +174,43 @@ function validateSnapshot(row: BalanceSheetSnapshot): void {
     if (entities.size > 1) throw new Error("同一snapshotの指標間でentityが混在しています");
 }
 
+function currentRatio(row: BalanceSheetSnapshot): CurrentRatioResult {
+    const inputs = structuredClone({ currentAssets: row.selections.currentAssets, currentLiabilities: row.selections.currentLiabilities });
+    const base = { metricId: "currentRatio" as const, unit: "ratio" as const, inputs };
+    const unavailable = (reason: CurrentRatioUnavailableReason): CurrentRatioResult => ({ ...base, status: "unavailable", reason });
+    const a = inputs.currentAssets, b = inputs.currentLiabilities;
+    for (const input of [a, b]) {
+        if (input.status !== "selected") return unavailable(input.status === "missing" ? "missing-input" : input.status === "ambiguous" ? "ambiguous-input" : "unsupported-input");
+        if (input.safeNumber === undefined) return unavailable("unsafe-input");
+    }
+    // 上のループの条件を型にも伝えます。計算前にvalidateSnapshotで来歴を検証済みです。
+    if (a.status !== "selected" || b.status !== "selected" || a.safeNumber === undefined || b.safeNumber === undefined) return unavailable("unsafe-input");
+    if (a.safeNumber < 0 || b.safeNumber < 0) return unavailable("negative-input");
+    if (b.safeNumber === 0) return unavailable("zero-denominator");
+    // rawとの十進往復が確認できた短いnumber表記を使い、巨大な0埋め文字列をBigIntへ渡しません。
+    const x = decimalFraction(a.safeNumber), y = decimalFraction(b.safeNumber);
+    const exact = reduceFraction(x.numerator * y.denominator, x.denominator * y.numerator);
+    if (compareFractions(exact, decimalFraction(Number.MAX_SAFE_INTEGER)) > 0) return unavailable("unsafe-result");
+    let value = Number(exact.numerator) / Number(exact.denominator);
+    // 極端な指数では分数の片側がnumber範囲を超えることがあるため、表示値だけ別経路で近似します。
+    if (!Number.isFinite(value) || value === 0 && exact.numerator !== 0n) value = a.safeNumber / b.safeNumber;
+    if (!Number.isFinite(value) || value > Number.MAX_SAFE_INTEGER || value === 0 && exact.numerator !== 0n) return unavailable("unsafe-result");
+    return { ...base, status: "calculated", reason: "calculated", value,
+        exact: { numerator: String(exact.numerator), denominator: String(exact.denominator) } };
+}
+
+/** 同一企業・時点・範囲・JPY・J-GAAPの選択済み値だけから計算。2=200%。 */
+export function calculateCurrentRatio(row: BalanceSheetSnapshot): CurrentRatioResult {
+    validateSnapshot(row);
+    return currentRatio(row);
+}
+
+const fractionOfRatio = (result: Extract<CurrentRatioResult, { status: "calculated" }>): DecimalFraction =>
+    ({ numerator: BigInt(result.exact.numerator), denominator: BigInt(result.exact.denominator) });
+const ratioDiagnostic = (reason: CurrentRatioUnavailableReason): BalanceSheetDiagnostic["reason"] =>
+    reason === "missing-input" ? "missing" : reason === "ambiguous-input" ? "ambiguous" :
+        reason === "unsafe-input" || reason === "unsafe-result" ? "unsafe-number" : "unsupported";
+
 /** 同じ時点/通貨/scope/基準の明示集合を検索。企業ごとのentityの違いは許容します。 */
 export function screenBalanceSheetSnapshots(snapshots: readonly BalanceSheetSnapshot[], options: BalanceSheetScreeningOptions = {}): BalanceSheetScreeningResult {
     if (!Array.isArray(snapshots) || !record(options)) throw new Error("snapshots配列と検索optionsが必要です");
@@ -154,8 +219,10 @@ export function screenBalanceSheetSnapshots(snapshots: readonly BalanceSheetSnap
     for (const c of conditions) if (!record(c) || !metricSet.has(c.metric) || !operators.has(c.operator) || typeof c.value !== "number" || !Number.isFinite(c.value) || Math.abs(c.value) > Number.MAX_SAFE_INTEGER) throw new Error("不正なBS検索条件です");
     if (options.sortBy !== undefined && !metricSet.has(options.sortBy) || options.order !== undefined && !["asc", "desc"].includes(options.order)) throw new Error("不正なBS並べ替えです");
     for (const v of [options.offset, options.limit]) if (v !== undefined && (!Number.isSafeInteger(v) || v < 0)) throw new Error("offset/limitは0以上の安全な整数です");
-    const required = new Set<BalanceSheetMetricId>([...conditions.map(c => c.metric), ...(options.sortBy ? [options.sortBy] : [])]);
+    const required = new Set<BalanceSheetScreeningMetric>([...conditions.map(c => c.metric), ...(options.sortBy ? [options.sortBy] : [])]);
     if (!required.size) ids.forEach(id => required.add(id));
+    const needsRatio = required.has(BalanceSheetScreeningMetric.CurrentRatio);
+    if (needsRatio) CURRENT_RATIO_DEFINITION.inputs.forEach(id => required.add(id));
     const seen = new Set<string>(), documents = new Set<string>(), criteria = new Set<string>();
     for (const row of snapshots) {
         validateSnapshot(row);
@@ -170,7 +237,7 @@ export function screenBalanceSheetSnapshots(snapshots: readonly BalanceSheetSnap
     const diagnostics: BalanceSheetDiagnostic[] = [];
     const reasonCounts: BalanceSheetScreeningResult["reasonCounts"] = { missing: 0, unsupported: 0, ambiguous: 0, "unsafe-number": 0 };
     let excludedRows = 0, filteredRows = 0;
-    const rows: BalanceSheetSnapshot[] = [];
+    const rows: BalanceSheetScreeningRow[] = [];
     for (const row of snapshots) {
         let exclude = false;
         for (const id of ids) {
@@ -181,21 +248,35 @@ export function screenBalanceSheetSnapshots(snapshots: readonly BalanceSheetSnap
             reasonCounts[reason]++;
             if (required.has(id)) exclude = true;
         }
+        const ratio = needsRatio ? currentRatio(row) : undefined;
+        if (ratio?.status === "unavailable") {
+            const reason = ratioDiagnostic(ratio.reason);
+            diagnostics.push({ secCode: code(row.secCode), docID: row.docID, metric: "currentRatio", reason, selectionReason: ratio.reason, required: true });
+            reasonCounts[reason]++;
+            exclude = true;
+        }
         if (exclude) { excludedRows++; continue; }
         if (!conditions.every(c => {
-            const v = row.selections[c.metric].safeNumber!;
-            return c.operator === "gte" ? v >= c.value : c.operator === "lte" ? v <= c.value : c.operator === "gt" ? v > c.value : c.operator === "lt" ? v < c.value : v === c.value;
+            const comparison = c.metric === "currentRatio"
+                ? compareFractions(fractionOfRatio(ratio as Extract<CurrentRatioResult, { status: "calculated" }>), decimalFraction(c.value))
+                : row.selections[c.metric].safeNumber! < c.value ? -1 : row.selections[c.metric].safeNumber! > c.value ? 1 : 0;
+            return c.operator === "gte" ? comparison >= 0 : c.operator === "lte" ? comparison <= 0 : c.operator === "gt" ? comparison > 0 : c.operator === "lt" ? comparison < 0 : comparison === 0;
         })) { filteredRows++; continue; }
-        rows.push(row);
+        // 以前の検索結果を再入力しても、古い/改変済みの計算値を返しません。
+        const { derivedMetrics: _ignored, ...snapshot } = row as BalanceSheetScreeningRow;
+        rows.push(ratio ? { ...snapshot, derivedMetrics: { currentRatio: ratio } } : snapshot);
     }
     rows.sort((a, b) => {
         if (options.sortBy) {
-            const x = a.selections[options.sortBy].safeNumber!, y = b.selections[options.sortBy].safeNumber!;
-            if (x !== y) return (x < y ? -1 : 1) * (options.order === "asc" ? 1 : -1);
+            const comparison = options.sortBy === "currentRatio"
+                ? compareFractions(fractionOfRatio(a.derivedMetrics!.currentRatio as Extract<CurrentRatioResult, { status: "calculated" }>), fractionOfRatio(b.derivedMetrics!.currentRatio as Extract<CurrentRatioResult, { status: "calculated" }>))
+                : a.selections[options.sortBy].safeNumber! < b.selections[options.sortBy].safeNumber! ? -1 : a.selections[options.sortBy].safeNumber! > b.selections[options.sortBy].safeNumber! ? 1 : 0;
+            if (comparison) return comparison * (options.order === "asc" ? 1 : -1);
         }
         return code(a.secCode) < code(b.secCode) ? -1 : code(a.secCode) > code(b.secCode) ? 1 : a.docID < b.docID ? -1 : a.docID > b.docID ? 1 : 0;
     });
-    diagnostics.sort((a, b) => a.secCode < b.secCode ? -1 : a.secCode > b.secCode ? 1 : ids.indexOf(a.metric) - ids.indexOf(b.metric));
+    const diagnosticOrder = Object.values(BalanceSheetScreeningMetric) as BalanceSheetScreeningMetric[];
+    diagnostics.sort((a, b) => a.secCode < b.secCode ? -1 : a.secCode > b.secCode ? 1 : diagnosticOrder.indexOf(a.metric) - diagnosticOrder.indexOf(b.metric));
     const offset = options.offset ?? 0;
     return { rows: rows.slice(offset, options.limit === undefined ? undefined : offset + options.limit).map(row => ({ ...structuredClone(row), secCode: code(row.secCode) })), total: rows.length, excludedRows, filteredRows, diagnostics, reasonCounts };
 }

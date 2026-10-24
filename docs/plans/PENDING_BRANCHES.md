@@ -1,28 +1,35 @@
 # 確認中の変更と取り込み先
 
-更新日: 2026-10-23。この資料は、複数社の保存書類を3項目で検索する変更の経緯を説明します。[用語集](../GLOSSARY.md)も参照してください。
+更新日: 2026-10-24。この資料は、財務3項目の検索と、その後の検証記録・流動比率の提案順を説明します。[用語集](../GLOSSARY.md)も参照してください。
 
 ## mainに入ったものと、まだ確認中のもの
 
 - PR #20〜#23: 21指標検索、Node/SQLite更新、財務明細の計画、数値の元記載を確認する仕組みはmainへ取り込み済みです。
 - [PR #24](https://github.com/oharato/edinet-ts/pull/24): 1社の流動資産・流動負債・負債合計を読む機能と用語集はmainの`3349809`へ入りました。
 - [PR #25](https://github.com/oharato/edinet-ts/pull/25): 検索機能はマージ済みですが、取り込み先は`improve/jgaap-balance-sheet`でした。#24がmainへ入った後の操作だったため、#25の検索機能はmainへ届いていません。
-- **このPR**: mainの`3349809`を基準に、まだ入っていない検索機能だけを新しいブランチ`improve/balance-sheet-screening-main`から提案します。取り込み先はmainです。既存の3項目取得機能や用語集を重複して追加しません。
+- [PR #26](https://github.com/oharato/edinet-ts/pull/26): 未取り込みだった検索機能だけをmain向けに再提案し、`b03d4a7`へ取り込み済みです。既存の3項目取得機能や用語集の重複追加はありません。
 
-次はこのPRの検索条件、読めない値の扱い、使い方を確認してください。mainへのマージは利用者が判断します。この作業ではマージ、force push、ブランチ削除、リリースは行っていません。
+取り込み後は[実データの確認結果](../REAL_DATA_VALIDATION.md)で、実際の決算書との一致と残る検証範囲を管理します。PR #26のマージは利用者による操作で、検証作業ではマージ、force push、ブランチ削除、リリースは行っていません。
 
 ## GitHubのStacked PRについて
 
 Stacked PRは、依存する複数のPRをGitHub上で正式にひとまとまりにする機能です。単に取り込み先を別の作業ブランチへ変えただけでは、正式なstackを作成した意味にはなりません。
 
-[GitHub公式説明](https://docs.github.com/en/pull-requests/get-started/about-stacked-prs)では2件以上のPRが対象です。リポジトリの正式なstack読取APIは利用可能で、確認時点のstackは0件でした。先行#24は取り込み済みで、今回残っている提案は1件のため、正式なstackを作る組合せはありません。将来、依存する複数PRを同時に提案する際は[正式な作成手順](https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/creating-stacked-pull-requests)で関連付けとstack表示を確認します。
+[GitHub公式説明](https://docs.github.com/en/pull-requests/get-started/about-stacked-prs)では2件以上のPRが対象です。PR #26の再提案時点では残り1件だったため、正式なstackを作る組合せはありませんでした。今回の検証記録と流動比率は、検証記録を下段（取り込み先main）、流動比率を上段（取り込み先は検証記録のブランチ）として正式stackへ登録し、関連付けを確認します。今後も依存する複数PRを同時に提案する際は[正式な作成手順](https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/creating-stacked-pull-requests)で関連付けとstack表示を確認します。
+
+## 今回の確認順
+
+1. 検証記録: 実資料との一致・表示変更・訂正・未確認範囲を読む提案。コードは変更しません。
+2. 流動比率: その記録を参照し、比率の計算・検索・CLIを追加する提案。文書の重複・競合は上段へ同期する際に解消します。
+
+単なるbaseの連鎖ではなく、GitHubの正式stack登録を確認します。取り込みは下段から順にmainへ行うか、正式stackをmainへまとめて取り込む方法で判断してください。先行PRがmainへ入った後に、上段を古い作業ブランチへ取り込む操作は避け、取り込み先とstackの自動調整を確認します。今回こちらからマージはしません。
 
 ## 同期後のローカル検証
 
 | 対象 | 環境 | 確認結果 |
 |---|---|---|
 | mainへ統合した#24の検証記録 | Node 26.12.1 / npm 12.2.1 | build、型検査、型の使用例、426テスト（3項目専用73件）、保存保護のPython 5テスト成功 |
-| この検索PR | Node 26.12.1 / npm 12.2.1 | build、型検査、型の使用例、489テスト（検索専用63件）、保存保護のPython 5テスト成功 |
+| #26の検索機能 | Node 26.12.1 / npm 12.2.1 | build、型検査、型の使用例、489テスト（検索専用63件）、保存保護のPython 5テスト成功 |
 
 検索PRはmainの`3349809`から作成しています。過去の一時的な組合せ検証の件数とは区別します。lintの設定はありません。
 

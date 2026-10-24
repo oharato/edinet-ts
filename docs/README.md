@@ -6,9 +6,11 @@
 
 | やりたいこと | 最初に読む資料 |
 |---|---|
+| 実際の決算書との一致・未確認範囲を知りたい | [実データの確認結果](REAL_DATA_VALIDATION.md) |
 | 会社の数値を読み、元の記載も確認したい | [数値の取り出し方](METRIC_SELECTION.md) |
 | 流動資産・流動負債・負債合計を読みたい | [今回の3項目](BALANCE_SHEET_NORMALIZATION.md) |
 | 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（このPRで確認中） |
+| 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（このPRで追加、確認中） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
 | 次に何を作るか知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md) |
 
