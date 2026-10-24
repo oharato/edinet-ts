@@ -1,5 +1,5 @@
 import { EdinetRepository } from "./db/edinet-repository";
-import { EdinetXbrlDownloader, EdinetClientOptions, EdinetDocument } from "./edinet-xbrl-downloader";
+import { EdinetXbrlDownloader, EdinetClientOptions, EdinetDocument, EdinetRequestOptions, EdinetRequestError, EdinetRequestErrorCode } from "./edinet-xbrl-downloader";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetMetadata } from "./db/edinet-metadata";
@@ -43,8 +43,17 @@ export class Edinet {
     public async getFinancialHistory(
         ticker: string,
         years: number = 5,
-        docType: string = EdinetDocumentType.AnnualCards // 120
+        docType: string = EdinetDocumentType.AnnualCards, // 120
+        request?: EdinetRequestOptions
     ): Promise<FinancialHistory[]> {
+        if (request !== undefined) {
+            let signal: AbortSignal | undefined;
+            try { signal = request.signal; }
+            catch { throw new Error("signalはAbortSignalまたはundefinedで指定してください"); }
+            if (signal !== undefined && !(signal instanceof AbortSignal)) throw new Error("signalはAbortSignalまたはundefinedで指定してください");
+            request = { signal };
+        }
+        if (request?.signal?.aborted) throw new EdinetRequestError(EdinetRequestErrorCode.Aborted);
         // ティッカーを正規化 (7203 -> 72030)
         const secCode = ticker.length === 4 ? `${ticker}0` : ticker;
 
@@ -67,10 +76,12 @@ export class Edinet {
         for (const doc of docs) {
             try {
                 // XBRLを取得 (ダウンロード & キャッシュ)
-                const xbrlPath = await this.downloader.download(doc.docID);
+                const xbrlPath = await (request === undefined ? this.downloader.download(doc.docID) : this.downloader.download(doc.docID, undefined, request));
+                if (request?.signal?.aborted) throw new EdinetRequestError(EdinetRequestErrorCode.Aborted);
 
                 // ファイル読み込み (Node.js環境前提)
                 const fs = await import("fs"); // Dynamic import to avoid top-level node dep if used in edge (though Edinet class is node-centric mostly)
+                if (request?.signal?.aborted) throw new EdinetRequestError(EdinetRequestErrorCode.Aborted);
                 const xbrlContent = fs.readFileSync(xbrlPath, "utf-8");
 
                 // 解析
@@ -86,7 +97,8 @@ export class Edinet {
                 });
 
             } catch (e) {
-                console.error(`書類の処理に失敗しました ${doc.docID} (${doc.submitDate}):`, e);
+                if (e instanceof EdinetRequestError && e.code !== EdinetRequestErrorCode.Network) throw e;
+                console.error("書類の処理に失敗しました（詳細は非表示）");
             }
         }
 

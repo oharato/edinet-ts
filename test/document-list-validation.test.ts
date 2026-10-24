@@ -19,7 +19,7 @@ describe("書類一覧の応答検証", () => {
     const fetchMock = vi.fn();
     let downloader: EdinetXbrlDownloader;
     const respond = (body: unknown) => {
-        fetchMock.mockResolvedValue({ ok: true, json: async () => body });
+        fetchMock.mockImplementation(async () => new Response(JSON.stringify(body)));
     };
 
     beforeEach(() => {
@@ -65,13 +65,13 @@ describe("書類一覧の応答検証", () => {
     });
 
     it("HTTP エラーをそのまま失敗として扱う", async () => {
-        fetchMock.mockResolvedValue({ ok: false, status: 400, statusText: "Bad Request" });
-        await expect(downloader.search("2024-06-25")).rejects.toThrow("Failed to fetch documents list: Bad Request");
+        fetchMock.mockResolvedValue(new Response(null, { status: 400, statusText: "Bad Request" }));
+        await expect(downloader.search("2024-06-25")).rejects.toThrow("Failed to fetch documents list: HTTP 400");
     });
 
     it("不正 JSON を空配列に変換しない", async () => {
-        fetchMock.mockResolvedValue({ ok: true, json: async () => { throw new SyntaxError("Invalid JSON"); } });
-        await expect(downloader.search("2024-06-25")).rejects.toThrow("Invalid JSON");
+        fetchMock.mockResolvedValue(new Response("INVALID JSON"));
+        await expect(downloader.search("2024-06-25")).rejects.toThrow("invalid JSON");
     });
 
     it("数値の metadata.status も互換的に受け入れる", async () => {

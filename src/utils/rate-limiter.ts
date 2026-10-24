@@ -18,8 +18,16 @@ export class RateLimiter {
      * レート制限に従ってタスクを実行するようにスケジュールします。
      * @param task Promiseを返す関数（API呼び出しなど）
      */
-    public async schedule<T>(task: () => Promise<T>): Promise<T> {
+    public async schedule<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
         return new Promise<T>((resolve, reject) => {
+            const aborted = () => new DOMException("通信が中断されました", "AbortError");
+            if (signal?.aborted) { reject(aborted()); return; }
+            const onAbort = () => {
+                const index = this.queue.indexOf(wrappedTask);
+                if (index >= 0) this.queue.splice(index, 1);
+                signal?.removeEventListener("abort", onAbort);
+                reject(aborted());
+            };
             const wrappedTask = async () => {
                 try {
                     // 必要に応じて実行前の待機を行う
@@ -29,9 +37,15 @@ export class RateLimiter {
                     const waitTime = Math.max(0, nextAllowedTime - now);
 
                     if (waitTime > 0) {
-                        await new Promise(r => setTimeout(r, waitTime));
+                        await new Promise<void>((done, fail) => {
+                            const stop = () => { clearTimeout(timer); signal?.removeEventListener("abort", stop); fail(aborted()); };
+                            const timer = setTimeout(() => { signal?.removeEventListener("abort", stop); done(); }, waitTime);
+                            signal?.addEventListener("abort", stop, { once: true });
+                            if (signal?.aborted) stop();
+                        });
                     }
 
+                    if (signal?.aborted) throw aborted();
                     this.lastRequestTime = Date.now();
 
                     const result = await task();
@@ -39,11 +53,13 @@ export class RateLimiter {
                 } catch (e) {
                     reject(e);
                 } finally {
+                    signal?.removeEventListener("abort", onAbort);
                     this.activeCount--;
                     this.next();
                 }
             };
 
+            signal?.addEventListener("abort", onAbort, { once: true });
             this.queue.push(wrappedTask);
             this.next();
         });
