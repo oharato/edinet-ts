@@ -40,7 +40,7 @@
 
 ## 計画と判断の履歴
 
-- [進行中の改善計画](plans/EDINET_TS_ROADMAP.md): 現在地と、原本→TypeScript抽出→SQLite財務保存→SQL検索の方針案。詳細スキーマは未設計。
+- [進行中の改善計画](plans/EDINET_TS_ROADMAP.md): 現在地と、原本→TypeScript抽出→SQLite財務保存→SQL検索の方針案。専用DBの小規模試作はローカル検証済み。本番の保存構造・移行は未設計。
 - [財務明細正規化計画](plans/FINANCIAL_NORMALIZATION.md): 追加する数値と確認項目。最初の3項目はPR #24でmainへ取り込み済み、残りは計画。
 - [ADR 0001: ローカル配布物保持](adr/0001-local-distribution.md): 採用した保存・配布方針。
 - [履歴索引](history/README.md): 過去の依頼、失効した公開手順、過去比較と検証。現行の手順として実行しない。
