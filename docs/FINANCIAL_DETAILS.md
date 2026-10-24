@@ -167,3 +167,59 @@ node dist/cli.js screen-details --manifest /tmp/local-details/instant-files.json
 1年内返済予定の長期借入金は2原本ともタグがなく、採用時の実証は合成fixtureのみです。その他を含め、公式PDF表示値との独立照合や全市場の充足率は未検証です。
 
 Node26.12.1で全1,055テスト（既存976＋追加79）、本体/使用例の型検査・build・保存保護Python5件が成功しました。独立source検証とビルド済みAPI/CLI検証は各110確認、CJS exportも成功。既存の検査条件や制限時間は変更していません。
+
+## 保存JSONの原値・出典を検査して検索する
+
+この版は`normalizeFinancialDetailSnapshot()`、`screenFinancialDetailSnapshots()`とCLI `screen-details-json`を追加します。`createFinancialDetailSnapshot()`の出力をJSON保存し、元XMLを読み直さずに同じ条件で検索できます。対象は上記15項目で、既定5項目・明示項目・期間型の規則はXML検索と同じです。
+
+保存用データは、原本を読むAPIから作ります。次は合成の会社コード/書類IDを使う例です。`xml`は利用者が明示して読み込んだ原本、保存先のフォルダは作成済みとします。金額入りJSONはGit管理外で保管してください。
+
+```ts
+import { writeFileSync, readFileSync } from "node:fs";
+import { createFinancialDetailSnapshot, normalizeFinancialDetailSnapshot,
+    screenFinancialDetailSnapshots, FinancialDetailMetricId,
+    AccountingStandard, ConsolidationScope, SortOrder } from "edinet-ts";
+
+const snapshot = createFinancialDetailSnapshot(xml, {
+    secCode: "1001", docID: "SYNTHETIC1", scope: ConsolidationScope.Consolidated,
+    accountingStandard: AccountingStandard.JGAAP, currency: "JPY", period: { instant: "2025-03-31" }
+});
+writeFileSync("/tmp/local-details/rows.json", JSON.stringify([snapshot], null, 2));
+const saved = JSON.parse(readFileSync("/tmp/local-details/rows.json", "utf8"));
+const checked = saved.map(normalizeFinancialDetailSnapshot);
+const result = screenFinancialDetailSnapshots(checked, {
+    sortBy: FinancialDetailMetricId.CashAndDeposits, order: SortOrder.Descending
+});
+```
+
+`normalizeFinancialDetailSnapshot()`は入力を変更せず複製し、metadata、原decimal文字列、検索用number、採用状態、採用元と候補の整合を検査します。タグ・URI形式・期間・範囲・entity・単位・次元・decimals・nil、sourceとevidenceの対応を確認します。数値だけを書き換えたり、出典を削除して`selected`を残したりしたデータは拒否します。不使用項目も含めて検査し、条件で不正データを隠しません。
+
+JSONへ保持できない特殊object、getter/Proxy、循環、非有限数などを黙って変換しません。任意項目のundefinedはJSON保存時に省略できます。JSONが`-0`を0へ変える場合は原値から検索用の`-0`を復元し、元の原文字列は保ちます。安全なnumberを作れない原値は丸めず、既存と同じく検索から除外します。
+
+**これは保存証跡の内部整合検査です。元XMLの再解析・真正性認証・XBRLスキーマ検証ではありません。** 証跡全体を整合的に作り直したJSONが、本物の原本から得られたかは証明できません。元XMLのnamespace検証flag、QName（接頭辞付き項目名）のURI表、省略されたcontext等は、保存された証跡だけでは復元できません。こうした限界を理由に、非採用状態を推測で採用へ変えることはしません。原本・解析版・内容hashの管理と照合は別途必要です。
+
+保存snapshotは、同じ期間型の既知項目の非空集合です。検索で返すよう指定した項目の選択記録が存在しなければ、設定エラーにします。**記録していない項目と、原本にタグがない項目を区別するためです。** 一部だけを保存した場合は、その集合を`metricIds`へ明示してください。記録された`missing`/`unsupported`/`ambiguous`は、その理由と候補を保持したまま扱います。
+
+期間・分類・範囲・基準・JPYが混在する集合や、同一企業/書類の複数候補は拒否します。出典の会社コードと原本の対応を認証したり、最新/訂正後の書類を選んだりする機能ではありません。
+
+### JSON検索CLI
+
+```sh
+node dist/cli.js screen-details-json --file /tmp/local-details/rows.json --sort-by cashAndDeposits --order desc --pretty
+node dist/cli.js screen-details-json --file /tmp/local-details/cf-rows.json --metrics depreciationOperatingCashFlow --sort-by depreciationOperatingCashFlow
+```
+
+入力は`FinancialDetailSnapshot[]`です。1ファイル100件/64MiB以下のUTF-8 JSONを読みます。同一の期間・分類・範囲・基準・通貨で比較する集合を用意してください。条件・項目指定・順序・件数・診断はXML版と同じで、正常はJSONと終了0、設定/保存データの不正はstderrと終了1です。入力JSONを書き換えず、元XML・DB・ネットワークへはアクセスしません。性能は未測定です。
+
+| 入口 | 入力 | 処理 |
+|---|---|---|
+| `screen-details` | 原本ファイルとmetadataの一覧 | XMLを解析して直接項目を選び検索 |
+| `screen-details-json` | 保存した財務snapshotの配列 | 保存証跡を検査して検索 |
+
+SQLへの永続保存・差分更新・解析版管理は、このJSON検索の完成とは別です。既存BS3 StoreとDB形式は変更していません。
+
+保存済み2社・2時点・2範囲・2期間型の16snapshot、計120選択結果（80採用・40欠損）がJSON往復で保持されました。XML検索とJSON検索の46条件も一致し、原本2件は不変でした。これは既存XML経路との同等性確認で、新たなPDF表示値との独立照合ではありません。
+
+Node26.12.1で全1,378テスト（既存1,159＋追加219）、本体/使用例の型検査・build・保存保護Python5件が成功しました。独立sourceレビュー471確認も成功し、既存の期待値や制限時間は変更していません。
+
+最終の独立確認は、source471確認、ビルド済みAPI/CLI478確認、CJSルート公開も成功しました。文書相対リンク102件に欠損はありませんでした。独立レビューは合成入力で実施しています。
