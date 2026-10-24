@@ -16,6 +16,7 @@
         "company-screening.ts",
         "financial-detail-snapshots.ts",
         "financial-detail-store.ts",
-        "http-request-lifecycle.ts"
+        "http-request-lifecycle.ts",
+        "annual-operating-income-growth.ts"
     ]
 }

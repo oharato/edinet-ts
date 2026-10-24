@@ -10,6 +10,7 @@ import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
 import { screenAnnualRevenueGrowth } from "./annual-revenue-growth";
+import { screenAnnualOperatingIncomeGrowth } from "./annual-operating-income-growth";
 import { screenFinancialDetailDocuments } from "./financial-detail-screening";
 import { screenFinancialDetailSnapshots } from "./financial-detail-snapshots";
 import { readRegularFile, LOCAL_IMPORT_LIMITS } from "./local-balance-sheet-import";
@@ -307,10 +308,12 @@ program.command("screen-details")
         } catch(error) { console.error(error instanceof Error?error.message:String(error));process.exitCode=1; }
     });
 
-program.command("screen-sales-growth")
-    .description("明示した前年/当年の12暦月売上高pairを前年比で検索します（1=100%）")
+/** 両前年比CLIの読取り上限・入力形式を同じに保ちます。数値の検査は各APIが行います。 */
+function registerAnnualGrowthCommand(name:string,description:string,metric:string,screen:(pairs:any[],options:any)=>unknown):void {
+program.command(name)
+    .description(description)
     .requiredOption("--manifest <path>", "previous/currentにfileとmetadataを持つJSON配列")
-    .option("--conditions <json>", "netSalesGrowthのAND条件", "[]")
+    .option("--conditions <json>", `${metric}のAND条件`, "[]")
     .option("--order <order>", "ascまたはdesc", "desc")
     .option("--offset <number>", "開始位置", "0")
     .option("--limit <number>", "最大件数")
@@ -323,9 +326,13 @@ program.command("screen-sales-growth")
                 const input=readRegularFile(path.resolve(path.dirname(manifestPath),entry.file),Math.min(LOCAL_IMPORT_LIMITS.sourceBytes,LOCAL_IMPORT_LIMITS.totalBytes-bytes));bytes+=input.bytes.byteLength;return {xml:new TextDecoder("utf-8",{fatal:true}).decode(input.bytes),metadata:entry.metadata};};
             const pairs=entries.map(pair=>{if(!pair||typeof pair!=="object"||Array.isArray(pair)||Object.keys(pair).some(key=>!["previous","current"].includes(key)))throw new Error("previous/currentを明示してください");return {previous:load(pair.previous),current:load(pair.current)};});
             for(const value of [options.offset,options.limit])if(value!==undefined&&!/^\d+$/.test(value))throw new Error("offset/limitは0以上の整数です");
-            console.log(JSON.stringify(screenAnnualRevenueGrowth(pairs,{conditions:JSON.parse(options.conditions),order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)}),null,options.pretty?2:undefined));
+            console.log(JSON.stringify(screen(pairs,{conditions:JSON.parse(options.conditions),order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)}),null,options.pretty?2:undefined));
         }catch(error){console.error(error instanceof Error?error.message:String(error));process.exitCode=1;}
     });
+
+}
+registerAnnualGrowthCommand("screen-sales-growth","明示した前年/当年の12暦月売上高pairを前年比で検索します（1=100%）","netSalesGrowth",screenAnnualRevenueGrowth);
+registerAnnualGrowthCommand("screen-operating-income-growth","明示した前年/当年の12暦月営業利益pairを前年比で検索します（前期正値・1=100%）","operatingIncomeGrowth",screenAnnualOperatingIncomeGrowth);
 
 program.command("screen-bs")
     .description("ローカルXBRL一覧から財務3項目・流動比率を検索します（currentRatio: 1=100%）")
