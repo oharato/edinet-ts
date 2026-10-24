@@ -1,0 +1,8 @@
+import { calculateAnnualRevenueGrowth,screenAnnualRevenueGrowth,AnnualGrowthMetricId,ComparisonOperator,AnnualRevenuePair } from "../../src/index";
+declare const pair:AnnualRevenuePair;
+const result=calculateAnnualRevenueGrowth(pair);if(result.status==="calculated"){const n:string=result.exact.numerator;const value:number=result.value;}
+screenAnnualRevenueGrowth([pair],{conditions:[{metric:AnnualGrowthMetricId.NetSalesGrowth,operator:ComparisonOperator.GreaterThanOrEqual,value:0.2}]});
+// @ts-expect-error EPS等を同じ成長計算へ混ぜない
+screenAnnualRevenueGrowth([pair],{conditions:[{metric:"earningsPerShareGrowth",operator:"gte",value:0.2}]});
+// @ts-expect-error 年次分類は明示的なannual
+const wrong:AnnualRevenuePair={previous:{...pair.previous,metadata:{...pair.previous.metadata,periodType:"ytd"}},current:pair.current};

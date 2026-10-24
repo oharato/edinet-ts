@@ -6,6 +6,7 @@ import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
+import { screenAnnualRevenueGrowth } from "./annual-revenue-growth";
 import { screenFinancialDetailDocuments } from "./financial-detail-screening";
 import { readRegularFile, LOCAL_IMPORT_LIMITS } from "./local-balance-sheet-import";
 import { runLocalBalanceSheetImport, runLocalBalanceSheetDiff } from "./local-balance-sheet-import";
@@ -176,6 +177,26 @@ program.command("screen-details")
             for (const value of [options.offset,options.limit]) if (value!==undefined&&!/^\d+$/.test(value)) throw new Error("offset/limitは0以上の整数です");
             console.log(JSON.stringify(screenFinancialDetailDocuments(documents,{conditions:JSON.parse(options.conditions),sortBy:options.sortBy,order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)}),null,options.pretty?2:undefined));
         } catch(error) { console.error(error instanceof Error?error.message:String(error));process.exitCode=1; }
+    });
+
+program.command("screen-sales-growth")
+    .description("明示した前年/当年の12暦月売上高pairを前年比で検索します（1=100%）")
+    .requiredOption("--manifest <path>", "previous/currentにfileとmetadataを持つJSON配列")
+    .option("--conditions <json>", "netSalesGrowthのAND条件", "[]")
+    .option("--order <order>", "ascまたはdesc", "desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        try{
+            const manifestPath=path.resolve(options.manifest),entries=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(manifestPath,LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if(!Array.isArray(entries)||entries.length>LOCAL_IMPORT_LIMITS.entries)throw new Error("manifestは100pair以下の配列です");let bytes=0;
+            const load=(entry:any)=>{if(!entry||typeof entry!=="object"||Array.isArray(entry)||Object.keys(entry).some(key=>!["file","metadata"].includes(key))||typeof entry.file!=="string"||!entry.file.trim())throw new Error("不正な原本指定です");
+                const input=readRegularFile(path.resolve(path.dirname(manifestPath),entry.file),Math.min(LOCAL_IMPORT_LIMITS.sourceBytes,LOCAL_IMPORT_LIMITS.totalBytes-bytes));bytes+=input.bytes.byteLength;return {xml:new TextDecoder("utf-8",{fatal:true}).decode(input.bytes),metadata:entry.metadata};};
+            const pairs=entries.map(pair=>{if(!pair||typeof pair!=="object"||Array.isArray(pair)||Object.keys(pair).some(key=>!["previous","current"].includes(key)))throw new Error("previous/currentを明示してください");return {previous:load(pair.previous),current:load(pair.current)};});
+            for(const value of [options.offset,options.limit])if(value!==undefined&&!/^\d+$/.test(value))throw new Error("offset/limitは0以上の整数です");
+            console.log(JSON.stringify(screenAnnualRevenueGrowth(pairs,{conditions:JSON.parse(options.conditions),order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)}),null,options.pretty?2:undefined));
+        }catch(error){console.error(error instanceof Error?error.message:String(error));process.exitCode=1;}
     });
 
 program.command("screen-bs")
