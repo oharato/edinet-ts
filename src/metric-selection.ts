@@ -110,8 +110,11 @@ export function selectDefinedMetricFact<Id extends string>(definition: MetricDef
                 }
                 matches.push(item);
                 const [prefix] = candidate.key.split(":");
-                const taxonomy = prefix === "jppfs_cor" ? "jppfs" : "jpcrp";
-                if (key !== candidate.key || !new RegExp(`^http://disclosure\\.edinet-fsa\\.go\\.jp/taxonomy/${taxonomy}/\\d{4}-\\d{2}-\\d{2}/${prefix}$`).test(fact.namespaceURI ?? "")) item.reason = "unknown-namespace";
+                const taxonomy = prefix === "jppfs_cor" ? "jppfs" : prefix === "jpcrp_cor" ? "jpcrp" : prefix === "jpigp_cor" ? "jpigp" : undefined;
+                const namespaceDate = taxonomy ? new RegExp(`^http://disclosure\\.edinet-fsa\\.go\\.jp/taxonomy/${taxonomy}/(\\d{4}-\\d{2}-\\d{2})/${prefix}$`).exec(fact.namespaceURI ?? "")?.[1] : undefined;
+                // jpigpは詳細タグ付け導入版以降だけを対象にし、旧IFRSタクソノミを代用しません。
+                const namespaceSupported = namespaceDate !== undefined && (prefix !== "jpigp_cor" || validDate(namespaceDate) && namespaceDate >= "2018-03-31");
+                if (key !== candidate.key || !namespaceSupported) item.reason = "unknown-namespace";
                 else if (duplicateContexts.has(context.id)) item.reason = "duplicate-context";
                 else if (!candidate.supported) item.reason = "unsupported-semantics";
                 else if (fact.nil) item.reason = "nil";
