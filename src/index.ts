@@ -21,3 +21,6 @@ export * from "./db/balance-sheet-store";
 export * from "./balance-sheet-import";
 
 export * from "./balance-sheet-version-diff";
+
+export * from "./financial-detail-registry";
+export * from "./financial-detail-screening";

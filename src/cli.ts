@@ -6,6 +6,8 @@ import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
+import { screenFinancialDetailDocuments } from "./financial-detail-screening";
+import { readRegularFile, LOCAL_IMPORT_LIMITS } from "./local-balance-sheet-import";
 import { runLocalBalanceSheetImport, runLocalBalanceSheetDiff } from "./local-balance-sheet-import";
 import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots } from "./balance-sheet-screening";
 import { screenFinancialSnapshots } from "./financial-screening";
@@ -149,6 +151,31 @@ program.command("diff-bs")
             console.error(error instanceof Error ? error.message : String(error));
             process.exitCode = 1;
         }
+    });
+
+program.command("screen-details")
+    .description("明示したローカル原本から直接財務5項目を検索します（時点/期間を混在させません）")
+    .requiredOption("--manifest <path>", "fileとmetadataを持つJSON配列（相対fileは一覧基準）")
+    .option("--conditions <json>", "AND条件のJSON配列", "[]")
+    .option("--sort-by <metric>", "直接財務5項目のID")
+    .option("--order <order>", "ascまたはdesc", "desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifestPath = path.resolve(options.manifest);
+            const entries = JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(manifestPath,LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error("manifestは100件以下の配列です");
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(key => !["file","metadata"].includes(key)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error("不正な財務明細manifestです");
+                const input = readRegularFile(path.resolve(path.dirname(manifestPath),entry.file),Math.min(LOCAL_IMPORT_LIMITS.sourceBytes,LOCAL_IMPORT_LIMITS.totalBytes-bytes));bytes+=input.bytes.byteLength;
+                return {xml:new TextDecoder("utf-8",{fatal:true}).decode(input.bytes),metadata:entry.metadata};
+            });
+            for (const value of [options.offset,options.limit]) if (value!==undefined&&!/^\d+$/.test(value)) throw new Error("offset/limitは0以上の整数です");
+            console.log(JSON.stringify(screenFinancialDetailDocuments(documents,{conditions:JSON.parse(options.conditions),sortBy:options.sortBy,order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)}),null,options.pretty?2:undefined));
+        } catch(error) { console.error(error instanceof Error?error.message:String(error));process.exitCode=1; }
     });
 
 program.command("screen-bs")
