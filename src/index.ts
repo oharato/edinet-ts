@@ -41,3 +41,6 @@ export * from "./document-relations";
 
 export * from "./ifrs-balance-sheet-registry";
 export * from "./ifrs-balance-sheet-screening";
+
+export type { ContextDimensionsTraceResult, ContextDimensionTraceCandidate, ContextDimensionEntryTrace, ContextDimensionTraceMap,
+    DimensionQNameTrace, DimensionNamespaceBinding, DimensionTraceDiagnostic, DimensionTraceDiagnosticCode, TypedDimensionElementTrace } from "./context-dimension-traces";

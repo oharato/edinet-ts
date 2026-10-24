@@ -1,3 +1,4 @@
+import type { ContextDimensionTraceMap, ContextDimensionsTraceResult } from "./context-dimension-traces";
 import { IFRS_BALANCE_SHEET_REGISTRY, IfrsBalanceSheetMetricId } from "./ifrs-balance-sheet-registry";
 import { WORKFORCE_REGISTRY, WorkforceMetricId } from "./workforce-registry";
 import { FINANCIAL_DETAIL_REGISTRY, FinancialDetailMetricId } from "./financial-detail-registry";
@@ -80,9 +81,22 @@ export class EdinetXbrlObject {
     private duplicateContextIds = new Set<string>();
     private unitMap = new Map<string, string>();
     private _docID: string;
+    #contextDimensionTraces: ContextDimensionTraceMap;
 
-    constructor(docID: string = "") {
+    constructor(docID: string = "", contextDimensionTraces: ContextDimensionTraceMap = new Map()) {
         this._docID = docID;
+        this.#contextDimensionTraces = structuredClone(new Map(contextDimensionTraces));
+    }
+
+    /** 名前空間解決の証跡だけを返します。DTSの型・軸所属・表所属の検証ではありません。 */
+    public traceContextDimensions(contextId: string): ContextDimensionsTraceResult {
+        if (typeof contextId !== "string" || !contextId.trim()) throw new Error("空でないcontextIdが必要です");
+        const candidates = this.#contextDimensionTraces.get(contextId) ?? [];
+        const duplicate = candidates.length > 1 || this.duplicateContextIds.has(contextId);
+        const diagnostics = duplicate ? [{ code: "duplicate-context" as const }] : !candidates.length ? [{ code: "trace-unavailable" as const }] : [];
+        const unsupported = candidates.some(candidate => candidate.diagnostics.length || candidate.dimensions.some(entry => entry.diagnostics.length));
+        return structuredClone({ contextId, status: duplicate ? "ambiguous" : !candidates.length ? "missing" : unsupported ? "unsupported" : "resolved",
+            dtsValidation: "not-performed", originalLexicalValidation: "not-performed", candidates, diagnostics });
     }
 
     /** 元のXMLを保持しない読み取り専用の会社情報。XML hash付き入口はcreateCompanyProfileです。 */
@@ -98,6 +112,7 @@ export class EdinetXbrlObject {
         this.contextMap.clear();
         this.duplicateContextIds.clear();
         this.unitMap.clear();
+        this.#contextDimensionTraces = new Map();
         this._docID = "";
     }
 
