@@ -40,3 +40,4 @@ export * from "./annual-operating-income-growth";
 export * from "./document-relations";
 
 export * from "./ifrs-balance-sheet-registry";
+export * from "./ifrs-balance-sheet-screening";

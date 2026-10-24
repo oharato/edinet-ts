@@ -1,6 +1,6 @@
 # IFRSの貸借対照表3項目を原記載から読む
 
-状態: 実装・ローカル検証済み（main統合前）。日本基準向けの保存・検索機能とは別の、値を選ぶAPIです。
+状態: 専用抽出APIは#55でmainへ統合し、取り込み後CIも成功しました。本変更でIFRS専用のメモリ検索とCLIを追加します。DB保存とは別です。
 
 IFRS（国際財務報告基準）の連結書類から、流動資産・流動負債・負債合計の直接記載を読みます。内訳を合算したり、負債合計から差し引いて流動負債を推定したりしません。候補が欠ける場合は0で埋めず、同じ対象に複数候補がある場合も勝手に一つへ決めません。
 
@@ -44,11 +44,68 @@ IFRS以外は`unsupported-standard`、単体など連結以外は`unsupported-se
 
 ## 今回は含めないもの
 
-既存のBS3 snapshot、流動比率、条件検索、CLI、差分取り込み、SQLiteは日本基準向けのままです。同じID表記だからといって、IFRSの選択結果をこれらへ混ぜないでください。連結・通貨・基準・期末の整合を保証した検索・保存は後続工程です。
+既存のBS3 snapshot、流動比率、差分取り込み、SQLiteは日本基準向けのままです。同じID表記だからといって、IFRSの選択結果をこれらへ混ぜないでください。IFRSのメモリ検索は下の専用APIを使います。IFRSの保存・比率計算は後続工程です。
 
-公式2版を基にした合成入力と、IFRS実原本・PDFでの照合は別です。実IFRS原本、途中の全年度・全版、金融業全般、複数社比較、全市場の充足率は未検証です。今回、原本取得や既存DB更新は行いません。
+公式2版を基にした合成入力と、IFRS実原本・PDFでの照合は別です。実IFRS原本、途中の全年度・全版、金融業全般、実複数社での比較、全市場の充足率は未検証です。今回、原本取得や既存DB更新は行いません。
 
 
 ## 検証結果
 
 Node26.12.1/npm12.2.1で全2,116テスト（既存2,007＋追加109）、本体/利用例の型検査、build、保存保護Python5件が成功しました。連結範囲などの設定を一度だけ固定する再現テストを含みます。独立確認はsource142、公開ESM142とCommonJS3の計145確認が成功しました。lint設定はありません。公式タクソノミに基づく合成検証であり、実IFRS原本やPDFの照合完了とは区別します。
+
+
+## 同じ期末のIFRS企業を読み比べる
+
+`createIfrsBalanceSheetSnapshot()`は原文字列・3項目の採用状態・metadataと、解析したXML文字列のSHA-256を返します。SHA-256は入力が同じかを確認する印であり、原本の真正性や申告した会社・書類番号との対応を証明するものではありません。
+
+`screenIfrsBalanceSheetDocuments()`は、明示した原本集合だけをメモリ上で検索します。IFRS専用metadataを使い、日本基準の型へ置き換えません。
+
+```ts
+import { screenIfrsBalanceSheetDocuments, IfrsBalanceSheetMetricId,
+    ComparisonOperator, SortOrder } from "edinet-ts";
+
+const base = { instant: "2025-03-31", scope: "Consolidated" as const,
+    accountingStandard: "IFRS" as const, currency: "JPY" as const };
+const result = screenIfrsBalanceSheetDocuments([
+    { xml: xmlA, metadata: { ...base, secCode: "1001", docID: "SYNTHETIC-A" } },
+    { xml: xmlB, metadata: { ...base, secCode: "1002", docID: "SYNTHETIC-B" } }
+], {
+    conditions: [{ metric: IfrsBalanceSheetMetricId.CurrentAssets,
+        operator: ComparisonOperator.GreaterThanOrEqual, value: 1000 }],
+    sortBy: IfrsBalanceSheetMetricId.CurrentAssets,
+    order: SortOrder.Descending, offset: 0, limit: 20
+});
+```
+
+会社コード・書類番号・金額は合成例です。`xmlA`と`xmlB`にはそれぞれの会社の原本を渡します。4桁の証券コードは既存の検索と同様、末尾0を付けた5桁にそろえます。基準・連結範囲・通貨・期末は呼出側の宣言で、元書類で確認してください。
+
+- 条件はAND、`gte/lte/gt/lt/eq`の5種類。指定項目の昇順・降順、同値時の会社コード/書類番号順、ページ指定に対応します。
+- 条件と並べ替えがなければ3項目すべてを必要とします。指定があれば、使った項目だけが必須です。未使用項目の欠損は診断に残しても行を除外しません。
+- 必要項目が欠損・非対応・曖昧・不安全な数値なら除外し、0では埋めません。0や負数の直接記載は絶対値化せず保ちます。safeNumberが付く値だけを検索に使います。
+- `total`はページ指定前の一致数、`excludedRows`は必要な数値が使えない行数、`filteredRows`は条件不一致の行数です。`reasonCounts`は項目ごとの診断件数なので、除外行数とは異なります。
+- 期末の混在、IFRS以外、単体、JPY以外、同じ会社/書類の複数指定、同じentityを別会社コードに使う入力は、絞り込み前に拒否します。最新書類を代わりに選びません。
+
+原本と検索条件は各100件以下です。性能保証や全市場DBではありません。外部で作ったsnapshotを受け入れて検索する機能、原本の自動取得、訂正後の選択、流動比率、SQL保存は含めません。
+
+### CLIの入力
+
+```json
+[
+  { "file": "company-a.xbrl", "metadata": {
+      "secCode": "1001", "docID": "SYNTHETIC-A", "instant": "2025-03-31",
+      "scope": "Consolidated", "accountingStandard": "IFRS", "currency": "JPY"
+  } }
+]
+```
+
+```sh
+node dist/cli.js screen-ifrs-bs --manifest /tmp/local-ifrs/files.json --sort-by currentAssets --order desc --limit 20 --pretty
+```
+
+相対fileは一覧JSONの場所を基準にします。一覧100件/2MiB、原本1件64MiB/合計256MiB、厳密なUTF-8と通常ファイルへの解決を要求します。シンボリックリンクを一律に拒否する機能ではありません。原本のUTF-8 BOMは落とさずに解析・hashへ渡します。APIのhashは渡されたXML文字列のUTF-8表現で、呼出側が先に文字列を加工した場合は加工後の印です。
+
+成功はJSONと終了0、入力不正は元内容を転載しない定型stderrと終了1です。終了0でも除外理由を確認してください。原本・既存DB・キャッシュは変更しません。実IFRS原本の取得や照合は行っていないため、この検索の確認も合成入力による仕様検証です。
+
+### 検索の確認結果
+
+Node26.12.1/npm12.2.1で全2,194テスト（既存2,116＋API71＋CLI7）、本体と利用例の型検査、build、保存保護Python5件が成功しました。独立source522確認と入力固定等8確認、公開ESM/CJS各533確認（計1,066）、built CLI8確認も成功しています。UTF-8 BOMを含む解析用hashと入力不変を確認しました。これらは合成入力の結果で、実IFRS原本・PDFとの照合や性能測定の結果ではありません。lint設定はありません。
