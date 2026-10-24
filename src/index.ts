@@ -24,3 +24,5 @@ export * from "./balance-sheet-version-diff";
 
 export * from "./financial-detail-registry";
 export * from "./financial-detail-screening";
+
+export * from "./annual-revenue-growth";
