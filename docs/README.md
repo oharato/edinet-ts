@@ -1,6 +1,6 @@
 # ドキュメント索引
 
-更新日: 2026-10-23。使い方・現在の仕様はこの階層、計画はplans、過去の経緯はadr/historyに置きます。
+更新日: 2026-10-24。使い方・現在の仕様はこの階層、計画はplans、過去の経緯はadr/historyに置きます。
 
 まずは「何をしたいか」から選んでください。言葉に迷ったら[用語集](GLOSSARY.md)を参照できます。
 
@@ -9,11 +9,12 @@
 | 実際の決算書との一致・未確認範囲を知りたい | [実データの確認結果](REAL_DATA_VALIDATION.md) |
 | 会社の数値を読み、元の記載も確認したい | [数値の取り出し方](METRIC_SELECTION.md) |
 | 流動資産・流動負債・負債合計を読みたい | [今回の3項目](BALANCE_SHEET_NORMALIZATION.md) |
-| 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（このPRで確認中） |
-| 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（このPRで追加、確認中） |
+| 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（#26でmainへ統合済み） |
+| 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（#28でmainへ統合済み） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
-| 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（このローカルブランチで追加、未公開） |
-| 次に何を作るか知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md) |
+| 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（PRレビュー対象、main未反映） |
+| 現在地と次の方針を知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md)。main完了・PR確認待ち・未着手・未検証を区別 |
+| 変更の経緯を知りたい | [#27 検証記録](https://github.com/oharato/edinet-ts/pull/27)・[#28 流動比率](https://github.com/oharato/edinet-ts/pull/28)は正式stack #29でmainへ統合済み |
 
 以下は、実装・確認する人向けの詳しい資料一覧です。
 
@@ -40,7 +41,7 @@
 
 ## 計画と判断の履歴
 
-- [進行中の改善計画](plans/EDINET_TS_ROADMAP.md): 完了/ローカル検証/未実装/実データ未検証を分離。
+- [進行中の改善計画](plans/EDINET_TS_ROADMAP.md): 現在地と、原本→TypeScript抽出→SQLite財務保存→SQL検索の方針案。詳細スキーマは未設計。
 - [財務明細正規化計画](plans/FINANCIAL_NORMALIZATION.md): 追加する数値と確認項目。最初の3項目はPR #24でmainへ取り込み済み、残りは計画。
 - [ADR 0001: ローカル配布物保持](adr/0001-local-distribution.md): 採用した保存・配布方針。
 - [履歴索引](history/README.md): 過去の依頼、失効した公開手順、過去比較と検証。現行の手順として実行しない。
