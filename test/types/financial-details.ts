@@ -16,3 +16,11 @@ createFinancialDetailSnapshot("",duration,cfIds);
 screenFinancialDetailDocuments([{xml:"",metadata:duration}],{metricIds:cfIds,sortBy:FinancialDetailMetricId.DepreciationOperatingCashFlow});
 // @ts-expect-error CFの綴りを検査
 createFinancialDetailSnapshot("",duration,["depreciationCashFlow"]);
+
+const debtIds=[FinancialDetailMetricId.ShortTermLoansPayable,FinancialDetailMetricId.CurrentPortionOfLongTermLoansPayable,
+    FinancialDetailMetricId.LongTermLoansPayable,FinancialDetailMetricId.CurrentPortionOfBonds,FinancialDetailMetricId.BondsPayable,
+    FinancialDetailMetricId.LeaseObligationsCL,FinancialDetailMetricId.LeaseObligationsNCL];
+createFinancialDetailSnapshot("",instant,debtIds);
+screenFinancialDetailDocuments([{xml:"",metadata:instant}],{metricIds:debtIds,sortBy:FinancialDetailMetricId.BondsPayable});
+// @ts-expect-error 合算した有利子負債項目を追加したわけではありません
+createFinancialDetailSnapshot("",instant,["interestBearingDebt"]);

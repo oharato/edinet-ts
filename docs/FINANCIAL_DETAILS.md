@@ -1,6 +1,6 @@
 # 直接記載された財務項目を読む・複数社で探す
 
-状態: 既定5項目は#37でmainへ統合済み。明示して読むCF3項目も#39でmainへ統合済みです。未リリース。2026-10-24更新。
+状態: 既定5項目は#37でmainへ統合済み。明示して読むCF3項目も#39でmainへ統合済みです。この版は借入金・社債・リースの直接7残高を追加します。未リリース。2026-10-24更新。
 
 固定資産・固定負債・現金及び預金・売上原価・販管費を、原本XBRLから出典付きで読みます。指定した会社集合で条件検索・並べ替えもできます。一般事業のJ-GAAP直接タグを対象にし、既存の主要18指標/21指標検索、BS3、SQLite保存形式は変更しません。
 
@@ -14,7 +14,7 @@
 | `CostOfSales` | `costOfSales` | `CostOfSales` | 明示期間の売上原価 |
 | `SellingGeneralAndAdministrativeExpenses` | `sellingGeneralAndAdministrativeExpenses` | `SellingGeneralAndAdministrativeExpenses` | 明示期間の販売費及び一般管理費（販管費） |
 
-金額はJPY、元値のdecimal文字列を保持します。`FINANCIAL_DETAIL_REGISTRY_VERSION`は`"2"`です。候補・定義はfreezeしています。対応は既存生成型と公式taxonomy由来の定義、保存原本の存在確認を基に、共有の厳密選択器を使って独立実装しています。
+金額はJPY、元値のdecimal文字列を保持します。`FINANCIAL_DETAIL_REGISTRY_VERSION`は`"3"`です。候補・定義はfreezeしています。対応は既存生成型と公式taxonomy由来の定義、保存原本の存在確認を基に、共有の厳密選択器を使って独立実装しています。
 
 現金及び預金と現金同等物は別です。総資産や繰延資産を固定資産へ足したり、工事原価・部門費用・営業費用を売上原価へ代用したりしません。内訳合算・差額補完・符号の反転は行いません。銀行・保険向け別mapping、IFRS/US-GAAPの候補はありません。対象タグがなければ欠損等の理由を返します。
 
@@ -103,7 +103,7 @@ CF（キャッシュフロー）は現金の収入・支出を示す計算書で
 
 最初は営業CFの調整項目である減価償却費、次は有形固定資産の取得支出、最後は有形固定資産と無形資産を合わせた取得支出です。設備だけの支出と合計支出は別項目であり、互いに代用・合算しません。販管費の減価償却や減価償却累計額からCFの値を補うこともありません。EBITDAや設備投資総額を計算する機能ではありません。
 
-既存利用を保つため、registryに8項目あっても既定は`DEFAULT_FINANCIAL_DETAIL_METRICS`の従来5項目のままです。新項目を検索する場合は、返す項目の一覧`metricIds`へ明示します。単一snapshotでは第3引数です。
+既存利用を保つため、registryが拡張されても既定は`DEFAULT_FINANCIAL_DETAIL_METRICS`の従来5項目のままです。新項目を検索する場合は、返す項目の一覧`metricIds`へ明示します。単一snapshotでは第3引数です。
 
 ```ts
 const metricIds = [FinancialDetailMetricId.DepreciationOperatingCashFlow,
@@ -128,3 +128,42 @@ node dist/cli.js screen-details --manifest /tmp/local-details/duration-files.jso
 このCF追加版では全898テスト（既存869＋新規29）、本体/使用例の型検査・build・保存保護Python5件、独立レビュー99検証が成功しました。CLIの明示選択・設定エラー・原本不変も確認しています。lint設定はありません。
 
 全体再実行では既存オフライン統合テストが並列実行時に5秒の制限を超えたため、公開前にCIと同じ`--maxWorkers=1`で全898件の成功を確認しました。期待値や検査条件、制限時間は変更していません。
+
+## 借入金・社債・リースの直接7残高
+
+次の7項目も`metricIds`/CLI `--metrics`で明示して読み、同じ期末・範囲の会社集合で検索できます。一般事業J-GAAP/JPYのinstantだけです。辞書は計15項目ですが、既定は従来5項目（時点3・期間2）を維持します。
+
+| 定数 / ID | 元の `jppfs_cor:` タグ | 意味 |
+|---|---|---|
+| `ShortTermLoansPayable` / `shortTermLoansPayable` | `ShortTermLoansPayable` | 短期借入金 |
+| `CurrentPortionOfLongTermLoansPayable` / `currentPortionOfLongTermLoansPayable` | `CurrentPortionOfLongTermLoansPayable` | 1年内返済予定の長期借入金 |
+| `LongTermLoansPayable` / `longTermLoansPayable` | `LongTermLoansPayable` | 長期借入金 |
+| `CurrentPortionOfBonds` / `currentPortionOfBonds` | `CurrentPortionOfBonds` | 1年内償還予定の社債 |
+| `BondsPayable` / `bondsPayable` | `BondsPayable` | 社債 |
+| `LeaseObligationsCL` / `leaseObligationsCL` | `LeaseObligationsCL` | 流動負債のリース債務 |
+| `LeaseObligationsNCL` / `leaseObligationsNCL` | `LeaseObligationsNCL` | 固定負債のリース債務 |
+
+CL/NCLは流動/固定の区分です。各原記載を独立に保持し、合算・排他的な内訳だとみなすこと・他科目での補完はしません。短期借入金に1年内返済分が含まれるかは自動判定しません。関連会社の借入内訳や負債合計を元タグの代わりにせず、欠損を0としません。原本の0や負数の記載は既存の直接財務APIと同じく保持します。
+
+```ts
+const loans = createFinancialDetailSnapshot(xml, instantMetadata, [
+    FinancialDetailMetricId.ShortTermLoansPayable,
+    FinancialDetailMetricId.LongTermLoansPayable
+]);
+```
+
+`instantMetadata`は上記と同じ証券コード・書類ID・基準・範囲・JPY・期末の指定です。既存検索APIへ同じ`metricIds`と条件/並べ替えを渡せます。CLIも同じ時点形式の一覧JSONを使います。
+
+```sh
+node dist/cli.js screen-details --manifest /tmp/local-details/instant-files.json --metrics shortTermLoansPayable,longTermLoansPayable --sort-by longTermLoansPayable --order desc --pretty
+```
+
+7項目すべての開示は前提にしません。条件/並べ替えを省略すると明示一覧の全項目を要求するので、必要な項目だけを指定してください。CFの期間項目と同じ検索へ混ぜる指定は設定エラーです。
+
+新リース基準・IFRSや銀行/保険の別mapping、借入金合計・リース総額・有利子負債総額の算出には対応していません。型定義のラベルと既存計画を照合しましたが、正式XSDのperiodTypeを今回新たに網羅照合した意味ではありません。実証できた原本factはinstantです。
+
+保存済み2社・2期末・連結/単体の56組では、34項目が採用され元XMLの原値に一致しました。残りはnil4・タグなし12・指定範囲の候補なし6で、0補完しませんでした。Python標準XML処理とDecimalで別に作った28検索の期待値も一致し、原本は不変でした。2025年末値は2026年提出原本の前年列であり、2025年別提出XBRLの確認ではありません。
+
+1年内返済予定の長期借入金は2原本ともタグがなく、採用時の実証は合成fixtureのみです。その他を含め、公式PDF表示値との独立照合や全市場の充足率は未検証です。
+
+Node26.12.1で全1,055テスト（既存976＋追加79）、本体/使用例の型検査・build・保存保護Python5件が成功しました。独立source検証とビルド済みAPI/CLI検証は各110確認、CJS exportも成功。既存の検査条件や制限時間は変更していません。
