@@ -1,5 +1,4 @@
-import * as path from "path";
-import JSZip from "jszip";
+import { assertDownloadDocId, loadZipArchive, ZIP_LIMITS, type LoadedZipArchive } from "./zip-archive";
 import { EdinetDocumentType } from "./edinet-document-type";
 import { RateLimiter } from "./utils/rate-limiter";
 
@@ -177,13 +176,13 @@ export class EdinetXbrlDownloader {
             } catch (e) {
                 // ネットワークエラー
                 const delay = 1000 * Math.pow(2, attempt);
-                console.warn(`Network Error. Retrying in ${delay}ms...`, e);
+                console.warn(`EDINET通信エラー。${delay}ms後に再試行します。`);
                 await new Promise(r => setTimeout(r, delay));
                 attempt++;
             }
         }
 
-        throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`);
+        throw new Error(`EDINET通信に失敗しました（最大再試行${maxRetries}回）。`);
     }
 
     /**
@@ -218,41 +217,6 @@ export class EdinetXbrlDownloader {
         return results;
     }
 
-    private findXbrlFileInDir(dir: string, fs: any): string | null {
-        if (!fs.existsSync(dir)) return null;
-        const files = fs.readdirSync(dir);
-
-        // 1. カレントディレクトリをチェック (PublicDocがあればそれを優先)
-        const publicDocXbrl = files.find((f: string) => f.endsWith(".xbrl") && f.includes("PublicDoc"));
-        if (publicDocXbrl) return path.join(dir, publicDocXbrl);
-
-        const anyXbrl = files.find((f: string) => f.endsWith(".xbrl"));
-        if (anyXbrl) return path.join(dir, anyXbrl);
-
-        // 2. サブディレクトリをチェック
-        // "PublicDoc" ディレクトリを優先的に探索する
-        const dirs = files.filter((f: string) => {
-            try {
-                return fs.statSync(path.join(dir, f)).isDirectory();
-            } catch (e) { return false; }
-        });
-
-        dirs.sort((a: string, b: string) => {
-            // PublicDoc を先頭に
-            const aIsPublic = a.includes("PublicDoc");
-            const bIsPublic = b.includes("PublicDoc");
-            if (aIsPublic && !bIsPublic) return -1;
-            if (!aIsPublic && bIsPublic) return 1;
-            return 0;
-        });
-
-        for (const subDir of dirs) {
-            const found = this.findXbrlFileInDir(path.join(dir, subDir), fs);
-            if (found) return found;
-        }
-        return null;
-    }
-
     /**
      * 指定されたドキュメントIDの XBRL ファイルをダウンロードし、展開します。
      * @param docId EDINET書類管理ID (例: "S100XXXX")
@@ -261,179 +225,83 @@ export class EdinetXbrlDownloader {
      * @throws ディレクトリが未指定の場合や、ダウンロード/展開に失敗した場合
      */
     public async download(docId: string, targetDir?: string): Promise<string> {
-        let fs: any;
-        try {
-            fs = await import("fs");
-        } catch (e) {
-            throw new Error("File system access is not available in this environment. Use fetchXbrl() instead.");
-        }
-
+        assertDownloadDocId(docId);
         const dir = targetDir || this.rootDir;
-        if (!dir) {
-            throw new Error("Target directory is not specified. Set it via argument or EDINET_DOWNLOAD_DIR environment variable.");
-        }
-
-        const extractPath = path.join(dir, docId);
-
-        // 1. キャッシュチェック
-        if (fs.existsSync(extractPath)) {
-            const cachedXbrlPath = this.findXbrlFileInDir(extractPath, fs);
-            if (cachedXbrlPath) {
-                // console.log(`Using cached file for ${docId}`);
-                return cachedXbrlPath;
-            }
-        }
-
-        const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
-        const response = await this.fetchWithRetry(url);
-
-        if (!response.ok) {
-            throw new Error(`Failed to download document ${docId}: ${response.statusText}`);
-        }
-
-        const buffer = await response.arrayBuffer();
-
-        // 200 OKでもエラーJSONが返ってくる場合がある (例: API Key無効時)
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-            const text = new TextDecoder().decode(buffer);
-            try {
-                const error = JSON.parse(text);
-                throw new Error(`API Error (200 OK): ${error.message || text}`);
-            } catch (e) {
-                // Not valid JSON, ignore
-            }
-        }
-
-        let zip;
-        try {
-            zip = await JSZip.loadAsync(buffer);
-        } catch (e) {
-            const text = new TextDecoder().decode(buffer.slice(0, 500)); // First 500 chars (enough for simple JSON error)
-
-            // JSONエラーとしての解析を試みる
-            try {
-                const jsonError = JSON.parse(text);
-                if (jsonError.message) {
-                    throw new Error(`API Error: ${jsonError.message} (Status: ${jsonError.statusCode || 'Unknown'})`);
-                }
-            } catch (jsonEx) {
-                // JSONでない場合はそのまま続行
-            }
-
-            throw new Error(`Failed to load ZIP for document ${docId}. The response might not be a ZIP file. Start of content: "${text}". Original Error: ${e}`);
-        }
-
-        // XBRLファイルを探す
-        const files = Object.keys(zip.files);
-        // PublicDocフォルダ内のファイルを優先し、なければ任意の.xbrlファイルを取得します
-        const xbrlFileName =
-            files.find(name => name.endsWith(".xbrl") && name.includes("PublicDoc")) ||
-            files.find(name => name.endsWith(".xbrl"));
-
-        if (!xbrlFileName) {
-            throw new Error("No XBRL file found in the downloaded ZIP.");
-        }
-
-        // 全ファイルを展開（adm-zipの挙動に合わせて同期的に見せるが、JSZipは非同期）
-        // 注: JSZipは非同期なのでイテレートします
-
-        // この部分はNode.jsのfsに依存しています。
-        // ブラウザ環境ではこのメソッドは呼ぶべきではありません。
-        if (!fs.existsSync(extractPath)) {
-            fs.mkdirSync(extractPath, { recursive: true });
-        }
-
-        for (const filename of files) {
-            const fileData = await zip.file(filename)?.async("nodebuffer");
-            if (fileData) {
-                const dest = path.join(extractPath, filename);
-                const destDir = path.dirname(dest);
-                if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-                fs.writeFileSync(dest, fileData);
-            }
-        }
-
-        return path.join(extractPath, xbrlFileName);
+        if (!dir) throw new Error("Target directory is not specified.");
+        let cache: typeof import("./zip-cache");
+        try { cache = await import("./zip-cache"); }
+        catch { throw new Error("File system access is not available. Use fetchXbrl() instead."); }
+        const cached = cache.findCachedXbrl(dir, docId);
+        if (cached) return cached;
+        const archive = await this.loadDocumentArchive(docId);
+        return cache.persistZipArchive(dir, docId, archive, this.xbrlEntryName(archive));
     }
 
-    /**
-     * 指定されたドキュメントIDの XBRL ファイルをメモリ上にダウンロード・展開し、テキストとして返します。
-     * ローカルキャッシュが存在する場合は、それを読み込みます。
-     * @param docId EDINET書類管理ID
-     * @returns XBRLファイルの内容 (string)
-     */
+    /** 明示書類の安全に検査したZIP、または通常ファイルのキャッシュからUTF-8本文を返します。 */
     public async fetchXbrl(docId: string): Promise<string> {
-        // 1. キャッシュチェック (Node.js環境のみ)
+        assertDownloadDocId(docId);
         if (this.rootDir) {
-            try {
-                const fs = await import("fs");
-                const extractPath = path.join(this.rootDir, docId);
-                if (fs.existsSync(extractPath)) {
-                    const cachedXbrlPath = this.findXbrlFileInDir(extractPath, fs);
-                    if (cachedXbrlPath) {
-                        return fs.readFileSync(cachedXbrlPath, "utf-8");
-                    }
-                }
-            } catch (e) {
-                // fs のインポートに失敗した場合やその他のエラーは無視して、フェッチ処理に進む
+            let cache: typeof import("./zip-cache") | undefined;
+            try { cache = await import("./zip-cache"); }
+            catch (error) {
+                // Nodeでの権限/実装エラーを、キャッシュなしへ変換して通信しません。
+                if (typeof process !== "undefined" && process.versions?.node) throw error;
+            }
+            if (cache) {
+                const cached = cache.findCachedXbrl(this.rootDir, docId);
+                if (cached) return cache.readCachedXbrl(cached);
             }
         }
+        const archive = await this.loadDocumentArchive(docId);
+        const bytes = await archive.readEntry(this.xbrlEntryName(archive));
+        if (bytes.byteLength === 0) throw new Error("XBRL本文が空です");
+        return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    }
 
+    private xbrlEntryName(archive: LoadedZipArchive): string {
+        const names = archive.entries.filter(entry => !entry.dir && entry.name.endsWith(".xbrl")).map(entry => entry.name);
+        names.sort((left, right) => Number(right.split("/").includes("PublicDoc")) - Number(left.split("/").includes("PublicDoc")) || (left < right ? -1 : left > right ? 1 : 0));
+        const name = names[0];
+        if (!name) throw new Error("No XBRL file found in the downloaded ZIP.");
+        return name;
+    }
+
+    /** 圧縮応答もstreamで上限まで読み、応答本文や鍵をエラーメッセージへ混ぜません。 */
+    private async readZipResponse(response: Response, maxBytes = ZIP_LIMITS.compressedBytes): Promise<Uint8Array> {
+        if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > ZIP_LIMITS.compressedBytes) throw new Error("ZIP受信上限が不正です");
+        if (!response.body || typeof response.body.getReader !== "function") throw new Error("ZIP応答に読み取り可能なbodyがありません");
+        const reader = response.body.getReader();
+        const chunks: Uint8Array[] = []; let total = 0;
+        try {
+            const declared = response.headers.get("content-length");
+            if (declared && /^\d+$/.test(declared) && Number(declared) > maxBytes) throw new Error("ZIP受信量が上限を超えています");
+            for (;;) {
+                let item: ReadableStreamReadResult<Uint8Array>;
+                try { item = await reader.read(); }
+                catch { throw new Error("ZIP応答の受信に失敗しました（詳細は非表示）"); }
+                const { done, value } = item;
+                if (done) break;
+                if (!(value instanceof Uint8Array) || value.byteLength > maxBytes - total) throw new Error("ZIP受信量が上限を超えています");
+                total += value.byteLength; chunks.push(new Uint8Array(value));
+            }
+            const bytes = new Uint8Array(total); let offset = 0;
+            for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+            return bytes;
+        } catch (error) {
+            try { await reader.cancel(); } catch { /* 元の検査エラーを保持します。 */ }
+            throw error;
+        } finally { reader.releaseLock(); }
+    }
+
+    private async loadDocumentArchive(docId: string): Promise<LoadedZipArchive> {
         const url = `${EdinetXbrlDownloader.API_ENDPOINT}/documents/${docId}?type=1&Subscription-Key=${this.apiKey}`;
         const response = await this.fetchWithRetry(url);
-
-        if (!response.ok) {
-            throw new Error(`Failed to download document ${docId}: ${response.statusText}`);
+        if (!response.ok) throw new Error(`Failed to download document ${docId}: HTTP ${response.status}`);
+        if (response.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+            try { await response.body?.cancel(); } catch { /* 応答本文は出力しません。 */ }
+            throw new Error("EDINETのZIP取得応答がJSONでした（本文は非表示）");
         }
-
-        const buffer = await response.arrayBuffer();
-
-        // 200 OKでもエラーJSONが返ってくる場合がある
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-            const text = new TextDecoder().decode(buffer);
-            try {
-                const error = JSON.parse(text);
-                throw new Error(`API Error (200 OK): ${error.message || text}`);
-            } catch (e) {
-                // Not valid JSON
-            }
-        }
-
-        let zip;
-        try {
-            zip = await JSZip.loadAsync(buffer);
-        } catch (e) {
-            const text = new TextDecoder().decode(buffer.slice(0, 500));
-
-            try {
-                const jsonError = JSON.parse(text);
-                if (jsonError.message) {
-                    throw new Error(`API Error: ${jsonError.message} (Status: ${jsonError.statusCode || 'Unknown'})`);
-                }
-            } catch (jsonEx) {
-                // Not JSON
-            }
-
-            throw new Error(`Failed to load ZIP for document ${docId} (fetchXbrl). The response might not be a ZIP file. Start of content: "${text}". Original Error: ${e}`);
-        }
-
-        const files = Object.keys(zip.files);
-        const xbrlFileName =
-            files.find(name => name.endsWith(".xbrl") && name.includes("PublicDoc")) ||
-            files.find(name => name.endsWith(".xbrl"));
-
-        if (!xbrlFileName) {
-            throw new Error("No XBRL file found in the downloaded ZIP.");
-        }
-
-        const content = await zip.file(xbrlFileName)?.async("string");
-        if (!content) {
-            throw new Error("Failed to read XBRL file content.");
-        }
-
-        return content;
+        return loadZipArchive(await this.readZipResponse(response));
     }
 
     /**
