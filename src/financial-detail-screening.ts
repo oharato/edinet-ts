@@ -1,4 +1,3 @@
-import { XMLValidator } from "fast-xml-parser";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import type { FactSelectionResult, MetricSelectionOptions } from "./metric-selection";
 import { ComparisonOperator, SortOrder } from "./financial-options";
@@ -41,7 +40,6 @@ const cohortKey = (metadata: FinancialDetailMetadata) => JSON.stringify([metadat
 /** 指定した期間の直接科目だけを選択。期間分類は呼出側の宣言で、自動推定しません。 */
 export function createFinancialDetailSnapshot(xml: string, metadata: FinancialDetailMetadata, metricIds?: readonly FinancialDetailMetricId[]): FinancialDetailSnapshot {
     const normalized = normalizeMetadata(metadata), selectedIds = projection(normalized, metricIds);
-    if (typeof xml !== "string" || XMLValidator.validate(xml) !== true) throw new Error("整形式の原本XMLが必要です");
     const object = new EdinetXbrlParser().parse(xml, normalized.docID);
     const selections: FinancialDetailSnapshot["selections"] = {};
     for (const id of selectedIds) selections[id] = object.selectFinancialDetail(id, {
