@@ -6,7 +6,14 @@ export const FinancialDetailMetricId = Object.freeze({
     CostOfSales: "costOfSales", SellingGeneralAndAdministrativeExpenses: "sellingGeneralAndAdministrativeExpenses",
     DepreciationOperatingCashFlow: "depreciationOperatingCashFlow",
     PropertyPlantEquipmentPurchaseCashFlow: "propertyPlantEquipmentPurchaseCashFlow",
-    PropertyPlantEquipmentAndIntangiblesPurchaseCashFlow: "propertyPlantEquipmentAndIntangiblesPurchaseCashFlow"
+    PropertyPlantEquipmentAndIntangiblesPurchaseCashFlow: "propertyPlantEquipmentAndIntangiblesPurchaseCashFlow",
+    ShortTermLoansPayable: "shortTermLoansPayable",
+    CurrentPortionOfLongTermLoansPayable: "currentPortionOfLongTermLoansPayable",
+    LongTermLoansPayable: "longTermLoansPayable",
+    CurrentPortionOfBonds: "currentPortionOfBonds",
+    BondsPayable: "bondsPayable",
+    LeaseObligationsCL: "leaseObligationsCL",
+    LeaseObligationsNCL: "leaseObligationsNCL"
 } as const);
 export type FinancialDetailMetricId = typeof FinancialDetailMetricId[keyof typeof FinancialDetailMetricId];
 const define = (id: FinancialDetailMetricId, tag: string, periodType: "instant" | "duration"): MetricDefinition<FinancialDetailMetricId> => Object.freeze({
@@ -26,6 +33,13 @@ export const FINANCIAL_DETAIL_REGISTRY: Readonly<Record<FinancialDetailMetricId,
     sellingGeneralAndAdministrativeExpenses: define("sellingGeneralAndAdministrativeExpenses", "SellingGeneralAndAdministrativeExpenses", "duration"),
     depreciationOperatingCashFlow: define("depreciationOperatingCashFlow", "DepreciationAndAmortizationOpeCF", "duration"),
     propertyPlantEquipmentPurchaseCashFlow: define("propertyPlantEquipmentPurchaseCashFlow", "PurchaseOfPropertyPlantAndEquipmentInvCF", "duration"),
-    propertyPlantEquipmentAndIntangiblesPurchaseCashFlow: define("propertyPlantEquipmentAndIntangiblesPurchaseCashFlow", "PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF", "duration")
+    propertyPlantEquipmentAndIntangiblesPurchaseCashFlow: define("propertyPlantEquipmentAndIntangiblesPurchaseCashFlow", "PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF", "duration"),
+    shortTermLoansPayable: define("shortTermLoansPayable", "ShortTermLoansPayable", "instant"),
+    currentPortionOfLongTermLoansPayable: define("currentPortionOfLongTermLoansPayable", "CurrentPortionOfLongTermLoansPayable", "instant"),
+    longTermLoansPayable: define("longTermLoansPayable", "LongTermLoansPayable", "instant"),
+    currentPortionOfBonds: define("currentPortionOfBonds", "CurrentPortionOfBonds", "instant"),
+    bondsPayable: define("bondsPayable", "BondsPayable", "instant"),
+    leaseObligationsCL: define("leaseObligationsCL", "LeaseObligationsCL", "instant"),
+    leaseObligationsNCL: define("leaseObligationsNCL", "LeaseObligationsNCL", "instant")
 });
-export const FINANCIAL_DETAIL_REGISTRY_VERSION = "2";
+export const FINANCIAL_DETAIL_REGISTRY_VERSION = "3";
