@@ -1,3 +1,4 @@
+import type { ContextDimensionTraceMap, ContextDimensionsTraceResult } from "./context-dimension-traces";
 import { IFRS_BALANCE_SHEET_REGISTRY, IfrsBalanceSheetMetricId } from "./ifrs-balance-sheet-registry";
 import { WORKFORCE_REGISTRY, WorkforceMetricId } from "./workforce-registry";
 import { FINANCIAL_DETAIL_REGISTRY, FinancialDetailMetricId } from "./financial-detail-registry";
@@ -10,6 +11,7 @@ import { EdinetContext } from "./edinet-context";
 import { JppfsCorTaxonomy } from "./types/jppfs_cor_taxonomy";
 import { cleanHtml } from "./utils/html-cleaner";
 import { selectCompanyProfile, type CompanyProfile } from "./company-profile";
+import { selectSubsidiaryHumanCapitalLabels, type SubsidiaryHumanCapitalLabelMetadata, type SubsidiaryHumanCapitalLabelExtraction } from "./subsidiary-human-capital-labels";
 
 /**
  * 共通メタデータ
@@ -80,14 +82,32 @@ export class EdinetXbrlObject {
     private duplicateContextIds = new Set<string>();
     private unitMap = new Map<string, string>();
     private _docID: string;
+    #contextDimensionTraces: ContextDimensionTraceMap;
 
-    constructor(docID: string = "") {
+    constructor(docID: string = "", contextDimensionTraces: ContextDimensionTraceMap = new Map()) {
         this._docID = docID;
+        this.#contextDimensionTraces = structuredClone(new Map(contextDimensionTraces));
+    }
+
+    /** 名前空間解決の証跡だけを返します。DTSの型・軸所属・表所属の検証ではありません。 */
+    public traceContextDimensions(contextId: string): ContextDimensionsTraceResult {
+        if (typeof contextId !== "string" || !contextId.trim()) throw new Error("空でないcontextIdが必要です");
+        const candidates = this.#contextDimensionTraces.get(contextId) ?? [];
+        const duplicate = candidates.length > 1 || this.duplicateContextIds.has(contextId);
+        const diagnostics = duplicate ? [{ code: "duplicate-context" as const }] : !candidates.length ? [{ code: "trace-unavailable" as const }] : [];
+        const unsupported = candidates.some(candidate => candidate.diagnostics.length || candidate.dimensions.some(entry => entry.diagnostics.length));
+        return structuredClone({ contextId, status: duplicate ? "ambiguous" : !candidates.length ? "missing" : unsupported ? "unsupported" : "resolved",
+            dtsValidation: "not-performed", originalLexicalValidation: "not-performed", candidates, diagnostics });
     }
 
     /** 元のXMLを保持しない読み取り専用の会社情報。XML hash付き入口はcreateCompanyProfileです。 */
     public getCompanyProfile(): CompanyProfile {
         return selectCompanyProfile(this._docID, this._dataMap, this.contextMap, this.duplicateContextIds);
+    }
+
+    /** 人的資本表の解析済み会社ラベル専用。金融selectorの次元/scope契約は変更しません。 */
+    public selectSubsidiaryHumanCapitalLabels(metadata: SubsidiaryHumanCapitalLabelMetadata): SubsidiaryHumanCapitalLabelExtraction {
+        return selectSubsidiaryHumanCapitalLabels(metadata, this._dataMap, this.contextMap, id => this.traceContextDimensions(id), this._docID);
     }
 
     /**
@@ -98,6 +118,7 @@ export class EdinetXbrlObject {
         this.contextMap.clear();
         this.duplicateContextIds.clear();
         this.unitMap.clear();
+        this.#contextDimensionTraces = new Map();
         this._docID = "";
     }
 

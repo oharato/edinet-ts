@@ -1,3 +1,4 @@
+import { collectContextDimensionTraces } from "./context-dimension-traces";
 import { assertXmlInput } from "./xml-input";
 import { XMLParser } from "fast-xml-parser";
 import { EdinetXbrlObject, EdinetData } from "./edinet-xbrl-object";
@@ -29,7 +30,7 @@ export class EdinetXbrlParser {
     public parse(xmlContent: string, docID: string = ""): EdinetXbrlObject {
         assertXmlInput(xmlContent);
         const parsed = this.parser.parse(xmlContent);
-        const xbrlObject = new EdinetXbrlObject(docID);
+        const xbrlObject = new EdinetXbrlObject(docID, collectContextDimensionTraces(parsed));
 
         // 1. 最初にコンテキストを解析
         this.parseContexts(parsed, xbrlObject);

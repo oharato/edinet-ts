@@ -9,7 +9,7 @@
 | 実際の決算書との一致・未確認範囲を知りたい | [実データの確認結果](REAL_DATA_VALIDATION.md) |
 | 会社の数値を読み、元の記載も確認したい | [数値の取り出し方](METRIC_SELECTION.md) |
 | 流動資産・流動負債・負債合計を読みたい | [今回の3項目](BALANCE_SHEET_NORMALIZATION.md) |
-| IFRSの連結BS3項目を読み、明示した会社を比べたい | [IFRSの専用抽出・検索](IFRS_BALANCE_SHEET_SELECTION.md)（直接抽出は#55でmain、本変更でメモリ検索/CLI追加、DBなし） |
+| IFRSの連結BS3項目を読み、明示した会社を比べたい | [IFRSの専用抽出・検索](IFRS_BALANCE_SHEET_SELECTION.md)（直接抽出/メモリ検索/CLIは#55/#56でmain、DBなし） |
 | 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（#26でmainへ統合済み） |
 | 提出会社単体の給与・年齢・勤続年数・従業員数を読み比べたい | [人的資本](WORKFORCE.md)（期末と範囲を揃えた検索。従業員数は#53でmainへ統合済み） |
 | 原本の会社名・コード・基準を読み、会社名・決算月で探したい | [会社情報](COMPANY_PROFILE.md)（原記載・採用理由、明示集合の検索） |
@@ -25,6 +25,8 @@
 | 現在地と次の方針を知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md)。main完了・PR確認待ち・未着手・未検証を区別 |
 | 変更の経緯を知りたい | [#27 検証記録](https://github.com/oharato/edinet-ts/pull/27)・[#28 流動比率](https://github.com/oharato/edinet-ts/pull/28)は正式stack #29でmainへ統合済み |
 | 書類一覧の親番号や状態の違いを確認したい | [書類の関係と観測](DOCUMENT_RELATIONS.md)（明示JSONのみ。最新版を自動選択しません） |
+| 人的資本表に書かれた会社名を探したい | [会社ラベルの抽出・検索](SUBSIDIARY_HUMAN_CAPITAL_LABELS.md)（一般子会社マスターとは別） |
+| 表の行や対象を区別する指定の出典を確認したい | [次元の名前の追跡](CONTEXT_DIMENSION_TRACES.md)（解析後の証跡。元の字面・DTSの検証ではありません） |
 
 以下は、実装・確認する人向けの詳しい資料一覧です。
 

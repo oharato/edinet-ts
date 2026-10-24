@@ -4,6 +4,7 @@ import { analyzeDocumentRelations } from "./document-relations";
 import { createCompanyProfile, CompanyProfileFieldId } from "./company-profile";
 import { screenCompanyDocuments, CompanyProfileOperator } from "./company-screening";
 import { screenWorkforceDocuments } from "./workforce-screening";
+import { searchSubsidiaryHumanCapitalLabels, SubsidiaryHumanCapitalLabelOperator } from "./subsidiary-human-capital-labels";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
 import "dotenv/config";
 import { EdinetXbrlDownloader } from "./edinet-xbrl-downloader";
@@ -204,6 +205,40 @@ program.command("screen-ifrs-bs")
             console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
         } catch {
             console.error("IFRS検索の入力を確認してください（同一期末・IFRS連結・JPYの明示一覧と有効な検索条件が必要です）");
+            process.exitCode = 1;
+        }
+    });
+
+program.command("search-subsidiary-labels")
+    .description("連結子会社の人的資本表の解析済み会社ラベルを、明示原本から探します")
+    .requiredOption("--manifest <path>", "fileとdocID/instant等のmetadataを持つJSON配列")
+    .option("--conditions <json>", "eq/containsのAND条件", "[]")
+    .option("--equals <text>", "解析済みラベルとの完全一致を追加")
+    .option("--contains <text>", "解析済みラベルとの部分一致を追加")
+    .option("--order <order>", "ラベルのasc/desc")
+    .option("--offset <number>", "条件一致後に読み飛ばす行数", Number)
+    .option("--limit <number>", "返す最大行数", Number)
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifestPath = path.resolve(options.manifest);
+            const entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifestPath, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error("入力件数の上限です");
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(key => !["file", "metadata"].includes(key)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error("入力項目が不正です");
+                const input = readRegularFile(path.resolve(path.dirname(manifestPath), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
+                bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), metadata: entry.metadata };
+            });
+            const conditions = JSON.parse(options.conditions);
+            if (!Array.isArray(conditions)) throw new Error("条件は配列です");
+            if (options.equals !== undefined) conditions.push({ operator: SubsidiaryHumanCapitalLabelOperator.Equal, value: options.equals });
+            if (options.contains !== undefined) conditions.push({ operator: SubsidiaryHumanCapitalLabelOperator.Contains, value: options.contains });
+            const result = searchSubsidiaryHumanCapitalLabels(documents, { conditions, order: options.order, offset: options.offset, limit: options.limit });
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+        } catch {
+            console.error("会社ラベル検索の入力を確認してください（明示原本一覧・対象期末・有効な文字列条件が必要です）");
             process.exitCode = 1;
         }
     });
