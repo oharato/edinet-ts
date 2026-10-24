@@ -416,4 +416,4 @@ J-GAAPの流動資産・流動負債・負債合計は、既存主要指標と�
 
 このPRで追加する検索機能は、保存した複数社を流動資産・流動負債・負債合計で絞り、金額順に並べます。`screenBalanceSheetSnapshots()` / CLI `screen-bs`を使い、同じ日付・範囲の書類を自分で揃えます。[使い方と入力ファイル一覧](docs/BALANCE_SHEET_SCREENING.md)を参照してください。
 
-流動比率は、このローカルブランチで追加した `calculateCurrentRatio()` と検索項目 `currentRatio` を使います。単位は小数で、`2`が200%です。[計算・検索・CLIの使い方](docs/CURRENT_RATIO.md)を参照してください（未公開・未マージ）。
+流動比率は、このPRで追加した `calculateCurrentRatio()` と検索項目 `currentRatio` を使います。単位は小数で、`2`が200%です。[計算・検索・CLIの使い方](docs/CURRENT_RATIO.md)を参照してください（確認中・未マージ）。

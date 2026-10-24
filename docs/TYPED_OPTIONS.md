@@ -42,7 +42,7 @@ const result = screenFinancialSnapshots(snapshots, options);
 
 | 定数/同名型 | member → 既存の値 | 適用先 |
 |---|---|---|
-| `BalanceSheetScreeningMetric` | `CurrentAssets` → `currentAssets`、`CurrentLiabilities` → `currentLiabilities`、`TotalLiabilities` → `totalLiabilities`、`CurrentRatio` → `currentRatio` | 財務3項目・[流動比率](CURRENT_RATIO.md)の検索条件・並べ替え（このローカルブランチで追加） |
+| `BalanceSheetScreeningMetric` | `CurrentAssets` → `currentAssets`、`CurrentLiabilities` → `currentLiabilities`、`TotalLiabilities` → `totalLiabilities`、`CurrentRatio` → `currentRatio` | 財務3項目・[流動比率](CURRENT_RATIO.md)の検索条件・並べ替え（このPRで追加） |
 | `MetricId` | `NetSales` → `netSales` 等18項目 | selectMetric、18指標のID |
 | `AccountingStandard` | `JGAAP` → `J-GAAP`、`IFRS` → `IFRS`、`USGAAP` → `US-GAAP` | 明示する会計基準。定数の存在は全基準の抽出対応を意味しない |
 | `ConsolidationScope` | `Consolidated`、`NonConsolidated`（値は同じ表記） | context、指標来歴、strict selection、既存context検索のscope |
