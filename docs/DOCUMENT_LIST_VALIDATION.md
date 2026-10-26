@@ -51,4 +51,21 @@ const registration = EdinetDocumentType.RegistrationStatement; // 030
 
 `download` と `get` は共通の変換を使います。既定値Annual/120と、それ以外の既存aliasは維持します。**未知の指定が120へ戻る従来の挙動も残るため、入力値の検証機能ではありません。** 誤取得を避けるため、上表の明示名かコードを使ってください。コードの追加は原本の取得可能性、XBRL有無や解析成功を保証しません。
 
-この確認は定数・CLI変換と合成API応答の絞り込みによるものです。実API・DB・キャッシュ・認証設定は使いません。大量保有関係にも現行公式表と既存名の食い違いが見つかりましたが、適用時期・旧コードとの関係が未確認なので、今回その既存値・alias・判定helperは変更しません。
+この確認は定数・CLI変換と合成API応答の絞り込みによるものです。実API・DB・キャッシュ・認証設定は使いません。大量保有関係の食い違いは、後記のとおり別途確認して是正しました。
+
+## 大量保有関係の書類種別コード
+
+同じAPI仕様書の書類種別コード表で、330は別途買付け禁止の特例を受けるための申出書、340はその訂正、350は大量保有報告書、360は訂正大量保有報告書、370は基準日の届出書、380は変更の届出書です。大量保有の**変更報告書に独立した種別コードはありません**。公開されている実API応答でも、変更報告書は様式コード010002・種別コード350・書類名「変更報告書」で記録されており（2025-05-19提出分 docID S100VRDA）、2026年10月の実データでも同じ形でした。初回と変更の区別は様式コード（大量保有報告書は末尾000、変更報告書は末尾002）と書類名で行います。380の変更の届出書は基準日の届出書に対する変更であり、大量保有の変更報告書ではありません。
+
+| 読みたい種類 | 定数 | CLIの指定 |
+|---|---|---|
+| 別途買付け禁止の特例を受けるための申出書330 | `EdinetDocumentType.SeparatePurchaseProhibitionException` | `--type 330` |
+| 訂正別途買付け禁止の特例を受けるための申出書340 | `EdinetDocumentType.AmendedSeparatePurchaseProhibitionException` | `--type 340` |
+| 大量保有報告書350（変更報告書を含む） | `EdinetDocumentType.LargeShareholdingReport` | `--type largeshareholding` または `--type 350` |
+| 訂正大量保有報告書360 | 既存の `EdinetDocumentType.CorrectionReport` | `--type correction` または `--type 360` |
+| 基準日の届出書370 | `EdinetDocumentType.RecordDateNotification` | `--type 370` |
+| 変更の届出書380 | `EdinetDocumentType.ChangeNotification` | `--type 380` |
+
+旧定義は `LargeShareholdingReport` が340、`ChangeReport` が350でした。340は大量保有ではないため、`LargeShareholdingReport` の値を公式どおり350へ是正し、`isLargeShareholding()` とCLI `largeshareholding` の対象を350と360にしました。`ChangeReport` は値350のまま互換用の非推奨別名として残しますが、350は初回報告書も含むため、CLIの旧 `change` も350全体を返します。`--type 340` は今後、訂正別途買付け申出書を指します。
+
+実APIでの継続確認用に、手動実行専用の GitHub Actions `Live EDINET smoke`（`.github/workflows/live-smoke.yml`）を用意しました。`EDINET_API_KEY` secretがある環境で、書類一覧を対象日1回だけ取得し、350・360・340の書類名と様式コードの対応を検証します。自動テストは合成応答によるもので、実API確認はこの手動ワークフローの実行結果によります。

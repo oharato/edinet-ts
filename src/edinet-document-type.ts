@@ -23,12 +23,20 @@ export enum EdinetDocumentType {
     ConfirmationLetter = "135",
     /** 内部統制報告書 (Internal Control Report) */
     InternalControlReport = "235",
-    /** 大量保有報告書 (Large Shareholding Report) */
-    LargeShareholdingReport = "340",
-    /** 変更報告書 (Change Report - Large Shareholding) */
+    /** 別途買付け禁止の特例を受けるための申出書。書類種別コード330。 */
+    SeparatePurchaseProhibitionException = "330",
+    /** 訂正別途買付け禁止の特例を受けるための申出書。書類種別コード340。大量保有報告書ではありません。 */
+    AmendedSeparatePurchaseProhibitionException = "340",
+    /** 大量保有報告書。書類種別コード350。変更報告書も同じ350で、様式コード（010002等）とdocDescriptionで区別します。 */
+    LargeShareholdingReport = "350",
+    /** @deprecated 互換用の旧名。変更報告書に独立した種別コードはなく、値は大量保有報告書と同じ350です。初回と変更の区別には様式コードを使ってください。 */
     ChangeReport = "350",
-    /** 訂正報告書 (Correction Report - Large Shareholding) */
+    /** 訂正大量保有報告書 (Correction Report - Large Shareholding)。書類種別コード360。 */
     CorrectionReport = "360",
+    /** 基準日の届出書。書類種別コード370。 */
+    RecordDateNotification = "370",
+    /** 変更の届出書。書類種別コード380。基準日の届出書に対する変更で、大量保有の変更報告書ではありません。 */
+    ChangeNotification = "380",
     /** 公開買付届出書 (Tender Offer Statement) */
     TenderOfferStatement = "240",
     /** 公開買付報告書 (Tender Offer Report) */
@@ -48,11 +56,12 @@ export function isFinancialReport(code: string): boolean {
 
 /**
  * Helper to check if a document is related to Large Shareholding.
+ * 大量保有報告書・変更報告書は350、訂正大量保有報告書は360です。
+ * 340は訂正別途買付け禁止の特例を受けるための申出書であり、対象外です。
  */
 export function isLargeShareholding(code: string): boolean {
     return [
         EdinetDocumentType.LargeShareholdingReport,
-        EdinetDocumentType.ChangeReport,
         EdinetDocumentType.CorrectionReport
     ].includes(code as EdinetDocumentType);
 }

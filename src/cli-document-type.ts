@@ -14,11 +14,12 @@ const DOCUMENT_TYPE_MAP: Record<string, EdinetDocumentType | EdinetDocumentType[
     "amended": EdinetDocumentType.AmendedSecuritiesRegistrationStatement,
     "confirmation": EdinetDocumentType.ConfirmationLetter,
     "internalcontrol": EdinetDocumentType.InternalControlReport,
+    // 大量保有は350（変更報告書を含む）と訂正360。340は別途買付けの訂正申出書なので含めません。
     "largeshareholding": [
         EdinetDocumentType.LargeShareholdingReport,
-        EdinetDocumentType.ChangeReport,
         EdinetDocumentType.CorrectionReport
     ],
+    // 旧changeは互換のため維持しますが、350全体（初回報告書を含む）を返します。変更だけの絞り込みは種別コードではできません。
     "change": EdinetDocumentType.ChangeReport,
     "correction": EdinetDocumentType.CorrectionReport,
     "tenderoffer": EdinetDocumentType.TenderOfferStatement,
@@ -33,9 +34,12 @@ const DOCUMENT_TYPE_MAP: Record<string, EdinetDocumentType | EdinetDocumentType[
     "040": EdinetDocumentType.AmendedSecuritiesRegistrationStatement,
     "135": EdinetDocumentType.ConfirmationLetter,
     "235": EdinetDocumentType.InternalControlReport,
-    "340": EdinetDocumentType.LargeShareholdingReport,
-    "350": EdinetDocumentType.ChangeReport,
+    "330": EdinetDocumentType.SeparatePurchaseProhibitionException,
+    "340": EdinetDocumentType.AmendedSeparatePurchaseProhibitionException,
+    "350": EdinetDocumentType.LargeShareholdingReport,
     "360": EdinetDocumentType.CorrectionReport,
+    "370": EdinetDocumentType.RecordDateNotification,
+    "380": EdinetDocumentType.ChangeNotification,
     "240": EdinetDocumentType.TenderOfferStatement,
     "270": EdinetDocumentType.TenderOfferReport,
 };

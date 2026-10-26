@@ -23,9 +23,8 @@ describe("通知書010と届出書030の区別", () => {
     it.each(["annual", "120", "unknown", "constructor", "__proto__"])("%s の有報既定値は維持", input => {
         expect(resolveCliDocumentType(input)).toBe("120");
     });
-    it("訂正040と大量保有の既存指定は変更しない", () => {
+    it("訂正040の既存指定は変更しない", () => {
         expect(resolveCliDocumentType("amended")).toBe("040");
-        expect(resolveCliDocumentType("largeshareholding")).toEqual(["340", "350", "360"]);
     });
     it.each(["download", "get"])("%s の実CLI helpで030と010を案内する（取得なし）", command => {
         const result = spawnSync(process.execPath, ["--import", resolve("node_modules/tsx/dist/loader.mjs"), resolve("src/cli.ts"), command, "--help"], { cwd: "/tmp", encoding: "utf8" });

@@ -4389,7 +4389,7 @@ export const DOCUMENT_TYPE_RESPONSES: DocumentTypeResponse[] = [
             responseIncludes: [COMMON_METADATA_DOC, KEY_METRICS_DOC]
         },
         {
-            documentType: "LargeShareholding (大量保有報告書) [340/350/360]",
+            documentType: "LargeShareholding (大量保有報告書) [350/360]",
             japaneseLabel: "大量保有報告書",
             description: "大量保有報告書、変更報告書、訂正報告書。保有情報を含みます。",
             responseIncludes: [COMMON_METADATA_DOC, LARGE_SHAREHOLDING_INFO_DOC]
