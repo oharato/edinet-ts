@@ -28,7 +28,7 @@ graph TD
 ライブラリのエントリーポイントです。
 
 *   **役割**: ユーザーに対する高レベルなAPIを提供し、`Downloader`、`Parser`、`Repository` を透過的に組み合わせます。
-*   **検索と取得**: `findDocumentsByType` / `findDocumentsByFiler` はローカルDBを検索します。`getFinancialHistory` はローカルDBで書類を選び、各XBRLをdownloaderのキャッシュまたはAPIから取得します。検索だけでDBが自動補完されるわけではありません。
+*   **検索と取得**: `findDocumentsByType` / `findDocumentsByFiler` はローカルDBを検索します。検索の前に、対象期間（`findDocumentsByFiler` は直近30日が既定）のうちDBに無い日だけ書類一覧APIから補い、結果をDBへ保存します。補完取得に失敗した日は警告だけを出し、DBにある範囲で検索します。提出が0件の日は取得済みを記録できないため、次回も再取得します。`getFinancialHistory` はローカルDBで書類を選び、各XBRLをdownloaderのキャッシュまたはAPIから取得します。
 
 ### 2.1 `EdinetXbrlDownloader`
 EDINET API v2 との通信を担当します。
