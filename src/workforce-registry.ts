@@ -22,7 +22,7 @@ export const WORKFORCE_REGISTRY: { readonly [Id in WorkforceMetricId]: Workforce
     averageAnnualSalary: define("averageAnnualSalary", "AverageAnnualSalaryInformationAboutReportingCompanyInformationAboutEmployees", "JPY", "JPY"),
     averageAgeYears: define("averageAgeYears", "AverageAgeYearsInformationAboutReportingCompanyInformationAboutEmployees", "pure", "years"),
     averageLengthOfServiceYears: define("averageLengthOfServiceYears", "AverageLengthOfServiceYearsInformationAboutReportingCompanyInformationAboutEmployees", "pure", "years"),
-    // 人数の範囲・表示表やFTEを推測せず、同値重複も既存の厳密選択で曖昧とします。
+    // 人数の範囲・表示表やFTEを推測しません。重複の扱いは人的資本共通の同一重複ルールに従います。
     numberOfEmployees: define("numberOfEmployees", "NumberOfEmployees", "pure", "people"),
     // 年間平均の臨時雇用人員です。平均であることを整数化やFTE換算で消さず、原値を保持します。
     averageNumberOfTemporaryEmployees: define("averageNumberOfTemporaryEmployees", "AverageNumberOfTemporaryWorkers", "pure", "people")

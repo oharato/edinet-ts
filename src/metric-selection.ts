@@ -8,7 +8,7 @@ export interface MetricSelectionOptions {
     scope: EdinetContext["scope"];
     period: { startDate: string; endDate: string; instant?: never } | { instant: string; startDate?: never; endDate?: never };
 }
-export type SelectionReason = "selected" | "selected-raw-only" | "tag-absent" | "context-mismatch" |
+export type SelectionReason = "selected" | "selected-raw-only" | "selected-identical-duplicates" | "tag-absent" | "context-mismatch" |
     "nil" | "unsupported-standard" | "unsupported-semantics" | "unknown-namespace" | "unknown-context" |
     "unsupported-dimensions" | "unsupported-context" | "unsupported-entity" | "unsupported-unit" | "invalid-decimal" | "invalid-decimals" |
     "raw-unavailable" | "duplicate-context" | "multiple-facts" | "invalid-period";
@@ -64,7 +64,8 @@ export function selectMetricFact(id: MetricId, options: MetricSelectionOptions,
 /** 辞書間で共用する選択器。既存18項目のID集合を拡張せず定義を受け取ります。 */
 export function selectDefinedMetricFact<Id extends string>(definition: MetricDefinition<Id>, options: MetricSelectionOptions,
     facts: ReadonlyMap<string, readonly EdinetData[]>, contexts: ReadonlyMap<string, EdinetContext>,
-    units: ReadonlyMap<string, string>, duplicateContexts: ReadonlySet<string> = new Set()): FactSelectionResult<Id> {
+    units: ReadonlyMap<string, string>, duplicateContexts: ReadonlySet<string> = new Set(),
+    behavior: { collapseIdenticalDuplicates?: boolean } = {}): FactSelectionResult<Id> {
     const id = definition.id;
     const evidence: FactSelectionEvidence[] = [];
     const finish = (status: "missing" | "unsupported" | "ambiguous", reason: SelectionReason): FactSelectionResult<Id> =>
@@ -128,7 +129,19 @@ export function selectDefinedMetricFact<Id extends string>(definition: MetricDef
         const standardMatches = matches.filter(m => m.key === candidate.key);
         if (!standardMatches.length) continue;
         if (standardMatches.some(m => m.reason === "duplicate-context")) return finish("ambiguous", "duplicate-context");
-        if (standardMatches.length > 1) return finish("ambiguous", "multiple-facts");
+        if (standardMatches.length > 1) {
+            // 人的資本だけの明示的な許容です。値・精度・単位・正規化した文脈が完全に一致する重複だけを
+            // 1件として採用し、理由で区別します。財務等の既定は従来どおり曖昧のままです。
+            const identical = (a: FactSelectionEvidence, b: FactSelectionEvidence) =>
+                a.raw === b.raw && a.decimals === b.decimals && a.unit === b.unit &&
+                JSON.stringify([a.period, a.scope, a.dimensions, a.entity]) === JSON.stringify([b.period, b.scope, b.dimensions, b.entity]);
+            if (behavior.collapseIdenticalDuplicates && standardMatches.every(m => m.reason === "selected" || m.reason === "selected-raw-only") &&
+                standardMatches.every(m => identical(m, standardMatches[0]))) {
+                const source = standardMatches[0];
+                return { metricId: id, status: "selected", raw: source.raw!, safeNumber: toSafeMetricNumber(source.raw!), source, reason: "selected-identical-duplicates", evidence };
+            }
+            return finish("ambiguous", "multiple-facts");
+        }
         const source = standardMatches[0];
         if (source.reason === "nil") return finish("missing", "nil");
         if (source.reason !== "selected" && source.reason !== "selected-raw-only") return finish("unsupported", source.reason);
