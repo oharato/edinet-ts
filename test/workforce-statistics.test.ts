@@ -27,9 +27,9 @@ describe.each(ids)("人的資本の年値 %s", id => {
     it.each(["-0.00000000000000000000001", "-9007199254740993"])("負数%sは原値を残して不採用", value => {
         expect(select(value)).toMatchObject({ status: "unsupported", reason: "unsupported-semantics", evidence: [expect.objectContaining({ raw: value, reason: "unsupported-semantics" })] });
     });
-    it("nil/同値重複/不安全値を0にしない", () => {
+    it("nil/同一重複/不安全値を0にしない", () => {
         expect(select("", { attrs: 'xsi:nil="true"' })).toMatchObject({ status: "missing", reason: "nil" });
-        expect(select("12.3", { duplicate: id })).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(select("12.3", { duplicate: id })).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "12.3" });
         expect(select("0.10000000000000001")).toMatchObject({ status: "selected", reason: "selected-raw-only", safeNumber: undefined });
     });
     it.each(["iso4217:JPY", "xbrli:shares"])("単位%sから年への換算をしない", unit => {

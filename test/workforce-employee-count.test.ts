@@ -41,10 +41,18 @@ describe("提出会社単体の従業員数（直接値のみ）", () => {
     it.each(["NumberOfEmployeesInformationAboutReportingCompanyInformationAboutEmployees", "NumberOfEmployeesSummaryOfBusinessResults", "NumberOfEmployeesOfReportingCompanyTable", "NumberOfEmployeesOfReportingCompanyLineItems", "AverageNumberOfTemporaryWorkers"])("%sで代用しない", local => {
         expect(select("120", { key: `jpcrp_cor:${local}` })).toMatchObject({ status: "missing", reason: "tag-absent" });
     });
-    it("同値の複数factもambiguousのまま、合算・重複除去しない", () => {
-        expect(select("120", { extra: fact("120", "", tag) })).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
-        expect(select("120", { extra: fact("120", "", tag) + fact("120", "", tag) })).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
-        expect(screenWorkforceDocuments([doc("1001", "120", { extra: fact("120", "", tag) })], { metricIds: [id] })).toMatchObject({ total: 0, excludedRows: 1, reasonCounts: { ambiguous: 1 } });
+    it("完全に同一の重複factは人的資本だけ1件として採用し、理由と証拠で区別する", () => {
+        const same = fact("120", "", tag).replace('decimals="INF"', 'decimals="0"');
+        const collapsed = select("120", { extra: same });
+        expect(collapsed).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "120", safeNumber: 120 });
+        expect(collapsed.evidence.filter(e => e.key === tag && e.reason === "selected").length).toBe(2);
+        expect(select("120", { extra: same + same })).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "120" });
+        expect(screenWorkforceDocuments([doc("1001", "120", { extra: same })], { metricIds: [id] })).toMatchObject({ total: 1, excludedRows: 0, reasonCounts: { ambiguous: 0 } });
+    });
+    it("値や精度が違う重複は従来どおりambiguous", () => {
+        expect(select("120", { extra: fact("121", "", tag) })).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        const otherDecimals = fact("120", "", tag).replace('decimals="INF"', 'decimals="-3"');
+        expect(select("120", { extra: otherDecimals })).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
     });
     it("context自体の同値重複も曖昧", () => {
         const input = xml().replace('</xbrli:context>', '</xbrli:context>' + xml().match(/<xbrli:context.*?<\/xbrli:context>/)![0]);
@@ -114,10 +122,11 @@ describe("従業員数の明示複数社検索と互換", () => {
         const other = doc("1002"); other.metadata.period.instant = "2024-03-31";
         expect(() => screenWorkforceDocuments([doc("1001"), other], { metricIds: [id] })).toThrow(/混在/);
     });
-    it("nil/負値/unsafe/重複と条件不一致の件数を区別", () => {
-        const rows = [doc("1001", "0"), doc("1002", "", { attrs: 'xsi:nil="true"' }), doc("1003", "-1"), doc("1004", "9007199254740993"), doc("1005", "1", { extra: fact("1", "", tag) })];
+    it("nil/負値/unsafeと条件不一致の件数を区別（同一重複は採用）", () => {
+        const rows = [doc("1001", "0"), doc("1002", "", { attrs: 'xsi:nil="true"' }), doc("1003", "-1"), doc("1004", "9007199254740993"), doc("1005", "1", { extra: fact("1", "", tag).replace('decimals="INF"', 'decimals="0"') })];
         const result = screenWorkforceDocuments(rows, { metricIds: [id], conditions: [{ metric: id, operator: "gt", value: 0 }] });
-        expect(result).toMatchObject({ total: 0, excludedRows: 4, filteredRows: 1 });
-        expect(result.diagnostics.filter(d => d.metric === id).map(d => [d.reason, d.required])).toEqual([["missing", true], ["unsupported", true], ["unsafe-number", true], ["ambiguous", true]]);
+        expect(result).toMatchObject({ total: 1, excludedRows: 3, filteredRows: 1 });
+        expect(result.rows[0].metadata.secCode).toBe("10050");
+        expect(result.diagnostics.filter(d => d.metric === id).map(d => [d.reason, d.required])).toEqual([["missing", true], ["unsupported", true], ["unsafe-number", true]]);
     });
 });
