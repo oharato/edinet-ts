@@ -76,6 +76,7 @@ describe("指標辞書と厳密選択", () => {
     it("未定義contextは推測しない", () => expect(select(instance(fact(), ""))).toMatchObject({ status: "unsupported", reason: "unknown-context" }));
     it("重複context IDを上書き値で確定しない", () => expect(select(instance(fact(), context() + context()))).toMatchObject({ status: "ambiguous", reason: "duplicate-context" }));
     it("同一contextの重複factを順序で確定しない", () => expect(select(instance(fact() + fact("5")))).toMatchObject({ status: "ambiguous", reason: "multiple-facts" }));
+    it("財務の既定選択では完全に同一の重複factも曖昧のまま（同一重複の許容は人的資本だけ）", () => expect(select(instance(fact() + fact()))).toMatchObject({ status: "ambiguous", reason: "multiple-facts" }));
     it("同じperiodの別context IDも曖昧とする", () => expect(select(instance(fact() + fact("5", "", "jppfs_cor:NetSales", "copy"), context() + context("copy")))).toMatchObject({ status: "ambiguous", reason: "multiple-facts" }));
     it("外貨・不明・複合単位をJPYへ推測しない", () => {
         for (const measure of ["iso4217:USD", "extension:JPY", "xbrli:pure"]) {

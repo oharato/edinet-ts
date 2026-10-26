@@ -29,7 +29,8 @@ describe("提出会社単体の平均臨時雇用人員（直接値のみ）", (
         expect(select("", { attrs: 'xsi:nil="true"' })).toMatchObject({ status: "missing", reason: "nil" });
         expect(select("6", { absent: true })).toMatchObject({ status: "missing", reason: "tag-absent" });
         expect(select("6", { key: "jpcrp_cor:NumberOfEmployees" })).toMatchObject({ status: "missing", reason: "tag-absent" });
-        expect(select("6", { extra: fact("6", "", tag) })).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(select("6", { extra: fact("6", "", tag).replace('decimals="INF"', 'decimals="0"') })).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "6" });
+        expect(select("6", { extra: fact("7", "", tag) })).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
         expect(select("6", { unit: "iso4217:JPY" })).toMatchObject({ status: "unsupported", reason: "unsupported-unit" });
         expect(select("6", { members: "" }).status).not.toBe("selected");
     });
@@ -47,19 +48,19 @@ describe("提出会社単体の平均臨時雇用人員（直接値のみ）", (
 });
 
 describe("実原本fixture（3031ラクーン有報）での平均臨時雇用人員", () => {
-    it("単体・当期末の同値3人が2か所に現れるため、推測せず曖昧として返す", () => {
+    it("単体・当期末の同値3人が2か所に現れるため、同一重複として採用する", () => {
         // 実原本では、提出会社単体・当期末の平均臨時雇用人員「3」が文書内の2か所に同値で現れます。
-        // 従業員数と同じ厳密規則により、重複除去や合算はせずambiguousにします。
+        // 人的資本の方針により、完全に同一の重複は理由を付けて1件として採用します。
         // 全社文脈の6人やセグメント別内訳（1人・2人）は候補に混ざりません。
         const xmlText = readFileSync(new URL("./test_data/3031_raccoon.xbrl", import.meta.url), "utf8");
         const metadata: WorkforceMetadata = { secCode: "3031", docID: "SYNTHETIC-RACCOON", scope: "NonConsolidated", accountingStandard: "J-GAAP", currency: "JPY", period: { instant: "2024-04-30" } };
         const snapshot = createWorkforceSnapshot(xmlText, metadata, [id, M.NumberOfEmployees]);
         const temp = snapshot.selections.averageNumberOfTemporaryEmployees!;
-        expect(temp).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(temp).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "3", safeNumber: 3 });
         expect(temp.evidence.filter(e => e.raw === "3").length).toBeGreaterThanOrEqual(2);
-        // 従業員数100人も同じ表の繰り返しで2か所に現れ、同様に曖昧です（既存方針の実証）。
+        // 従業員数100人も同じ表の繰り返しで2か所に現れ、同じ規則で採用します。
         const employees = snapshot.selections.numberOfEmployees!;
-        expect(employees).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(employees).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "100", safeNumber: 100 });
         expect(employees.evidence.filter(e => e.raw === "100").length).toBeGreaterThanOrEqual(2);
     });
 });

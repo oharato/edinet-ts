@@ -248,11 +248,12 @@ export class EdinetXbrlObject {
     /** 人的資本は提出会社単体のみ。負値は原値をevidenceへ残し不採用とします。 */
     public selectWorkforceMetric<Id extends WorkforceMetricId>(id: Id, options: MetricSelectionOptions): FactSelectionResult<Id> {
         if (!Object.prototype.hasOwnProperty.call(WORKFORCE_REGISTRY, id)) throw new Error("不正な人的資本IDです");
-        const result = selectDefinedMetricFact<Id>(WORKFORCE_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        // 人的資本だけ、完全に同一の重複factを1件として採用します（財務等の選択は従来どおり厳密）。
+        const result = selectDefinedMetricFact<Id>(WORKFORCE_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, { collapseIdenticalDuplicates: true });
         // numberへ変換する前に符号を検証。-0/-0.0はゼロとして保持します。
         if (options.scope !== "NonConsolidated" || result.status === "selected" && /^-/.test(result.raw) && /[1-9]/.test(result.raw)) {
             return { metricId: id, status: "unsupported", reason: "unsupported-semantics",
-                evidence: result.evidence.map(item => item.reason === "selected" || item.reason === "selected-raw-only" ? { ...item, reason: "unsupported-semantics" } : item) };
+                evidence: result.evidence.map(item => item.reason === "selected" || item.reason === "selected-raw-only" || item.reason === "selected-identical-duplicates" ? { ...item, reason: "unsupported-semantics" } : item) };
         }
         return result;
     }
