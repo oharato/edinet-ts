@@ -191,7 +191,7 @@ program.command("search-subsidiary-labels")
     });
 
 program.command("screen-workforce")
-    .description("提出会社単体の給与・明示した年齢/勤続年数/従業員数を検索します（期末指定）")
+    .description("提出会社単体の給与・明示した年齢/勤続年数/従業員数/平均臨時雇用人員を検索します（期末指定）")
     .requiredOption("--manifest <path>", "fileとmetadataを持つJSON配列（相対fileは一覧基準）")
     .option("--metrics <ids>", "追加して読むIDをカンマ区切りで明示（省略は給与のみ）")
     .option("--conditions <json>", "選択した人的資本項目のAND条件", "[]")

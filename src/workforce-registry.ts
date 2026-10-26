@@ -3,13 +3,14 @@ import type { MetricDefinition } from "./metric-registry";
 /** 財務科目・既存18指標とは独立した人的資本のID。 */
 export const WorkforceMetricId = Object.freeze({
     AverageAnnualSalary: "averageAnnualSalary", AverageAgeYears: "averageAgeYears",
-    AverageLengthOfServiceYears: "averageLengthOfServiceYears", NumberOfEmployees: "numberOfEmployees"
+    AverageLengthOfServiceYears: "averageLengthOfServiceYears", NumberOfEmployees: "numberOfEmployees",
+    AverageNumberOfTemporaryEmployees: "averageNumberOfTemporaryEmployees"
 } as const);
 export type WorkforceMetricId = typeof WorkforceMetricId[keyof typeof WorkforceMetricId];
-export const WORKFORCE_REGISTRY_VERSION = "3";
+export const WORKFORCE_REGISTRY_VERSION = "4";
 type WorkforceDefinition<Id extends WorkforceMetricId> = MetricDefinition<Id> & {
     /** XBRL measureとは別の、人が読む原値の単位。yearsを月へ自動換算しません。 */
-    readonly valueUnit: Id extends "averageAnnualSalary" ? "JPY" : Id extends "numberOfEmployees" ? "people" : "years";
+    readonly valueUnit: Id extends "averageAnnualSalary" ? "JPY" : Id extends "numberOfEmployees" | "averageNumberOfTemporaryEmployees" ? "people" : "years";
 };
 const define = <Id extends WorkforceMetricId>(id: Id, tag: string, unit: "JPY" | "pure", valueUnit: WorkforceDefinition<Id>["valueUnit"]): WorkforceDefinition<Id> => Object.freeze({
     id, valueType: "decimal", unit, valueUnit, periodType: "instant",
@@ -22,5 +23,7 @@ export const WORKFORCE_REGISTRY: { readonly [Id in WorkforceMetricId]: Workforce
     averageAgeYears: define("averageAgeYears", "AverageAgeYearsInformationAboutReportingCompanyInformationAboutEmployees", "pure", "years"),
     averageLengthOfServiceYears: define("averageLengthOfServiceYears", "AverageLengthOfServiceYearsInformationAboutReportingCompanyInformationAboutEmployees", "pure", "years"),
     // 人数の範囲・表示表やFTEを推測せず、同値重複も既存の厳密選択で曖昧とします。
-    numberOfEmployees: define("numberOfEmployees", "NumberOfEmployees", "pure", "people")
+    numberOfEmployees: define("numberOfEmployees", "NumberOfEmployees", "pure", "people"),
+    // 年間平均の臨時雇用人員です。平均であることを整数化やFTE換算で消さず、原値を保持します。
+    averageNumberOfTemporaryEmployees: define("averageNumberOfTemporaryEmployees", "AverageNumberOfTemporaryWorkers", "pure", "people")
 });
