@@ -805,7 +805,7 @@ export interface ExtraordinaryResponse {
 
 /**
  * 大量保有報告書、変更報告書、訂正報告書。保有情報を含みます。
- * @documentType LargeShareholding (大量保有報告書) [340/350/360]
+ * @documentType LargeShareholding (大量保有報告書) [350/360]
  * @japaneseLabel 大量保有報告書
  */
 export interface LargeShareholdingResponse {

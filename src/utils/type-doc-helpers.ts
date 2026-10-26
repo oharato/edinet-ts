@@ -44,6 +44,7 @@ export function generateFullHelpMarkdown(): string {
     md += `- エイリアス名 (例: annual, quarterly, largeshareholding)\n`;
     md += `- 書類種別コード (例: 120, 140, 030)\n\n`;
     md += `通知書は securities-notice / 010、有価証券届出書は registration-statement / 030 です。旧 registration は互換用に010のままです。\n`;
+    md += `大量保有報告書と変更報告書は同じ 350 で、訂正大量保有報告書は 360 です。340は訂正別途買付け禁止の特例を受けるための申出書です。初回と変更の区別は様式コードで行います。\n`;
     md += `未知の入力は従来どおり120へ戻ります。3桁の書類種別と6桁の様式コードは別です。\n\n`;
 
     for (const docType of DOCUMENT_TYPE_RESPONSES) {
