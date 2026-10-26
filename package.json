@@ -41,7 +41,7 @@
   "dependencies": {
     "commander": "15.0.0",
     "dayjs": "1.11.23",
-    "dotenv": "18.0.8",
+    "dotenv": "18.0.9",
     "fast-xml-parser": "5.11.2",
     "jszip": "3.10.2"
   },
