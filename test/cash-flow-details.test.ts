@@ -36,9 +36,9 @@ describe("CF直接3項目は明示選択のみ",()=>{
   const value=snapshot(instance(f(cf[0],raw)),meta(),[cf[0]]).selections[cf[0]]!;
   expect(value.status).toBe("selected");expect(value.raw).toBe(raw);expect(value.safeNumber).toBe(raw==="9007199254740993"?undefined:Number(raw));
  });
- it.each(cf)("%sのnil/重複を0や先頭にしない",id=>{
+ it.each(cf)("%sのnilを0にせず、同一重複は採用する",id=>{
   expect(snapshot(instance(f(id,"",'xsi:nil="true"')),meta(),[id]).selections[id]?.status).toBe("missing");
-  expect(snapshot(instance(f(id)+f(id)),meta(),[id]).selections[id]?.status).toBe("ambiguous");
+  expect(snapshot(instance(f(id)+f(id)),meta(),[id]).selections[id]).toMatchObject({status:"selected",reason:"selected-identical-duplicates"});
  });
  it("通貨/namespace/次元/期間の不一致を拒否採用",()=>{
   const inputs=[xml().replace("iso4217:JPY","iso4217:USD"),xml().replace("http://disclosure.edinet-fsa.go.jp/taxonomy/jppfs/2024-11-01/jppfs_cor","https://example.test/fake"),instance(f(cf[0]),context("current",standalone)),instance(f(cf[0]),context("current","",{startDate:"2023-04-01",endDate:"2024-03-31"}))];

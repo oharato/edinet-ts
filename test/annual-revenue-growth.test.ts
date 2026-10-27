@@ -27,7 +27,7 @@ describe("連続12暦月の売上高前年比",()=>{
   expect(calculateAnnualRevenueGrowth(pair("0.0000000000000001","9007199254740991")).reason).toBe("unsafe-result");
  });
  it.each(["nil","absent","ambiguous","USD"])("%sは元選択の理由を保持し計算しない",kind=>{
-  const input=pair();input.previous=document("100","2023-04-01","2024-03-31","1001",{nil:kind==="nil",absent:kind==="absent",unit:kind==="USD"?"iso4217:USD":undefined,extra:kind==="ambiguous"?fact("100","","jppfs_cor:NetSales"):undefined});
+  const input=pair();input.previous=document("100","2023-04-01","2024-03-31","1001",{nil:kind==="nil",absent:kind==="absent",unit:kind==="USD"?"iso4217:USD":undefined,extra:kind==="ambiguous"?fact("101","","jppfs_cor:NetSales"):undefined});
   const result=calculateAnnualRevenueGrowth(input);expect(result.reason).toBe("unavailable-input");expect(result.previous.selection.status).toBe(kind==="ambiguous"?"ambiguous":kind==="USD"?"unsupported":"missing");
  });
  it("同じ原本/書類IDの前年列と当期列は正常、単体も明示可能",()=>{

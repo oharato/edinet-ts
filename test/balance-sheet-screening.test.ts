@@ -55,7 +55,7 @@ describe("BS3科目の別横断検索", () => {
     it("必要指標の欠損・曖昧・巨大整数を診断し除外する", () => {
         const missing = snapshot("1001", ["absent", "40", "80"]);
         const unsafe = snapshot("1002", ["9007199254740993", "40", "80"]);
-        const ambiguous = createBalanceSheetSnapshot(instance(fact("1", "", keys[0]) + fact("1", "", keys[0]), context()), { ...meta, secCode: "1003" });
+        const ambiguous = createBalanceSheetSnapshot(instance(fact("1", "", keys[0]) + fact("2", "", keys[0]), context()), { ...meta, secCode: "1003" });
         const result = run([missing, unsafe, ambiguous], query);
         expect(result).toMatchObject({ total: 0, excludedRows: 3, reasonCounts: { missing: 3, ambiguous: 1, "unsafe-number": 1, unsupported: 0 } });
         expect(result.diagnostics.find(d => d.reason === "unsafe-number")).toMatchObject({ required: true, selectionReason: "selected-raw-only" });
