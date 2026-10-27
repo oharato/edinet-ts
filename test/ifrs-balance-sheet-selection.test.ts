@@ -89,8 +89,11 @@ describe("IFRS連結の貸借対照表3項目（公式定義を基にした合�
             expect(select(f(), unknown)).toMatchObject({ status: "unsupported", reason: "unsupported-entity" });
             expect(select(f(), context() + context("other", "", instant, "OTHER"))).toMatchObject({ status: "unsupported", reason: "unsupported-entity" });
         });
-        it.each(["120.00", "99"])("同値/異値の重複fact%sを曖昧とする", raw => {
-            expect(select(f() + f(raw))).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        it("完全に同一の重複factは同一重複として採用する", () => {
+            expect(select(f() + f("120.00"))).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "120.00" });
+        });
+        it("値の違う重複fact%sを曖昧とする", () => {
+            expect(select(f() + f("99"))).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
         });
         it("重複context ID/同一期末別contextも曖昧とする", () => {
             expect(select(f(), context() + context())).toMatchObject({ status: "ambiguous", reason: "duplicate-context" });

@@ -64,7 +64,8 @@ describe("借入・社債・リースの直接7残高", () => {
         expect(createFinancialDetailSnapshot(nil, metadata(), [id]).selections[id]).toMatchObject({ status: "missing", reason: "nil" });
         const unknown = xml().replace("http://disclosure.edinet-fsa.go.jp/taxonomy/jppfs/2024-11-01/jppfs_cor", "urn:unknown");
         expect(createFinancialDetailSnapshot(unknown, metadata(), [id]).selections[id]).toMatchObject({ status: "unsupported", reason: "unknown-namespace" });
-        expect(createFinancialDetailSnapshot(xml("120", undefined, tagFact(tag, "120")), metadata(), [id]).selections[id]).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(createFinancialDetailSnapshot(xml("120", undefined, tagFact(tag, "120")), metadata(), [id]).selections[id]).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "120" });
+        expect(createFinancialDetailSnapshot(xml("120", undefined, tagFact(tag, "121")), metadata(), [id]).selections[id]).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
         expect(createFinancialDetailSnapshot(xml("120", undefined, "", context().repeat(2)), metadata(), [id]).selections[id]).toMatchObject({ status: "ambiguous", reason: "duplicate-context" });
     });
     it.each(mappings)("%sで連結単体・時点・期間・基準・通貨を代用しない", (id, tag) => {

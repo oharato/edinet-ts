@@ -12,7 +12,7 @@ const context = (code: string, options: { scope?: string; instant?: string } = {
 interface XmlOptions { absent?: IfrsBalanceSheetMetricId; nil?: IfrsBalanceSheetMetricId; duplicate?: IfrsBalanceSheetMetricId; unit?: string; entity?: string; scope?: string; instant?: string; namespace?: string; extra?: string; }
 function xml(raw = "120.5000", code = "1001", options: XmlOptions = {}) {
     const f = (id: IfrsBalanceSheetMetricId, tag: string) => fact(options.nil === id ? "" : raw, options.nil === id ? 'xsi:nil="true"' : "", `jpigp_cor:${tag}`);
-    const facts = mappings.filter(([id]) => id !== options.absent).map(([id, tag]) => f(id, tag) + (options.duplicate === id ? f(id, tag) : "")).join("") + (options.extra ?? "");
+    const facts = mappings.filter(([id]) => id !== options.absent).map(([id, tag]) => f(id, tag) + (options.duplicate === id ? fact("999", "", `jpigp_cor:${tag}`) : "")).join("") + (options.extra ?? "");
     return instance(facts, context(options.entity ?? code, options), `<xbrli:unit id="money"><xbrli:measure>${options.unit ?? "iso4217:JPY"}</xbrli:measure></xbrli:unit>`)
         .replace('<xbrli:xbrl ', `<xbrli:xbrl xmlns:jpigp_cor="${options.namespace ?? "http://disclosure.edinet-fsa.go.jp/taxonomy/jpigp/2025-11-01/jpigp_cor"}" `);
 }

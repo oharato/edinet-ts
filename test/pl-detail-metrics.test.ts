@@ -52,9 +52,12 @@ describe("PL追加明細5項目（売上総利益・営業外収益/費用・税
         const nil = createFinancialDetailSnapshot(xml("120", "GrossProfit", tagFact("GrossProfit", "", 'xsi:nil="true"')), metadata(), ids).selections.grossProfit;
         expect(nil).toMatchObject({ status: "missing", reason: "nil" });
     });
-    it("同値でも複数factは財務明細では曖昧のまま（同一重複の許容は人的資本だけ）", () => {
+    it("完全に同一の重複factは同一重複として採用し、値違いは曖昧のまま", () => {
         const dup = xml("120", undefined, tagFact("GrossProfit", "120"));
         expect(createFinancialDetailSnapshot(dup, metadata(), [FinancialDetailMetricId.GrossProfit]).selections.grossProfit)
+            .toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "120" });
+        const diff = xml("120", undefined, tagFact("GrossProfit", "121"));
+        expect(createFinancialDetailSnapshot(diff, metadata(), [FinancialDetailMetricId.GrossProfit]).selections.grossProfit)
             .toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
     });
     it("明示複数社検索の条件・並び・ページ", () => {
@@ -79,9 +82,9 @@ describe("実原本fixture（3031ラクーン連結・2024年4月期）でのPL�
         expect(snapshot.selections.nonOperatingExpenses).toMatchObject({ status: "selected", raw: "48918000" });
         expect(snapshot.selections.incomeTaxes).toMatchObject({ status: "selected", raw: "209878000" });
     });
-    it("税引前はPLとCFに同値で重複するため、財務明細の厳密規則どおり曖昧", () => {
+    it("税引前はPLとCFに同値で重複するため、同一重複として採用する", () => {
         const result = createFinancialDetailSnapshot(xmlText, meta, [FinancialDetailMetricId.IncomeBeforeIncomeTaxes]).selections.incomeBeforeIncomeTaxes!;
-        expect(result).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(result).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "535861000", safeNumber: 535861000 });
         expect(result.evidence.filter(e => e.raw === "535861000").length).toBeGreaterThanOrEqual(2);
     });
 });
