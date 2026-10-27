@@ -10,8 +10,8 @@ import subprocess
 import uuid
 from artifact_store import activate, archive, digest, locked, publish, run
 
-PIN = '6301b404a5d09fec0c5ad10b2796e95ac64bd4e9'
-EXPECTED = '1c1e35c0348d24e1dbfc65d7586f6a9e5d1496ca1cfba49c9221e87c4c32f048'
+PIN = 'e673e8aa547be011056cfdb6bbe84d4d58e87e36'
+EXPECTED = '6df0b746e9047ac51a2eaee526015dc2d1d1a04ce292a295048f257951b35cc1'
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--output', required=True, type=Path)
 p.add_argument('--rollback', help='Verify and activate an existing generation basename')
@@ -24,6 +24,12 @@ if root == repo or repo in root.parents or root in repo.parents:
 if a.dry_run:
     print(json.dumps({'sourceCommit': PIN, 'output': str(root), 'network': 'offline npm cache only', 'fetchData': False, 'publish': False}))
     raise SystemExit(0)
+if not a.rollback:
+    # npm packの版差も固定hashへ影響するため、実行系も固定します。
+    actual_node = subprocess.check_output(['node', '--version'], text=True).strip()
+    actual_npm = subprocess.check_output(['npm', '--version'], text=True).strip()
+    if actual_node != 'v26.12.1' or actual_npm != '12.2.1':
+        raise RuntimeError('Use the pinned Node v26.12.1 and npm 12.2.1 toolchain')
 with locked(root):
     if a.rollback:
         activate(root, a.rollback)
