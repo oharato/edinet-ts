@@ -1,3 +1,4 @@
+import { selectDisclosureTables, type DisclosureTableKind, type DisclosureTableExtraction } from "./disclosure-tables";
 import { selectSubsidiaryHumanCapitalMetrics, type SubsidiaryHumanCapitalMetricId, type SubsidiaryHumanCapitalAnnotation, type SubsidiaryHumanCapitalMetricsExtraction } from "./subsidiary-human-capital-metrics";
 import { AUDIT_FEE_REGISTRY, type AuditFeeMetricId } from "./audit-fee-registry";
 import type { ContextDimensionTraceMap, ContextDimensionsTraceResult } from "./context-dimension-traces";
@@ -103,6 +104,10 @@ export class EdinetXbrlObject {
     }
 
     /** 元のXMLを保持しない読み取り専用の会社情報。XML hash付き入口はcreateCompanyProfileです。 */
+    public selectDisclosureTables(kind: DisclosureTableKind, contextRef: string): DisclosureTableExtraction {
+        return selectDisclosureTables(this._docID, kind, contextRef, this._dataMap, this.contextMap, this.duplicateContextIds, ref => this.traceContextDimensions(ref));
+    }
+
     public getCompanyProfile(): CompanyProfile {
         return selectCompanyProfile(this._docID, this._dataMap, this.contextMap, this.duplicateContextIds);
     }

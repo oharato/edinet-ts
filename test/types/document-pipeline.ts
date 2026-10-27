@@ -32,3 +32,11 @@ const parsedLabel: string | undefined = subsidiaryRows.rows[0]?.label.parsedLabe
 void parsedLabel;
 // @ts-expect-error 提出会社の給与を子会社比率IDへ代用しない
 screenSubsidiaryHumanCapitalMetrics([subsidiary], "averageAnnualSalary");
+
+
+import { extractDisclosureTables, searchDisclosureTableCells, DisclosureTableKind } from "../../src/index";
+const rawTables = extractDisclosureTables("xml", { docID: "SAMPLE", kind: DisclosureTableKind.Facilities, contextRef: "filing" });
+const rawTableText: string = rawTables.parsedText;
+// @ts-expect-error 本文セルを金額へ昇格させない
+const unconfirmedAmount: number = rawTables.tables[0].cells[0].value;
+searchDisclosureTableCells([], { contains: rawTableText, offset: 0, limit: 100 });
