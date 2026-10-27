@@ -123,7 +123,16 @@ function expectedSelection(items: FactSelectionEvidence[], id: FinancialDetailMe
             samePeriod(item, metadata) && !["unknown-context", "unsupported-dimensions"].includes(item.reason)));
         if (!applicable.length) continue;
         if (applicable.some(item => item.reason === "duplicate-context")) return { status: "ambiguous", reason: "duplicate-context" };
-        if (applicable.length > 1) return { status: "ambiguous", reason: "multiple-facts" };
+        if (applicable.length > 1) {
+            // 選択器と同じ規則: 完全に同一の重複だけを同一重複として採用します。
+            const identical = (a: FactSelectionEvidence, b: FactSelectionEvidence) =>
+                a.raw === b.raw && a.decimals === b.decimals && a.unit === b.unit &&
+                JSON.stringify([a.period, a.scope, a.dimensions, a.entity]) === JSON.stringify([b.period, b.scope, b.dimensions, b.entity]);
+            if (applicable.every(item => item.reason === "selected" || item.reason === "selected-raw-only") &&
+                applicable.every(item => identical(item, applicable[0])))
+                return { status: "selected", reason: "selected-identical-duplicates", source: applicable[0] };
+            return { status: "ambiguous", reason: "multiple-facts" };
+        }
         const source = applicable[0];
         return source.reason === "nil" ? { status: "missing", reason: "nil" } : ["selected", "selected-raw-only"].includes(source.reason)
             ? { status: "selected", reason: source.reason, source } : { status: "unsupported", reason: source.reason };
@@ -159,7 +168,10 @@ function normalizeCopied(value: unknown): FinancialDetailSnapshot {
         if (result.status === "selected") {
             hasSelected = true;
             evidence(result.source, id, metadata);
-            if (!decimal(result.raw) || !expected.source || result.source.raw !== result.raw || result.source.reason !== result.reason || canonical(result.source) !== canonical(expected.source)) throw new Error("原値と採用元の証跡が不一致です");
+            const sourceReasonOk = result.reason === "selected-identical-duplicates"
+                ? result.source.reason === "selected" || result.source.reason === "selected-raw-only"
+                : result.source.reason === result.reason;
+            if (!decimal(result.raw) || !expected.source || result.source.raw !== result.raw || !sourceReasonOk || canonical(result.source) !== canonical(expected.source)) throw new Error("原値と採用元の証跡が不一致です");
             const safe = toSafeMetricNumber(result.raw);
             if (!(Object.is(result.safeNumber, safe) || Object.is(safe, -0) && Object.is(result.safeNumber, 0))) throw new Error("原値とsafeNumberが不一致です");
             result.safeNumber = safe; // JSON往復で0になった-0だけ復元します。

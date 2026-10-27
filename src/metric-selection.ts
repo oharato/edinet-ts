@@ -57,8 +57,9 @@ const validDate = (date: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(date) &&
 /** 内部の収集済みfactだけを読む純粋選択器。外部取得・変換・単位推測は行いません。 */
 export function selectMetricFact(id: MetricId, options: MetricSelectionOptions,
     facts: ReadonlyMap<string, readonly EdinetData[]>, contexts: ReadonlyMap<string, EdinetContext>,
-    units: ReadonlyMap<string, string>, duplicateContexts: ReadonlySet<string> = new Set()): FactSelectionResult {
-    return selectDefinedMetricFact(METRIC_REGISTRY[id], options, facts, contexts, units, duplicateContexts);
+    units: ReadonlyMap<string, string>, duplicateContexts: ReadonlySet<string> = new Set(),
+    behavior: { collapseIdenticalDuplicates?: boolean } = {}): FactSelectionResult {
+    return selectDefinedMetricFact(METRIC_REGISTRY[id], options, facts, contexts, units, duplicateContexts, behavior);
 }
 
 /** 辞書間で共用する選択器。既存18項目のID集合を拡張せず定義を受け取ります。 */
@@ -130,8 +131,8 @@ export function selectDefinedMetricFact<Id extends string>(definition: MetricDef
         if (!standardMatches.length) continue;
         if (standardMatches.some(m => m.reason === "duplicate-context")) return finish("ambiguous", "duplicate-context");
         if (standardMatches.length > 1) {
-            // 人的資本だけの明示的な許容です。値・精度・単位・正規化した文脈が完全に一致する重複だけを
-            // 1件として採用し、理由で区別します。財務等の既定は従来どおり曖昧のままです。
+            // 呼出側が明示した場合だけの許容です。値・精度・単位・正規化した文脈が完全に一致する重複だけを
+            // 1件として採用し、理由で区別します。エンジンの既定は従来どおり曖昧のままです。
             const identical = (a: FactSelectionEvidence, b: FactSelectionEvidence) =>
                 a.raw === b.raw && a.decimals === b.decimals && a.unit === b.unit &&
                 JSON.stringify([a.period, a.scope, a.dimensions, a.entity]) === JSON.stringify([b.period, b.scope, b.dimensions, b.entity]);

@@ -76,7 +76,7 @@ export interface BalanceSheetScreeningRow extends BalanceSheetSnapshot {
 const ids = Object.keys(BALANCE_SHEET_REGISTRY) as BalanceSheetMetricId[];
 const metricSet = new Set<string>(Object.values(BalanceSheetScreeningMetric));
 const operators = new Set(["gte", "lte", "gt", "lt", "eq"]);
-const reasons = new Set(["selected", "selected-raw-only", "tag-absent", "context-mismatch", "nil", "unsupported-standard", "unsupported-semantics", "unknown-namespace", "unknown-context", "unsupported-dimensions", "unsupported-context", "unsupported-entity", "unsupported-unit", "invalid-decimal", "invalid-decimals", "raw-unavailable", "duplicate-context", "multiple-facts", "invalid-period"]);
+const reasons = new Set(["selected", "selected-raw-only", "selected-identical-duplicates", "tag-absent", "context-mismatch", "nil", "unsupported-standard", "unsupported-semantics", "unknown-namespace", "unknown-context", "unsupported-dimensions", "unsupported-context", "unsupported-entity", "unsupported-unit", "invalid-decimal", "invalid-decimals", "raw-unavailable", "duplicate-context", "multiple-facts", "invalid-period"]);
 const record = (value: unknown): value is Record<string, any> => !!value && typeof value === "object" && !Array.isArray(value);
 const text = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
 const validDate = (date: unknown): date is string => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date;
@@ -137,7 +137,7 @@ function validateSnapshot(row: BalanceSheetSnapshot): void {
         if (result.metricId !== id || !reasons.has(result.reason) || !Array.isArray(result.evidence)) throw new Error("不正なBS選択結果です");
         if (result.status !== "selected") {
             if (!["missing", "unsupported", "ambiguous"].includes(result.status) || result.raw !== undefined || result.safeNumber !== undefined || result.source !== undefined ||
-                !({ missing: ["tag-absent", "context-mismatch", "nil"], ambiguous: ["duplicate-context", "multiple-facts"], unsupported: [...reasons].filter(r => !["selected", "selected-raw-only", "tag-absent", "context-mismatch", "nil", "duplicate-context", "multiple-facts"].includes(r)) }[result.status] ?? []).includes(result.reason)) throw new Error("不正な非採用結果です");
+                !({ missing: ["tag-absent", "context-mismatch", "nil"], ambiguous: ["duplicate-context", "multiple-facts"], unsupported: [...reasons].filter(r => !["selected", "selected-raw-only", "selected-identical-duplicates", "tag-absent", "context-mismatch", "nil", "duplicate-context", "multiple-facts"].includes(r)) }[result.status] ?? []).includes(result.reason)) throw new Error("不正な非採用結果です");
             if (result.evidence.some(e => !record(e) || !reasons.has(e.reason))) throw new Error("不正な非採用証跡です");
             const evidence = result.evidence;
             const positive = evidence.filter(e => e.reason === "selected" || e.reason === "selected-raw-only");
@@ -150,9 +150,10 @@ function validateSnapshot(row: BalanceSheetSnapshot): void {
         const source = result.source;
         const definition = BALANCE_SHEET_REGISTRY[id];
         const safe = typeof result.raw === "string" ? toSafeMetricNumber(result.raw) : undefined;
+        const collapsed = result.reason === "selected-identical-duplicates";
         if (row.accountingStandard !== "J-GAAP" || typeof result.raw !== "string" || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(result.raw) ||
-            result.safeNumber !== safe || result.reason !== (safe === undefined ? "selected-raw-only" : "selected") || !record(source) ||
-            source.reason !== result.reason || source.raw !== result.raw || source.key !== definition.candidates[0].key || source.namespace !== "jppfs_cor" ||
+            result.safeNumber !== safe || !(collapsed || result.reason === (safe === undefined ? "selected-raw-only" : "selected")) || !record(source) ||
+            !(collapsed ? source.reason === "selected" || source.reason === "selected-raw-only" : source.reason === result.reason) || source.raw !== result.raw || source.key !== definition.candidates[0].key || source.namespace !== "jppfs_cor" ||
             !/^http:\/\/disclosure\.edinet-fsa\.go\.jp\/taxonomy\/jppfs\/\d{4}-\d{2}-\d{2}\/jppfs_cor$/.test(source.namespaceURI ?? "") ||
             source.unit !== "iso4217:JPY" || !text(source.unitRef) || !text(source.contextRef) || source.nil !== false ||
             source.scope !== row.scope || !record(source.period) || source.period.instant !== row.instant || source.period.startDate !== undefined || source.period.endDate !== undefined ||
@@ -168,7 +169,11 @@ function validateSnapshot(row: BalanceSheetSnapshot): void {
             if (!dimensions.consistent) throw new Error("証跡の元次元とdimensionsが不整合です");
             return dimensions.aggregate;
         });
-        if (applicable.length !== 1 || canonical(applicable[0]) !== canonical(source)) throw new Error("採用sourceと証跡が不一致、または競合する適合factがあります");
+        if (!collapsed && (applicable.length !== 1 || canonical(applicable[0]) !== canonical(source))) throw new Error("採用sourceと証跡が不一致、または競合する適合factがあります");
+        if (collapsed && (applicable.length < 2 || !applicable.some(e => canonical(e) === canonical(source)) ||
+            !applicable.every(e => e.raw === source.raw && e.decimals === source.decimals && e.unit === source.unit &&
+                JSON.stringify([e.period, e.scope, e.dimensions, e.entity]) === JSON.stringify([source.period, source.scope, source.dimensions, source.entity]))))
+            throw new Error("同一重複の採用なのに、競合する適合factがあります");
         entities.add(JSON.stringify([source.entity.scheme, source.entity.identifier]));
     }
     if (entities.size > 1) throw new Error("同一snapshotの指標間でentityが混在しています");
