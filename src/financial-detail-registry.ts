@@ -4,6 +4,8 @@ import type { MetricDefinition } from "./metric-registry";
 export const FinancialDetailMetricId = Object.freeze({
     NoncurrentAssets: "noncurrentAssets", NoncurrentLiabilities: "noncurrentLiabilities", CashAndDeposits: "cashAndDeposits",
     CostOfSales: "costOfSales", SellingGeneralAndAdministrativeExpenses: "sellingGeneralAndAdministrativeExpenses",
+    GrossProfit: "grossProfit", NonOperatingIncome: "nonOperatingIncome", NonOperatingExpenses: "nonOperatingExpenses",
+    IncomeBeforeIncomeTaxes: "incomeBeforeIncomeTaxes", IncomeTaxes: "incomeTaxes",
     DepreciationOperatingCashFlow: "depreciationOperatingCashFlow",
     PropertyPlantEquipmentPurchaseCashFlow: "propertyPlantEquipmentPurchaseCashFlow",
     PropertyPlantEquipmentAndIntangiblesPurchaseCashFlow: "propertyPlantEquipmentAndIntangiblesPurchaseCashFlow",
@@ -31,6 +33,11 @@ export const FINANCIAL_DETAIL_REGISTRY: Readonly<Record<FinancialDetailMetricId,
     cashAndDeposits: define("cashAndDeposits", "CashAndDeposits", "instant"),
     costOfSales: define("costOfSales", "CostOfSales", "duration"),
     sellingGeneralAndAdministrativeExpenses: define("sellingGeneralAndAdministrativeExpenses", "SellingGeneralAndAdministrativeExpenses", "duration"),
+    grossProfit: define("grossProfit", "GrossProfit", "duration"),
+    nonOperatingIncome: define("nonOperatingIncome", "NonOperatingIncome", "duration"),
+    nonOperatingExpenses: define("nonOperatingExpenses", "NonOperatingExpenses", "duration"),
+    incomeBeforeIncomeTaxes: define("incomeBeforeIncomeTaxes", "IncomeBeforeIncomeTaxes", "duration"),
+    incomeTaxes: define("incomeTaxes", "IncomeTaxes", "duration"),
     depreciationOperatingCashFlow: define("depreciationOperatingCashFlow", "DepreciationAndAmortizationOpeCF", "duration"),
     propertyPlantEquipmentPurchaseCashFlow: define("propertyPlantEquipmentPurchaseCashFlow", "PurchaseOfPropertyPlantAndEquipmentInvCF", "duration"),
     propertyPlantEquipmentAndIntangiblesPurchaseCashFlow: define("propertyPlantEquipmentAndIntangiblesPurchaseCashFlow", "PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF", "duration"),
@@ -42,4 +49,4 @@ export const FINANCIAL_DETAIL_REGISTRY: Readonly<Record<FinancialDetailMetricId,
     leaseObligationsCL: define("leaseObligationsCL", "LeaseObligationsCL", "instant"),
     leaseObligationsNCL: define("leaseObligationsNCL", "LeaseObligationsNCL", "instant")
 });
-export const FINANCIAL_DETAIL_REGISTRY_VERSION = "3";
+export const FINANCIAL_DETAIL_REGISTRY_VERSION = "4";
