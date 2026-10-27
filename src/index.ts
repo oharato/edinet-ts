@@ -66,3 +66,5 @@ export * from "./audit-fee-registry";
 export * from "./audit-fee-screening";
 
 export * from "./average-equity-return";
+
+export type { ShareBasis, ShareBasisProofKey, ShareBasisAssessment, PerShareAnnualDocument } from "./share-basis";

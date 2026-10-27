@@ -145,7 +145,7 @@ API・CLIの両方で、条件は5演算のAND、順序は正確な分数で比�
 
 ## 追加実装: 親会社株主利益・CAGR・平均資産利益率（2026-10-28）
 
-この作業ツリーで実装した未リリースのAPIです。全体ロードマップ段階3の一部で、EPS/配当の分割調整、計算ROE/ROICはまだ含みません。
+この作業ツリーで実装した未リリースのAPIです。全体ロードマップ段階3の一部です。計算ROEは[別API](AVERAGE_EQUITY_RETURN.md)、根拠付きEPS/配当は[株式基準付き計算](PER_SHARE_GROWTH.md)で追加しました。自動分割換算とROICは残工程です。
 
 - `calculateAnnualNetIncomeGrowth(pair)` / `screenAnnualNetIncomeGrowth(pairs, options)`は`netIncomeGrowth`の別IDで、既存前年比と同じ連続12暦月・J-GAAP・JPY・正の前年を使います。CLIは`screen-net-income-growth`。
 - `calculateCagr(documents, CagrMetricId.NetSales)` / `screenCagr(series, metricId, options)`は売上高・営業利益・親会社株主利益のCAGRです。2〜21件の連続12暦月を明示し、3年なら4原値が必要です。途中の欠損・負値・期間飛びを無視しません。最初の0は不可、最後の0は-100%。
@@ -159,4 +159,4 @@ node dist/cli.js screen-cagr --manifest series.json --metric netSalesCagr \
   --conditions '[{"operator":"gte","value":0.1}]' --order desc --limit 20
 ```
 
-`series.json`は`[[{file,metadata}, ...], ...]`で、各内側配列が1社の古い年度→新しい年度です。最大100社・各2〜21原本、ファイル/合計容量は既存CLIの上限を使います。相対fileはmanifest基準。原本・manifestを変更せず、設定/入力エラーは内容を表示せず終了1です。これらの算式は合成fixtureで確認しており、実企業のCAGR/ROAのPDF独立照合は未完了です。
+`series.json`は`[[{file,metadata}, ...], ...]`で、各内側配列が1社の古い年度→新しい年度です。最大100社・各2〜21原本、ファイル/合計容量は既存CLIの上限を使います。相対fileはmanifest基準。原本・manifestを変更せず、設定/入力エラーは内容を表示せず終了1です。この節の売上/利益CAGRと平均資産利益率は合成fixtureで確認しており、その実企業でのPDF独立照合は未完了です。EPS/配当の限定実原本照合はリンク先に分けて記録します。

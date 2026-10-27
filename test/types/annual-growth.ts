@@ -18,3 +18,12 @@ declare const equityInput: AverageEquityReturnInput;
 const equity = calculateAverageEquityReturn(equityInput);
 if (equity.status === "calculated") { const numerator: string = equity.openingEquity.numerator; void numerator; }
 screenAverageEquityReturn([equityInput], { conditions: [{ operator: "gte", value: 0.1 }] });
+
+import { calculatePerShareGrowth, screenPerShareGrowth, PerShareGrowthMetricId, type PerShareAnnualPair } from "../../src/index";
+declare const perSharePair: PerShareAnnualPair;
+calculateCagr([perSharePair.previous, perSharePair.current], CagrMetricId.EarningsPerShare);
+screenCagr([[perSharePair.previous, perSharePair.current]], CagrMetricId.DividendPerShare);
+calculatePerShareGrowth(perSharePair, PerShareGrowthMetricId.EarningsPerShare);
+screenPerShareGrowth([perSharePair], PerShareGrowthMetricId.DividendPerShare);
+// @ts-expect-error 株式基準を持たない従来pairはEPSへ渡さない
+calculatePerShareGrowth(pair, PerShareGrowthMetricId.EarningsPerShare);
