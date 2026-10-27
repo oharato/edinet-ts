@@ -61,7 +61,7 @@ console.log(BALANCE_SHEET_REGISTRY.currentAssets);
 
 [財務正規化計画](plans/FINANCIAL_NORMALIZATION.md)の最初の3項目について、F01〜F05/F07〜F11/F14/F15の適用範囲を合成/保存fixtureで検証済みです。InstantのみのAPIなのでF14は時点完全一致と期間型拒否が対象です。訂正書類選択やDurationの分類は未実装です。
 
-保存済み2企業のXBRL（`CJ_2371_kakakucom.xbrl`、`S100TMMG/XBRL/PublicDoc/*.xbrl`）で、連結/単体それぞれ3項目のraw・元タグ・namespace URI・context・時点・単位・decimalsをraw取得APIと突合します。`3031_raccoon.xbrl`の連結負債は同じcontextのfactが重複しており、原値の一致を確認しつつ`ambiguous / multiple-facts`を維持します。金額はこの資料へ掲載しません。IFRS書類の単体jppfsがIFRS宣言で拒否されることも確認します。
+保存済み2企業のXBRL（`CJ_2371_kakakucom.xbrl`、`S100TMMG/XBRL/PublicDoc/*.xbrl`）で、連結/単体それぞれ3項目のraw・元タグ・namespace URI・context・時点・単位・decimalsをraw取得APIと突合します。`3031_raccoon.xbrl`の連結負債は同じcontextのfactが重複しており、原値が完全に一致するため理由`selected-identical-duplicates`で1件として採用します（当初の検証時は曖昧として扱っていました）。金額はこの資料へ掲載しません。IFRS書類の単体jppfsがIFRS宣言で拒否されることも確認します。
 
 この突合は**保存XML内の原factと来歴の一致**です。表示された元財務諸表との独立照合は[実データ確認記録](REAL_DATA_VALIDATION.md)の3社・各2時点に限ります。エクシオとミライト・ワンの2025年有報PDFとの一致は追加確認済みです。当時のXBRL別提出原本、全市場充足率、銀行/保険、新リース基準は未検証です。呼出元による誤ったJ-GAAP宣言の検出はしません。
 

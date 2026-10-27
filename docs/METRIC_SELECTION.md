@@ -75,7 +75,7 @@ US-GAAPと企業拡張タグの対応は未実装です。銀行・保険専用�
 | selected | `selected` または `selected-raw-only`。原値と採用元を返す |
 | missing | `tag-absent`、`context-mismatch`、`nil`。0で補わない |
 | unsupported | `unsupported-standard`、`unsupported-semantics`、`unknown-namespace`、`unknown-context`、`unsupported-context`、`unsupported-entity`、`unsupported-dimensions`、`unsupported-unit`、`invalid-period`、`invalid-decimal`、`invalid-decimals`、`raw-unavailable` |
-| ambiguous | `duplicate-context`、`multiple-facts`。XML内の順序で値を決めない |
+| ambiguous | `duplicate-context`、`multiple-facts`。XML内の順序で値を決めない。ただし値・精度・単位・正規化した文脈が完全に一致する重複は、理由`selected-identical-duplicates`で1件として採用する（全入口共通） |
 
 `selected` 以外ではraw/numberを結果の採用値として公開しません。未採用factの原値は `evidence` に残ります。
 `selected` でも巨大整数やdecimalの精度を保てない値では `safeNumber` がありません。
