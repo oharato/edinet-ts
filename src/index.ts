@@ -80,3 +80,6 @@ export type { FacilityOrganization, FacilityTableDeclaration, FacilityValue, Fac
 
 export { MAIN_CUSTOMER_DETAILS_VERSION, extractMainCustomerDetails, searchMainCustomerDetails } from "./main-customer-details";
 export type { MainCustomerDocument, MainCustomerRow, MainCustomerExtraction, MainCustomerDiagnosticReason, MainCustomerSearchOptions } from "./main-customer-details";
+
+export { SEGMENT_DETAILS_VERSION, SegmentMetric, extractSegmentDetails, searchSegmentDetails } from "./segment-details";
+export type { SegmentColumnRole, SegmentPeriod, SegmentTableDeclaration, SegmentDetailDocument, SegmentValue, SegmentColumn, SegmentDetailExtraction, SegmentSearchOptions } from "./segment-details";

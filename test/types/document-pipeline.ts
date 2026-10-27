@@ -55,3 +55,13 @@ if (customerValue.status === "numeric") { const yenDecimal: string = customerVal
 // @ts-expect-error 非数値を売上高0へ補わない
 if (customerValue.status === "unavailable") { const missingRevenue: string = customerValue.decimal; }
 searchMainCustomerDetails([mainCustomerDocument], { period: { startDate: "2025-04-01", endDate: "2026-03-31" }, scope: "Consolidated" });
+
+import { extractSegmentDetails, searchSegmentDetails, SegmentMetric, type SegmentDetailDocument } from "../../src/index";
+const segmentDocument: SegmentDetailDocument = { xml: "xml", selection: { docID: "SAMPLE", kind: DisclosureTableKind.Segments, contextRef: "current" }, accountingStandard: "J-GAAP", declarations: [{ period: { startDate: "2025-04-01", endDate: "2026-03-31" }, tableIndexes: [0, 1], rawSha256: "hash" }] };
+const segmentProfit = extractSegmentDetails(segmentDocument).groups[0].columns[0].values[SegmentMetric.ProfitJPY];
+if (segmentProfit.status === "numeric") { const profitDecimal: string = segmentProfit.decimal; }
+// @ts-expect-error 欠損した行のdecimalを存在すると仮定しない
+if (segmentProfit.status === "missing") { const absentProfit: string = segmentProfit.decimal; }
+searchSegmentDetails([segmentDocument], { period: { startDate: "2025-04-01", endDate: "2026-03-31" }, role: "reported-segment" });
+// @ts-expect-error セグメントと集計の役割を未指定で混ぜない
+searchSegmentDetails([segmentDocument], { period: { startDate: "2025-04-01", endDate: "2026-03-31" } });
