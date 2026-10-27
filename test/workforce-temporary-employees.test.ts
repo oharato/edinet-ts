@@ -19,7 +19,7 @@ describe("提出会社単体の平均臨時雇用人員（直接値のみ）", (
         expect(select()).toMatchObject({ status: "selected", metricId: id, raw: "6", safeNumber: 6,
             source: { key: tag, unit: "xbrli:pure", decimals: "0", scope: "NonConsolidated", dimensions: ["NonConsolidatedMember"], period: { instant: "2025-03-31" } } });
         expect(WORKFORCE_REGISTRY[id]).toMatchObject({ id, valueType: "decimal", valueUnit: "people", unit: "pure", periodType: "instant", candidates: [{ key: tag, standard: "J-GAAP", supported: true }] });
-        expect(WORKFORCE_REGISTRY_VERSION).toBe("4");
+        expect(WORKFORCE_REGISTRY_VERSION).toBe("5");
     });
     it.each(["0", "6.5", "0.0000001"])("平均値%sを整数化・FTE換算せず保持", raw => {
         expect(select(raw)).toMatchObject({ status: "selected", raw, safeNumber: Number(raw) });

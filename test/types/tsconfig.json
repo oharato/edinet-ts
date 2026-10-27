@@ -25,6 +25,7 @@
         "ifrs-balance-sheet-screening.ts",
         "context-dimension-traces.ts",
         "subsidiary-human-capital-labels.ts",
-        "document-type-registration.ts"
+        "document-type-registration.ts",
+        "document-pipeline.ts"
     ]
 }

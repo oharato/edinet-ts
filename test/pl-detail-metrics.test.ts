@@ -24,8 +24,8 @@ const xml = (raw = "120.5000", omit?: string, extra = "") =>
 const doc = (code: string, raw: string): FinancialDetailDocument => ({ xml: xml(raw), metadata: metadata(code) });
 
 describe("PL追加明細5項目（売上総利益・営業外収益/費用・税引前・法人税等）", () => {
-    it("辞書v4でも既定5項目は不変で、新5項目は明示時だけ返す", () => {
-        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("4");
+    it("辞書v6でも既定5項目は不変で、新5項目は明示時だけ返す", () => {
+        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("6");
         expect(DEFAULT_FINANCIAL_DETAIL_METRICS).toEqual(["noncurrentAssets", "noncurrentLiabilities", "cashAndDeposits", "costOfSales", "sellingGeneralAndAdministrativeExpenses"]);
         expect(Object.keys(createFinancialDetailSnapshot(xml(), metadata()).selections).sort()).toEqual(["costOfSales", "sellingGeneralAndAdministrativeExpenses"]);
         expect(Object.keys(createFinancialDetailSnapshot(xml(), metadata(), ids).selections).sort()).toEqual([...ids].sort());
@@ -52,7 +52,7 @@ describe("PL追加明細5項目（売上総利益・営業外収益/費用・税
         const nil = createFinancialDetailSnapshot(xml("120", "GrossProfit", tagFact("GrossProfit", "", 'xsi:nil="true"')), metadata(), ids).selections.grossProfit;
         expect(nil).toMatchObject({ status: "missing", reason: "nil" });
     });
-    it("同値でも複数factは財務明細では曖昧のまま（同一重複の許容は人的資本だけ）", () => {
+    it("同値でも複数factは財務明細では曖昧のまま（税引前だけを除く）", () => {
         const dup = xml("120", undefined, tagFact("GrossProfit", "120"));
         expect(createFinancialDetailSnapshot(dup, metadata(), [FinancialDetailMetricId.GrossProfit]).selections.grossProfit)
             .toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
@@ -79,9 +79,9 @@ describe("実原本fixture（3031ラクーン連結・2024年4月期）でのPL�
         expect(snapshot.selections.nonOperatingExpenses).toMatchObject({ status: "selected", raw: "48918000" });
         expect(snapshot.selections.incomeTaxes).toMatchObject({ status: "selected", raw: "209878000" });
     });
-    it("税引前はPLとCFに同値で重複するため、財務明細の厳密規則どおり曖昧", () => {
+    it("税引前はPLとCFの完全一致重複を証跡付きで採用", () => {
         const result = createFinancialDetailSnapshot(xmlText, meta, [FinancialDetailMetricId.IncomeBeforeIncomeTaxes]).selections.incomeBeforeIncomeTaxes!;
-        expect(result).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(result).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw: "535861000" });
         expect(result.evidence.filter(e => e.raw === "535861000").length).toBeGreaterThanOrEqual(2);
     });
 });

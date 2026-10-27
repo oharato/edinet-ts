@@ -1,6 +1,6 @@
 # ドキュメント索引
 
-更新日: 2026-10-24。使い方・現在の仕様はこの階層、計画はplans、過去の経緯はadr/historyに置きます。
+更新日: 2026-10-28。使い方・現在の仕様はこの階層、計画はplans、過去の経緯はadr/historyに置きます。
 
 まずは「何をしたいか」から選んでください。言葉に迷ったら[用語集](GLOSSARY.md)を参照できます。
 
@@ -11,9 +11,9 @@
 | 流動資産・流動負債・負債合計を読みたい | [今回の3項目](BALANCE_SHEET_NORMALIZATION.md) |
 | IFRSの連結BS3項目を読み、明示した会社を比べたい | [IFRSの専用抽出・検索](IFRS_BALANCE_SHEET_SELECTION.md)（直接抽出/メモリ検索/CLIは#55/#56でmain、DBなし） |
 | 保存した複数社の数値を条件で探したい | [21指標の検索](EDINET_DB_COMPARISON.md)。新しい3項目は[保存ファイルからの検索](BALANCE_SHEET_SCREENING.md)（#26でmainへ統合済み） |
-| 提出会社単体の給与・年齢・勤続年数・従業員数を読み比べたい | [人的資本](WORKFORCE.md)（期末と範囲を揃えた検索。従業員数は#53でmainへ統合済み） |
+| 提出会社単体の給与・年齢・勤続年数・従業員数を読み比べたい | [人的資本](WORKFORCE.md)（期末と範囲を揃えた検索。従業員数は#53、平均臨時雇用人員は#64、同一重複採用は#65でmainへ統合済み） |
 | 原本の会社名・コード・基準を読み、会社名・決算月で探したい | [会社情報](COMPANY_PROFILE.md)（原記載・採用理由、明示集合の検索） |
-| 固定資産/費用/CF明細・借入/社債/リース残高を読み比べたい | [直接財務項目](FINANCIAL_DETAILS.md)（既定5項目＋明示CF3/残高7項目、XML/保存JSON検索） |
+| 固定資産/費用/CF明細・借入/社債/リース残高を読み比べたい | [直接財務項目](FINANCIAL_DETAILS.md)（既定5項目＋明示CF6/残高7/PL5項目、XML/保存JSON検索） |
 | 流動比率で会社を比べたい | [計算方法・検索・CLI](CURRENT_RATIO.md)（#28でmainへ統合済み） |
 | 入力候補を選び、タイプミスを減らしたい | [型・定数の使い方](TYPED_OPTIONS.md) |
 | 財務3項目・流動比率を保存して検索したい | [SQLiteの小規模試作](FINANCIAL_SQLITE_STORE.md)（#31でmainへ統合済み） |
@@ -22,6 +22,8 @@
 | 保存した旧版と新版の違いを知りたい | [数値・採用状態・出典の比較](BALANCE_SHEET_VERSION_DIFF.md)（#35でmain） |
 | 保存原本で取り込みから比較まで通るか確認したい | [オフライン品質確認](OFFLINE_FINANCIAL_VERIFICATION.md)（#36でmain、明示入力・一時DB専用） |
 | 売上高・営業利益の前年からの増減で会社を比べたい | [12暦月の前年比](ANNUAL_REVENUE_GROWTH.md)（売上は#38でmain、営業利益を別APIで追加。曖昧な入力は計算しない） |
+| 次の実装範囲を確認したい | [確認待ちの具体案](plans/EDINET_TS_ROADMAP.md#確認待ちの具体案2026-10-28)（税引前重複→CF3項目は承認済み、ローカル実装・検証中） |
+| 全工程の実装状況を追いたい | [残工程の実装追跡](plans/IMPLEMENTATION_STATUS.md)（全体ロードマップが継続対象） |
 | 現在地と次の方針を知りたい | [全体計画](plans/EDINET_TS_ROADMAP.md)。main完了・PR確認待ち・未着手・未検証を区別 |
 | 変更の経緯を知りたい | [#27 検証記録](https://github.com/oharato/edinet-ts/pull/27)・[#28 流動比率](https://github.com/oharato/edinet-ts/pull/28)は正式stack #29でmainへ統合済み |
 | 通知書010・届出書030を正しく指定したい | [書類種別と旧名の互換性](DOCUMENT_LIST_VALIDATION.md#通知書010と有価証券届出書030の指定) |
@@ -56,7 +58,7 @@
 ## 計画と判断の履歴
 
 - [進行中の改善計画](plans/EDINET_TS_ROADMAP.md): 現在地と、原本→TypeScript抽出→SQLite財務保存→SQL検索の方針案。専用DBの小規模試作はローカル検証済み。本番の保存構造・移行は未設計。
-- [財務明細正規化計画](plans/FINANCIAL_NORMALIZATION.md): 追加する数値と確認項目。最初の3項目はPR #24でmainへ取り込み済み、残りは計画。
+- [財務明細正規化計画](plans/FINANCIAL_NORMALIZATION.md): 追加する数値と確認項目。BS3・直接5・CF3・残高7・PL5項目はmainへ取り込み済み。対応範囲は現行仕様、残る受入条件は全体計画を参照。
 - [ADR 0001: ローカル配布物保持](adr/0001-local-distribution.md): 採用した保存・配布方針。
 - [履歴索引](history/README.md): 過去の依頼、失効した公開手順、過去比較と検証。現行の手順として実行しない。
 
@@ -74,3 +76,7 @@ XML原本を読む際のサイズ・構文・DOCTYPEの制約とCLIの読み取�
 ZIPの形式・容量・保存先の制約、既存キャッシュと失敗時の扱いは[ZIP取得と保存時の保護](DOWNLOAD_SAFETY.md)を参照してください。
 
 取得の待ちを制限・中断したい場合は[本文受信までの期限とsignal](DOWNLOAD_SAFETY.md#本文受信までの時間制限と中断)、サーバーの待ち指定は[再試行待ち](DOWNLOAD_SAFETY.md#サーバーが指定する再試行待ちと追加待ち)を参照してください。
+
+- [訂正書類・世代保存・充足率・ローカル価格](DOCUMENT_PIPELINE.md): 観測cutoff、専用世代保存、母集団別工程集計と未調整価格の選択。
+
+- [監査・非監査報酬](AUDIT_FEES.md): 本体/ネットワーク・監査/非監査・提出会社/子会社/計を分ける12区分の直接取得と期間別検索。

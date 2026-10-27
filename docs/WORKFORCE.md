@@ -1,6 +1,6 @@
 # 提出会社単体の給与・年齢・勤続年数・従業員数・平均臨時雇用人員を読み比べる
 
-状態: 既定の給与は#41、明示して読む年齢・勤続年数は#44でmainへ統合済みです。従業員数の明示取得・検索は#53でmainへ統合済みです。平均臨時雇用人員の明示取得・検索はこの変更で追加します。未リリース。
+状態: 既定の給与は#41、明示して読む年齢・勤続年数は#44でmainへ統合済みです。従業員数の明示取得・検索は#53でmainへ統合済みです。平均臨時雇用人員の明示取得・検索は#64、人的資本だけの同一重複採用は#65でmainへ統合済みです。未リリース。2026-10-28更新。
 
 有価証券報告書に直接記載された、提出会社単体の平均年間給与を読み、同じ期末の複数社で条件検索・並べ替えできます。企業グループ全体の平均給与とは区別します。原値と出典を残し、欠けた給与を0で埋めません。項目を明示すれば年齢・勤続年数・従業員数・平均臨時雇用人員も読み比べられます。従業員数を使う場合の範囲と制約は[後の節](#従業員数を明示して読む)を、平均臨時雇用人員は[最後の節](#平均臨時雇用人員を明示して読む)を参照してください。
 
@@ -44,7 +44,7 @@ const result = screenWorkforceDocuments(documents, {
 
 コードと金額は合成例です。`documents`は`[{xml, metadata}, ...]`を明示します。期間集計のdurationは対象外です。返値の`selected`は採用できた原記載、`missing`は欠損、`unsupported`は扱えない条件、`ambiguous`は候補を決められない状態です。原文字列・タグ・namespace（項目の所属）・context（値の対象）・entity（対象会社識別）・期間・単位・decimals・採用できない理由を残します。
 
-0は実値として保持します。負数は給与として検索に使わず、原値を候補の記録へ残します。nil、不在、同値を含む重複候補、未知namespace、単位違い、余分な次元、不安全な数値も0に置き換えません。安全なnumberが作れない原値は検索から除外します。給与を連結従業員数で割るような派生計算は行いません。
+0は実値として保持します。負数は給与として検索に使わず、原値を候補の記録へ残します。nil、不在、完全一致しない重複候補、未知namespace、単位違い、余分な次元、不安全な数値も0に置き換えません。安全なnumberが作れない原値は検索から除外します。給与を連結従業員数で割るような派生計算は行いません。
 
 検索はAND条件とgte/lte/gt/lt/eqに対応します。期末・会計基準・連結/単体・通貨が違う集合や、同一会社/書類の複数候補は先に拒否します。異なる会社に同じentityを要求するものではありません。最新書類や訂正後の自動選択、コードと原本の対応の認証は行いません。
 
@@ -89,7 +89,7 @@ node dist/cli.js screen-workforce --manifest /tmp/local-workforce/files.json --s
 | `AverageAgeYears` / `averageAgeYears` | `AverageAgeYearsInformationAboutReportingCompanyInformationAboutEmployees` | 年 |
 | `AverageLengthOfServiceYears` / `averageLengthOfServiceYears` | `AverageLengthOfServiceYearsInformationAboutReportingCompanyInformationAboutEmployees` | 年 |
 
-現在の`WORKFORCE_REGISTRY_VERSION`は`"3"`です。XBRLの単位は`pure`（`xbrli:pure`）、人が読む原値の単位は辞書の`valueUnit: "years"`で区別します。給与は`valueUnit: "JPY"`です。`pure`を割合や円だと推測せず、decimalsでも倍率を掛けません。原本に丸めて記載された値をそのまま扱い、丸め前の平均を復元しません。
+現在の`WORKFORCE_REGISTRY_VERSION`は`"5"`です。XBRLの単位は`pure`（`xbrli:pure`）、人が読む原値の単位は辞書の`valueUnit: "years"`で区別します。給与は`valueUnit: "JPY"`です。`pure`を割合や円だと推測せず、decimalsでも倍率を掛けません。原本に丸めて記載された値をそのまま扱い、丸め前の平均を復元しません。
 
 ```ts
 const metricIds = [WorkforceMetricId.AverageAgeYears,
@@ -109,7 +109,7 @@ const result = screenWorkforceDocuments(documents, {
 
 明示一覧だけを検索に必要な項目として扱い、条件や並べ替えがあれば、その項目だけを必須にします。条件/並べ替えのIDは明示一覧内に必要です。給与が必須でなければ、給与欠損だけで年齢の使える行を除外しません。診断の`required: false`で区別できます。空・疎配列・未知ID・重複した明示一覧は拒否します。
 
-0と`-0`は保持、負数は原値を候補に残して不採用、nil/重複/不安全数値も0にしません。年齢と勤続年数の対象社員が給与と同じかは、この数値だけでは証明できません。これらを使う人員数や給与の派生計算はありません。
+0と`-0`は保持、負数は原値を候補に残して不採用、nil/完全一致しない重複/不安全数値も0にしません。年齢と勤続年数の対象社員が給与と同じかは、この数値だけでは証明できません。これらを使う人員数や給与の派生計算はありません。
 
 同じ一覧JSONで使うCLI例:
 
@@ -186,10 +186,39 @@ PDF表示値、対象者の注記、他基準・連結・全市場の充足率�
 
 最終検証では、Node26.12.1で全2,338テスト（64ファイル、追加8）、本体の型検査とbuildが成功しました。実API・本番DBは使っていません。
 
-## 人的資本だけの同一重複ルール
+## 人的資本の同一重複ルール
 
 有価証券報告書では、従業員の状況の表が文書内の複数か所に同じ内容で繰り返されることがあります。人的資本の選択では、タグ・値・decimals・単位・正規化した文脈（期間・範囲・次元・entity）が完全に一致する重複factを、合算せず1件として採用し、結果の理由を`selected-identical-duplicates`とします。証拠には重複した全factが残ります。
 
-値・精度・単位・文脈のどれか1つでも違う重複、context定義自体の重複、nilを含む重複は、従来どおり決められない候補として扱います。財務指標・財務明細・貸借対照表などの選択はこの許容の対象外で、同一の重複でも`ambiguous`のままです。
+値・精度・単位・文脈のどれか1つでも違う重複、context定義自体の重複、nilを含む重複は、従来どおり決められない候補として扱います。主要財務指標・BSや税引前以外の直接財務明細は、この許容の対象外です。税引前だけは別途、完全一致重複の採用と旧JSON互換を実装しました。
 
 最終検証では、Node26.12.1で全2,341テスト（64ファイル）、本体の型検査とbuildが成功しました。実原本fixtureの従業員数・平均臨時雇用人員が、この規則で実際に採用されることも確認しています。
+
+
+## 比率9項目の明示取得（2026-10-28、作業ツリーで追加）
+
+registry版5で、以下の提出会社単体・明示instant・正規NonConsolidatedMember・全社の直接factを追加しました。`unit: "pure"`、`valueUnit: "ratio"`、1=100%です。給与は常に返す互換契約と、既定1項目は維持します。XML/CLIの明示projectionでだけ追加・条件検索します。
+
+| ID | 定義/労働者区分 |
+|---|---|
+| `femaleManagerRatio` | 管理職に占める女性労働者の割合 |
+| `maleChildcareLeaveOrdinanceItem1AllRatio` | 育児休業取得率、施行規則の育児休業の区分・全労働者（taxonomyのArticle714Item1） |
+| `maleChildcareLeaveOrdinanceItem1RegularRatio` | 同・正規雇用 |
+| `maleChildcareLeaveOrdinanceItem1NonRegularRatio` | 同・非正規雇用 |
+| `maleChildcareLeaveOrdinanceItem2AllRatio` | 育児休業等及び育児目的休暇の区分・全労働者（taxonomyのArticle714Item2） |
+| `maleChildcareLeaveWomensActAllRatio` | 女性活躍推進法に基づく・全労働者の別定義 |
+| `genderWageAllRatio` | 男女賃金の差異・全労働者 |
+| `genderWageRegularRatio` | 同・正規雇用 |
+| `genderWageNonRegularRatio` | 同・非正規雇用 |
+
+辞書の直接タグだけを使い、法令・労働者区分・子会社行からの穴埋めや合算は行いません。公開の比率が100%を超えるケースを自動で100%へ切り詰めません。`25%`やダッシュの文字列を数値へ強制変換せず、rawと非採用理由を残します。nilの背景が非開示か非該当かまでは推測しません。
+
+```ts
+const metricIds = [WorkforceMetricId.FemaleManagerRatio, WorkforceMetricId.GenderWageAllRatio];
+const result = screenWorkforceDocuments(documents, { metricIds,
+  conditions: [{ metric: WorkforceMetricId.FemaleManagerRatio, operator: "gte", value: 0.2 }] });
+```
+
+エクシオ/ミライト・ワンの2025年提出2原本・当期/前年36選択で12採用・24欠損を確認しました。ラクーンの会社行次元だけのfactを全体値へ誤採用しない回帰も追加しました。追加2社の当期12比率は、同じ提出のPDF（エクシオ11頁、ミライト14頁）の表を画像で確認し、表示%を100で割った値と一致しました。全注記の意味解釈や一般子会社表の数値抽出、全企業/全年度の保証は含みません。タクソノミ名のArticle714は原本の現行条番号を保証しません。ミライト原本では71条の6第2号と記載されており、タグ名から現在の法令条番号を断定しません。
+
+男女賃金の比率は女性の平均年間賃金÷男性の平均年間賃金です。1から引いた格差へ変換しません。[厚生労働省の用語説明](https://shokuba.mhlw.go.jp/menu/010/)も参照してください。

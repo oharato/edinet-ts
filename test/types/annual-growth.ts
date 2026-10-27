@@ -6,3 +6,9 @@ screenAnnualRevenueGrowth([pair],{conditions:[{metric:AnnualGrowthMetricId.NetSa
 screenAnnualRevenueGrowth([pair],{conditions:[{metric:"earningsPerShareGrowth",operator:"gte",value:0.2}]});
 // @ts-expect-error 年次分類は明示的なannual
 const wrong:AnnualRevenuePair={previous:{...pair.previous,metadata:{...pair.previous.metadata,periodType:"ytd"}},current:pair.current};
+
+import {calculateCagr,screenCagr,CagrMetricId} from "../../src/index";
+calculateCagr([pair.previous,pair.current],CagrMetricId.NetSales);
+screenCagr([[pair.previous,pair.current]],CagrMetricId.OperatingIncome,{conditions:[{operator:"gte",value:0.1}]});
+// @ts-expect-error 分割確認のないEPSはCAGRへ混ぜない
+calculateCagr([pair.previous,pair.current],"earningsPerShareCagr");

@@ -18,7 +18,7 @@ describe.each(ids)("人的資本の年値 %s", id => {
         expect(select()).toMatchObject({ status: "selected", metricId: id, raw: "12.3", safeNumber: 12.3,
             source: { key: WORKFORCE_REGISTRY[id].candidates[0].key, unit: "xbrli:pure", scope: "NonConsolidated", period: { instant: "2025-03-31" } } });
         expect(WORKFORCE_REGISTRY[id]).toMatchObject({ valueType: "decimal", unit: "pure", valueUnit: "years", periodType: "instant" });
-        expect(WORKFORCE_REGISTRY_VERSION).toBe("4");
+        expect(WORKFORCE_REGISTRY_VERSION).toBe("5");
         expect(Object.isFrozen(WORKFORCE_REGISTRY[id])).toBe(true);
     });
     it.each(["0", "-0", "-0.000", "0.0000001"])("%sは有効、年のまま保持", value => {

@@ -1,0 +1,87 @@
+[
+  {
+    "file": "test/test_data/3031_raccoon.xbrl",
+    "code": "30310",
+    "standard": "J-GAAP",
+    "periods": [
+      {
+        "column": "CurrentYear",
+        "startDate": "2023-05-01",
+        "endDate": "2024-04-30"
+      },
+      {
+        "column": "Prior1Year",
+        "startDate": "2022-05-01",
+        "endDate": "2023-04-30"
+      }
+    ]
+  },
+  {
+    "file": "test/test_data/CJ_2371_kakakucom.xbrl",
+    "code": "23710",
+    "standard": "J-GAAP",
+    "periods": [
+      {
+        "column": "CurrentYear",
+        "startDate": "2016-04-01",
+        "endDate": "2017-03-31"
+      },
+      {
+        "column": "Prior1Year",
+        "startDate": "2015-04-01",
+        "endDate": "2016-03-31"
+      }
+    ]
+  },
+  {
+    "file": "test/test_data/CI_4689_yahoo.xbrl",
+    "code": "46890",
+    "standard": "IFRS",
+    "periods": [
+      {
+        "column": "CurrentYear",
+        "startDate": "2016-04-01",
+        "endDate": "2017-03-31"
+      },
+      {
+        "column": "Prior1Year",
+        "startDate": "2015-04-01",
+        "endDate": "2016-03-31"
+      }
+    ]
+  },
+  {
+    "file": "test/test_data/S100TMMG/XBRL/PublicDoc/jpcrp030000-asr-001_E02367-000_2024-03-31_01_2024-06-28.xbrl",
+    "code": "79740",
+    "standard": "J-GAAP",
+    "periods": [
+      {
+        "column": "CurrentYear",
+        "startDate": "2023-04-01",
+        "endDate": "2024-03-31"
+      },
+      {
+        "column": "Prior1Year",
+        "startDate": "2022-04-01",
+        "endDate": "2023-03-31"
+      }
+    ]
+  },
+  {
+    "file": "test/test_data/S100TP3N/XBRL/PublicDoc/jpcrp030000-asr-001_E02778-000_2024-03-31_01_2024-06-21.xbrl",
+    "code": "99840",
+    "standard": "IFRS",
+    "periods": [
+      {
+        "column": "CurrentYear",
+        "startDate": "2023-04-01",
+        "endDate": "2024-03-31"
+      },
+      {
+        "column": "Prior1Year",
+        "startDate": "2022-04-01",
+        "endDate": "2023-03-31"
+      }
+    ]
+  }
+]

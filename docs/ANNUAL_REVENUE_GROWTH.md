@@ -141,3 +141,22 @@ API・CLIの両方で、条件は5演算のAND、順序は正確な分数で比�
 これは2026年有報の前年列を含むXML突合と算術確認です。2025年に別提出されたXBRL原本、今回の営業利益のPDF表示値との独立照合、全市場の充足率は未確認です。実原本・金額・計算結果データをGitへ含めず、新規取得・DB/cache変更もしていません。
 
 追加60件（営業利益API56・CLI4）を含む全1,847テスト、本体/公開API例の型検査、clean build、Python保存保護5件が成功。独立合成1,070確認とビルド済み/CJS1,126確認も成功しました。上の869件は#38当時の検証記録です。
+
+
+## 追加実装: 親会社株主利益・CAGR・平均資産利益率（2026-10-28）
+
+この作業ツリーで実装した未リリースのAPIです。全体ロードマップ段階3の一部で、EPS/配当の分割調整、計算ROE/ROICはまだ含みません。
+
+- `calculateAnnualNetIncomeGrowth(pair)` / `screenAnnualNetIncomeGrowth(pairs, options)`は`netIncomeGrowth`の別IDで、既存前年比と同じ連続12暦月・J-GAAP・JPY・正の前年を使います。CLIは`screen-net-income-growth`。
+- `calculateCagr(documents, CagrMetricId.NetSales)` / `screenCagr(series, metricId, options)`は売上高・営業利益・親会社株主利益のCAGRです。2〜21件の連続12暦月を明示し、3年なら4原値が必要です。途中の欠損・負値・期間飛びを無視しません。最初の0は不可、最後の0は-100%。
+- CAGRの`exact`は`{numerator, denominator, root}`で、算式は`(numerator/denominator)^(1/root)-1`です。無理数を正確な十進数だと扱いません。同じ期間集合の条件は閾値の累乗との分数比較、順序は倍率の分数比較で処理します。`value`は表示用の近似です。
+- `calculateAverageAssetsReturn(input, metricId)` / `screenAverageAssetsReturn(inputs, metricId, options)`は、明示した利益÷期首期末平均総資産です。IDは`netIncomeToAverageAssets`/`operatingIncomeToAverageAssets`/`ordinaryIncomeToAverageAssets`。掲載ROA/ROEとは区別します。`input`は`income`（annualのfile内容/metadata）、`opening`/`closing`（instantのXML/metadata）で、期首は開始日前日、期末は終了日を指定します。期首不在を期末だけで補いません。負資産・ゼロ平均・unsafe・企業/期間/scope/基準の混在は理由付きで不可。条件/順序は正確な分数を使います。
+
+CAGR CLI:
+
+```sh
+node dist/cli.js screen-cagr --manifest series.json --metric netSalesCagr \
+  --conditions '[{"operator":"gte","value":0.1}]' --order desc --limit 20
+```
+
+`series.json`は`[[{file,metadata}, ...], ...]`で、各内側配列が1社の古い年度→新しい年度です。最大100社・各2〜21原本、ファイル/合計容量は既存CLIの上限を使います。相対fileはmanifest基準。原本・manifestを変更せず、設定/入力エラーは内容を表示せず終了1です。これらの算式は合成fixtureで確認しており、実企業のCAGR/ROAのPDF独立照合は未完了です。

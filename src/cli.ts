@@ -13,6 +13,8 @@ import { EdinetRepository } from "./db/edinet-repository";
 import { generateFullHelpMarkdown } from "./utils/type-doc-helpers";
 import { screenAnnualRevenueGrowth } from "./annual-revenue-growth";
 import { screenAnnualOperatingIncomeGrowth } from "./annual-operating-income-growth";
+import { screenAnnualNetIncomeGrowth } from "./annual-net-income-growth";
+import { screenCagr } from "./annual-cagr";
 import { screenFinancialDetailDocuments } from "./financial-detail-screening";
 import { screenFinancialDetailSnapshots } from "./financial-detail-snapshots";
 import { readRegularFile, LOCAL_IMPORT_LIMITS } from "./local-balance-sheet-import";
@@ -364,6 +366,40 @@ program.command(name)
 }
 registerAnnualGrowthCommand("screen-sales-growth","明示した前年/当年の12暦月売上高pairを前年比で検索します（1=100%）","netSalesGrowth",screenAnnualRevenueGrowth);
 registerAnnualGrowthCommand("screen-operating-income-growth","明示した前年/当年の12暦月営業利益pairを前年比で検索します（前期正値・1=100%）","operatingIncomeGrowth",screenAnnualOperatingIncomeGrowth);
+
+registerAnnualGrowthCommand("screen-net-income-growth", "明示した親会社株主利益pairを前年比で検索します（前期正値）", "netIncomeGrowth", screenAnnualNetIncomeGrowth);
+
+program.command("screen-cagr")
+    .description("連続する年次原本の明示系列からCAGRを検索します（3年は4原値）")
+    .requiredOption("--manifest <path>", "各社のfile/metadata配列を持つJSON二重配列")
+    .requiredOption("--metric <id>", "netSalesCagr/operatingIncomeCagr/netIncomeCagr")
+    .option("--conditions <json>", "operator/valueのAND条件", "[]")
+    .option("--order <order>", "ascまたはdesc", "desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifestPath = path.resolve(options.manifest);
+            const entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifestPath, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error("manifestは100系列以下です");
+            let bytes = 0;
+            const series = entries.map(items => {
+                if (!Array.isArray(items) || items.length < 2 || items.length > 21) throw new Error("各系列は2〜21原本です");
+                return items.map(entry => {
+                    if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(key => !["file", "metadata"].includes(key)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error("file/metadataが必要です");
+                    const input = readRegularFile(path.resolve(path.dirname(manifestPath), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
+                    bytes += input.bytes.byteLength;
+                    return { xml: new TextDecoder("utf-8", { fatal: true }).decode(input.bytes), metadata: entry.metadata };
+                });
+            });
+            for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error("ページ指定は0以上の整数です");
+            console.log(JSON.stringify(screenCagr(series, options.metric, { conditions: JSON.parse(options.conditions), order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit) }), null, options.pretty ? 2 : undefined));
+        } catch {
+            console.error("CAGR検索の原本一覧・項目・条件・期間を確認してください（入力内容は非表示）");
+            process.exitCode = 1;
+        }
+    });
 
 program.command("screen-bs")
     .description("ローカルXBRL一覧から財務3項目・流動比率を検索します（currentRatio: 1=100%）")

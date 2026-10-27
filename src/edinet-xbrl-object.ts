@@ -1,3 +1,4 @@
+import { AUDIT_FEE_REGISTRY, type AuditFeeMetricId } from "./audit-fee-registry";
 import type { ContextDimensionTraceMap, ContextDimensionsTraceResult } from "./context-dimension-traces";
 import { IFRS_BALANCE_SHEET_REGISTRY, IfrsBalanceSheetMetricId } from "./ifrs-balance-sheet-registry";
 import { WORKFORCE_REGISTRY, WorkforceMetricId } from "./workforce-registry";
@@ -242,19 +243,31 @@ export class EdinetXbrlObject {
     /** 一般事業J-GAAPの直接5科目。現預金/同等物・内訳を混同しません。 */
     public selectFinancialDetail(id: FinancialDetailMetricId, options: MetricSelectionOptions): FactSelectionResult<FinancialDetailMetricId> {
         if (!Object.prototype.hasOwnProperty.call(FINANCIAL_DETAIL_REGISTRY, id)) throw new Error("不正な財務明細IDです");
-        return selectDefinedMetricFact(FINANCIAL_DETAIL_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        return selectDefinedMetricFact(FINANCIAL_DETAIL_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds,
+            { collapseIdenticalDuplicates: id === "incomeBeforeIncomeTaxes" });
     }
 
     /** 人的資本は提出会社単体のみ。負値は原値をevidenceへ残し不採用とします。 */
     public selectWorkforceMetric<Id extends WorkforceMetricId>(id: Id, options: MetricSelectionOptions): FactSelectionResult<Id> {
         if (!Object.prototype.hasOwnProperty.call(WORKFORCE_REGISTRY, id)) throw new Error("不正な人的資本IDです");
-        // 人的資本だけ、完全に同一の重複factを1件として採用します（財務等の選択は従来どおり厳密）。
+        // 人的資本は完全に同一の重複factを1件として採用します。
         const result = selectDefinedMetricFact<Id>(WORKFORCE_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, { collapseIdenticalDuplicates: true });
         // numberへ変換する前に符号を検証。-0/-0.0はゼロとして保持します。
         if (options.scope !== "NonConsolidated" || result.status === "selected" && /^-/.test(result.raw) && /[1-9]/.test(result.raw)) {
             return { metricId: id, status: "unsupported", reason: "unsupported-semantics",
                 evidence: result.evidence.map(item => item.reason === "selected" || item.reason === "selected-raw-only" || item.reason === "selected-identical-duplicates" ? { ...item, reason: "unsupported-semantics" } : item) };
         }
+        return result;
+    }
+
+    /** 報酬の対象主体はタグで区別し、contextの連結/単体scopeとは混同しません。 */
+    public selectAuditFeeMetric(id: AuditFeeMetricId, options: MetricSelectionOptions): FactSelectionResult<AuditFeeMetricId> {
+        if (!Object.hasOwn(AUDIT_FEE_REGISTRY, id)) throw new Error("不正な監査報酬IDです");
+        const result = selectDefinedMetricFact(AUDIT_FEE_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        if (result.status === "selected" && /^-/.test(result.raw) && /[1-9]/.test(result.raw)) return {
+            metricId: id, status: "unsupported", reason: "unsupported-semantics",
+            evidence: result.evidence.map(item => item.reason === "selected" || item.reason === "selected-raw-only" ? { ...item, reason: "unsupported-semantics" } : item)
+        };
         return result;
     }
 

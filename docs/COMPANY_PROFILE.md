@@ -126,3 +126,24 @@ node dist/cli.js screen-companies --manifest /tmp/local-companies/files.json --s
 Node26.12.1で全1,114テスト（既存1,055＋追加59）、本体/使用例の型検査・build・保存保護Python5件が成功しました。検査条件や既存の制限時間は変更していません。
 
 独立レビューではsourceとbuild済み公開API/CLI各74確認、CJSルート公開が成功しました。更新文書の相対リンク98件にも欠損はありませんでした。レビューは合成入力によるものです。
+
+
+## 公式コードリストの観測マスター（2026-10-28、未リリース）
+
+`fetchEdinetCompanyMaster()`は認証不要の公式固定ZIPを1回取得し、受信8MiB/CSV32MiBの上限、ZIPのパス/CRC/構造検査を経てCP932を復号します。`parseEdinetCodeList(csv, {observedAt, sourceUrl})`は復号済み文字列から同じスナップショットを作れます。DBやファイルは自動更新しません。期限とAbortSignalに対応します。
+
+出所は[金融庁APIガイドのコードリスト案内](https://disclosure2dl.edinet-fsa.go.jp/guide/static/disclosure/download/ESE140206.pdf)の固定配信先です。[EDINET利用規約](https://disclosure2dl.edinet-fsa.go.jp/guide/static/disclosure/WZEK0030.html)はPDL1.0と出典/加工表示の条件を示し、APIで得られないコンテンツの取得を例外として扱っています。本ライブラリがコードリストを加工した結果であり、金融庁の未加工データや認証済み企業マスターとは表現しません。
+
+snapshotの`asOf`はCSVの「○年○月○日現在」、`observedAt`は取得日時です。`sourceSha256`は復号済みUTF-8文字列、取得APIの`archiveSha256`/`originalCsvSha256`は元ZIP/元CSVのhashです。原CSVは自分で保持してください。
+
+```ts
+const snapshot = await fetchEdinetCompanyMaster({ timeoutMs: 30000, signal });
+const result = queryCompanyMaster([snapshot], {
+  asOf: "2026-10-27", knownAt: "2026-10-28T00:00:00+09:00",
+  industry: "情報・通信業", listingStatus: "listed", fiscalYearEndMonth: 3
+});
+```
+
+基準日と取得日時の両方がcutoff以前の最新観測を使い、過去に観測がなければ`no-observation`とします。現在の分類を過去年へ補いません。同時点の競合は拒否します。`entityId`は`edinet:E00001`の形で、法人番号が後から加わっても変えません。法人番号、英字/4・5桁証券コード、原社名、提出者種別、上場/非上場/不明、業種、決算日の原記載と月を保持します。
+
+2026-10-27基準の公式リスト11,433件、うち上場3,813件を新APIで取得・検査しました。全市場財務値の収録数ではありません。市場区分、厳密な改称/合併/上廃の発生日、異なるEDINETコードの法人同定、業種別財務比較は未実装です。単一の現行CSVだけで過去の企業履歴を復元したことにはしません。原CSV/全行データはGitへ保存していません。

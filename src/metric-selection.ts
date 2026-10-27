@@ -37,6 +37,13 @@ export type FactSelectionResult<Id extends string = MetricId> = {
 } & ({ status: "selected"; raw: string; safeNumber?: number; source: FactSelectionEvidence } |
     { status: "missing" | "unsupported" | "ambiguous"; raw?: never; safeNumber?: never; source?: never });
 
+/** 有効候補の完全一致。raw表記や精度の差を数値変換で消しません。 */
+export function identicalMetricFacts(a: FactSelectionEvidence, b: FactSelectionEvidence): boolean {
+    return a.key === b.key && a.namespaceURI === b.namespaceURI && a.raw === b.raw && a.decimals === b.decimals && a.unit === b.unit &&
+        JSON.stringify([a.period?.instant, a.period?.startDate, a.period?.endDate, a.scope, a.dimensions, a.entity?.scheme, a.entity?.identifier]) ===
+        JSON.stringify([b.period?.instant, b.period?.startDate, b.period?.endDate, b.scope, b.dimensions, b.entity?.scheme, b.entity?.identifier]);
+}
+
 const canonical = (value: string): string => {
     const [mantissa, exponent = "0"] = value.toLowerCase().split("e");
     const [integer, fraction = ""] = mantissa.replace(/^[+-]/, "").split(".");
@@ -130,13 +137,9 @@ export function selectDefinedMetricFact<Id extends string>(definition: MetricDef
         if (!standardMatches.length) continue;
         if (standardMatches.some(m => m.reason === "duplicate-context")) return finish("ambiguous", "duplicate-context");
         if (standardMatches.length > 1) {
-            // 人的資本だけの明示的な許容です。値・精度・単位・正規化した文脈が完全に一致する重複だけを
-            // 1件として採用し、理由で区別します。財務等の既定は従来どおり曖昧のままです。
-            const identical = (a: FactSelectionEvidence, b: FactSelectionEvidence) =>
-                a.raw === b.raw && a.decimals === b.decimals && a.unit === b.unit &&
-                JSON.stringify([a.period, a.scope, a.dimensions, a.entity]) === JSON.stringify([b.period, b.scope, b.dimensions, b.entity]);
+            // 入口が明示的に許可した科目だけ、完全一致する有効候補を証跡付きで採用します。
             if (behavior.collapseIdenticalDuplicates && standardMatches.every(m => m.reason === "selected" || m.reason === "selected-raw-only") &&
-                standardMatches.every(m => identical(m, standardMatches[0]))) {
+                standardMatches.every(m => identicalMetricFacts(m, standardMatches[0]))) {
                 const source = standardMatches[0];
                 return { metricId: id, status: "selected", raw: source.raw!, safeNumber: toSafeMetricNumber(source.raw!), source, reason: "selected-identical-duplicates", evidence };
             }

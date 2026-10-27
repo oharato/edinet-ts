@@ -2,7 +2,7 @@ import { types } from "node:util";
 import { ComparisonOperator, SortOrder } from "./financial-options";
 import { DEFAULT_FINANCIAL_DETAIL_METRICS, FINANCIAL_DETAIL_REGISTRY, type FinancialDetailMetricId } from "./financial-detail-registry";
 import { normalizeFinancialDetailMetadata, type FinancialDetailMetadata } from "./financial-detail-metadata";
-import { toSafeMetricNumber, type FactSelectionEvidence, type FactSelectionResult, type SelectionReason } from "./metric-selection";
+import { identicalMetricFacts, toSafeMetricNumber, type FactSelectionEvidence, type FactSelectionResult, type SelectionReason } from "./metric-selection";
 import type { FinancialDetailSnapshot, FinancialDetailScreeningOptions, FinancialDetailScreeningResult,
     FinancialDetailCondition, FinancialDetailDiagnostic } from "./financial-detail-screening";
 
@@ -112,7 +112,7 @@ function evidence(value: unknown, id: FinancialDetailMetricId, metadata: Financi
     if (value.reason === "invalid-decimals") { if (decimals(value.decimals)) throw new Error("不正精度の理由が矛盾しています"); return; }
     if (!decimals(value.decimals) || value.reason !== (toSafeMetricNumber(value.raw) === undefined ? "selected-raw-only" : "selected") || !value.entity) throw new Error("採用理由/精度/entityと原値が不整合です");
 }
-function expectedSelection(items: FactSelectionEvidence[], id: FinancialDetailMetricId, metadata: FinancialDetailMetadata): { status: string; reason: SelectionReason; source?: FactSelectionEvidence } {
+function expectedSelection(items: FactSelectionEvidence[], id: FinancialDetailMetricId, metadata: FinancialDetailMetadata, collapseIdenticalDuplicates = false): { status: string; reason: SelectionReason; source?: FactSelectionEvidence } {
     const candidates = FINANCIAL_DETAIL_REGISTRY[id].candidates.filter(candidate => candidate.standard === metadata.accountingStandard);
     if (!candidates.length) {
         if (items.length) throw new Error("未対応基準の選択には候補を追加できません");
@@ -123,7 +123,12 @@ function expectedSelection(items: FactSelectionEvidence[], id: FinancialDetailMe
             samePeriod(item, metadata) && !["unknown-context", "unsupported-dimensions"].includes(item.reason)));
         if (!applicable.length) continue;
         if (applicable.some(item => item.reason === "duplicate-context")) return { status: "ambiguous", reason: "duplicate-context" };
-        if (applicable.length > 1) return { status: "ambiguous", reason: "multiple-facts" };
+        if (applicable.length > 1) {
+            if (collapseIdenticalDuplicates && applicable.every(item => item.reason === "selected" || item.reason === "selected-raw-only") &&
+                applicable.every(item => identicalMetricFacts(item, applicable[0])))
+                return { status: "selected", reason: "selected-identical-duplicates", source: applicable[0] };
+            return { status: "ambiguous", reason: "multiple-facts" };
+        }
         const source = applicable[0];
         return source.reason === "nil" ? { status: "missing", reason: "nil" } : ["selected", "selected-raw-only"].includes(source.reason)
             ? { status: "selected", reason: source.reason, source } : { status: "unsupported", reason: source.reason };
@@ -154,12 +159,13 @@ function normalizeCopied(value: unknown): FinancialDetailSnapshot {
             if (item.reason !== "unknown-context") entities.add(item.entity ? canonical(item.entity) : "unknown");
             if (item.reason === "unsupported-entity") entityUnsupported = true;
         }
-        const expected = expectedSelection(result.evidence, id, metadata);
+        // 旧JSONの曖昧という判定は保持し、新しい採用札を持つ税引前だけ完全一致を検証します。
+        const expected = expectedSelection(result.evidence, id, metadata, id === "incomeBeforeIncomeTaxes" && result.reason === "selected-identical-duplicates");
         if (result.status !== expected.status || result.reason !== expected.reason) throw new Error("採用状態/理由と候補の記録が矛盾しています");
         if (result.status === "selected") {
             hasSelected = true;
             evidence(result.source, id, metadata);
-            if (!decimal(result.raw) || !expected.source || result.source.raw !== result.raw || result.source.reason !== result.reason || canonical(result.source) !== canonical(expected.source)) throw new Error("原値と採用元の証跡が不一致です");
+            if (!decimal(result.raw) || !expected.source || result.source.raw !== result.raw || canonical(result.source) !== canonical(expected.source)) throw new Error("原値と採用元の証跡が不一致です");
             const safe = toSafeMetricNumber(result.raw);
             if (!(Object.is(result.safeNumber, safe) || Object.is(safe, -0) && Object.is(result.safeNumber, 0))) throw new Error("原値とsafeNumberが不一致です");
             result.safeNumber = safe; // JSON往復で0になった-0だけ復元します。

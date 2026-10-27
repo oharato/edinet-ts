@@ -25,3 +25,7 @@ const ageId: "averageAgeYears" = object.selectWorkforceMetric(WorkforceMetricId.
 const serviceId: "averageLengthOfServiceYears" = object.selectWorkforceMetric(WorkforceMetricId.AverageLengthOfServiceYears, selectionOptions).metricId;
 const yenUnit: "JPY" = WORKFORCE_REGISTRY.averageAnnualSalary.valueUnit;
 const yearsUnit: "years" = WORKFORCE_REGISTRY.averageAgeYears.valueUnit;
+
+const ratioUnit: "ratio" = WORKFORCE_REGISTRY.femaleManagerRatio.valueUnit;
+createWorkforceSnapshot("",metadata,[WorkforceMetricId.FemaleManagerRatio,WorkforceMetricId.GenderWageAllRatio]);
+screenWorkforceDocuments([],{metricIds:[WorkforceMetricId.MaleChildcareLeaveOrdinanceItem1AllRatio],sortBy:WorkforceMetricId.MaleChildcareLeaveOrdinanceItem1AllRatio});

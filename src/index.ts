@@ -48,3 +48,19 @@ export { extractSubsidiaryHumanCapitalLabels, searchSubsidiaryHumanCapitalLabels
 export type { SubsidiaryHumanCapitalLabelMetadata, SubsidiaryHumanCapitalLabelDocument, SubsidiaryHumanCapitalLabelDimension,
     SubsidiaryHumanCapitalLabelReason, SubsidiaryHumanCapitalLabelEvidence, SubsidiaryHumanCapitalLabelTrace, SubsidiaryHumanCapitalLabelRow, SubsidiaryHumanCapitalLabelDiagnostic,
     SubsidiaryHumanCapitalLabelExtraction, SubsidiaryHumanCapitalLabelCondition, SubsidiaryHumanCapitalLabelSearchOptions, SubsidiaryHumanCapitalLabelSearchResult } from "./subsidiary-human-capital-labels";
+
+export * from "./annual-cagr";
+
+export * from "./annual-net-income-growth";
+export * from "./company-master";
+export * from "./average-assets-return";
+export * from "./financial-detail-coverage";
+export * from "./document-version-selection";
+
+export * from "./db/financial-detail-generations";
+
+export * from "./local-closing-price";
+
+export * from "./audit-fee-registry";
+
+export * from "./audit-fee-screening";

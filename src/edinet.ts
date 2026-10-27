@@ -108,23 +108,21 @@ export class Edinet {
 
     /**
      * 横断検索の前に、対象期間のメタデータをローカルDBへ補います。
-     * DBに無い日だけ書類一覧APIを取得し、結果をDBへ保存します。
+     * 取得完了を確認できない日を書類一覧APIで補い、結果をDBへ保存します。
      * 取得に失敗した日は警告だけを出し、DBにある範囲で検索を続けます。
-     * 提出が0件の日は取得済みを記録できないため、次回も再取得します。
+     * 0件の日も記録します。当日中の取得だけでは完了とせず、翌日以降に取り直します。
      */
     private async ensureMetadataRange(startDate: string, endDate: string, request?: EdinetRequestOptions): Promise<void> {
         const start = new Date(`${startDate}T00:00:00Z`);
         const end = new Date(`${endDate}T00:00:00Z`);
         for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
             const dateStr = d.toISOString().split("T")[0];
-            if (this.repo.hasMetadataForDate(dateStr)) continue;
+            if (this.repo.hasCompleteListForDate(dateStr)) continue;
             try {
                 const docs = await (request === undefined
                     ? this.downloader.search(dateStr)
                     : this.downloader.search(dateStr, undefined, request));
-                if (docs.length > 0) {
-                    this.repo.insertBatch(docs, dateStr);
-                }
+                this.repo.saveDocumentList(docs, dateStr);
             } catch (e) {
                 if (e instanceof EdinetRequestError && e.code !== EdinetRequestErrorCode.Network) throw e;
                 console.warn("EDINET書類一覧の補完取得に失敗しました（詳細は非表示）");
@@ -133,21 +131,24 @@ export class Edinet {
         }
     }
 
+    private metadataDateRange(days: number): { startDate: string; endDate: string } {
+        if (!Number.isSafeInteger(days) || days < 0) throw new Error("補完日数は0以上の整数です");
+        const endDate = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const start = new Date(Date.parse(endDate + "T00:00:00Z") - days * 86400000);
+        if (!Number.isFinite(start.getTime())) throw new Error("補完日数が大きすぎます");
+        return { startDate: start.toISOString().slice(0, 10), endDate };
+    }
+
     /**
      * 特定の「イベント」が発生した書類を探します (横断検索)。
      * 例: TOB(公開買付)が発表された書類を直近30日分取得する場合などに使用します。
-     * 対象期間のうちDBに無い日は、検索の前に書類一覧APIから補います。
+     * 対象期間のうち取得完了を確認できない日は、検索の前に書類一覧APIから補います。
      *
      * @param docType 書類種別 (例: EdinetDocumentType.TenderOfferStatement / "240")
      * @param days 過去何日分を検索するか (デフォルト: 30)
      */
     public async findDocumentsByType(docType: EdinetDocumentType | string, days: number = 30, request?: EdinetRequestOptions): Promise<EdinetMetadata[]> {
-        const today = new Date();
-        const pastDate = new Date();
-        pastDate.setDate(today.getDate() - days);
-
-        const startDate = pastDate.toISOString().split('T')[0]; // YYYY-MM-DD
-        const endDate = today.toISOString().split('T')[0];
+        const { startDate, endDate } = this.metadataDateRange(days);
 
         await this.ensureMetadataRange(startDate, endDate, request);
 
@@ -167,15 +168,8 @@ export class Edinet {
      * @param days メタデータをAPIから補う直近の日数 (デフォルト: 30)
      */
     public async findDocumentsByFiler(filerNamePartial: string, days: number = 30, request?: EdinetRequestOptions): Promise<EdinetMetadata[]> {
-        const today = new Date();
-        const pastDate = new Date();
-        pastDate.setDate(today.getDate() - days);
-
-        await this.ensureMetadataRange(
-            pastDate.toISOString().split('T')[0],
-            today.toISOString().split('T')[0],
-            request
-        );
+        const { startDate, endDate } = this.metadataDateRange(days);
+        await this.ensureMetadataRange(startDate, endDate, request);
 
         return this.repo.findDocuments({
             filerName: filerNamePartial

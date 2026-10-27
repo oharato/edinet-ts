@@ -137,3 +137,12 @@ XBRLの `xbrli:context` 要素を以下のように解析します。
 `screen-bs`も他のローカル原本コマンドと同じ有限の読み取りを使います。manifestは2MiB以下のJSON配列・100件以下、各原本は64MiB以下、原本の合計は256MiB以下です。UTF-8として不正なbyte列を置換して解析せず、エラーとして止めます。通常ファイルを読み、読取中の変更を検査します。symlinkを一律禁止する仕組みではありません。元ファイルへ書き込みません。
 
 この制約は手元で指定する入力の保護です。ネット取得・全キャッシュ走査・本番DB更新は行いません。
+
+
+## 書類一覧の完了証跡と原観測（2026-10-28、未リリース）
+
+`EdinetRepository.saveDocumentList(docs, date)`は1日分の一覧と取得日時/件数、各書類の原観測JSONを同一transactionに保存します。途中失敗では一覧・観測・完了証跡をまとめてrollbackします。0件の日も記録し、日本時間でその日が閉じた後の取得だけを`hasCompleteListForDate()`で完了と扱います。単独の`insertDocument()`/`insertBatch()`は完全な一覧と断定しません。従来の`hasMetadataForDate()`は書類の存在検査のままです。
+
+facadeの横断検索とseederのskipExistingは、完了証跡を使うよう更新しました。当日は再取得し、過去日の0件一覧は省略できます。旧DBは完了証跡がないため一度再取得が必要です。既存の書類行は従来どおり上書きしません。
+
+`getDocumentObservations({docID?,knownAt?,afterSequence?,limit?})`は取得時点ごとのJSONを上書きせず返します。knownAtはtimezone付き日時、limitは1〜10,000。sequenceを再開位置に使えます。旧DBに保存されていない過去観測は空であり、復元したことにはしません。この段階では訂正原本の財務値の自動置換や訂正全履歴の解決は未実装です。readOnlyはschemaを追加せず、古いDBに観測表がなければ空を返します。

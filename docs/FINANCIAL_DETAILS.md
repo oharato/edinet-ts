@@ -1,6 +1,6 @@
 # 直接記載された財務項目を読む・複数社で探す
 
-状態: 既定5項目は#37でmainへ統合済み。明示して読むCF3項目も#39でmainへ統合済みです。借入金・社債・リースの直接7残高も#42でmainへ統合済みです。PL追加明細5項目は本変更で追加します。未リリース。2026-10-26更新。
+状態: 既定5項目は#37でmainへ統合済み。明示して読むCF3項目も#39でmainへ統合済みです。借入金・社債・リースの直接7残高も#42でmainへ統合済みです。PL追加明細5項目は#66でmainへ統合済みです。未リリース。2026-10-28更新。
 
 固定資産・固定負債・現金及び預金・売上原価・販管費を、原本XBRLから出典付きで読みます。指定した会社集合で条件検索・並べ替えもできます。一般事業のJ-GAAP直接タグを対象にし、既存の主要18指標/21指標検索、BS3、SQLite保存形式は変更しません。
 
@@ -14,7 +14,7 @@
 | `CostOfSales` | `costOfSales` | `CostOfSales` | 明示期間の売上原価 |
 | `SellingGeneralAndAdministrativeExpenses` | `sellingGeneralAndAdministrativeExpenses` | `SellingGeneralAndAdministrativeExpenses` | 明示期間の販売費及び一般管理費（販管費） |
 
-金額はJPY、元値のdecimal文字列を保持します。`FINANCIAL_DETAIL_REGISTRY_VERSION`は`"3"`です。候補・定義はfreezeしています。対応は既存生成型と公式taxonomy由来の定義、保存原本の存在確認を基に、共有の厳密選択器を使って独立実装しています。
+金額はJPY、元値のdecimal文字列を保持します。`FINANCIAL_DETAIL_REGISTRY_VERSION`は`"6"`です。候補・定義はfreezeしています。対応は既存生成型と公式taxonomy由来の定義、保存原本の存在確認を基に、共有の厳密選択器を使って独立実装しています。
 
 現金及び預金と現金同等物は別です。総資産や繰延資産を固定資産へ足したり、工事原価・部門費用・営業費用を売上原価へ代用したりしません。内訳合算・差額補完・符号の反転は行いません。銀行・保険向け別mapping、IFRS/US-GAAPの候補はありません。対象タグがなければ欠損等の理由を返します。
 
@@ -44,7 +44,7 @@ const expenses = createFinancialDetailSnapshot(xml, {
 
 既存の`EdinetXbrlObject`から1項目を読む場合は`object.selectFinancialDetail(id, { accountingStandard, scope, period })`です。選択器は[厳密な数値選択](METRIC_SELECTION.md)と同じで、元タグ・namespace/context・entity・期間・単位・decimals・候補と理由を返します。基準や会社コードと公式原本の対応は利用側の宣言で、自動証明はしません。
 
-`selected`でも安全なnumberが作れなければrawだけを保持します。nil/不在/単位不明/複数候補を0にしません。実際の0や負数は保持します。連結→単体、当期→前期、未知namespace→同名タグへのfallbackはありません。同値重複も曖昧として止めます。XML文字列を受けるsnapshot APIは構文を検査しますが、XBRLスキーマ検証ではありません。
+`selected`でも安全なnumberが作れなければrawだけを保持します。nil/不在/単位不明/複数候補を0にしません。実際の0や負数は保持します。連結→単体、当期→前期、未知namespace→同名タグへのfallbackはありません。税引前当期純利益だけは、原値・精度・単位・期間・scope・次元・entityが一致する有効な重複を、全候補の証跡と理由`selected-identical-duplicates`付きで1件として採用します。他科目の同値重複は曖昧として止めます。XML文字列を受けるsnapshot APIは構文を検査しますが、XBRLスキーマ検証ではありません。
 
 ## 複数社の検索とCLI
 
@@ -131,7 +131,7 @@ node dist/cli.js screen-details --manifest /tmp/local-details/duration-files.jso
 
 ## 借入金・社債・リースの直接7残高
 
-次の7項目も`metricIds`/CLI `--metrics`で明示して読み、同じ期末・範囲の会社集合で検索できます。一般事業J-GAAP/JPYのinstantだけです。辞書は計15項目ですが、既定は従来5項目（時点3・期間2）を維持します。
+次の7項目も`metricIds`/CLI `--metrics`で明示して読み、同じ期末・範囲の会社集合で検索できます。一般事業J-GAAP/JPYのinstantだけです。辞書は計23項目ですが、既定は従来5項目（時点3・期間2）を維持します。
 
 | 定数 / ID | 元の `jppfs_cor:` タグ | 意味 |
 |---|---|---|
@@ -170,7 +170,7 @@ Node26.12.1で全1,055テスト（既存976＋追加79）、本体/使用例の�
 
 ## 保存JSONの原値・出典を検査して検索する
 
-この版は`normalizeFinancialDetailSnapshot()`、`screenFinancialDetailSnapshots()`とCLI `screen-details-json`を追加します。`createFinancialDetailSnapshot()`の出力をJSON保存し、元XMLを読み直さずに同じ条件で検索できます。対象は上記15項目で、既定5項目・明示項目・期間型の規則はXML検索と同じです。
+この版は`normalizeFinancialDetailSnapshot()`、`screenFinancialDetailSnapshots()`とCLI `screen-details-json`を追加します。`createFinancialDetailSnapshot()`の出力をJSON保存し、元XMLを読み直さずに同じ条件で検索できます。対象は辞書の全23項目で、既定5項目・明示項目・期間型の規則はXML検索と同じです。
 
 保存用データは、原本を読むAPIから作ります。次は合成の会社コード/書類IDを使う例です。`xml`は利用者が明示して読み込んだ原本、保存先のフォルダは作成済みとします。金額入りJSONはGit管理外で保管してください。
 
@@ -216,7 +216,7 @@ node dist/cli.js screen-details-json --file /tmp/local-details/cf-rows.json --me
 | `screen-details` | 原本ファイルとmetadataの一覧 | XMLを解析して直接項目を選び検索 |
 | `screen-details-json` | 保存した財務snapshotの配列 | 保存証跡を検査して検索 |
 
-SQLへの永続保存・差分更新・解析版管理は、このJSON検索の完成とは別です。この変更では、固定資産・固定負債・現金及び預金のinstant3項目だけを保存する[専用SQLite Store](FINANCIAL_DETAIL_STORE.md)を試験用APIとして追加します。APIのみで、他12項目の保存や差分取り込みは含みません。既存BS3 StoreとDB形式は変更していません。
+SQLへの永続保存・差分更新・解析版管理は、このJSON検索の完成とは別です。#46で、固定資産・固定負債・現金及び預金のinstant3項目だけを保存する[専用SQLite Store](FINANCIAL_DETAIL_STORE.md)を試験用APIとしてmainへ追加済みです。APIのみで、他20項目の保存や差分取り込みは含みません。既存BS3 StoreとDB形式は変更していません。
 
 保存済み2社・2時点・2範囲・2期間型の16snapshot、計120選択結果（80採用・40欠損）がJSON往復で保持されました。XML検索とJSON検索の46条件も一致し、原本2件は不変でした。これは既存XML経路との同等性確認で、新たなPDF表示値との独立照合ではありません。
 
@@ -238,6 +238,32 @@ Node26.12.1で全1,378テスト（既存1,159＋追加219）、本体/使用例�
 
 営業利益・経常利益・特別利益/特別損失・当期純利益では代用しません。法人税等は還付等で負値になることがあり、原値をそのまま保持します。
 
-税引前当期純利益は注意点があります。同じ要素が損益計算書とキャッシュ・フロー計算書（間接法の開始行）の両方に同じ文脈で現れる原本では、財務明細の厳密規則（同一重複の許容は人的資本だけ）により`ambiguous`になります。実原本fixture（3031ラクーン連結・2024年4月期）では、売上総利益4,613,314,000円・営業外収益17,817,000円・営業外費用48,918,000円・法人税等209,878,000円が採用でき、税引前535,861,000円は同値2件で曖昧でした。この扱いを財務明細へ広げるかは、人的資本の前例とは分けて判断します。
+税引前当期純利益は、損益計算書とCF計算書に同じ値が繰り返されるため、この項目に限り完全一致の重複を採用します。実原本fixture（3031ラクーン連結・2024年4月期）の税引前535,861,000円は同値2件から採用し、全候補は証跡へ保持します。異値・精度差・単位/文脈差・nil混在・重複context定義は従来どおり不採用です。
+
+旧版が保存した`ambiguous/multiple-facts`の税引前snapshotは、その状態のまま検査・検索できます。読み込みだけで採用へ変更しません。新しい抽出結果の`selected-identical-duplicates`は、候補全体とsourceを検査します。旧readerは新しい採用理由を読み込めないため、readerも更新してください。registryはこの変更で4→5、後述CF3追加で5→6です。
 
 最終検証では、Node26.12.1で全2,393テスト（65ファイル。追加はPL明細の専用12件と、registry連動で増える保存・検索のパラメータ化分を含む）、本体の型検査とbuildが成功しました。実API・本番DBは使っていません。
+
+
+## CF支払・返済3項目を明示して読む
+
+この作業ツリーで追加した直接duration科目です。一般事業J-GAAP・JPYで、原本の負符号を保持します。公開mainへの統合・配布はまだ行っていません。
+
+| 定数 | ID | 直接タグ |
+|---|---|---|
+| `IncomeTaxesPaidCashFlow` | `incomeTaxesPaidCashFlow` | `IncomeTaxesPaidOpeCF` |
+| `CashDividendsPaidCashFlow` | `cashDividendsPaidCashFlow` | `CashDividendsPaidFinCF` |
+| `LongTermLoansRepaymentCashFlow` | `longTermLoansRepaymentCashFlow` | `RepaymentOfLongTermLoansPayableFinCF` |
+
+還付/支払還付純額、非支配株主配当、短期借入返済は代用・合算しません。不在・nil・単体CF非開示を0へ変えません。同値重複の採用特例は税引前のみです。
+
+```ts
+const metricIds = [FinancialDetailMetricId.IncomeTaxesPaidCashFlow,
+  FinancialDetailMetricId.CashDividendsPaidCashFlow, FinancialDetailMetricId.LongTermLoansRepaymentCashFlow];
+const snapshot = createFinancialDetailSnapshot(xml, durationMetadata, metricIds);
+const result = screenFinancialDetailDocuments(documents, { metricIds,
+  conditions: [{ metric: FinancialDetailMetricId.IncomeTaxesPaidCashFlow, operator: "lte", value: -1000000 }],
+  sortBy: FinancialDetailMetricId.CashDividendsPaidCashFlow, order: "asc" });
+```
+
+同じIDを`screenFinancialDetailSnapshots()`とCLI `screen-details`/`screen-details-json`の`--metrics`へ指定できます。既定5項目・主要18/21指標・SQLite保存対象は増やしません。

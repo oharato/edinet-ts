@@ -24,3 +24,9 @@ createFinancialDetailSnapshot("",instant,debtIds);
 screenFinancialDetailDocuments([{xml:"",metadata:instant}],{metricIds:debtIds,sortBy:FinancialDetailMetricId.BondsPayable});
 // @ts-expect-error 合算した有利子負債項目を追加したわけではありません
 createFinancialDetailSnapshot("",instant,["interestBearingDebt"]);
+
+const paymentIds=[FinancialDetailMetricId.IncomeTaxesPaidCashFlow,FinancialDetailMetricId.CashDividendsPaidCashFlow,FinancialDetailMetricId.LongTermLoansRepaymentCashFlow];
+createFinancialDetailSnapshot("",duration,paymentIds);
+screenFinancialDetailDocuments([{xml:"",metadata:duration}],{metricIds:paymentIds,sortBy:FinancialDetailMetricId.CashDividendsPaidCashFlow});
+// @ts-expect-error 法人税の費用とCF支払額は別のID
+createFinancialDetailSnapshot("",duration,["incomeTaxesPaid"]);

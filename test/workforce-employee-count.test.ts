@@ -18,7 +18,7 @@ describe("提出会社単体の従業員数（直接値のみ）", () => {
         expect(select()).toMatchObject({ status: "selected", metricId: id, raw: "120", safeNumber: 120,
             source: { key: tag, namespaceURI: "http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2024-11-01/jpcrp_cor", unit: "xbrli:pure", decimals: "0", scope: "NonConsolidated", dimensions: ["NonConsolidatedMember"], period: { instant: "2025-03-31" }, entity: { scheme: "synthetic", identifier: "A" } } });
         expect(WORKFORCE_REGISTRY[id]).toMatchObject({ id, valueType: "decimal", valueUnit: "people", unit: "pure", periodType: "instant", candidates: [{ key: tag, standard: "J-GAAP", supported: true }] });
-        expect(WORKFORCE_REGISTRY_VERSION).toBe("4"); expect(Object.isFrozen(WORKFORCE_REGISTRY[id].candidates)).toBe(true);
+        expect(WORKFORCE_REGISTRY_VERSION).toBe("5"); expect(Object.isFrozen(WORKFORCE_REGISTRY[id].candidates)).toBe(true);
     });
     it.each(["0", "-0", "-0.000", "+0", "120.50", "0.0000001"])("%sを丸め/整数化/FTE推定せず保持", raw => {
         expect(select(raw)).toMatchObject({ status: "selected", raw, safeNumber: Number(raw) });

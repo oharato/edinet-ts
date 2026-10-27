@@ -9,6 +9,8 @@ export const FinancialDetailMetricId = Object.freeze({
     DepreciationOperatingCashFlow: "depreciationOperatingCashFlow",
     PropertyPlantEquipmentPurchaseCashFlow: "propertyPlantEquipmentPurchaseCashFlow",
     PropertyPlantEquipmentAndIntangiblesPurchaseCashFlow: "propertyPlantEquipmentAndIntangiblesPurchaseCashFlow",
+    IncomeTaxesPaidCashFlow: "incomeTaxesPaidCashFlow", CashDividendsPaidCashFlow: "cashDividendsPaidCashFlow",
+    LongTermLoansRepaymentCashFlow: "longTermLoansRepaymentCashFlow",
     ShortTermLoansPayable: "shortTermLoansPayable",
     CurrentPortionOfLongTermLoansPayable: "currentPortionOfLongTermLoansPayable",
     LongTermLoansPayable: "longTermLoansPayable",
@@ -41,6 +43,9 @@ export const FINANCIAL_DETAIL_REGISTRY: Readonly<Record<FinancialDetailMetricId,
     depreciationOperatingCashFlow: define("depreciationOperatingCashFlow", "DepreciationAndAmortizationOpeCF", "duration"),
     propertyPlantEquipmentPurchaseCashFlow: define("propertyPlantEquipmentPurchaseCashFlow", "PurchaseOfPropertyPlantAndEquipmentInvCF", "duration"),
     propertyPlantEquipmentAndIntangiblesPurchaseCashFlow: define("propertyPlantEquipmentAndIntangiblesPurchaseCashFlow", "PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF", "duration"),
+    incomeTaxesPaidCashFlow: define("incomeTaxesPaidCashFlow", "IncomeTaxesPaidOpeCF", "duration"),
+    cashDividendsPaidCashFlow: define("cashDividendsPaidCashFlow", "CashDividendsPaidFinCF", "duration"),
+    longTermLoansRepaymentCashFlow: define("longTermLoansRepaymentCashFlow", "RepaymentOfLongTermLoansPayableFinCF", "duration"),
     shortTermLoansPayable: define("shortTermLoansPayable", "ShortTermLoansPayable", "instant"),
     currentPortionOfLongTermLoansPayable: define("currentPortionOfLongTermLoansPayable", "CurrentPortionOfLongTermLoansPayable", "instant"),
     longTermLoansPayable: define("longTermLoansPayable", "LongTermLoansPayable", "instant"),
@@ -49,4 +54,4 @@ export const FINANCIAL_DETAIL_REGISTRY: Readonly<Record<FinancialDetailMetricId,
     leaseObligationsCL: define("leaseObligationsCL", "LeaseObligationsCL", "instant"),
     leaseObligationsNCL: define("leaseObligationsNCL", "LeaseObligationsNCL", "instant")
 });
-export const FINANCIAL_DETAIL_REGISTRY_VERSION = "4";
+export const FINANCIAL_DETAIL_REGISTRY_VERSION = "6";
