@@ -74,3 +74,6 @@ export type { ChildcareCalculationMethod, SubsidiaryHumanCapitalNoteProof, Subsi
 
 export { DisclosureTableKind, DISCLOSURE_TABLE_LIMITS, extractDisclosureTables, searchDisclosureTableCells } from "./disclosure-tables";
 export type { DisclosureTableCell, DisclosureTable, DisclosureTableSource, DisclosureTableExtraction, DisclosureTableDocument, DisclosureTableCellMatch } from "./disclosure-tables";
+
+export { FacilityField, FACILITY_DETAILS_VERSION, extractFacilityDetails, screenFacilityDetails } from "./facility-details";
+export type { FacilityOrganization, FacilityTableDeclaration, FacilityValue, FacilityDetailRow, FacilityDetailsExtraction, FacilityDetailDocument, FacilityScreeningOptions } from "./facility-details";

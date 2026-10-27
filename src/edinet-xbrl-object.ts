@@ -103,11 +103,12 @@ export class EdinetXbrlObject {
             dtsValidation: "not-performed", originalLexicalValidation: "not-performed", candidates, diagnostics });
     }
 
-    /** 元のXMLを保持しない読み取り専用の会社情報。XML hash付き入口はcreateCompanyProfileです。 */
+    /** 指定した本文表のセルと出典を返します。単位や表の意味の確定とは別です。 */
     public selectDisclosureTables(kind: DisclosureTableKind, contextRef: string): DisclosureTableExtraction {
         return selectDisclosureTables(this._docID, kind, contextRef, this._dataMap, this.contextMap, this.duplicateContextIds, ref => this.traceContextDimensions(ref));
     }
 
+    /** 元のXMLを保持しない読み取り専用の会社情報。XML hash付き入口はcreateCompanyProfileです。 */
     public getCompanyProfile(): CompanyProfile {
         return selectCompanyProfile(this._docID, this._dataMap, this.contextMap, this.duplicateContextIds);
     }

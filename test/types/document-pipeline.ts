@@ -40,3 +40,10 @@ const rawTableText: string = rawTables.parsedText;
 // @ts-expect-error 本文セルを金額へ昇格させない
 const unconfirmedAmount: number = rawTables.tables[0].cells[0].value;
 searchDisclosureTableCells([], { contains: rawTableText, offset: 0, limit: 100 });
+
+import { extractFacilityDetails, FacilityField, type FacilityDetailDocument } from "../../src/index";
+const facilityDocument: FacilityDetailDocument = { xml: "xml", accountingStandard: "J-GAAP", selection: { docID: "SAMPLE", contextRef: "filing", kind: DisclosureTableKind.Facilities }, declarations: [{ tableIndex: 1, asOfDate: "2026-03-31", organization: "reporting-company", rawSha256: "hash" }] };
+const facilityValue = extractFacilityDetails(facilityDocument).rows[0].values[FacilityField.TotalBookValueJPY];
+if (facilityValue.status === "numeric") { const exactDecimal: string = facilityValue.decimal; }
+// @ts-expect-error 非数値の設備欄にdecimalを仮定しない
+if (facilityValue.status === "unavailable") { const absentDecimal: string = facilityValue.decimal; }
