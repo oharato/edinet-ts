@@ -77,3 +77,6 @@ export type { DisclosureTableCell, DisclosureTable, DisclosureTableSource, Discl
 
 export { FacilityField, FACILITY_DETAILS_VERSION, extractFacilityDetails, screenFacilityDetails } from "./facility-details";
 export type { FacilityOrganization, FacilityTableDeclaration, FacilityValue, FacilityDetailRow, FacilityDetailsExtraction, FacilityDetailDocument, FacilityScreeningOptions } from "./facility-details";
+
+export { MAIN_CUSTOMER_DETAILS_VERSION, extractMainCustomerDetails, searchMainCustomerDetails } from "./main-customer-details";
+export type { MainCustomerDocument, MainCustomerRow, MainCustomerExtraction, MainCustomerDiagnosticReason, MainCustomerSearchOptions } from "./main-customer-details";

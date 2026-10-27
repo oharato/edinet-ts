@@ -47,3 +47,11 @@ const facilityValue = extractFacilityDetails(facilityDocument).rows[0].values[Fa
 if (facilityValue.status === "numeric") { const exactDecimal: string = facilityValue.decimal; }
 // @ts-expect-error 非数値の設備欄にdecimalを仮定しない
 if (facilityValue.status === "unavailable") { const absentDecimal: string = facilityValue.decimal; }
+
+import { extractMainCustomerDetails, searchMainCustomerDetails, type MainCustomerDocument } from "../../src/index";
+const mainCustomerDocument: MainCustomerDocument = { xml: "xml", selection: { docID: "SAMPLE", kind: DisclosureTableKind.MainCustomers, contextRef: "current" }, accountingStandard: "J-GAAP", scope: "Consolidated", proof: { rawSha256: "hash" } };
+const customerValue = extractMainCustomerDetails(mainCustomerDocument).rows[0].revenueJPY;
+if (customerValue.status === "numeric") { const yenDecimal: string = customerValue.decimal; }
+// @ts-expect-error 非数値を売上高0へ補わない
+if (customerValue.status === "unavailable") { const missingRevenue: string = customerValue.decimal; }
+searchMainCustomerDetails([mainCustomerDocument], { period: { startDate: "2025-04-01", endDate: "2026-03-31" }, scope: "Consolidated" });

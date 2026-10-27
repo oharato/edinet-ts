@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { searchMainCustomerDetails } from "./main-customer-details";
 import { screenSubsidiaryHumanCapitalMetrics } from "./subsidiary-human-capital-metrics";
 import { Command } from "commander";
 import { analyzeDocumentRelations } from "./document-relations";
@@ -429,6 +430,35 @@ program.command("screen-subsidiary-human-capital")
             for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error();
             console.log(JSON.stringify(screenSubsidiaryHumanCapitalMetrics(documents, options.metric, { conditions: JSON.parse(options.conditions), labelContains: options.labelContains, childcareMethod: options.childcareMethod, order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit) }), null, options.pretty ? 2 : undefined));
         } catch { console.error("子会社表の原本・対象期末・項目・定義・注記宣言を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("search-main-customers")
+    .description("主要顧客の記載を顧客名・セグメント・売上高から逆引きします")
+    .requiredOption("--manifest <path>", "file/selection/accountingStandard/scope/proofのJSON配列")
+    .requiredOption("--start <date>", "対象期間の開始日")
+    .requiredOption("--end <date>", "対象期間の終了日")
+    .requiredOption("--scope <scope>", "ConsolidatedまたはNonConsolidated")
+    .option("--customer-contains <text>", "記載顧客名の部分文字列")
+    .option("--segment-contains <text>", "関連セグメント記載の部分文字列")
+    .option("--revenue <json>", "operator/valueの円単位条件")
+    .option("--sort <order>", "revenue-ascまたはrevenue-desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数", "100")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifest = path.resolve(options.manifest), entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifest, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error();
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "selection", "accountingStandard", "scope", "proof"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
+                const input = readRegularFile(path.resolve(path.dirname(manifest), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes)); bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true }).decode(input.bytes), selection: entry.selection, accountingStandard: entry.accountingStandard, scope: entry.scope, proof: entry.proof };
+            });
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            console.log(JSON.stringify(searchMainCustomerDetails(documents, { period: { startDate: options.start, endDate: options.end }, scope: options.scope, customerContains: options.customerContains,
+                segmentContains: options.segmentContains, revenue: options.revenue === undefined ? undefined : JSON.parse(options.revenue), sort: options.sort, offset: Number(options.offset), limit: Number(options.limit) }), null, options.pretty ? 2 : undefined));
+        } catch { console.error("主要顧客の原本・期間・連単・単位・本文hash・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("screen-bs")

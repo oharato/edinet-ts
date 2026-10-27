@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { extractDisclosureTables, DisclosureTableKind, type DisclosureTableDocument, type DisclosureTableExtraction, type DisclosureTable } from "./disclosure-tables";
 import { AccountingStandard } from "./metric-registry";
-import { toSafeMetricNumber } from "./metric-selection";
+import { parseReportedTableNumber } from "./reported-table-number";
 import { decimalFraction, compareFractions } from "./decimal-fraction";
 import type { ComparisonOperator } from "./financial-options";
 export type FacilityOrganization = "reporting-company" | "domestic-subsidiaries" | "overseas-subsidiaries";
@@ -44,12 +44,7 @@ function value(table: DisclosureTable, row: number, column: number, field: Facil
     const cellIndex = table.grid[row][column]!, cell = table.cells[cellIndex], raw = cell.parsedText;
     const base = { cellIndex, raw, unit: field === "landAreaM2" ? "m2" as const : "JPY" as const, multiplier: field === "landAreaM2" ? 1 as const : 1000000 as const };
     if (cell.row < 3 || cell.rowSpan !== 1 || cell.columnSpan !== 1) return { ...base, status: "unavailable", reason: "merged-data-cell" };
-    if (!raw) return { ...base, status: "unavailable", reason: "blank" };
-    if (["－", "−", "—", "―", "-", "–"].includes(raw)) return { ...base, status: "unavailable", reason: "dash" };
-    if (raw.length > 100 || !/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(raw)) return { ...base, status: "unavailable", reason: "compound-or-unsupported-number" };
-    const [integer, fraction = ""] = raw.replaceAll(",", "").split("."), digits = integer + fraction + (base.multiplier === 1000000 ? "000000" : "");
-    const decimal = fraction.length ? `${BigInt(digits.slice(0, -fraction.length) || "0")}.${digits.slice(-fraction.length)}` : String(BigInt(digits));
-    return { ...base, status: "numeric", decimal, safeNumber: toSafeMetricNumber(decimal) };
+    return { ...base, ...parseReportedTableNumber(raw, base.multiplier) };
 }
 export function extractFacilityDetails(input: FacilityDetailDocument): FacilityDetailsExtraction {
     if (!input) throw new Error("設備原本が必要です");
