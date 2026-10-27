@@ -23,3 +23,12 @@ const feeDocument = { xml, metadata: { secCode: "1001", docID: "synthetic", scop
 const fee = createAuditFeeSnapshot(feeDocument, AuditFeeMetricId.AuditTotal);
 const fees = screenAuditFeeDocuments([feeDocument], AuditFeeMetricId.AuditTotal, { order: "asc" });
 void [fee.selection, fees.rows];
+
+import { extractSubsidiaryHumanCapitalMetrics, screenSubsidiaryHumanCapitalMetrics, SubsidiaryHumanCapitalMetricId, type SubsidiaryHumanCapitalMetricDocument } from "edinet-ts";
+declare const subsidiary: SubsidiaryHumanCapitalMetricDocument;
+extractSubsidiaryHumanCapitalMetrics(subsidiary.xml, subsidiary.metadata);
+const subsidiaryRows = screenSubsidiaryHumanCapitalMetrics([subsidiary], SubsidiaryHumanCapitalMetricId.FemaleManagerRatio);
+const parsedLabel: string | undefined = subsidiaryRows.rows[0]?.label.parsedLabel;
+void parsedLabel;
+// @ts-expect-error 提出会社の給与を子会社比率IDへ代用しない
+screenSubsidiaryHumanCapitalMetrics([subsidiary], "averageAnnualSalary");

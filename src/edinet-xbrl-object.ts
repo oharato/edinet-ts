@@ -1,3 +1,4 @@
+import { selectSubsidiaryHumanCapitalMetrics, type SubsidiaryHumanCapitalMetricId, type SubsidiaryHumanCapitalAnnotation, type SubsidiaryHumanCapitalMetricsExtraction } from "./subsidiary-human-capital-metrics";
 import { AUDIT_FEE_REGISTRY, type AuditFeeMetricId } from "./audit-fee-registry";
 import type { ContextDimensionTraceMap, ContextDimensionsTraceResult } from "./context-dimension-traces";
 import { IFRS_BALANCE_SHEET_REGISTRY, IfrsBalanceSheetMetricId } from "./ifrs-balance-sheet-registry";
@@ -269,6 +270,10 @@ export class EdinetXbrlObject {
             evidence: result.evidence.map(item => item.reason === "selected" || item.reason === "selected-raw-only" ? { ...item, reason: "unsupported-semantics" } : item)
         };
         return result;
+    }
+
+    public selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCapitalLabelMetadata, metricIds: readonly SubsidiaryHumanCapitalMetricId[], annotations: readonly SubsidiaryHumanCapitalAnnotation[] = []): SubsidiaryHumanCapitalMetricsExtraction {
+        return selectSubsidiaryHumanCapitalMetrics(metadata, metricIds, annotations, this._dataMap, this.contextMap, this.unitMap, id => this.traceContextDimensions(id), this._docID);
     }
 
     private extractKeyMetrics(sources?: KeyMetricSources): KeyMetrics {

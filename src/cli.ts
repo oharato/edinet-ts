@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { screenSubsidiaryHumanCapitalMetrics } from "./subsidiary-human-capital-metrics";
 import { Command } from "commander";
 import { analyzeDocumentRelations } from "./document-relations";
 import { createCompanyProfile, CompanyProfileFieldId } from "./company-profile";
@@ -402,6 +403,32 @@ program.command("screen-cagr")
             console.error("CAGR検索の原本一覧・項目・条件・期間を確認してください（入力内容は非表示）");
             process.exitCode = 1;
         }
+    });
+
+program.command("screen-subsidiary-human-capital")
+    .description("子会社人的資本表の同じ項目・定義を検索します（比率1=100%）")
+    .requiredOption("--manifest <path>", "file/metadataと任意のannotationsを持つJSON配列")
+    .requiredOption("--metric <id>", "女性管理職・賃金差・報告育休率の項目ID")
+    .option("--childcare-method <method>", "育休率ではordinance-item1/ordinance-item2/womens-actを必須指定")
+    .option("--label-contains <text>", "原表の会社ラベルに含まれるliteral文字列")
+    .option("--conditions <json>", "operator/valueのAND条件", "[]")
+    .option("--order <order>", "ascまたはdesc", "desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifest = path.resolve(options.manifest), entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifest, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error();
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "metadata", "annotations"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
+                const input = readRegularFile(path.resolve(path.dirname(manifest), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes)); bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true }).decode(input.bytes), metadata: entry.metadata, annotations: entry.annotations };
+            });
+            for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error();
+            console.log(JSON.stringify(screenSubsidiaryHumanCapitalMetrics(documents, options.metric, { conditions: JSON.parse(options.conditions), labelContains: options.labelContains, childcareMethod: options.childcareMethod, order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit) }), null, options.pretty ? 2 : undefined));
+        } catch { console.error("子会社表の原本・対象期末・項目・定義・注記宣言を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("screen-bs")

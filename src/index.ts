@@ -68,3 +68,6 @@ export * from "./audit-fee-screening";
 export * from "./average-equity-return";
 
 export type { ShareBasis, ShareBasisProofKey, ShareBasisAssessment, PerShareAnnualDocument } from "./share-basis";
+
+export { SubsidiaryHumanCapitalMetricId, SUBSIDIARY_HUMAN_CAPITAL_METRICS_VERSION, extractSubsidiaryHumanCapitalMetrics, screenSubsidiaryHumanCapitalMetrics } from "./subsidiary-human-capital-metrics";
+export type { ChildcareCalculationMethod, SubsidiaryHumanCapitalNoteProof, SubsidiaryHumanCapitalAnnotation, SubsidiaryHumanCapitalMetricEvidence, SubsidiaryHumanCapitalMetricSelection, SubsidiaryHumanCapitalMetricRow, SubsidiaryHumanCapitalMetricDiagnostic, SubsidiaryHumanCapitalMetricsExtraction, SubsidiaryHumanCapitalMetricDocument, SubsidiaryHumanCapitalMetricsSearchOptions, SubsidiaryHumanCapitalMetricSearchRow } from "./subsidiary-human-capital-metrics";
