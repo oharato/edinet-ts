@@ -8,6 +8,8 @@ export interface MetricSelectionOptions {
     scope: EdinetContext["scope"];
     period: { startDate: string; endDate: string; instant?: never } | { instant: string; startDate?: never; endDate?: never };
 }
+/** 省略時は重複を拒否。新規計算等が明示したときだけ完全一致を採用します。 */
+export interface MetricFactBehavior { collapseIdenticalDuplicates?: boolean; }
 export type SelectionReason = "selected" | "selected-raw-only" | "selected-identical-duplicates" | "tag-absent" | "context-mismatch" |
     "nil" | "unsupported-standard" | "unsupported-semantics" | "unknown-namespace" | "unknown-context" |
     "unsupported-dimensions" | "unsupported-context" | "unsupported-entity" | "unsupported-unit" | "invalid-decimal" | "invalid-decimals" |
@@ -64,15 +66,18 @@ const validDate = (date: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(date) &&
 /** 内部の収集済みfactだけを読む純粋選択器。外部取得・変換・単位推測は行いません。 */
 export function selectMetricFact(id: MetricId, options: MetricSelectionOptions,
     facts: ReadonlyMap<string, readonly EdinetData[]>, contexts: ReadonlyMap<string, EdinetContext>,
-    units: ReadonlyMap<string, string>, duplicateContexts: ReadonlySet<string> = new Set()): FactSelectionResult {
-    return selectDefinedMetricFact(METRIC_REGISTRY[id], options, facts, contexts, units, duplicateContexts);
+    units: ReadonlyMap<string, string>, duplicateContexts: ReadonlySet<string> = new Set(), behavior: MetricFactBehavior = {}): FactSelectionResult {
+    return selectDefinedMetricFact(METRIC_REGISTRY[id], options, facts, contexts, units, duplicateContexts, behavior);
 }
 
 /** 辞書間で共用する選択器。既存18項目のID集合を拡張せず定義を受け取ります。 */
 export function selectDefinedMetricFact<Id extends string>(definition: MetricDefinition<Id>, options: MetricSelectionOptions,
     facts: ReadonlyMap<string, readonly EdinetData[]>, contexts: ReadonlyMap<string, EdinetContext>,
     units: ReadonlyMap<string, string>, duplicateContexts: ReadonlySet<string> = new Set(),
-    behavior: { collapseIdenticalDuplicates?: boolean } = {}): FactSelectionResult<Id> {
+    behavior: MetricFactBehavior = {}): FactSelectionResult<Id> {
+    if (!behavior || typeof behavior !== "object" || Array.isArray(behavior) || Object.keys(behavior).some(key => key !== "collapseIdenticalDuplicates")) throw new Error("不正な重複採用方針です");
+    const collapseIdenticalDuplicates = behavior.collapseIdenticalDuplicates;
+    if (collapseIdenticalDuplicates !== undefined && typeof collapseIdenticalDuplicates !== "boolean") throw new Error("重複採用方針はbooleanです");
     const id = definition.id;
     const evidence: FactSelectionEvidence[] = [];
     const finish = (status: "missing" | "unsupported" | "ambiguous", reason: SelectionReason): FactSelectionResult<Id> =>
@@ -138,7 +143,7 @@ export function selectDefinedMetricFact<Id extends string>(definition: MetricDef
         if (standardMatches.some(m => m.reason === "duplicate-context")) return finish("ambiguous", "duplicate-context");
         if (standardMatches.length > 1) {
             // 入口が明示的に許可した科目だけ、完全一致する有効候補を証跡付きで採用します。
-            if (behavior.collapseIdenticalDuplicates && standardMatches.every(m => m.reason === "selected" || m.reason === "selected-raw-only") &&
+            if (collapseIdenticalDuplicates && standardMatches.every(m => m.reason === "selected" || m.reason === "selected-raw-only") &&
                 standardMatches.every(m => identicalMetricFacts(m, standardMatches[0]))) {
                 const source = standardMatches[0];
                 return { metricId: id, status: "selected", raw: source.raw!, safeNumber: toSafeMetricNumber(source.raw!), source, reason: "selected-identical-duplicates", evidence };

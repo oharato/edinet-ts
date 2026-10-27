@@ -12,3 +12,9 @@ calculateCagr([pair.previous,pair.current],CagrMetricId.NetSales);
 screenCagr([[pair.previous,pair.current]],CagrMetricId.OperatingIncome,{conditions:[{operator:"gte",value:0.1}]});
 // @ts-expect-error 分割確認のないEPSはCAGRへ混ぜない
 calculateCagr([pair.previous,pair.current],"earningsPerShareCagr");
+
+import { calculateAverageEquityReturn, screenAverageEquityReturn, type AverageEquityReturnInput } from "../../src/index";
+declare const equityInput: AverageEquityReturnInput;
+const equity = calculateAverageEquityReturn(equityInput);
+if (equity.status === "calculated") { const numerator: string = equity.openingEquity.numerator; void numerator; }
+screenAverageEquityReturn([equityInput], { conditions: [{ operator: "gte", value: 0.1 }] });

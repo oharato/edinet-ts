@@ -131,7 +131,7 @@ node dist/cli.js screen-details --manifest /tmp/local-details/duration-files.jso
 
 ## 借入金・社債・リースの直接7残高
 
-次の7項目も`metricIds`/CLI `--metrics`で明示して読み、同じ期末・範囲の会社集合で検索できます。一般事業J-GAAP/JPYのinstantだけです。辞書は計23項目ですが、既定は従来5項目（時点3・期間2）を維持します。
+次の7項目も`metricIds`/CLI `--metrics`で明示して読み、同じ期末・範囲の会社集合で検索できます。一般事業J-GAAP/JPYのinstantだけです。辞書は計25項目ですが、既定は従来5項目（時点3・期間2）を維持します。
 
 | 定数 / ID | 元の `jppfs_cor:` タグ | 意味 |
 |---|---|---|
@@ -170,7 +170,7 @@ Node26.12.1で全1,055テスト（既存976＋追加79）、本体/使用例の�
 
 ## 保存JSONの原値・出典を検査して検索する
 
-この版は`normalizeFinancialDetailSnapshot()`、`screenFinancialDetailSnapshots()`とCLI `screen-details-json`を追加します。`createFinancialDetailSnapshot()`の出力をJSON保存し、元XMLを読み直さずに同じ条件で検索できます。対象は辞書の全23項目で、既定5項目・明示項目・期間型の規則はXML検索と同じです。
+この版は`normalizeFinancialDetailSnapshot()`、`screenFinancialDetailSnapshots()`とCLI `screen-details-json`を追加します。`createFinancialDetailSnapshot()`の出力をJSON保存し、元XMLを読み直さずに同じ条件で検索できます。対象は辞書の全25項目で、既定5項目・明示項目・期間型の規則はXML検索と同じです。
 
 保存用データは、原本を読むAPIから作ります。次は合成の会社コード/書類IDを使う例です。`xml`は利用者が明示して読み込んだ原本、保存先のフォルダは作成済みとします。金額入りJSONはGit管理外で保管してください。
 
@@ -267,3 +267,8 @@ const result = screenFinancialDetailDocuments(documents, { metricIds,
 ```
 
 同じIDを`screenFinancialDetailSnapshots()`とCLI `screen-details`/`screen-details-json`の`--metrics`へ指定できます。既定5項目・主要18/21指標・SQLite保存対象は増やしません。
+
+
+## 自己資本の構成科目（registry 7）
+
+`shareholdersEquity`（株主資本）と`valuationAndTranslationAdjustments`（評価・換算差額等/連結のその他の包括利益累計額）を、対応するJ-GAAPの時点直接タグから明示取得できます。既定5項目は維持し、原値に負値があってもそのまま保持します。これらの和を使う計算ROEは[平均自己資本利益率](AVERAGE_EQUITY_RETURN.md)を参照してください。純資産・新株予約権・非支配株主持分を同じ科目と扱いません。現行の固定配布物e673e8aはregistry 6で、この追加はその後のローカル実装です。

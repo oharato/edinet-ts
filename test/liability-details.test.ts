@@ -25,7 +25,7 @@ const doc = (code: string, raw: string): FinancialDetailDocument => ({ xml: xml(
 
 describe("借入・社債・リースの直接7残高", () => {
     it("辞書v6でも既定5項目の集合を維持する", () => {
-        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("6");
+        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("7");
         expect(DEFAULT_FINANCIAL_DETAIL_METRICS).toEqual(["noncurrentAssets", "noncurrentLiabilities", "cashAndDeposits", "costOfSales", "sellingGeneralAndAdministrativeExpenses"]);
         const oldFacts = ["NoncurrentAssets", "NoncurrentLiabilities", "CashAndDeposits"].map(tag => tagFact(tag, "10")).join("");
         const input = xml("100", undefined, oldFacts);

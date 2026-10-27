@@ -64,3 +64,5 @@ export * from "./local-closing-price";
 export * from "./audit-fee-registry";
 
 export * from "./audit-fee-screening";
+
+export * from "./average-equity-return";

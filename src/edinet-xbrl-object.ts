@@ -4,7 +4,7 @@ import { IFRS_BALANCE_SHEET_REGISTRY, IfrsBalanceSheetMetricId } from "./ifrs-ba
 import { WORKFORCE_REGISTRY, WorkforceMetricId } from "./workforce-registry";
 import { FINANCIAL_DETAIL_REGISTRY, FinancialDetailMetricId } from "./financial-detail-registry";
 import { BALANCE_SHEET_REGISTRY, BalanceSheetMetricId } from "./balance-sheet-registry";
-import { selectDefinedMetricFact, selectMetricFact, MetricSelectionOptions, FactSelectionResult } from "./metric-selection";
+import { selectDefinedMetricFact, selectMetricFact, MetricSelectionOptions, FactSelectionResult, type MetricFactBehavior } from "./metric-selection";
 import { MetricId } from "./metric-registry";
 import { EdinetDataUtil } from "./edinet-data-util";
 import type { ConsolidationScope } from "./financial-options";
@@ -217,8 +217,8 @@ export class EdinetXbrlObject {
     }
 
     /** 明示した会計基準・期間・scopeだけを対象に、理由と原値を返します。 */
-    public selectMetric(id: MetricId, options: MetricSelectionOptions): FactSelectionResult {
-        return selectMetricFact(id, options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+    public selectMetric(id: MetricId, options: MetricSelectionOptions, behavior: MetricFactBehavior = {}): FactSelectionResult {
+        return selectMetricFact(id, options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, behavior);
     }
 
     /** J-GAAP・JPY・明示した時点/scopeのBS直接factを正規化します。 */

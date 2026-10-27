@@ -1,3 +1,4 @@
+import { validateAnnualBalanceMetadata } from "./annual-balance-return-core";
 import { createHash } from "node:crypto";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { normalizeFinancialDetailMetadata, type FinancialDetailMetadata } from "./financial-detail-metadata";
@@ -38,18 +39,8 @@ export function calculateAverageAssetsReturn(input: AverageAssetsReturnInput, me
     const income = point(captured.income, sources[metricId]), opening = point(captured.opening, MetricId.TotalAssets), closing = point(captured.closing, MetricId.TotalAssets);
     const base: ReturnBase = { metricId, unit: "ratio", income, opening, closing };
     const unavailable = (reason: AverageAssetsReturnUnavailableReason): AverageAssetsReturnResult => ({ ...base, status: "unavailable", reason });
-    for (const p of [income, opening, closing]) {
-        if (p.metadata.accountingStandard !== "J-GAAP") return unavailable("unsupported-standard");
-        if (p.metadata.secCode !== income.metadata.secCode || p.metadata.scope !== income.metadata.scope || p.metadata.currency !== income.metadata.currency) return unavailable("incompatible-metadata");
-    }
-    const dates = income.metadata.period;
-    if (income.metadata.periodType !== "annual" || !dates.startDate || !dates.endDate) return unavailable("not-annual");
-    const end = new Date(dates.startDate + "T00:00:00Z");
-    if (end.getUTCDate() !== 1) return unavailable("unsupported-annual-period");
-    end.setUTCFullYear(end.getUTCFullYear() + 1); end.setUTCDate(0);
-    if (end.toISOString().slice(0, 10) !== dates.endDate) return unavailable("unsupported-annual-period");
-    const openingDate = new Date(Date.parse(dates.startDate + "T00:00:00Z") - 86400000).toISOString().slice(0, 10);
-    if (opening.metadata.period.instant !== openingDate || closing.metadata.period.instant !== dates.endDate) return unavailable("balance-date-mismatch");
+    const metadataReason = validateAnnualBalanceMetadata(income.metadata, opening.metadata, closing.metadata);
+    if (metadataReason) return unavailable(metadataReason);
     for (const p of [income, opening, closing]) {
         if (p.selection.status !== "selected") return unavailable("unavailable-input");
         const entity = income.selection.source?.entity, other = p.selection.source.entity;
