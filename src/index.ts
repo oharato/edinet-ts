@@ -88,3 +88,5 @@ export { AFFILIATED_COMPANY_DETAILS_VERSION, AffiliatedRelationship, extractAffi
 export type { CapitalCurrency, AffiliatedCompanyDocument, AffiliatedCapital, AffiliatedPercent, AffiliatedVotingDisplay, AffiliatedCompanyRow, AffiliatedCompanyExtraction, AffiliatedCompanySearchOptions } from "./affiliated-company-details";
 export { ORDER_DETAILS_VERSION, OrderMetric, extractOrderDetails, searchOrderDetails } from "./order-details";
 export type { OrderPeriod, OrderTableDeclaration, OrderDetailDocument, OrderValue, OrderDetailRow, OrderDetailExtraction, OrderSearchOptions } from "./order-details";
+export { SHAREHOLDER_CATEGORIES_VERSION, ShareholderCategory, ShareholderCategoryMetric, extractShareholderCategories, searchShareholderCategories } from "./shareholder-categories";
+export type { ShareholderCategoryDeclaration, ShareholderCategoryDocument, ShareholderCategoryValue, ShareholderCategoryEntry, ShareholderCategoryGroup, ShareholderCategoryExtraction, ShareholderCategorySearchOptions } from "./shareholder-categories";

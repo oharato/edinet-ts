@@ -8,11 +8,11 @@ import type { ContextDimensionsTraceResult } from "./context-dimension-traces";
 
 /** 数値の意味は表別に確定します。この辞書は本文の所属だけを指定します。 */
 export const DisclosureTableKind = Object.freeze({ Facilities: "facilities", AffiliatedEntities: "affiliatedEntities", MainCustomers: "mainCustomers",
-    ManagementAnalysis: "managementAnalysis", Segments: "segments", Officers: "officers", OfficerRemuneration: "officerRemuneration" } as const);
+    ShareholderCategories: "shareholderCategories", ManagementAnalysis: "managementAnalysis", Segments: "segments", Officers: "officers", OfficerRemuneration: "officerRemuneration" } as const);
 export type DisclosureTableKind = typeof DisclosureTableKind[keyof typeof DisclosureTableKind];
 const tags: Record<DisclosureTableKind, string> = { facilities: "MajorFacilitiesTextBlock", affiliatedEntities: "OverviewOfAffiliatedEntitiesTextBlock",
     mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock",
-    managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
+    shareholderCategories: "ShareholdingByShareholderCategoryTextBlock", managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
 export const DISCLOSURE_TABLE_LIMITS = Object.freeze({ fragmentBytes: 2 * 1024 * 1024, tables: 200, rows: 5000, cells: 50000, columns: 100, expandedCells: 200000, depth: 64 });
 export interface DisclosureTableCell { row: number; column: number; rowSpan: number; columnSpan: number; kind: "td" | "th"; parsedText: string; }
 export interface DisclosureTable { index: number; cells: DisclosureTableCell[]; grid: (number | null)[][]; }
@@ -24,7 +24,9 @@ export interface DisclosureTableSource {
 }
 export type DisclosureTableExtraction = { source: DisclosureTableSource; inputXmlSha256?: string; tables: DisclosureTable[];
     /** 表外の文章・注記を含む解析済み本文。HTMLとして描画しません。 */
-    parsedText: string; semanticValidation: "not-performed" } & (
+    parsedText: string;
+    /** 表内の数値や注釈を表外の日付・見出しの証拠へ使わないための本文。 */
+    outsideTableText?: string; semanticValidation: "not-performed" } & (
     { status: "selected"; reason: "parsed-tables" | "no-tables" } |
     { status: "missing" | "ambiguous" | "unsupported"; reason: "tag-absent" | "multiple-facts" | "unknown-namespace" | "invalid-context" | "nil" | "raw-unavailable" | "unsupported-fragment" }
 );
@@ -34,15 +36,16 @@ const fail = (): never => { throw new Error("本文表の構造または上限�
 const element = (node: OrderedNode) => Object.keys(node).find(k => k !== ":@" && !k.startsWith("#") && !k.startsWith("?"));
 const children = (node: OrderedNode, key: string) => node[key] as OrderedNode[];
 const block = new Set(["p", "div", "tr", "td", "th", "li", "h1", "h2", "h3", "h4", "h5", "h6", "table"]);
-function text(nodes: OrderedNode[]): string {
+function text(nodes: OrderedNode[], excludeTables = false): string {
     return nodes.map(node => {
         if (typeof node["#text"] === "string") return node["#text"];
         const key = element(node); if (!key) return "";
+        if (excludeTables && key === "table") return "";
         if (key === "br") return "\n";
-        return text(children(node, key)) + (block.has(key) ? "\n" : "");
+        return text(children(node, key), excludeTables) + (block.has(key) ? "\n" : "");
     }).join("");
 }
-function parseFragment(raw: string): { tables: DisclosureTable[]; parsedText: string } {
+function parseFragment(raw: string): { tables: DisclosureTable[]; parsedText: string; outsideTableText: string } {
     if (Buffer.byteLength(raw) > DISCLOSURE_TABLE_LIMITS.fragmentBytes) fail();
     const wrapped = `<fragment>${raw}</fragment>`;
     assertXmlInput(wrapped);
@@ -104,7 +107,7 @@ function parseFragment(raw: string): { tables: DisclosureTable[]; parsedText: st
         // 欠けた枠はnull。同じ結合セルの値を複製して合計しません。
         return { index, cells, grid: grid.map(row => Array.from({ length: width }, (_, col) => row[col] ?? null)) };
     });
-    return { tables, parsedText: text(nodes).trim() };
+    return { tables, parsedText: text(nodes).trim(), outsideTableText: text(nodes, true).trim() };
 }
 /** @internal contextとfactの検査は既存parserの結果に限定します。 */
 export function selectDisclosureTables(docID: string, kind: DisclosureTableKind, contextRef: string, facts: ReadonlyMap<string, readonly EdinetData[]>,
@@ -115,7 +118,7 @@ export function selectDisclosureTables(docID: string, kind: DisclosureTableKind,
     const source: DisclosureTableSource = { docID, kind, key: candidates[0]?.key ?? `jpcrp_cor:${tags[kind]}`, contextRef, namespaceURI: candidates[0]?.namespaceURI,
         period: context?.period, entity: context?.entity, contextTrace,
         candidates: candidates.map(f => ({ key: f.key, namespaceURI: f.namespaceURI, contextRef: f.contextRef, nil: f.nil, unitRef: f.unitRef, rawSha256: f.rawValue === undefined ? undefined : hash(f.rawValue) })) };
-    const base = { source, tables: [] as DisclosureTable[], parsedText: "", semanticValidation: "not-performed" as const };
+    const base = { source, tables: [] as DisclosureTable[], parsedText: "", outsideTableText: "", semanticValidation: "not-performed" as const };
     if (!candidates.length) return structuredClone({ ...base, status: "missing", reason: "tag-absent" });
     if (candidates.length !== 1) return structuredClone({ ...base, status: "ambiguous", reason: "multiple-facts" });
     const fact = candidates[0];

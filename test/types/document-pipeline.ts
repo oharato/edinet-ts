@@ -81,3 +81,9 @@ declare const orderDocument: OrderDetailDocument;
 const orderExtraction: OrderDetailExtraction = extractOrderDetails(orderDocument);
 searchOrderDetails([orderDocument], { period: {startDate:'2025-04-01',endDate:'2026-03-31'}, scope:'NonConsolidated', role:'detail', metric:OrderMetric.OrdersReceivedJPY });
 void orderExtraction;
+
+import { extractShareholderCategories, searchShareholderCategories, ShareholderCategory, ShareholderCategoryMetric, type ShareholderCategoryDocument, type ShareholderCategoryExtraction } from 'edinet-ts';
+declare const shareholderDocument: ShareholderCategoryDocument;
+const shareholderExtraction: ShareholderCategoryExtraction = extractShareholderCategories(shareholderDocument);
+searchShareholderCategories([shareholderDocument], {asOf:'2026-03-31',category:ShareholderCategory.ForeignNonIndividuals,metric:ShareholderCategoryMetric.OwnershipPercent});
+void shareholderExtraction;

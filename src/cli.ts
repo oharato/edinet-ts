@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { searchShareholderCategories } from "./shareholder-categories";
 import { searchOrderDetails } from "./order-details";
 import { searchAffiliatedCompanies } from "./affiliated-company-details";
 import { searchSegmentDetails } from "./segment-details";
@@ -433,6 +434,32 @@ program.command("screen-subsidiary-human-capital")
             for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error();
             console.log(JSON.stringify(screenSubsidiaryHumanCapitalMetrics(documents, options.metric, { conditions: JSON.parse(options.conditions), labelContains: options.labelContains, childcareMethod: options.childcareMethod, order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit) }), null, options.pretty ? 2 : undefined));
         } catch { console.error("子会社表の原本・対象期末・項目・定義・注記宣言を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("search-shareholder-categories")
+    .description("同じ基準日の株主分類を、人数/単元数/株数/割合で検索します")
+    .requiredOption("--manifest <path>", "file/selection/declarationsのJSON配列")
+    .requiredOption("--as-of <date>", "所有者別状況の基準日")
+    .requiredOption("--category <category>", "foreign-non-individuals/reported-total/odd-lots等")
+    .requiredOption("--metric <metric>", "shareholderCount/ownedLots/ownedShares/ownershipPercent")
+    .option("--condition <json>", "operator/value（指標の単位による条件）")
+    .option("--sort <order>", "value-ascまたはvalue-desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数", "100")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifest = path.resolve(options.manifest), entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifest, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error();
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "selection", "declarations"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
+                const input = readRegularFile(path.resolve(path.dirname(manifest), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes)); bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true }).decode(input.bytes), selection: entry.selection, declarations: entry.declarations };
+            });
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            console.log(JSON.stringify(searchShareholderCategories(documents, { asOf: options.asOf, category: options.category, metric: options.metric, condition: options.condition === undefined ? undefined : JSON.parse(options.condition), sort: options.sort, offset: Number(options.offset), limit: Number(options.limit) }), null, options.pretty ? 2 : undefined));
+        } catch { console.error("株主分類の原本・基準日・表/単位の確認宣言・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("search-orders")

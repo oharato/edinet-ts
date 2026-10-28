@@ -19,6 +19,7 @@ describe("開示本文の表と結合セルの出典", () => {
         expect(result.tables[0].cells[4].parsedText).toBe("架空市\n本店");
         expect(result.tables[0].cells.slice(-2).map(c => c.parsedText)).toEqual(["", "0"]);
         expect(result.parsedText).toContain("注：土地面積には賃借を含む。");
+        expect(result.outsideTableText).toBe("提出会社 2026年3月31日現在\n注：土地面積には賃借を含む。");
         expect(result.source).not.toHaveProperty("scope");
         expect(result.tables[0].cells[5]).not.toHaveProperty("value");
     });
@@ -63,7 +64,7 @@ describe("開示本文の表と結合セルの出典", () => {
         expect(extractDisclosureTables(xml(fact(table, 'unitRef="JPY"')), selection)).toMatchObject({ status: "unsupported", reason: "invalid-context" });
     });
     it.each(Object.values(DisclosureTableKind))("領域%sを別々の本文として扱う", kind => {
-        const tags = { managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", facilities: "MajorFacilitiesTextBlock", affiliatedEntities: "OverviewOfAffiliatedEntitiesTextBlock", mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
+        const tags = { shareholderCategories: "ShareholdingByShareholderCategoryTextBlock", managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", facilities: "MajorFacilitiesTextBlock", affiliatedEntities: "OverviewOfAffiliatedEntitiesTextBlock", mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
         expect(extractDisclosureTables(xml(fact(table, "", tags[kind])), { ...selection, kind })).toMatchObject({ status: "selected", source: { kind } });
     });
     it("状態の外部変更を解析済みobjectへ戻さない", () => {
