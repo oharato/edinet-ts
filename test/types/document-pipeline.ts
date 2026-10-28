@@ -106,3 +106,9 @@ declare const holdingSources: ObservedLargeHoldingSource[];
 const holdingVersions=selectLargeHoldingReportVersions(holdingObservations,"2026-10-28T00:00:00Z");
 const observedHolding=searchObservedLargeHoldingReports(holdingObservations,holdingSources,{cutoff:"2026-10-28T00:00:00Z",dutyDate:"2025-06-16",scope:"report",metric:"holdingPercent"});
 void [holdingVersions.selected,observedHolding.unavailableSources];
+
+import {extractPolicyShareholdings,searchPolicyShareholdings,type PolicyShareholdingDocument} from "edinet-ts";
+declare const policyDocument:PolicyShareholdingDocument;
+const policyExtraction=extractPolicyShareholdings(policyDocument);
+const policySearch=searchPolicyShareholdings([policyDocument],{kind:"specified",periodEnd:"2026-03-31",metric:"reportedAmount"});
+void [policyExtraction.entries,policySearch.excluded];

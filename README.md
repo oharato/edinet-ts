@@ -274,6 +274,7 @@ if (info.holdingRatio !== undefined) {
 
 一次大量保有の表紙・分母・連名合計・訂正と観測cutoffを確認する場合は、[出典付き一次明細API](docs/LARGE_HOLDING_REPORT.md)を使用してください。旧getterは先頭候補の原値で、報告全体の合計とは限りません。
 - [一次大量保有の訂正版選択と原本観測](docs/LARGE_HOLDING_VERSIONS.md)
+- [政策保有株式の直接記載と逆引き](docs/POLICY_SHAREHOLDINGS.md)
 
 #### dataMap への直接アクセス
 
