@@ -128,3 +128,5 @@ ZIPの形式・容量・保存先の制約、既存キャッシュと失敗時�
 - [固定財務索引の母集団・cohort別品質集計](FINANCIAL_INDEX_QUALITY.md)
 
 - [品質条件付き財務世代切替・旧候補への復帰](FINANCIAL_INDEX_PUBLICATION.md)
+
+- [公開snapshotでの財務検索・読取側再ロード](PUBLISHED_FINANCIAL_INDEX.md)

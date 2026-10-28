@@ -110,3 +110,5 @@ CLIの原本manifestは `docID / availableAt / sourceSha256 / file?` の配列�
 [固定財務索引の品質集計](FINANCIAL_INDEX_QUALITY.md)では、全本文/値projectionを再検査し、母集団・書類・行・値の品質を分け、同一cohortの重複も保持します。
 
 [品質条件付きの財務世代切替](FINANCIAL_INDEX_PUBLICATION.md)を追加。全社集約世代の品質・公開条件を候補へ固定し、直前候補の期待値が一致する場合だけ切替/旧候補復帰を履歴付きで行います。
+
+[公開snapshotによる財務検索](PUBLISHED_FINANCIAL_INDEX.md)を追加。公開候補を実索引と照合し、読取中の世代を固定して検索します。明示再ロードの検査失敗では既存snapshotを維持します。

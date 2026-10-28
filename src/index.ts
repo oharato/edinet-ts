@@ -131,3 +131,5 @@ export {backfillFinancialDocumentLists,archiveFinancialDocumentObservations} fro
 export type {FinancialListBackfillOptions,FinancialListBackfillResult,FinancialObservationTransferOptions,FinancialObservationTransferResult} from "./financial-document-sync";
 export {FinancialIndexPublication,FINANCIAL_INDEX_PUBLICATION_VERSION} from "./db/financial-index-publication";
 export type {FinancialIndexPublicationPolicy,FinancialIndexPublicationCandidate,FinancialIndexPublicationTransition} from "./db/financial-index-publication";
+export {PublishedFinancialIndex} from "./published-financial-index";
+export type {PublishedFinancialIndexSnapshot,PublishedFinancialIndexSearchResult} from "./published-financial-index";

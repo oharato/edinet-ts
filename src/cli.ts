@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {PublishedFinancialIndex} from "./published-financial-index";
 import {FinancialIndexPublication} from "./db/financial-index-publication";
 import {backfillFinancialDocumentLists,archiveFinancialDocumentObservations} from "./financial-document-sync";
 import {FinancialSourceJob,normalizeFinancialSourceJobInput} from "./db/financial-source-job";
@@ -620,6 +621,20 @@ program.command("screen-financial-index")
             console.log(JSON.stringify(index.screen(cohort,query),null,options.pretty?2:undefined));
         } catch { console.error("財務索引の世代・同一比較集合・保存済み項目・数値条件を確認してください（入力内容は非表示）"); process.exitCode=1; }
         finally { index?.close(); }
+    });
+
+program.command("screen-published-financial-index")
+    .description("公開候補を検査して固定し、公開世代付きの検索結果を返します")
+    .requiredOption("--catalog <file>", "公開catalog")
+    .requiredOption("--db <file>", "公開世代を含む財務検索索引")
+    .requiredOption("--cohort <file>", "generationを含まない比較条件JSON")
+    .requiredOption("--query <file>", "指標・条件・順序・ページのJSON")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let reader:PublishedFinancialIndex|undefined;
+        try{const read=(file:string)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));const cohort=read(options.cohort),query=read(options.query);reader=new PublishedFinancialIndex(options.catalog,options.db);console.log(JSON.stringify(reader.screen(cohort,query),null,options.pretty?2:undefined));}
+        catch{console.error("公開候補・固定索引・比較条件・検索条件を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{reader?.close();}
     });
 
 program.command("prepare-financial-index-publication")

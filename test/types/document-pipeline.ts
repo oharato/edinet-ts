@@ -184,3 +184,8 @@ const candidate:FinancialIndexPublicationCandidate=publication.prepare('candidat
 publication.activate(candidate.id,financialIndex,{expectedActive:null});
 const resolved:FinancialIndexPublicationCandidate|undefined=publication.resolve(financialIndex);
 void resolved;
+import {PublishedFinancialIndex,type PublishedFinancialIndexSearchResult,type PublishedFinancialIndexSnapshot} from 'edinet-ts';
+const published=new PublishedFinancialIndex('catalog.sqlite','index.sqlite');
+const publishedSnapshot:PublishedFinancialIndexSnapshot=published.snapshot();
+const publishedResult:PublishedFinancialIndexSearchResult=published.screen({group:'balanceSheet',accountingStandard:'J-GAAP',scope:'Consolidated',currency:'JPY',period:{instant:'2026-03-31'}},{metricIds:['currentAssets']});
+void publishedSnapshot;void publishedResult;
