@@ -124,3 +124,9 @@ declare const remunerationDocument:RemunerationDocument;
 const remuneration=extractOfficerRemuneration(remunerationDocument);
 const remunerationRows=searchOfficerRemuneration([remunerationDocument],{kind:"individual",period:{startDate:"2023-04-01",endDate:"2024-03-31"},role:"detail",metric:"component",componentPath:["株式報酬"],companyContains:"原文"});
 void [remuneration.entries,remunerationRows.excluded];
+
+import {IfrsFinancialDetailMetricId,createIfrsFinancialDetailSnapshot,screenIfrsFinancialDetailDocuments,type IfrsFinancialDetailDocument} from "edinet-ts";
+declare const ifrsDetail:IfrsFinancialDetailDocument;
+const ifrsDetails=createIfrsFinancialDetailSnapshot(ifrsDetail.xml,ifrsDetail.metadata,[IfrsFinancialDetailMetricId.IncomeTaxesPaidCashFlow]);
+const ifrsRows=screenIfrsFinancialDetailDocuments([ifrsDetail],{metricIds:["incomeTaxesPaidCashFlow"],conditions:[{metric:"incomeTaxesPaidCashFlow",operator:"lt",value:0}]});
+void [ifrsDetails.selections,ifrsRows.diagnostics];

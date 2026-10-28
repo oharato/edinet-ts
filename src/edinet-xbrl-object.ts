@@ -1,3 +1,4 @@
+import {IFRS_FINANCIAL_DETAIL_REGISTRY,type IfrsFinancialDetailMetricId} from "./ifrs-financial-detail-registry";
 import { selectLargeHoldingReport, type LargeHoldingMetadata, type LargeHoldingReport } from "./large-holding-report";
 import { selectDisclosureTables, type DisclosureTableKind, type DisclosureTableExtraction } from "./disclosure-tables";
 import { selectSubsidiaryHumanCapitalMetrics, type SubsidiaryHumanCapitalMetricId, type SubsidiaryHumanCapitalAnnotation, type SubsidiaryHumanCapitalMetricsExtraction } from "./subsidiary-human-capital-metrics";
@@ -246,6 +247,17 @@ export class EdinetXbrlObject {
         if (scope !== "Consolidated") return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
         // 不正なinstant/duration混在も消さずに共用の期間検証へ渡します。
         return selectDefinedMetricFact(IFRS_BALANCE_SHEET_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+    }
+
+    /** IFRS・連結・JPYの直接PL/CF。別範囲のタグから補完せず、原符号を保持します。 */
+    public selectIfrsFinancialDetail(id: IfrsFinancialDetailMetricId, options: MetricSelectionOptions): FactSelectionResult<IfrsFinancialDetailMetricId> {
+        if (!Object.hasOwn(IFRS_FINANCIAL_DETAIL_REGISTRY, id)) throw new Error("不正なIFRS財務明細IDです");
+        const accountingStandard = options.accountingStandard, scope = options.scope, inputPeriod = options.period;
+        const period = { instant: inputPeriod.instant, startDate: inputPeriod.startDate, endDate: inputPeriod.endDate } as MetricSelectionOptions["period"];
+        if (accountingStandard !== "IFRS") return { metricId: id, status: "unsupported", reason: "unsupported-standard", evidence: [] };
+        if (scope !== "Consolidated") return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
+        return selectDefinedMetricFact(IFRS_FINANCIAL_DETAIL_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds,
+            { collapseIdenticalDuplicates: id === "profitBeforeTax" || id === "sellingGeneralAndAdministrativeExpenses" });
     }
 
     /** 一般事業J-GAAPの直接5科目。現預金/同等物・内訳を混同しません。 */

@@ -105,3 +105,6 @@ export {OFFICER_DETAILS_VERSION,extractOfficerDetails,searchOfficerDetails} from
 export type {OfficerTableDeclaration,OfficerDocument,OfficerCellReference,OfficerShares,OfficerRow,OfficerGroup,OfficerExtraction,OfficerSearchOptions} from "./officer-details";
 export {OFFICER_REMUNERATION_VERSION,extractOfficerRemuneration,searchOfficerRemuneration} from "./officer-remuneration";
 export type {RemunerationTableDeclaration,RemunerationDocument,RemunerationCellReference,RemunerationValue,RemunerationComponent,CategoryRemunerationEntry,IndividualRemunerationEntry,RemunerationEntry,RemunerationExtraction,RemunerationSearchOptions} from "./officer-remuneration";
+export {IfrsFinancialDetailMetricId,DEFAULT_IFRS_FINANCIAL_DETAIL_METRICS,IFRS_FINANCIAL_DETAIL_REGISTRY,IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION} from "./ifrs-financial-detail-registry";
+export {createIfrsFinancialDetailSnapshot,screenIfrsFinancialDetailDocuments,IFRS_FINANCIAL_DETAIL_SCREENING_MAX_DOCUMENTS,IFRS_FINANCIAL_DETAIL_SCREENING_MAX_CONDITIONS} from "./ifrs-financial-detail-screening";
+export type {IfrsFinancialDetailMetadata,IfrsFinancialDetailDocument,IfrsFinancialDetailSnapshot,IfrsFinancialDetailCondition,IfrsFinancialDetailScreeningOptions,IfrsFinancialDetailDiagnostic,IfrsFinancialDetailScreeningResult} from "./ifrs-financial-detail-screening";

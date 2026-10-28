@@ -109,3 +109,5 @@ node dist/cli.js screen-ifrs-bs --manifest /tmp/local-ifrs/files.json --sort-by 
 ### 検索の確認結果
 
 Node26.12.1/npm12.2.1で全2,194テスト（既存2,116＋API71＋CLI7）、本体と利用例の型検査、build、保存保護Python5件が成功しました。独立source522確認と入力固定等8確認、公開ESM/CJS各533確認（計1,066）、built CLI8確認も成功しています。UTF-8 BOMを含む解析用hashと入力不変を確認しました。これらは合成入力の結果で、実IFRS原本・PDFとの照合や性能測定の結果ではありません。lint設定はありません。
+
+IFRSのPL/CF追加明細は[専用17項目](IFRS_FINANCIAL_DETAILS.md)で扱います。BS3の既存辞書/型/検索契約は変更していません。
