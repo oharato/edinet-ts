@@ -36,3 +36,5 @@ const matches = searchDisclosureTableCells([{ xml: savedXml, selection }], { con
 2026年設備表の限定PDF照合: エクシオPDF46ページ/ミライトPDF34ページを画像で確認し、7行45値セル（ダッシュを含む）がPDFからの独立転記と一致しました。全表/別年度のPDF照合は未完了です。
 
 本文表追加後の検証: Node 26.12.1で全84ファイル・2,766テスト（1ワーカー）、build、公開API型検査、Python保存保護5件が成功。
+
+役員報酬の追加確認では、任天堂/ソフトバンクグループの2024本文にあるjpcrp/2023-12-01も許可taxonomyへ追加しました。直接値の定義と複数会社の扱いは[役員報酬明細](OFFICER_REMUNERATION.md)を参照してください。

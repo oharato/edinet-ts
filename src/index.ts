@@ -103,3 +103,5 @@ export {POLICY_SHAREHOLDINGS_VERSION,extractPolicyShareholdings,searchPolicyShar
 export type {PolicyShareholdingKind,PolicyShareholdingDeclaration,PolicyShareholdingDocument,PolicyShareholdingValue,PolicyShareholdingEntry,PolicyShareholdingExtraction,PolicyShareholdingSearchOptions} from "./policy-shareholdings";
 export {OFFICER_DETAILS_VERSION,extractOfficerDetails,searchOfficerDetails} from "./officer-details";
 export type {OfficerTableDeclaration,OfficerDocument,OfficerCellReference,OfficerShares,OfficerRow,OfficerGroup,OfficerExtraction,OfficerSearchOptions} from "./officer-details";
+export {OFFICER_REMUNERATION_VERSION,extractOfficerRemuneration,searchOfficerRemuneration} from "./officer-remuneration";
+export type {RemunerationTableDeclaration,RemunerationDocument,RemunerationCellReference,RemunerationValue,RemunerationComponent,CategoryRemunerationEntry,IndividualRemunerationEntry,RemunerationEntry,RemunerationExtraction,RemunerationSearchOptions} from "./officer-remuneration";

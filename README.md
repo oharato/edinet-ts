@@ -276,6 +276,7 @@ if (info.holdingRatio !== undefined) {
 - [一次大量保有の訂正版選択と原本観測](docs/LARGE_HOLDING_VERSIONS.md)
 - [政策保有株式の直接記載と逆引き](docs/POLICY_SHAREHOLDINGS.md)
 - [役員の現任・予定と原表の明細](docs/OFFICER_DETAILS.md)
+- [役員報酬の区分集計・個人総額・会社別内訳](docs/OFFICER_REMUNERATION.md)
 
 #### dataMap への直接アクセス
 

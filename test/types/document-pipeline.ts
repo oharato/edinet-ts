@@ -118,3 +118,9 @@ declare const officerDocument:OfficerDocument;
 const officers=extractOfficerDetails(officerDocument);
 const officerRows=searchOfficerDetails([officerDocument],{status:"as-filed",rosterDate:"2026-06-24",role:"named",metric:"record"});
 void [officers.groups,officerRows.rows];
+
+import {extractOfficerRemuneration,searchOfficerRemuneration,type RemunerationDocument} from "edinet-ts";
+declare const remunerationDocument:RemunerationDocument;
+const remuneration=extractOfficerRemuneration(remunerationDocument);
+const remunerationRows=searchOfficerRemuneration([remunerationDocument],{kind:"individual",period:{startDate:"2023-04-01",endDate:"2024-03-31"},role:"detail",metric:"component",componentPath:["株式報酬"],companyContains:"原文"});
+void [remuneration.entries,remunerationRows.excluded];

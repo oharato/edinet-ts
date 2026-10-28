@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { searchOfficerRemuneration } from "./officer-remuneration";
 import { searchOfficerDetails } from "./officer-details";
 import { searchPolicyShareholdings } from "./policy-shareholdings";
 import { searchObservedLargeHoldingReports } from "./observed-large-holding";
@@ -489,6 +490,37 @@ program.command("screen-large-holdings")
             });
             console.log(JSON.stringify(searchLargeHoldingReports(documents, query), null, options.pretty ? 2 : undefined));
         } catch { console.error("一次大量保有の原本・一覧メタデータ・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("search-officer-remuneration")
+    .description("役員報酬の区分集計・個人総額・会社別内訳を分けて検索します")
+    .requiredOption("--manifest <path>", "file/selection/period/tablesのJSON配列")
+    .requiredOption("--kind <kind>", "category/individual")
+    .requiredOption("--period-start <date>", "対象期間の開始日")
+    .requiredOption("--period-end <date>", "対象期間の末日")
+    .requiredOption("--role <role>", "detail/reported-total")
+    .requiredOption("--metric <metric>", "total/recipientCount/component")
+    .option("--component-path <json>", "内訳の原見出し階層（文字列のJSON配列）")
+    .option("--label-contains <text>", "役員区分/氏名の原文に含まれる文字列")
+    .option("--company-contains <text>", "個人の会社別内訳だけに使う原文部分一致")
+    .option("--condition <json>", "operator/valueの条件（円/人）")
+    .option("--sort <order>", "value-asc/value-desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数", "100")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifest = path.resolve(options.manifest), entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifest, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error();
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "selection", "period", "tables"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
+                const input = readRegularFile(path.resolve(path.dirname(manifest), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes)); bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), selection: entry.selection, period: entry.period, tables: entry.tables };
+            });
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            console.log(JSON.stringify(searchOfficerRemuneration(documents, { kind: options.kind, period: {startDate:options.periodStart,endDate:options.periodEnd}, role: options.role, metric: options.metric, componentPath:options.componentPath===undefined?undefined:JSON.parse(options.componentPath), labelContains:options.labelContains, companyContains:options.companyContains, condition: options.condition === undefined ? undefined : JSON.parse(options.condition), sort: options.sort, offset: Number(options.offset), limit: Number(options.limit) }), null, options.pretty ? 2 : undefined));
+        } catch { console.error("役員報酬の原本・期間・表参照・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("search-officers")

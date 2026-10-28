@@ -145,7 +145,7 @@ export function selectDisclosureTables(docID: string, kind: DisclosureTableKind,
     const fact = candidates[0];
     source.rawFragment = fact.rawValue; if (fact.rawValue !== undefined) source.rawSha256 = hash(fact.rawValue);
     const unsupported = (reason: Extract<DisclosureTableExtraction, { status: "missing" | "ambiguous" | "unsupported" }>["reason"]): DisclosureTableExtraction => structuredClone({ ...base, status: "unsupported", reason });
-    if (!/^http:\/\/disclosure\.edinet-fsa\.go\.jp\/taxonomy\/jpcrp\/(?:2018-03-31|2024-11-01|2025-11-01)\/jpcrp_cor$/.test(fact.namespaceURI ?? "")) return unsupported("unknown-namespace");
+    if (!/^http:\/\/disclosure\.edinet-fsa\.go\.jp\/taxonomy\/jpcrp\/(?:2018-03-31|2023-12-01|2024-11-01|2025-11-01)\/jpcrp_cor$/.test(fact.namespaceURI ?? "")) return unsupported("unknown-namespace");
     if (!context?.namespaceVerified || !context.periodValid || !context.entity || duplicates.has(contextRef) || contextTrace.status !== "resolved" || fact.unitRef) return unsupported("invalid-context");
     if (fact.nil) return structuredClone({ ...base, status: "missing", reason: "nil" });
     if (fact.rawValue === undefined) return unsupported("raw-unavailable");
