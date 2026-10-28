@@ -63,7 +63,7 @@ describe("開示本文の表と結合セルの出典", () => {
         expect(extractDisclosureTables(xml(fact(table, 'unitRef="JPY"')), selection)).toMatchObject({ status: "unsupported", reason: "invalid-context" });
     });
     it.each(Object.values(DisclosureTableKind))("領域%sを別々の本文として扱う", kind => {
-        const tags = { facilities: "MajorFacilitiesTextBlock", affiliatedEntities: "OverviewOfAffiliatedEntitiesTextBlock", mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
+        const tags = { managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", facilities: "MajorFacilitiesTextBlock", affiliatedEntities: "OverviewOfAffiliatedEntitiesTextBlock", mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
         expect(extractDisclosureTables(xml(fact(table, "", tags[kind])), { ...selection, kind })).toMatchObject({ status: "selected", source: { kind } });
     });
     it("状態の外部変更を解析済みobjectへ戻さない", () => {

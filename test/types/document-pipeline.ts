@@ -75,3 +75,9 @@ if (relatedCapital.currency === null) { const unknownAmount = relatedCapital.amo
 searchAffiliatedCompanies([affiliateInput], { reportingPeriodEnd: "2026-03-31", relationship: AffiliatedRelationship.Parent, entryKind: "named" });
 // @ts-expect-error 関係会社区分と集計/個別を未指定で混ぜない
 searchAffiliatedCompanies([affiliateInput], { reportingPeriodEnd: "2026-03-31" });
+
+import { extractOrderDetails, searchOrderDetails, OrderMetric, type OrderDetailDocument, type OrderDetailExtraction } from '../../src/index';
+declare const orderDocument: OrderDetailDocument;
+const orderExtraction: OrderDetailExtraction = extractOrderDetails(orderDocument);
+searchOrderDetails([orderDocument], { period: {startDate:'2025-04-01',endDate:'2026-03-31'}, scope:'NonConsolidated', role:'detail', metric:OrderMetric.OrdersReceivedJPY });
+void orderExtraction;

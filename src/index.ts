@@ -86,3 +86,5 @@ export type { SegmentColumnRole, SegmentPeriod, SegmentTableDeclaration, Segment
 
 export { AFFILIATED_COMPANY_DETAILS_VERSION, AffiliatedRelationship, extractAffiliatedCompanies, searchAffiliatedCompanies } from "./affiliated-company-details";
 export type { CapitalCurrency, AffiliatedCompanyDocument, AffiliatedCapital, AffiliatedPercent, AffiliatedVotingDisplay, AffiliatedCompanyRow, AffiliatedCompanyExtraction, AffiliatedCompanySearchOptions } from "./affiliated-company-details";
+export { ORDER_DETAILS_VERSION, OrderMetric, extractOrderDetails, searchOrderDetails } from "./order-details";
+export type { OrderPeriod, OrderTableDeclaration, OrderDetailDocument, OrderValue, OrderDetailRow, OrderDetailExtraction, OrderSearchOptions } from "./order-details";

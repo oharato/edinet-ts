@@ -8,11 +8,11 @@ import type { ContextDimensionsTraceResult } from "./context-dimension-traces";
 
 /** 数値の意味は表別に確定します。この辞書は本文の所属だけを指定します。 */
 export const DisclosureTableKind = Object.freeze({ Facilities: "facilities", AffiliatedEntities: "affiliatedEntities", MainCustomers: "mainCustomers",
-    Segments: "segments", Officers: "officers", OfficerRemuneration: "officerRemuneration" } as const);
+    ManagementAnalysis: "managementAnalysis", Segments: "segments", Officers: "officers", OfficerRemuneration: "officerRemuneration" } as const);
 export type DisclosureTableKind = typeof DisclosureTableKind[keyof typeof DisclosureTableKind];
 const tags: Record<DisclosureTableKind, string> = { facilities: "MajorFacilitiesTextBlock", affiliatedEntities: "OverviewOfAffiliatedEntitiesTextBlock",
     mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock",
-    officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
+    managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
 export const DISCLOSURE_TABLE_LIMITS = Object.freeze({ fragmentBytes: 2 * 1024 * 1024, tables: 200, rows: 5000, cells: 50000, columns: 100, expandedCells: 200000, depth: 64 });
 export interface DisclosureTableCell { row: number; column: number; rowSpan: number; columnSpan: number; kind: "td" | "th"; parsedText: string; }
 export interface DisclosureTable { index: number; cells: DisclosureTableCell[]; grid: (number | null)[][]; }
