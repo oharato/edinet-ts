@@ -154,3 +154,9 @@ const indexSource=new ObservedFinancialArchive(":memory:");
 financialIndex.materialize("example",indexSource,{cutoff:"2026-10-28T00:00:00Z",extractorVersion:"example"});
 const indexed:FinancialIndexSearchResult=financialIndex.screen({generation:"example",group:"details",accountingStandard:"IFRS",scope:"Consolidated",currency:"JPY",period:{startDate:"2025-04-01",endDate:"2026-03-31"},periodType:"annual"},{metricIds:["costOfSales"]});
 void indexed.reasonCounts.missing;financialIndex.close();indexSource.close();
+
+import {FinancialIndexBuild,type FinancialIndexBuildInput,type FinancialIndexBuildProgress} from "edinet-ts";
+declare const buildInput:FinancialIndexBuildInput;
+const buildState=new FinancialIndexBuild(":memory:");
+const buildProgress:FinancialIndexBuildProgress=buildState.begin(buildInput);
+void buildProgress.plan.population.edinetCodes;void buildProgress.tasks[0]?.partSha256;buildState.close();

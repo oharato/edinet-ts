@@ -24,6 +24,7 @@ import {captureDocumentVersionObservations} from "./document-version-selection";
 import {createHash} from "node:crypto";
 import {ObservedFinancialArchive,normalizeArchivedFinancialSnapshotOptions} from "./db/observed-financial-archive";
 import {FinancialSearchIndex,normalizeFinancialIndexSearch,isFinancialIndexGenerationId} from "./db/financial-search-index";
+import {FinancialIndexBuild,normalizeFinancialIndexBuildInput} from "./db/financial-index-build";
 import { screenIfrsFinancialDetailDocuments } from "./ifrs-financial-detail-screening";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
 import "dotenv/config";
@@ -498,6 +499,77 @@ program.command("screen-large-holdings")
             });
             console.log(JSON.stringify(searchLargeHoldingReports(documents, query), null, options.pretty ? 2 : undefined));
         } catch { console.error("一次大量保有の原本・一覧メタデータ・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("plan-financial-index-build")
+    .description("母集団・原本指紋・cutoff・版を固定して再開可能な構築計画を保存します")
+    .requiredOption("--state <path>", "専用の構築状態DB")
+    .requiredOption("--archive <path>", "固定する停止済み原本アーカイブ")
+    .requiredOption("--population <path>", "asOf/observedAt/source/sourceSha256/edinetCodesのJSON")
+    .requiredOption("--id <id>", "構築ID")
+    .requiredOption("--generation <id>", "集約後の検索世代ID")
+    .requiredOption("--cutoff <datetime>", "timezone付きcutoff")
+    .requiredOption("--extractor-version <version>", "固定する抽出版")
+    .option("--source-commit <sha>", "40桁source commit")
+    .option("--detail-metrics <csv>", "明示duration明細項目")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let source:ObservedFinancialArchive|undefined,state:FinancialIndexBuild|undefined;
+        try {
+            const population=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.population),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            const query={cutoff:options.cutoff,extractorVersion:options.extractorVersion,sourceCommit:options.sourceCommit,detailMetricIds:options.detailMetrics===undefined?undefined:options.detailMetrics.split(",").map((s:string)=>s.trim())};
+            normalizeFinancialIndexBuildInput({id:options.id,generation:options.generation,archiveSha256:"0".repeat(64),population,options:query});
+            source=new ObservedFinancialArchive(path.resolve(options.archive),{readOnly:true});
+            state=new FinancialIndexBuild(path.resolve(options.state));
+            console.log(JSON.stringify(state.begin({id:options.id,generation:options.generation,archiveSha256:source.snapshotSha256(),population,options:query}),null,options.pretty?2:undefined));
+        } catch { console.error("世代構築の母集団・固定原本・cutoff・抽出版・専用状態DBを確認してください（入力内容は非表示）"); process.exitCode=1; }
+        finally { state?.close();source?.close(); }
+    });
+
+program.command("run-financial-index-build")
+    .description("未処理会社を先に処理し、失敗分を再試行してcheckpointから再開します")
+    .requiredOption("--state <path>", "構築状態DB")
+    .requiredOption("--archive <path>", "計画時と同じ原本アーカイブ")
+    .requiredOption("--db <path>", "会社別世代を保存する財務索引")
+    .requiredOption("--id <id>", "構築ID")
+    .option("--limit <number>", "一回の会社数（1〜100）", "20")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let source:ObservedFinancialArchive|undefined,state:FinancialIndexBuild|undefined,index:FinancialSearchIndex|undefined;
+        try {
+            if (!isFinancialIndexGenerationId(options.id)||!/^\d+$/.test(options.limit)||Number(options.limit)<1||Number(options.limit)>100) throw new Error();
+            state=new FinancialIndexBuild(path.resolve(options.state));const p=state.progress(options.id);
+            source=new ObservedFinancialArchive(path.resolve(options.archive),{readOnly:true});if (source.snapshotSha256()!==p.plan.archiveSha256) throw new Error();
+            index=new FinancialSearchIndex(path.resolve(options.db));
+            const progress=state.runNext(options.id,source,index,{limit:Number(options.limit)});
+            console.log(JSON.stringify(progress,null,options.pretty?2:undefined));if(progress.failed)process.exitCode=1;
+        } catch { console.error("構築checkpoint・固定原本・財務索引・処理件数を確認してください（入力内容は非表示）"); process.exitCode=1; }
+        finally {index?.close();source?.close();state?.close();}
+    });
+
+program.command("finish-financial-index-build")
+    .description("全母集団の完了会社世代だけを一つの検索世代へ集約します")
+    .requiredOption("--state <path>", "構築状態DB")
+    .requiredOption("--db <path>", "会社別世代を保持する財務索引")
+    .requiredOption("--id <id>", "構築ID")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let state:FinancialIndexBuild|undefined,index:FinancialSearchIndex|undefined;
+        try {state=new FinancialIndexBuild(path.resolve(options.state));state.progress(options.id);index=new FinancialSearchIndex(path.resolve(options.db));console.log(JSON.stringify(state.finish(options.id,index),null,options.pretty?2:undefined));}
+        catch {console.error("全会社の完了checkpointと会社別世代を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally {index?.close();state?.close();}
+    });
+
+program.command("financial-index-build-progress")
+    .description("構築状態を私有コピーから読み、未処理・失敗・完了と対象母集団を返します")
+    .requiredOption("--state <path>", "構築状態DB")
+    .requiredOption("--id <id>", "構築ID")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let state:FinancialIndexBuild|undefined;
+        try {state=new FinancialIndexBuild(path.resolve(options.state),{readOnly:true});console.log(JSON.stringify(state.progress(options.id),null,options.pretty?2:undefined));}
+        catch {console.error("構築状態DBと構築IDを確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally {state?.close();}
     });
 
 program.command("index-financial-snapshots")

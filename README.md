@@ -281,6 +281,7 @@ if (info.holdingRatio !== undefined) {
 - [DEIから財務基準・当期を確定する](docs/FINANCIAL_REPORTING_BASIS.md)
 - [観測・原本・解析結果の財務アーカイブ](docs/OBSERVED_FINANCIAL_ARCHIVE.md)
 - [固定世代からの直接財務SQL検索](docs/FINANCIAL_SEARCH_INDEX.md)
+- [母集団全件の分割構築・再開・世代集約](docs/FINANCIAL_INDEX_BUILD.md)
 
 #### dataMap への直接アクセス
 

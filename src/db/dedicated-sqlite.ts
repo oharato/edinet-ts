@@ -1,4 +1,5 @@
 import * as fs from "node:fs";
+import { createHash } from "node:crypto";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import type { SQLInputValue } from "node:sqlite";
@@ -36,6 +37,7 @@ function inspect(file: string) {
 export class DedicatedSqliteDatabase {
     protected db!: NativeDatabase;
     private scratch?: string;
+    private snapshotFile?: string;
     protected closed = false;
     protected readOnly: boolean;
     constructor(file: string, options: {
@@ -99,6 +101,7 @@ export class DedicatedSqliteDatabase {
                 if (output !== undefined)
                     fs.closeSync(output);
             }
+            this.snapshotFile = probe;
             this.db = new Database(probe, { readOnly: true });
             this.assertFormat();
             if (!this.readOnly) {
@@ -181,6 +184,31 @@ export class DedicatedSqliteDatabase {
         catch (e) {
             this.db.exec("ROLLBACK");
             throw e;
+        }
+    }
+    protected readOnlySnapshotSha256(): string {
+        if (this.closed || !this.readOnly || !this.snapshotFile)
+            throw new Error("固定したreadOnlyファイルが必要です");
+        const fd = fs.openSync(this.snapshotFile, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
+        try {
+            const before = fs.fstatSync(fd, { bigint: true });
+            if (!before.isFile())
+                throw new Error("通常ファイルが必要です");
+            const digest = createHash("sha256"), chunk = Buffer.alloc(1024 * 1024);
+            let bytes = 0;
+            while (BigInt(bytes) < before.size) {
+                const remaining = before.size - BigInt(bytes), n = fs.readSync(fd, chunk, 0, remaining > BigInt(chunk.length) ? chunk.length : Number(remaining), null);
+                if (!n)
+                    break;
+                digest.update(chunk.subarray(0, n));
+                bytes += n;
+            }
+            if (BigInt(bytes) !== before.size || identity(before) !== identity(fs.fstatSync(fd, { bigint: true })))
+                throw new Error("指紋計算中にDBが変化しました");
+            return digest.digest("hex");
+        }
+        finally {
+            fs.closeSync(fd);
         }
     }
     close() {

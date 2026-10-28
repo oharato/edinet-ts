@@ -37,7 +37,7 @@ try {
 
 `materialize` の入力は実際の `ObservedFinancialArchive` インスタンスです。任意の保存JSONを無検証で索引へ昇格させません。アーカイブをreadOnlyで渡すと、元アーカイブは変更しません。write可能なインスタンスなら、通常のアーカイブ契約に従い解析cacheを追加する場合があります。索引の世代書込とは別のtransactionです。
 
-保存する明細は `materialize` の `detailMetricIds` で指定します。既定の日本基準duration2項目/IFRS PL5を維持し、CF等は明示した項目だけです。`edinetCodes` はアーカイブの会社指定へ渡します。一回の観測集合や原本のbatch上限はアーカイブの契約に従い、全市場の取得/複数入力batchの世代集約を実装したことにはしません。
+保存する明細は `materialize` の `detailMetricIds` で指定します。既定の日本基準duration2項目/IFRS PL5を維持し、CF等は明示した項目だけです。`edinetCodes` はアーカイブの会社指定へ渡します。一回の観測集合や原本のbatch上限はアーカイブの契約に従い、この単発入口だけで全市場の取得を行うものではありません。母集団全件の会社別構築・集約は[再開可能な構築状態](FINANCIAL_INDEX_BUILD.md)を参照してください。
 
 ## 固定世代と失敗時の扱い
 
@@ -100,4 +100,4 @@ cohort.jsonはAPIのcohort objectです。buildのCLIは原本アーカイブを
 
 Node26.12.1、Core i5-7260U、一つのprocessでメモリ入力も保持し、原本/OSのcacheが温まった条件です。SQLは全世代のmetadata/選択値の整合検査と返却行の検証を含み、readOnlyのコピーopen時間を除いています。全市場の速度保証ではありません。再現は `node --import tsx scripts/benchmark-financial-search-index.ts`、結果はGit管理外の `data/benchmarks/financial-search-index.json` です。
 
-比率/既存主要21指標や他領域の索引、全市場の世代集約・運用性能/充足率、再開可能な取得job、訂正差分の完全版再構成、公開世代/利用先の切替と旧DB移行は、全体ロードマップの残工程です。
+[母集団全件の世代集約](FINANCIAL_INDEX_BUILD.md)を追加しました。比率/既存主要21指標や他領域の索引、全市場の実取得・運用性能/充足率、再開可能な取得job、訂正差分の完全版再構成、公開世代/利用先の切替と旧DB移行は、全体ロードマップの残工程です。

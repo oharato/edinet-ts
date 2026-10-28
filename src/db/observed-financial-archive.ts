@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import {DedicatedSqliteDatabase} from "./dedicated-sqlite";
+import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import { captureDocumentVersionObservations, selectDocumentVersions, type DocumentVersionObservation } from "../document-version-selection";
 import { captureObservedFinancialSources, createObservedFinancialSnapshotsUsing, ObservedFinancialResolutionFatalError, type ObservedFinancialSource, type ObservedFinancialSnapshotOptions, type ObservedFinancialSnapshotRecord, type ObservedFinancialSourceReason } from "../observed-financial-snapshots";
 import { createAutomaticFinancialSnapshots, normalizeAutomaticFinancialDetailMetricIds, AutomaticFinancialProjectionError, type AutomaticFinancialSnapshotOptions } from "../automatic-financial-snapshots";
@@ -22,9 +22,22 @@ const mappingVersions = { basis: FINANCIAL_REPORTING_BASIS_VERSION, balanceSheet
 export interface ArchivedFinancialSnapshots {
     selection: ReturnType<typeof selectDocumentVersions>;
     records: ObservedFinancialSnapshotRecord[];
-    unavailableSources: {rootDocID:string;docID:string;reason:ObservedFinancialSourceReason|"conflicting-source-observations"}[];
-    provenance: {archiveVersion:typeof OBSERVED_FINANCIAL_ARCHIVE_VERSION;extractorVersion:string;sourceCommit?:string;edinetCodes?:readonly string[];mappingVersions:typeof mappingVersions};
-    cache: {hits:number;extracted:number};
+    unavailableSources: {
+        rootDocID: string;
+        docID: string;
+        reason: ObservedFinancialSourceReason | "conflicting-source-observations";
+    }[];
+    provenance: {
+        archiveVersion: typeof OBSERVED_FINANCIAL_ARCHIVE_VERSION;
+        extractorVersion: string;
+        sourceCommit?: string;
+        edinetCodes?: readonly string[];
+        mappingVersions: typeof mappingVersions;
+    };
+    cache: {
+        hits: number;
+        extracted: number;
+    };
 }
 const kind = "edinet-ts-observed-financial-archive-v1";
 const schema = {
@@ -52,8 +65,11 @@ export function normalizeArchivedFinancialSnapshotOptions(options: ArchivedFinan
         const length = requestedCodes.length;
         if (!Number.isSafeInteger(length) || length < 1 || length > 100)
             throw new Error("会社指定は1〜100件です");
-        edinetCodes = Array.from({ length }, (_, i) => { if (!Object.hasOwn(requestedCodes, i))
-            throw new Error("疎配列は使えません"); return requestedCodes[i]; });
+        edinetCodes = Array.from({ length }, (_, i) => {
+            if (!Object.hasOwn(requestedCodes, i))
+                throw new Error("疎配列は使えません");
+            return requestedCodes[i];
+        });
         if (new Set(edinetCodes).size !== length || edinetCodes.some(c => typeof c !== "string" || !/^E\d{5}$/.test(c)))
             throw new Error("会社指定が不正/重複しています");
     }
@@ -64,20 +80,37 @@ export function normalizeArchivedFinancialSnapshotOptions(options: ArchivedFinan
     createObservedFinancialSnapshotsUsing([], [], query, createAutomaticFinancialSnapshots);
     return { ...query, extractorVersion, sourceCommit, edinetCodes };
 }
+/** 内部共有: 再開計画が抽出版・対応表版を固定します。 */
+export function financialArchiveExtractionProvenance(options: ArchivedFinancialSnapshotOptions): ArchivedFinancialSnapshots["provenance"] {
+    const q = normalizeArchivedFinancialSnapshotOptions(options);
+    return { archiveVersion: OBSERVED_FINANCIAL_ARCHIVE_VERSION, extractorVersion: q.extractorVersion, sourceCommit: q.sourceCommit, edinetCodes: q.edinetCodes, mappingVersions: { ...mappingVersions } };
+}
 /** 専用の追記アーカイブ。旧DBを移行せず、原観測・原本と版付き解析結果を保持します。 */
 export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
-    constructor(file:string,options:ObservedFinancialArchiveOptions={}){super(file,options,{table:"archive_format",kind,schema});}
-    private decode(row: Record<string, unknown>) { if (typeof row.id !== "string" || typeof row.body !== "string" || hash(canonical([row.id, row.body])) !== row.sha256)
-        throw new Error("アーカイブrecordのhash不一致です"); return JSON.parse(row.body); }
-    private putRecord(table: "archive_extractions", id: string, value: unknown) { const body = canonical(value), existing = this.rows(`SELECT * FROM ${table} WHERE id=?`, [id]); if (existing.length) {
-        this.decode(existing[0]);
-        if (existing[0].body !== body)
-            throw new Error("同じ保存IDの異なる内容は上書きできません");
-        return false;
-    } this.run(`INSERT INTO ${table} VALUES(?,?,?)`, [id, body, hash(canonical([id, body]))]); return true; }
+    constructor(file: string, options: ObservedFinancialArchiveOptions = {}) { super(file, options, { table: "archive_format", kind, schema }); }
+    /** 停止した原本アーカイブのreadOnlyコピー全体を固定します。 */
+    snapshotSha256(): string { return this.readOnlySnapshotSha256(); }
+    private decode(row: Record<string, unknown>) {
+        if (typeof row.id !== "string" || typeof row.body !== "string" || hash(canonical([row.id, row.body])) !== row.sha256)
+            throw new Error("アーカイブrecordのhash不一致です");
+        return JSON.parse(row.body);
+    }
+    private putRecord(table: "archive_extractions", id: string, value: unknown) {
+        const body = canonical(value), existing = this.rows(`SELECT * FROM ${table} WHERE id=?`, [id]);
+        if (existing.length) {
+            this.decode(existing[0]);
+            if (existing[0].body !== body)
+                throw new Error("同じ保存IDの異なる内容は上書きできません");
+            return false;
+        }
+        this.run(`INSERT INTO ${table} VALUES(?,?,?)`, [id, body, hash(canonical([id, body]))]);
+        return true;
+    }
     append(observations: readonly DocumentVersionObservation[], sources: readonly ObservedFinancialSource[] = []) {
-        if(this.closed)throw new Error("アーカイブはclose済みです");
-        if(this.readOnly)throw new Error("readOnlyのアーカイブです");
+        if (this.closed)
+            throw new Error("アーカイブはclose済みです");
+        if (this.readOnly)
+            throw new Error("readOnlyのアーカイブです");
         const { captured, analyzed } = captureDocumentVersionObservations(observations), byID = new Map(captured.map(o => [o.relation.observationId, o]));
         const prepared = analyzed.observations.map(({ statuses: _statuses, ...o }) => { const c = byID.get(o.observationId)!; return { ...o, observedAt: new Date(c.observed).toISOString(), document: { ...o.document, ...(c.periodStart !== undefined ? { periodStart: c.periodStart } : {}), ...(c.periodEnd !== undefined ? { periodEnd: c.periodEnd } : {}) } }; });
         if (Buffer.byteLength(canonical(prepared)) > 16 * 1024 * 1024)
@@ -129,9 +162,13 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
             return { insertedObservations, insertedSources, insertedContents };
         });
     }
-    private decodeObservation(row: Record<string, unknown>) { const o = this.decode(row); if (o.observationId !== row.id || o.document?.docID !== row.doc_id || (o.document.parentDocID ?? null) !== row.parent_doc_id || (o.document.edinetCode ?? null) !== row.edinet_code || timestamp(o.observedAt, true) !== row.observed_ms)
-        throw new Error("観測の索引が不整合です"); return o as DocumentVersionObservation; }
-    createSnapshots(options: ArchivedFinancialSnapshotOptions):ArchivedFinancialSnapshots {
+    private decodeObservation(row: Record<string, unknown>) {
+        const o = this.decode(row);
+        if (o.observationId !== row.id || o.document?.docID !== row.doc_id || (o.document.parentDocID ?? null) !== row.parent_doc_id || (o.document.edinetCode ?? null) !== row.edinet_code || timestamp(o.observedAt, true) !== row.observed_ms)
+            throw new Error("観測の索引が不整合です");
+        return o as DocumentVersionObservation;
+    }
+    createSnapshots(options: ArchivedFinancialSnapshotOptions): ArchivedFinancialSnapshots {
         const { extractorVersion, sourceCommit, edinetCodes, ...query } = normalizeArchivedFinancialSnapshotOptions(options);
         const { cutoff } = query;
         return this.transaction<ArchivedFinancialSnapshots>(() => {
@@ -158,12 +195,12 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                     declarations.set(body.docID, list);
                 }
             }
-            const selectedSet=new Set(selectedIDs);
+            const selectedSet = new Set(selectedIDs);
             let cacheHits = 0, extracted = 0;
             const records: ObservedFinancialSnapshotRecord[] = [], unavailable = new Map(preview.unavailableSources.filter(s => selectedSet.has(s.docID)).map(s => [s.docID, s])), conflicts = new Set<string>();
             let batch: ObservedFinancialSource[] = [], batchBytes = 0;
             const extract = (xml: string, input: AutomaticFinancialSnapshotOptions) => {
-                const sourceSha256=hash(xml),id = hash(canonical([input.docID, sourceSha256, input.detailMetricIds ?? null, extractorVersion, sourceCommit ?? null, mappingVersions]));
+                const sourceSha256 = hash(xml), id = hash(canonical([input.docID, sourceSha256, input.detailMetricIds ?? null, extractorVersion, sourceCommit ?? null, mappingVersions]));
                 let payload;
                 try {
                     const old = this.rows("SELECT * FROM archive_extractions WHERE id=?", [id]);
@@ -187,7 +224,8 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                 catch {
                     throw new ObservedFinancialResolutionFatalError("解析キャッシュを読み書きできません");
                 }
-                if(!payload||typeof payload!=="object"||Array.isArray(payload))throw new ObservedFinancialResolutionFatalError("保存解析結果が不整合です");
+                if (!payload || typeof payload !== "object" || Array.isArray(payload))
+                    throw new ObservedFinancialResolutionFatalError("保存解析結果が不整合です");
                 if (payload.kind === "projection-failed")
                     throw new AutomaticFinancialProjectionError();
                 if (payload.kind === "parse-failed")
@@ -196,13 +234,20 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                     throw new ObservedFinancialResolutionFatalError("保存解析結果が不整合です");
                 return payload.result;
             };
-            const flush = () => { if (!batch.length)
-                return; const ids = new Set(batch.map(s => s.docID)), result = createObservedFinancialSnapshotsUsing(observations, batch, query, extract); for (const r of result.records) {
-                records.push(r);
-                unavailable.delete(r.docID);
-            } for (const u of result.unavailableSources)
-                if (ids.has(u.docID))
-                    unavailable.set(u.docID, u); batch = []; batchBytes = 0; };
+            const flush = () => {
+                if (!batch.length)
+                    return;
+                const ids = new Set(batch.map(s => s.docID)), result = createObservedFinancialSnapshotsUsing(observations, batch, query, extract);
+                for (const r of result.records) {
+                    records.push(r);
+                    unavailable.delete(r.docID);
+                }
+                for (const u of result.unavailableSources)
+                    if (ids.has(u.docID))
+                        unavailable.set(u.docID, u);
+                batch = [];
+                batchBytes = 0;
+            };
             for (const docID of selectedIDs) {
                 const list = declarations.get(docID);
                 if (!list?.length)

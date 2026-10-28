@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { parseDocumentTimestamp as timestamp } from "../document-timestamp";
 import type { SQLInputValue } from "node:sqlite";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import { ObservedFinancialArchive, type ArchivedFinancialSnapshotOptions, type ArchivedFinancialSnapshots } from "./observed-financial-archive";
@@ -71,9 +72,26 @@ export interface FinancialIndexSearchResult {
     diagnostics: FinancialIndexDiagnostic[];
     reasonCounts: Record<FinancialIndexDiagnostic["reason"], number>;
 }
+export interface FinancialIndexPopulation {
+    asOf: string;
+    observedAt: string;
+    source: string;
+    sourceSha256: string;
+    edinetCodes: readonly string[];
+}
+export interface FinancialIndexAssembly {
+    planSha256: string;
+    archiveSha256: string;
+    population: FinancialIndexPopulation;
+    parts: {
+        id: string;
+        sha256: string;
+    }[];
+}
 export interface FinancialIndexGeneration {
     id: string;
     indexVersion: typeof FINANCIAL_SEARCH_INDEX_VERSION;
+    assembly?: FinancialIndexAssembly;
     selection: ArchivedFinancialSnapshots["selection"];
     unavailableSources: ArchivedFinancialSnapshots["unavailableSources"];
     provenance: ArchivedFinancialSnapshots["provenance"];
@@ -105,12 +123,23 @@ const canonical = (v: unknown): string => JSON.stringify(v, (_k, x) => x && type
 const hash = (v: string) => createHash("sha256").update(v).digest("hex");
 export const isFinancialIndexGenerationId = (v: unknown): v is string => typeof v === "string" && /^[A-Za-z0-9_.:-]{1,200}$/.test(v);
 const date = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
-function flat(v: unknown, keys: readonly string[]): Record<string, unknown> { if (!v || typeof v !== "object" || Array.isArray(v) || Object.keys(v).some(k => !keys.includes(k)))
-    throw new Error("未知または不正な財務索引入力です"); return Object.fromEntries(Object.keys(v).map(k => [k, (v as Record<string, unknown>)[k]])); }
-function array<T>(v: readonly T[], max: number): T[] { if (!Array.isArray(v))
-    throw new Error("配列が必要です"); const length = v.length; if (!Number.isSafeInteger(length) || length < 0 || length > max)
-    throw new Error("配列の件数上限を超えています"); return Array.from({ length }, (_, i) => { if (!Object.hasOwn(v, i))
-    throw new Error("疎配列は使えません"); return v[i]; }); }
+function flat(v: unknown, keys: readonly string[]): Record<string, unknown> {
+    if (!v || typeof v !== "object" || Array.isArray(v) || Object.keys(v).some(k => !keys.includes(k)))
+        throw new Error("未知または不正な財務索引入力です");
+    return Object.fromEntries(Object.keys(v).map(k => [k, (v as Record<string, unknown>)[k]]));
+}
+function array<T>(v: readonly T[], max: number): T[] {
+    if (!Array.isArray(v))
+        throw new Error("配列が必要です");
+    const length = v.length;
+    if (!Number.isSafeInteger(length) || length < 0 || length > max)
+        throw new Error("配列の件数上限を超えています");
+    return Array.from({ length }, (_, i) => {
+        if (!Object.hasOwn(v, i))
+            throw new Error("疎配列は使えません");
+        return v[i];
+    });
+}
 const families = (c: Pick<FinancialIndexCohort, "group" | "accountingStandard">): string[] => c.group === "balanceSheet" ? Object.keys(BALANCE_SHEET_REGISTRY) : c.accountingStandard === "IFRS" ? Object.keys(IFRS_FINANCIAL_DETAIL_REGISTRY) : Object.keys(FINANCIAL_DETAIL_REGISTRY).filter(k => FINANCIAL_DETAIL_REGISTRY[k as FinancialDetailMetricId].periodType === "duration");
 export function normalizeFinancialIndexSearch(cohort: FinancialIndexCohort, options: FinancialIndexSearchOptions) {
     const c = flat(cohort, ["generation", "group", "accountingStandard", "scope", "currency", "period", "periodType", "docIDs"]), p = flat(c.period, ["instant", "startDate", "endDate"]);
@@ -124,12 +153,16 @@ export function normalizeFinancialIndexSearch(cohort: FinancialIndexCohort, opti
     const normalized = { ...c, period: p, ...(docIDs === undefined ? {} : { docIDs }) } as unknown as FinancialIndexCohort, known = families(normalized), o = flat(options, ["metricIds", "conditions", "sortBy", "order", "offset", "limit"]), metrics = array(o.metricIds as FinancialIndexMetricId[], 50);
     if (!metrics.length || new Set(metrics).size !== metrics.length || metrics.some(k => !known.includes(k)))
         throw new Error("既知の重複しない項目を明示してください");
-    const conditions = array((o.conditions ?? []) as NonNullable<FinancialIndexSearchOptions["conditions"]>, 100).map(v => { const k = flat(v, ["metric", "operator", "value"]); if (!known.includes(k.metric as string) || !["gte", "lte", "gt", "lt", "eq"].includes(k.operator as string) || typeof k.value !== "number" || !Number.isFinite(k.value) || c.accountingStandard === "IFRS" && Math.abs(k.value) > Number.MAX_SAFE_INTEGER)
-        throw new Error("不正な財務数値条件です"); return k as unknown as {
-        metric: FinancialIndexMetricId;
-        operator: ComparisonOperator;
-        value: number;
-    }; });
+    const conditions = array((o.conditions ?? []) as NonNullable<FinancialIndexSearchOptions["conditions"]>, 100).map(v => {
+        const k = flat(v, ["metric", "operator", "value"]);
+        if (!known.includes(k.metric as string) || !["gte", "lte", "gt", "lt", "eq"].includes(k.operator as string) || typeof k.value !== "number" || !Number.isFinite(k.value) || c.accountingStandard === "IFRS" && Math.abs(k.value) > Number.MAX_SAFE_INTEGER)
+            throw new Error("不正な財務数値条件です");
+        return k as unknown as {
+            metric: FinancialIndexMetricId;
+            operator: ComparisonOperator;
+            value: number;
+        };
+    });
     if (o.sortBy !== undefined && !known.includes(o.sortBy as string) || o.order !== undefined && !["asc", "desc"].includes(o.order as string))
         throw new Error("不正な並び指定です");
     for (const v of [o.offset, o.limit])
@@ -142,12 +175,25 @@ export function normalizeFinancialIndexSearch(cohort: FinancialIndexCohort, opti
         metrics.forEach(k => required.add(k));
     return { cohort: normalized, metrics, conditions, sortBy: o.sortBy as FinancialIndexMetricId | undefined, order: o.order as SortOrder | undefined, offset: (o.offset ?? 0) as number, limit: o.limit as number | undefined, required };
 }
+/** 内部共有: 母集団を過去cutoffへ遡及させません。 */
+export function normalizeFinancialIndexPopulation(input: FinancialIndexPopulation, cutoff: string): FinancialIndexPopulation {
+    const p = flat(input, ["asOf", "observedAt", "source", "sourceSha256", "edinetCodes"]), observed = timestamp(p.observedAt, true), cut = timestamp(cutoff, true), codes = array(p.edinetCodes as string[], 100000);
+    if (!date(p.asOf) || observed === undefined || cut === undefined || observed > cut || p.asOf > new Date(cut + 9 * 60 * 60 * 1000).toISOString().slice(0, 10) || typeof p.source !== "string" || !p.source.trim() || p.source.length > 2048 || /[\x00-\x1f\x7f]/.test(p.source) || typeof p.sourceSha256 !== "string" || !/^[a-f0-9]{64}$/.test(p.sourceSha256) || !codes.length || new Set(codes).size !== codes.length || codes.some(c => typeof c !== "string" || !/^E\d{5}$/.test(c)))
+        throw new Error("母集団の基準日・実観測・出典/hash・会社指定が不正です");
+    return { asOf: p.asOf, observedAt: new Date(observed).toISOString(), source: p.source, sourceSha256: p.sourceSha256, edinetCodes: codes.sort() };
+}
+export const financialIndexBuildPartId = (planSha256: string, code: string) => "buildpart:" + hash(canonical([planSha256, code]));
+export const financialIndexGenerationSha256 = (report: FinancialIndexGeneration) => hash(canonical([report.id, canonical(report)]));
 const rowColumns = ["generation", "row_id", "group_id", "standard", "scope", "currency", "period_start", "period_end", "period_type", "edinet_code", "sec_code", "doc_id"];
 const valueColumns = ["generation", "row_id", "metric_id", "available", "numeric_value", "raw_text", "status", "reason", "failure_kind", "metric_order"];
 function prepare(generation: string, row: FinancialIndexRow) {
     const m = row.snapshot.metadata, body = canonical(row), rowID = hash(canonical([m.docID, row.group])), metadata: SQLInputValue[] = [generation, rowID, row.group, m.accountingStandard, m.scope, m.currency, m.period.startDate ?? "", m.period.endDate ?? m.period.instant!, m.periodType ?? "", row.edinetCode, m.secCode, m.docID], digest = hash(canonical([metadata, body])), ordered = families({ group: row.group, accountingStandard: m.accountingStandard });
-    const values = Object.entries(row.snapshot.selections).map(([metric, s]) => { if (!s || !ordered.includes(metric) || s.metricId !== metric || !["selected", "missing", "unsupported", "ambiguous"].includes(s.status) || typeof s.reason !== "string" || s.status === "selected" && s.safeNumber !== toSafeMetricNumber(s.raw))
-        throw new Error("索引へ保存する直接選択値が不整合です"); const failure = s.status !== "selected" ? s.status : s.safeNumber === undefined ? "unsafe-number" : null; return [generation, rowID, metric, failure === null ? 1 : 0, s.safeNumber ?? null, s.raw ?? null, s.status, s.reason, failure, ordered.indexOf(metric)] as SQLInputValue[]; });
+    const values = Object.entries(row.snapshot.selections).map(([metric, s]) => {
+        if (!s || !ordered.includes(metric) || s.metricId !== metric || !["selected", "missing", "unsupported", "ambiguous"].includes(s.status) || typeof s.reason !== "string" || s.status === "selected" && s.safeNumber !== toSafeMetricNumber(s.raw))
+            throw new Error("索引へ保存する直接選択値が不整合です");
+        const failure = s.status !== "selected" ? s.status : s.safeNumber === undefined ? "unsafe-number" : null;
+        return [generation, rowID, metric, failure === null ? 1 : 0, s.safeNumber ?? null, s.raw ?? null, s.status, s.reason, failure, ordered.indexOf(metric)] as SQLInputValue[];
+    });
     return { rowID, metadata, body, digest, values };
 }
 /** 観測アーカイブを入力に、固定世代の直接財務値をSQLで検索する専用DB。 */
@@ -177,23 +223,70 @@ export class FinancialSearchIndex extends DedicatedSqliteDatabase {
                 rows.push(prepare(generation, { group, rootDocID: record.rootDocID, edinetCode: m.edinetCode, knownAt: record.knownAt, sourceSha256: record.sourceSha256, chainDocIDs: [...record.chainDocIDs], observationIds: [...record.observationIds], snapshot: { metadata, selections: snapshot.selections } }));
             }
         }
-        const report: FinancialIndexGeneration = { id: generation, indexVersion: FINANCIAL_SEARCH_INDEX_VERSION, selection: source.selection, unavailableSources: source.unavailableSources, provenance: source.provenance, unresolvedRecords, unavailableGroups, rows: rows.map(r => ({ id: r.rowID, metadata: r.metadata, sha256: r.digest, metrics: r.values.map(v => ({ id: String(v[2]), sha256: hash(canonical(v)) })) })).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0) }, body = canonical(report), digest = hash(canonical([generation, body]));
-        return this.transaction(() => {
-            const old = this.rows("SELECT * FROM financial_generations WHERE id=?", [generation]);
-            if (old.length) {
-                this.audit(generation);
-                if (old[0].body !== body)
-                    throw new Error("完了世代の内容は変更できません。別IDを指定してください");
-                return JSON.parse(body);
-            }
-            this.run("INSERT INTO financial_generations VALUES(?,?,?)", [generation, body, digest]);
-            for (const r of rows) {
-                this.run(`INSERT INTO financial_rows VALUES(${Array.from({ length: 14 }, () => "?").join(",")})`, [...r.metadata, r.digest, r.body]);
-                for (const v of r.values)
-                    this.run(`INSERT INTO financial_values VALUES(${valueColumns.map(() => "?").join(",")})`, v);
-            }
+        const report: FinancialIndexGeneration = { id: generation, indexVersion: FINANCIAL_SEARCH_INDEX_VERSION, selection: source.selection, unavailableSources: source.unavailableSources, provenance: source.provenance, unresolvedRecords, unavailableGroups, rows: rows.map(r => ({ id: r.rowID, metadata: r.metadata, sha256: r.digest, metrics: r.values.map(v => ({ id: String(v[2]), sha256: hash(canonical(v)) })) })).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0) };
+        return this.transaction(() => this.writeGeneration(report, rows));
+    }
+    private writeGeneration(report: FinancialIndexGeneration, rows: ReturnType<typeof prepare>[]): FinancialIndexGeneration {
+        const body = canonical(report), digest = financialIndexGenerationSha256(report), generation = report.id;
+        const old = this.rows("SELECT * FROM financial_generations WHERE id=?", [generation]);
+        if (old.length) {
             this.audit(generation);
+            if (old[0].body !== body)
+                throw new Error("完了世代の内容は変更できません。別IDを指定してください");
             return JSON.parse(body);
+        }
+        this.run("INSERT INTO financial_generations VALUES(?,?,?)", [generation, body, digest]);
+        for (const r of rows) {
+            this.run(`INSERT INTO financial_rows VALUES(${Array.from({ length: 14 }, () => "?").join(",")})`, [...r.metadata, r.digest, r.body]);
+            for (const v of r.values)
+                this.run(`INSERT INTO financial_values VALUES(${valueColumns.map(() => "?").join(",")})`, v);
+        }
+        this.audit(generation);
+        return JSON.parse(body);
+    }
+    /** 完了済みの会社別世代を、入力と母集団を固定した一世代へ集約します。 */
+    combine(generation: string, partIDs: readonly string[], context: Omit<FinancialIndexAssembly, "parts">): FinancialIndexGeneration {
+        if (!isFinancialIndexGenerationId(generation))
+            throw new Error("集約世代IDが不正です");
+        const parts = array(partIDs, 100000), c = flat(context, ["planSha256", "archiveSha256", "population"]);
+        if (!parts.length || new Set(parts).size !== parts.length || parts.some(p => !isFinancialIndexGenerationId(p) || p === generation) || typeof c.planSha256 !== "string" || !/^[a-f0-9]{64}$/.test(c.planSha256) || typeof c.archiveSha256 !== "string" || !/^[a-f0-9]{64}$/.test(c.archiveSha256))
+            throw new Error("集約元・計画/原本指紋が不正です");
+        const planSha256 = c.planSha256, archiveSha256 = c.archiveSha256;
+        return this.transaction(() => {
+            const reports = parts.map(id => this.audit(id)), first = reports[0], population = normalizeFinancialIndexPopulation(c.population as FinancialIndexPopulation, first.selection.cutoff), codes = new Set<string>(), owners = new Map<string, string>(), base = ({ edinetCodes: _codes, ...p }: FinancialIndexGeneration["provenance"]) => p;
+            const merge = <T>(lists: T[][], key: (v: T) => string): T[] => { const map = new Map<string, T>(); for (const list of lists)
+                for (const item of list) {
+                    const k = key(item), old = map.get(k);
+                    if (old !== undefined && canonical(old) !== canonical(item))
+                        throw new Error("集約元の観測/財務記録が矛盾しています");
+                    map.set(k, item);
+                } return [...map].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, v]) => v); };
+            for (let i = 0; i < reports.length; i++) {
+                const r = reports[i], owner = r.provenance.edinetCodes;
+                if (r.assembly || !owner || owner.length !== 1 || codes.has(owner[0]) || parts[i] !== financialIndexBuildPartId(planSha256, owner[0]) || r.selection.cutoff !== first.selection.cutoff || canonical(base(r.provenance)) !== canonical(base(first.provenance)))
+                    throw new Error("会社別世代の範囲・cutoff・版が一致しません");
+                codes.add(owner[0]);
+                owners.set(parts[i], owner[0]);
+            }
+            if (canonical([...codes].sort()) !== canonical(population.edinetCodes))
+                throw new Error("母集団の完了世代が揃っていません");
+            const rows: ReturnType<typeof prepare>[] = [];
+            for (const part of parts)
+                for (const stored of this.rows("SELECT * FROM financial_rows WHERE generation=? ORDER BY row_id", [part])) {
+                    if (typeof stored.body !== "string" || hash(canonical([rowColumns.map(k => stored[k]), stored.body])) !== stored.sha256)
+                        throw new Error("集約元の財務本文hashが不一致です");
+                    const row = JSON.parse(stored.body) as FinancialIndexRow;
+                    if (row.edinetCode !== owners.get(part))
+                        throw new Error("会社別世代に対象外の財務行があります");
+                    rows.push(prepare(generation, row));
+                }
+            if (new Set(rows.map(r => r.rowID)).size !== rows.length)
+                throw new Error("会社別財務行が重複しています");
+            const report: FinancialIndexGeneration = { id: generation, indexVersion: FINANCIAL_SEARCH_INDEX_VERSION, assembly: { planSha256, archiveSha256, population, parts: reports.map(r => ({ id: r.id, sha256: financialIndexGenerationSha256(r) })).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0) },
+                selection: { cutoff: first.selection.cutoff, decisions: merge(reports.map(r => r.selection.decisions), r => r.rootDocID), selected: merge(reports.map(r => r.selection.selected), r => r.rootDocID), ignored: merge(reports.map(r => r.selection.ignored), r => r.observationId), financialValuesMerged: false, reconstructedUnobservedHistory: false },
+                provenance: { ...first.provenance, edinetCodes: [...population.edinetCodes] }, unavailableSources: merge(reports.map(r => r.unavailableSources), r => r.docID), unresolvedRecords: merge(reports.map(r => r.unresolvedRecords), r => r.docID), unavailableGroups: merge(reports.map(r => r.unavailableGroups), r => r.docID + ":" + r.group),
+                rows: rows.map(r => ({ id: r.rowID, metadata: r.metadata, sha256: r.digest, metrics: r.values.map(v => ({ id: String(v[2]), sha256: hash(canonical(v)) })) })).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0) };
+            return this.writeGeneration(report, rows);
         });
     }
     private audit(generation: string): FinancialIndexGeneration {
@@ -219,8 +312,11 @@ export class FinancialSearchIndex extends DedicatedSqliteDatabase {
                 throw new Error("財務数値の索引が不整合です");
         return report;
     }
-    generation(idValue: string): FinancialIndexGeneration { if (!isFinancialIndexGenerationId(idValue))
-        throw new Error("世代IDが不正です"); return this.transaction(() => this.audit(idValue), false); }
+    generation(idValue: string): FinancialIndexGeneration {
+        if (!isFinancialIndexGenerationId(idValue))
+            throw new Error("世代IDが不正です");
+        return this.transaction(() => this.audit(idValue), false);
+    }
     screen(cohort: FinancialIndexCohort, options: FinancialIndexSearchOptions): FinancialIndexSearchResult {
         const q = normalizeFinancialIndexSearch(cohort, options), c = q.cohort, p = c.period;
         return this.transaction(() => {
@@ -249,9 +345,15 @@ export class FinancialSearchIndex extends DedicatedSqliteDatabase {
             const predicates = q.conditions.map(condition => `r.row_id IN (SELECT row_id FROM financial_values INDEXED BY financial_metric_range WHERE generation=? AND metric_id=? AND available=1 AND numeric_value ${operators[condition.operator]} ?)`), conditionParams: SQLInputValue[] = q.conditions.flatMap(condition => [c.generation, condition.metric, condition.value]);
             const where = `${clause} AND ${usable}` + (predicates.length ? " AND " + predicates.join(" AND ") : ""), args = [...params, ...required, ...conditionParams], matched = Number(this.rows(`SELECT COUNT(*) AS n FROM financial_rows r WHERE ${where}`, args)[0].n), usableCount = Number(this.rows(`SELECT COUNT(*) AS n FROM financial_rows r WHERE ${clause} AND ${usable}`, [...params, ...required])[0].n);
             const join = q.sortBy ? " JOIN financial_values ordering ON ordering.generation=r.generation AND ordering.row_id=r.row_id AND ordering.metric_id=?" : "", order = q.sortBy ? `ordering.numeric_value ${q.order === "asc" ? "ASC" : "DESC"},` : "", selected = this.rows(`SELECT r.* FROM financial_rows r${join} WHERE ${where} ORDER BY ${order}r.sec_code ASC,r.doc_id ASC LIMIT ? OFFSET ?`, [...(q.sortBy ? [q.sortBy] : []), ...args, q.limit ?? -1, q.offset]);
-            const rows = selected.map(stored => { if (typeof stored.body !== "string" || hash(canonical([rowColumns.map(k => stored[k]), stored.body])) !== stored.sha256)
-                throw new Error("返却する財務本文のhash不一致です"); const row = JSON.parse(stored.body) as FinancialIndexRow; const prepared = prepare(c.generation, row); if (canonical(prepared.metadata) !== canonical(rowColumns.map(k => stored[k])) || prepared.digest !== stored.sha256)
-                throw new Error("財務本文と索引の対応が不整合です"); return { ...row, snapshot: { ...row.snapshot, selections: Object.fromEntries(q.metrics.map(k => [k, row.snapshot.selections[k]])) } }; });
+            const rows = selected.map(stored => {
+                if (typeof stored.body !== "string" || hash(canonical([rowColumns.map(k => stored[k]), stored.body])) !== stored.sha256)
+                    throw new Error("返却する財務本文のhash不一致です");
+                const row = JSON.parse(stored.body) as FinancialIndexRow;
+                const prepared = prepare(c.generation, row);
+                if (canonical(prepared.metadata) !== canonical(rowColumns.map(k => stored[k])) || prepared.digest !== stored.sha256)
+                    throw new Error("財務本文と索引の対応が不整合です");
+                return { ...row, snapshot: { ...row.snapshot, selections: Object.fromEntries(q.metrics.map(k => [k, row.snapshot.selections[k]])) } };
+            });
             return { rows, total: matched, excludedRows: cohortRows.length - usableCount, filteredRows: usableCount - matched, diagnostics, reasonCounts };
         }, false);
     }

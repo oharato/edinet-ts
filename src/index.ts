@@ -120,4 +120,7 @@ export type {ObservedFinancialSource,ObservedFinancialSnapshotOptions,ObservedFi
 export {ObservedFinancialArchive,OBSERVED_FINANCIAL_ARCHIVE_VERSION} from "./db/observed-financial-archive";
 export type {ObservedFinancialArchiveOptions,ArchivedFinancialSnapshotOptions,ArchivedFinancialSnapshots} from "./db/observed-financial-archive";
 export {FinancialSearchIndex,FINANCIAL_SEARCH_INDEX_VERSION} from "./db/financial-search-index";
-export type {FinancialIndexMetricId,FinancialIndexCohort,FinancialIndexSearchOptions,FinancialIndexRow,FinancialIndexDiagnostic,FinancialIndexSearchResult,FinancialIndexGeneration} from "./db/financial-search-index";
+export type {FinancialIndexMetricId,FinancialIndexCohort,FinancialIndexSearchOptions,FinancialIndexRow,FinancialIndexDiagnostic,FinancialIndexSearchResult,FinancialIndexGeneration,FinancialIndexPopulation,FinancialIndexAssembly} from "./db/financial-search-index";
+
+export {FinancialIndexBuild,FINANCIAL_INDEX_BUILD_VERSION} from "./db/financial-index-build";
+export type {FinancialIndexBuildInput,FinancialIndexBuildPlan,FinancialIndexBuildTask,FinancialIndexBuildProgress} from "./db/financial-index-build";

@@ -100,3 +100,5 @@ CLIの原本manifestは `docID / availableAt / sourceSha256 / file?` の配列�
 観測入力・原本・日本基準/IFRSの直接結果を再起動後も保持する入口は、[財務アーカイブ](OBSERVED_FINANCIAL_ARCHIVE.md)を参照してください。既存世代Storeとは別の専用形式で、原本履歴・cutoff・抽出版ごとの解析キャッシュを保持します。
 
 固定世代から直接BS/明細をSQLで検索する別DBは、[財務検索索引](FINANCIAL_SEARCH_INDEX.md)を参照してください。原本アーカイブと従来の世代Storeを変更せず、検索用の固定世代へ転記します。従来の `FinancialDetailGenerations.screen` は引き続きメモリ検索です。
+
+[母集団全件の分割構築・再開](FINANCIAL_INDEX_BUILD.md)では、原本指紋と母集団を固定し、会社別checkpointが全件揃ってから一つのSQL検索世代へ集約します。処理完了と原本/財務値の充足は分けて返します。
