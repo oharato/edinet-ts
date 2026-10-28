@@ -128,6 +128,11 @@ export interface FinancialIndexCohortQuality {
     }[];
 }
 export interface FinancialIndexQuality {
+    selectionDecisions: {
+        selected: number;
+        unresolved: number;
+        unavailable: number;
+    };
     generation: string;
     generationSha256: string;
     cutoff: string;
@@ -376,6 +381,9 @@ export class FinancialSearchIndex extends DedicatedSqliteDatabase {
             const report = this.audit(id), population = report.assembly?.population, owners = population ? new Set(population.edinetCodes) : undefined;
             const selected = report.selection.selected.filter(s => owners === undefined || owners.has(s.observation.document.edinetCode!)), selectedDocs = new Set(selected.map(s => s.observation.document.docID)), selectedCompanies = new Set(selected.map(s => s.observation.document.edinetCode!));
             const empty = (): FinancialIndexQualityCounts => ({ available: 0, missing: 0, unsupported: 0, ambiguous: 0, "unsafe-number": 0 });
+            const selectionDecisions = { selected: 0, unresolved: 0, unavailable: 0 };
+            for (const d of report.selection.decisions)
+                selectionDecisions[d.status]++;
             const manifests = new Map(report.rows.map(r => [r.id, new Map(r.metrics.map(m => [m.id, m.sha256]))]));
             const values = empty(), companies = new Set<string>(), usableCompanies = new Set<string>(), documents = new Set<string>();
             const cohorts = new Map<string, {
@@ -458,7 +466,7 @@ export class FinancialSearchIndex extends DedicatedSqliteDatabase {
                 bucket.docs.add(r.docID);
                 groups.set(key, bucket);
             }
-            return { generation: id, generationSha256: financialIndexGenerationSha256(report), cutoff: report.selection.cutoff, ...(population ? { population, populationCompanies: population.edinetCodes.length, companiesWithoutSelectedDocument: population.edinetCodes.length - selectedCompanies.size } : {}), companiesWithSelectedDocuments: selectedCompanies.size, companiesWithRows: companies.size, companiesWithUsableValues: usableCompanies.size, selectedCompaniesWithoutRows: [...selectedCompanies].filter(c => !companies.has(c)).length, selectedDocuments: selectedDocs.size, documentsWithRows: documents.size, selectedDocumentsWithoutRows: [...selectedDocs].filter(d => !documents.has(d)).length, rows, unavailableSources: countReasons(report.unavailableSources.filter(r => selectedDocs.has(r.docID))), unresolvedRecords: countReasons(report.unresolvedRecords.map(r => ({ docID: r.docID, reason: r.result.status === 'unresolved' ? r.result.reason : r.result.status }))), unavailableGroups: [...groups].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, g]) => ({ group: g.group, reason: g.reason, documents: g.docs.size })), values, cohorts: [...cohorts].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, g]) => ({ cohort: g.cohort, rows: g.rows, companies: g.companies.size, documents: g.documents.size, companiesWithUsableValues: g.usable.size, duplicateCompanies: [...g.companies.values()].filter(n => n > 1).length, duplicateSecurityCodes: [...g.securities.values()].filter(n => n > 1).length, values: g.values, byMetric: [...g.metrics].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([metric, counts]) => ({ metric, values: counts })) })) };
+            return { selectionDecisions, generation: id, generationSha256: financialIndexGenerationSha256(report), cutoff: report.selection.cutoff, ...(population ? { population, populationCompanies: population.edinetCodes.length, companiesWithoutSelectedDocument: population.edinetCodes.length - selectedCompanies.size } : {}), companiesWithSelectedDocuments: selectedCompanies.size, companiesWithRows: companies.size, companiesWithUsableValues: usableCompanies.size, selectedCompaniesWithoutRows: [...selectedCompanies].filter(c => !companies.has(c)).length, selectedDocuments: selectedDocs.size, documentsWithRows: documents.size, selectedDocumentsWithoutRows: [...selectedDocs].filter(d => !documents.has(d)).length, rows, unavailableSources: countReasons(report.unavailableSources.filter(r => selectedDocs.has(r.docID))), unresolvedRecords: countReasons(report.unresolvedRecords.map(r => ({ docID: r.docID, reason: r.result.status === 'unresolved' ? r.result.reason : r.result.status }))), unavailableGroups: [...groups].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, g]) => ({ group: g.group, reason: g.reason, documents: g.docs.size })), values, cohorts: [...cohorts].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, g]) => ({ cohort: g.cohort, rows: g.rows, companies: g.companies.size, documents: g.documents.size, companiesWithUsableValues: g.usable.size, duplicateCompanies: [...g.companies.values()].filter(n => n > 1).length, duplicateSecurityCodes: [...g.securities.values()].filter(n => n > 1).length, values: g.values, byMetric: [...g.metrics].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([metric, counts]) => ({ metric, values: counts })) })) };
         }, false);
     }
     screen(cohort: FinancialIndexCohort, options: FinancialIndexSearchOptions): FinancialIndexSearchResult {

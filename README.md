@@ -286,6 +286,7 @@ if (info.holdingRatio !== undefined) {
 - [全社の原本取得計画・試行履歴・再開](docs/FINANCIAL_SOURCE_JOB.md)
 - [日別一覧backfill・原観測の転送](docs/FINANCIAL_DOCUMENT_SYNC.md)
 - [固定財務索引の母集団・cohort別品質集計](docs/FINANCIAL_INDEX_QUALITY.md)
+- [品質条件付き財務世代切替・旧候補復帰](docs/FINANCIAL_INDEX_PUBLICATION.md)
 
 #### dataMap への直接アクセス
 

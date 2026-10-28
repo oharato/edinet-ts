@@ -108,3 +108,5 @@ CLIの原本manifestは `docID / availableAt / sourceSha256 / file?` の配列�
 [日別一覧backfillと原観測転送](FINANCIAL_DOCUMENT_SYNC.md)を追加。既存の日別完了証跡を使い、空の日/当日再取得と取得元namespace付きcursor転送を接続します。取得jobの固定一覧を変更する場合は、新しい計画で扱います。
 
 [固定財務索引の品質集計](FINANCIAL_INDEX_QUALITY.md)では、全本文/値projectionを再検査し、母集団・書類・行・値の品質を分け、同一cohortの重複も保持します。
+
+[品質条件付きの財務世代切替](FINANCIAL_INDEX_PUBLICATION.md)を追加。全社集約世代の品質・公開条件を候補へ固定し、直前候補の期待値が一致する場合だけ切替/旧候補復帰を履歴付きで行います。

@@ -42,6 +42,8 @@ try {
 
 ## 原本/処理の保留と値の品質
 
+`selectionDecisions` は保存世代に含まれる書類系列の `selected / unresolved / unavailable` 件数です。会社数ではなく、検査に必要な関連系列も含みます。選択自体が未解決/利用不可の場合を解析結果の保留と分けます。
+
 `unavailableSources` は原本不在・cutoff後・hash/parse/照合失敗等を理由別の書類数で返します。`unresolvedRecords` は基準/証券コード/IFRS単体等により結果全体が未解決の書類、`unavailableGroups` は当期context不在/重複等でgroupを作れなかった書類です。group別書類数と全体の書類数は単純に足しません。これらを値の欠損へ数え直しません。
 
 保存した選択値の `values` は次の5分類です。
@@ -80,3 +82,5 @@ CLIはreadOnlyで全品質をJSONへ返します。品質上の不在/保留/重
 source/built・配布用CLIで3世代の全品質が一致し、readOnlyの元ファイル不変、CommonJS公開関数・NodeNext型検査も確認しました。この結果は固定した既存世代のもので、進行中の原本一括取得後の全市場品質を示すものではありません。全市場の必要期間/原本・指標充足、公開条件・本番/利用先反映は残工程です。
 
 独立SQLite/JSON処理でも、3世代の全行/値とcohort・指標別状態、会社/書類の集合、固定母集団と原本不足の集計が一致しました。全128ファイル/3,604テスト、ビルド、公開型・配布物NodeNext型検査、認証値混入の非表示検査も成功しています。
+
+品質条件を固定して候補の明示切替・旧候補への復帰を行う入口は、[財務世代の公開catalog](FINANCIAL_INDEX_PUBLICATION.md)を参照してください。

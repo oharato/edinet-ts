@@ -129,3 +129,5 @@ export {FinancialSourceJob,FINANCIAL_SOURCE_JOB_VERSION} from "./db/financial-so
 export type {FinancialSourceJobInput,FinancialSourceJobPlan,FinancialSourceJobTask,FinancialSourceJobAttempt,FinancialSourceJobProgress} from "./db/financial-source-job";
 export {backfillFinancialDocumentLists,archiveFinancialDocumentObservations} from "./financial-document-sync";
 export type {FinancialListBackfillOptions,FinancialListBackfillResult,FinancialObservationTransferOptions,FinancialObservationTransferResult} from "./financial-document-sync";
+export {FinancialIndexPublication,FINANCIAL_INDEX_PUBLICATION_VERSION} from "./db/financial-index-publication";
+export type {FinancialIndexPublicationPolicy,FinancialIndexPublicationCandidate,FinancialIndexPublicationTransition} from "./db/financial-index-publication";

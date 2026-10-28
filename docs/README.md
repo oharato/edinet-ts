@@ -126,3 +126,5 @@ ZIPの形式・容量・保存先の制約、既存キャッシュと失敗時�
 - [日別一覧backfill・原観測の財務アーカイブ転送](FINANCIAL_DOCUMENT_SYNC.md)
 
 - [固定財務索引の母集団・cohort別品質集計](FINANCIAL_INDEX_QUALITY.md)
+
+- [品質条件付き財務世代切替・旧候補への復帰](FINANCIAL_INDEX_PUBLICATION.md)

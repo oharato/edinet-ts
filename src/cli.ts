@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {FinancialIndexPublication} from "./db/financial-index-publication";
 import {backfillFinancialDocumentLists,archiveFinancialDocumentObservations} from "./financial-document-sync";
 import {FinancialSourceJob,normalizeFinancialSourceJobInput} from "./db/financial-source-job";
 import { searchOfficerRemuneration } from "./officer-remuneration";
@@ -619,6 +620,46 @@ program.command("screen-financial-index")
             console.log(JSON.stringify(index.screen(cohort,query),null,options.pretty?2:undefined));
         } catch { console.error("財務索引の世代・同一比較集合・保存済み項目・数値条件を確認してください（入力内容は非表示）"); process.exitCode=1; }
         finally { index?.close(); }
+    });
+
+program.command("prepare-financial-index-publication")
+    .description("全社財務世代の品質と公開条件を固定して候補を保存します（切替は別コマンド）")
+    .requiredOption("--catalog <file>", "専用公開catalog")
+    .requiredOption("--db <file>", "停止した財務索引")
+    .requiredOption("--generation <id>", "固定世代ID")
+    .requiredOption("--id <id>", "公開候補ID")
+    .option("--policy <file>", "公開条件JSON。省略時は全社利用可/不在・保留・重複0")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let catalog:FinancialIndexPublication|undefined,index:FinancialSearchIndex|undefined;
+        try{const policy=options.policy===undefined?undefined:JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.policy),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));index=new FinancialSearchIndex(path.resolve(options.db),{readOnly:true});catalog=new FinancialIndexPublication(path.resolve(options.catalog));console.log(JSON.stringify(catalog.prepare(options.id,index,options.generation,policy),null,options.pretty?2:undefined));}
+        catch{console.error("公開候補・固定世代・公開条件を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{index?.close();catalog?.close();}
+    });
+program.command("activate-financial-index-publication")
+    .description("候補の品質を再検査して明示切替します。旧候補への復帰も同じ入口です")
+    .requiredOption("--catalog <file>", "専用公開catalog")
+    .requiredOption("--db <file>", "候補を保存した停止中の財務索引")
+    .requiredOption("--id <id>", "切替先の公開候補ID")
+    .option("--expected-active <id>", "確認済みの直前公開候補ID")
+    .option("--expect-none", "初回公開で現公開候補がないことを要求")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let catalog:FinancialIndexPublication|undefined,index:FinancialSearchIndex|undefined;
+        try{if((options.expectedActive!==undefined)===!!options.expectNone)throw new Error();index=new FinancialSearchIndex(path.resolve(options.db),{readOnly:true});catalog=new FinancialIndexPublication(path.resolve(options.catalog));console.log(JSON.stringify(catalog.activate(options.id,index,{expectedActive:options.expectNone?null:options.expectedActive}),null,options.pretty?2:undefined));}
+        catch{console.error("公開条件・固定世代・確認済みの直前公開候補を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{index?.close();catalog?.close();}
+    });
+program.command("financial-index-publication-status")
+    .description("公開候補と切替履歴をreadOnlyで確認します。db指定時は実索引も再検査します")
+    .requiredOption("--catalog <file>", "停止した専用公開catalog")
+    .option("--db <file>", "公開候補を含む停止した財務索引")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let catalog:FinancialIndexPublication|undefined,index:FinancialSearchIndex|undefined;
+        try{catalog=new FinancialIndexPublication(path.resolve(options.catalog),{readOnly:true});if(options.db!==undefined)index=new FinancialSearchIndex(path.resolve(options.db),{readOnly:true});const active=index?catalog.resolve(index):catalog.current();console.log(JSON.stringify({active:active??null,indexVerified:!!index&&active!==undefined,history:catalog.history()},null,options.pretty?2:undefined));}
+        catch{console.error("公開catalog・履歴・固定索引の整合を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{index?.close();catalog?.close();}
     });
 
 program.command("financial-index-quality")

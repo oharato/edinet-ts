@@ -178,3 +178,9 @@ const transferred:FinancialObservationTransferResult=archiveFinancialDocumentObs
 void backed;void transferred;
 const indexQuality:import('edinet-ts').FinancialIndexQuality=financialIndex.quality('generation');
 void indexQuality;
+import {FinancialIndexPublication,type FinancialIndexPublicationCandidate} from 'edinet-ts';
+const publication=new FinancialIndexPublication(':memory:');
+const candidate:FinancialIndexPublicationCandidate=publication.prepare('candidate',financialIndex,'generation');
+publication.activate(candidate.id,financialIndex,{expectedActive:null});
+const resolved:FinancialIndexPublicationCandidate|undefined=publication.resolve(financialIndex);
+void resolved;
