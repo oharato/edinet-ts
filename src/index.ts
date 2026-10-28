@@ -108,3 +108,7 @@ export type {RemunerationTableDeclaration,RemunerationDocument,RemunerationCellR
 export {IfrsFinancialDetailMetricId,DEFAULT_IFRS_FINANCIAL_DETAIL_METRICS,IFRS_FINANCIAL_DETAIL_REGISTRY,IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION} from "./ifrs-financial-detail-registry";
 export {createIfrsFinancialDetailSnapshot,screenIfrsFinancialDetailDocuments,IFRS_FINANCIAL_DETAIL_SCREENING_MAX_DOCUMENTS,IFRS_FINANCIAL_DETAIL_SCREENING_MAX_CONDITIONS} from "./ifrs-financial-detail-screening";
 export type {IfrsFinancialDetailMetadata,IfrsFinancialDetailDocument,IfrsFinancialDetailSnapshot,IfrsFinancialDetailCondition,IfrsFinancialDetailScreeningOptions,IfrsFinancialDetailDiagnostic,IfrsFinancialDetailScreeningResult} from "./ifrs-financial-detail-screening";
+export {FINANCIAL_REPORTING_BASIS_VERSION,resolveFinancialReportingBasis} from "./financial-reporting-basis";
+export type {FinancialReportingBasis,FinancialReportingBasisField,ReportingBasisEvidence,ReportingBasisFieldSelection,FinancialReportingBasisIssue,ResolvedFinancialReportingMetadata} from "./financial-reporting-basis";
+export {createAutomaticFinancialSnapshots} from "./automatic-financial-snapshots";
+export type {AutomaticFinancialSnapshotOptions,AutomaticFinancialSnapshots} from "./automatic-financial-snapshots";

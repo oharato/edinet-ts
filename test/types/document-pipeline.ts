@@ -130,3 +130,9 @@ declare const ifrsDetail:IfrsFinancialDetailDocument;
 const ifrsDetails=createIfrsFinancialDetailSnapshot(ifrsDetail.xml,ifrsDetail.metadata,[IfrsFinancialDetailMetricId.IncomeTaxesPaidCashFlow]);
 const ifrsRows=screenIfrsFinancialDetailDocuments([ifrsDetail],{metricIds:["incomeTaxesPaidCashFlow"],conditions:[{metric:"incomeTaxesPaidCashFlow",operator:"lt",value:0}]});
 void [ifrsDetails.selections,ifrsRows.diagnostics];
+
+import {resolveFinancialReportingBasis,createAutomaticFinancialSnapshots} from "edinet-ts";
+const basis=resolveFinancialReportingBasis(xml,"SAMPLE");
+if(basis.status==="selected"){const standard:"J-GAAP"|"IFRS"=basis.metadata.accountingStandard;void standard;}
+const automatic=createAutomaticFinancialSnapshots(xml,{docID:"SAMPLE"});
+if(automatic.status==="resolved"&&automatic.accountingStandard==="IFRS"&&automatic.details.status==="created"){void automatic.details.snapshot.selections.incomeTaxExpense;}

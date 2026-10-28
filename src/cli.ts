@@ -17,6 +17,8 @@ import { createCompanyProfile, CompanyProfileFieldId } from "./company-profile";
 import { screenCompanyDocuments, CompanyProfileOperator } from "./company-screening";
 import { screenWorkforceDocuments } from "./workforce-screening";
 import { searchSubsidiaryHumanCapitalLabels, SubsidiaryHumanCapitalLabelOperator } from "./subsidiary-human-capital-labels";
+import { resolveFinancialReportingBasis } from "./financial-reporting-basis";
+import { createAutomaticFinancialSnapshots } from "./automatic-financial-snapshots";
 import { screenIfrsFinancialDetailDocuments } from "./ifrs-financial-detail-screening";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
 import "dotenv/config";
@@ -491,6 +493,23 @@ program.command("screen-large-holdings")
             });
             console.log(JSON.stringify(searchLargeHoldingReports(documents, query), null, options.pretty ? 2 : undefined));
         } catch { console.error("一次大量保有の原本・一覧メタデータ・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("financial-reporting-basis")
+    .description("DEIと実contextから基準・当期を確定し、必要ならJPY専用snapshotを作ります")
+    .requiredOption("--file <path>", "保存済みXBRL")
+    .requiredOption("--doc-id <id>", "原本に対応すると呼出元が確認した書類ID")
+    .option("--with-snapshots", "既存BS/財務明細snapshotへ接続")
+    .option("--detail-metrics <csv>", "snapshotのduration明細項目")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            if (options.detailMetrics !== undefined && !options.withSnapshots) throw new Error();
+            const input = readRegularFile(path.resolve(options.file), LOCAL_IMPORT_LIMITS.sourceBytes);
+            const xml = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes);
+            const result = options.withSnapshots ? createAutomaticFinancialSnapshots(xml, {docID:options.docId,detailMetricIds:options.detailMetrics===undefined?undefined:options.detailMetrics.split(",").map((id:string)=>id.trim())}) : resolveFinancialReportingBasis(xml,options.docId);
+            console.log(JSON.stringify(result,null,options.pretty?2:undefined));
+        } catch { console.error("財務基準判定の原本・書類ID・明示項目を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("screen-ifrs-details")

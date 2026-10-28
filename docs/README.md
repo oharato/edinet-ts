@@ -110,3 +110,5 @@ ZIPの形式・容量・保存先の制約、既存キャッシュと失敗時�
 - [役員報酬の区分集計・個人総額・会社別内訳](OFFICER_REMUNERATION.md): 原見出しの階層、期間、円/人数、個人総額の重複防止と検索。
 
 - [IFRS連結の直接PL・CF明細](IFRS_FINANCIAL_DETAILS.md): PL5/CF12の別範囲・原符号、明示期間/分類、完全一致重複と検索。
+
+- [DEIから財務基準・当期を確定する](FINANCIAL_REPORTING_BASIS.md): 年度末/当期末、累計・主範囲と提出者の照合、既存snapshotへの自動接続。

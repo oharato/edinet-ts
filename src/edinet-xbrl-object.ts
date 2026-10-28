@@ -1,3 +1,4 @@
+import {selectFinancialReportingBasis,type FinancialReportingBasis} from "./financial-reporting-basis";
 import {IFRS_FINANCIAL_DETAIL_REGISTRY,type IfrsFinancialDetailMetricId} from "./ifrs-financial-detail-registry";
 import { selectLargeHoldingReport, type LargeHoldingMetadata, type LargeHoldingReport } from "./large-holding-report";
 import { selectDisclosureTables, type DisclosureTableKind, type DisclosureTableExtraction } from "./disclosure-tables";
@@ -233,6 +234,11 @@ export class EdinetXbrlObject {
     /** J-GAAP・JPY・明示した時点/scopeのBS直接factを正規化します。 */
     public selectBalanceSheetMetric(id: BalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<BalanceSheetMetricId> {
         return selectDefinedMetricFact(BALANCE_SHEET_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+    }
+
+    /** DEIとcontextから、推測で補わず財務の基準・当期の範囲を確定します。 */
+    public selectFinancialReportingBasis(): FinancialReportingBasis {
+        return selectFinancialReportingBasis(this._docID, this._dataMap, this.contextMap, this.duplicateContextIds);
     }
 
     /** IFRS・JPY・連結・明示期末の直接3科目。単体・合算・通貨換算は未対応です。 */
