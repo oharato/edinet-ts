@@ -282,6 +282,7 @@ if (info.holdingRatio !== undefined) {
 - [観測・原本・解析結果の財務アーカイブ](docs/OBSERVED_FINANCIAL_ARCHIVE.md)
 - [固定世代からの直接財務SQL検索](docs/FINANCIAL_SEARCH_INDEX.md)
 - [母集団全件の分割構築・再開・世代集約](docs/FINANCIAL_INDEX_BUILD.md)
+- [不足財務原本の取得・差分確認と再開](docs/FINANCIAL_SOURCE_ACQUISITION.md)
 
 #### dataMap への直接アクセス
 

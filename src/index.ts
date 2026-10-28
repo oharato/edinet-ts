@@ -118,7 +118,7 @@ export {createObservedFinancialSnapshots} from "./observed-financial-snapshots";
 export type {ObservedFinancialSource,ObservedFinancialSnapshotOptions,ObservedFinancialSnapshotRecord,ObservedFinancialSourceReason} from "./observed-financial-snapshots";
 
 export {ObservedFinancialArchive,OBSERVED_FINANCIAL_ARCHIVE_VERSION} from "./db/observed-financial-archive";
-export type {ObservedFinancialArchiveOptions,ArchivedFinancialSnapshotOptions,ArchivedFinancialSnapshots} from "./db/observed-financial-archive";
+export type {FinancialSourceAcquisitionOptions,FinancialSourceAcquisitionItem,FinancialSourceAcquisitionPlan,FinancialSourceAcquisitionResult,ObservedFinancialArchiveOptions,ArchivedFinancialSnapshotOptions,ArchivedFinancialSnapshots} from "./db/observed-financial-archive";
 export {FinancialSearchIndex,FINANCIAL_SEARCH_INDEX_VERSION} from "./db/financial-search-index";
 export type {FinancialIndexMetricId,FinancialIndexCohort,FinancialIndexSearchOptions,FinancialIndexRow,FinancialIndexDiagnostic,FinancialIndexSearchResult,FinancialIndexGeneration,FinancialIndexPopulation,FinancialIndexAssembly} from "./db/financial-search-index";
 

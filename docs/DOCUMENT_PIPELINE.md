@@ -102,3 +102,5 @@ CLIの原本manifestは `docID / availableAt / sourceSha256 / file?` の配列�
 固定世代から直接BS/明細をSQLで検索する別DBは、[財務検索索引](FINANCIAL_SEARCH_INDEX.md)を参照してください。原本アーカイブと従来の世代Storeを変更せず、検索用の固定世代へ転記します。従来の `FinancialDetailGenerations.screen` は引き続きメモリ検索です。
 
 [母集団全件の分割構築・再開](FINANCIAL_INDEX_BUILD.md)では、原本指紋と母集団を固定し、会社別checkpointが全件揃ってから一つのSQL検索世代へ集約します。処理完了と原本/財務値の充足は分けて返します。
+
+[不足原本の取得と再開](FINANCIAL_SOURCE_ACQUISITION.md)をアーカイブへ接続しました。選択cutoffと今回の原本取得日時を分け、保存済みを再取得せず、一件ずつcommitします。全社の固定取得job/定期起動は引き続き残工程です。

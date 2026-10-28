@@ -1,3 +1,4 @@
+import { assertXmlInput } from "../xml-input";
 import { createHash } from "node:crypto";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import { captureDocumentVersionObservations, selectDocumentVersions, type DocumentVersionObservation } from "../document-version-selection";
@@ -12,6 +13,39 @@ import { IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION } from "../ifrs-financial-detail
 export const OBSERVED_FINANCIAL_ARCHIVE_VERSION = "1";
 export interface ObservedFinancialArchiveOptions {
     readOnly?: boolean;
+}
+export interface FinancialSourceAcquisitionOptions {
+    cutoff: string;
+    edinetCodes?: readonly string[];
+}
+export interface FinancialSourceAcquisitionItem {
+    rootDocID: string;
+    docID: string;
+    edinetCode: string;
+    status: "missing" | "declaration-only" | "stored" | "conflicting";
+    availableAt?: string;
+    sourceSha256?: string;
+    availableByCutoff: boolean;
+}
+export interface FinancialSourceAcquisitionPlan {
+    cutoff: string;
+    edinetCodes?: readonly string[];
+    selection: ReturnType<typeof selectDocumentVersions>;
+    items: FinancialSourceAcquisitionItem[];
+}
+export interface FinancialSourceAcquisitionResult {
+    plan: FinancialSourceAcquisitionPlan;
+    results: {
+        docID: string;
+        status: "stored" | "failed";
+        sourceSha256?: string;
+        availableAt?: string;
+        errorCode?: "source-acquisition-failed";
+    }[];
+    /** このcursorより後を処理。失敗の再試行はcursorなしの新しい巡回で行います。 */
+    nextAfterDocID?: string;
+    remaining: number;
+    aborted: boolean;
 }
 export interface ArchivedFinancialSnapshotOptions extends ObservedFinancialSnapshotOptions {
     extractorVersion: string;
@@ -168,18 +202,102 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
             throw new Error("観測の索引が不整合です");
         return o as DocumentVersionObservation;
     }
+    private selectedObservations(edinetCodes?: readonly string[]): DocumentVersionObservation[] {
+        const obsRows = edinetCodes === undefined ? this.rows("SELECT * FROM archive_observations ORDER BY id LIMIT 10001") : this.rows(`WITH RECURSIVE linked(doc_id) AS (
+    SELECT doc_id FROM archive_observations WHERE edinet_code IN (${edinetCodes.map(() => "?").join(",")})
+    UNION SELECT a.doc_id FROM archive_observations a JOIN linked l ON a.parent_doc_id=l.doc_id
+    UNION SELECT a.parent_doc_id FROM archive_observations a JOIN linked l ON a.doc_id=l.doc_id WHERE a.parent_doc_id IS NOT NULL
+   ) SELECT * FROM archive_observations WHERE doc_id IN (SELECT doc_id FROM linked) ORDER BY id LIMIT 10001`, [...edinetCodes]);
+        if (obsRows.length > 10000)
+            throw new Error("一回の選択は10,000観測までです。edinetCodesで会社の集合を分けてください");
+        return obsRows.map(r => this.decodeObservation(r));
+    }
+    /** 原本取得の差分。解析せず、最新の原本観測と実byteを検査します。 */
+    planSourceAcquisition(options: FinancialSourceAcquisitionOptions): FinancialSourceAcquisitionPlan {
+        if (!options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["cutoff", "edinetCodes"].includes(k)))
+            throw new Error("取得対象はcutoffと会社集合で指定してください");
+        const { cutoff, edinetCodes } = normalizeArchivedFinancialSnapshotOptions({ ...options, extractorVersion: "source-acquisition" });
+        return this.transaction(() => {
+            const selection = selectDocumentVersions(this.selectedObservations(edinetCodes), cutoff);
+            const items: FinancialSourceAcquisitionItem[] = selection.selected
+                .filter(s => edinetCodes === undefined || edinetCodes.includes(s.observation.document.edinetCode!))
+                .map((s): FinancialSourceAcquisitionItem => {
+                const docID = s.observation.document.docID;
+                const rows = this.rows("SELECT * FROM archive_sources WHERE doc_id=? ORDER BY available_ms DESC,id", [docID]);
+                const declarations = rows.map(row => {
+                    const body = this.decode(row) as ObservedFinancialSource;
+                    if (body.docID !== row.doc_id || timestamp(body.availableAt, true) !== row.available_ms || hash(canonical(body)) !== row.id)
+                        throw new Error("原本観測の索引が不整合です");
+                    return body;
+                });
+                const latest = declarations[0];
+                const item: FinancialSourceAcquisitionItem = { rootDocID: s.rootDocID, docID, edinetCode: s.observation.document.edinetCode!, status: "missing", availableByCutoff: false };
+                if (!latest)
+                    return item;
+                const latestMs = timestamp(latest.availableAt, true)!;
+                if (new Set(declarations.filter(d => timestamp(d.availableAt, true) === latestMs).map(d => d.sourceSha256)).size > 1)
+                    return { ...item, status: "conflicting", availableAt: latest.availableAt };
+                const content = this.rows("SELECT xml FROM archive_contents WHERE sha256=?", [latest.sourceSha256]);
+                if (content.length && (!(content[0].xml instanceof Uint8Array) || hash(content[0].xml) !== latest.sourceSha256))
+                    throw new Error("保存原本のhashが一致しません");
+                return { ...item, status: content.length ? "stored" : "declaration-only", sourceSha256: latest.sourceSha256, availableAt: latest.availableAt, availableByCutoff: content.length > 0 && latestMs <= timestamp(cutoff, true)! };
+            }).sort((a, b) => a.docID < b.docID ? -1 : a.docID > b.docID ? 1 : 0);
+            return { cutoff, edinetCodes, selection, items };
+        }, false);
+    }
+    /** 成功した原本を一件ずつcommit。再open後の巡回は保存済みを再取得しません。 */
+    async acquireSources(options: FinancialSourceAcquisitionOptions, fetchXbrl: (docID: string, request: {
+        signal?: AbortSignal;
+    }) => Promise<string>, batch: {
+        limit?: number;
+        afterDocID?: string;
+        signal?: AbortSignal;
+    } = {}): Promise<FinancialSourceAcquisitionResult> {
+        if (this.closed || this.readOnly)
+            throw new Error("取得には書込可能なアーカイブが必要です");
+        if (typeof fetchXbrl !== "function" || !batch || typeof batch !== "object" || Array.isArray(batch) || Object.keys(batch).some(k => !["limit", "afterDocID", "signal"].includes(k)))
+            throw new Error("取得関数とbatch条件が不正です");
+        const { limit = 20, afterDocID, signal } = batch;
+        if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || afterDocID !== undefined && (typeof afterDocID !== "string" || (!afterDocID.trim() || afterDocID.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(afterDocID))) || signal !== undefined && !(signal instanceof AbortSignal))
+            throw new Error("取得は1〜100件・書類cursor・AbortSignalで指定してください");
+        const plan = this.planSourceAcquisition(options), pending = plan.items.filter(i => i.status !== "stored" && (afterDocID === undefined || i.docID > afterDocID));
+        const results: FinancialSourceAcquisitionResult["results"] = [];
+        let cursor = afterDocID;
+        for (const item of pending.slice(0, limit)) {
+            if (signal?.aborted)
+                break;
+            if (this.closed)
+                throw new Error("取得中にアーカイブがcloseされました");
+            try {
+                const xml = await fetchXbrl(item.docID, { signal });
+                if (signal?.aborted)
+                    break;
+                assertXmlInput(xml);
+                const availableAt = new Date().toISOString();
+                // 過去のcutoffを取得日時に転記せず、未来の既存観測にも逆行しません。
+                if (item.availableAt && timestamp(availableAt, true)! <= timestamp(item.availableAt, true)!)
+                    throw new Error("取得時計が原本観測以前です");
+                const sourceSha256 = hash(xml);
+                this.append([], [{ docID: item.docID, availableAt, sourceSha256, xml }]);
+                results.push({ docID: item.docID, status: "stored", sourceSha256, availableAt });
+            }
+            catch {
+                if (this.closed)
+                    throw new Error("取得中にアーカイブがcloseされました");
+                if (signal?.aborted)
+                    break;
+                results.push({ docID: item.docID, status: "failed", errorCode: "source-acquisition-failed" });
+            }
+            cursor = item.docID;
+        }
+        const remaining = pending.filter(i => cursor === undefined || i.docID > cursor).length;
+        return { plan, results, ...(remaining && cursor !== undefined ? { nextAfterDocID: cursor } : {}), remaining, aborted: signal?.aborted ?? false };
+    }
     createSnapshots(options: ArchivedFinancialSnapshotOptions): ArchivedFinancialSnapshots {
         const { extractorVersion, sourceCommit, edinetCodes, ...query } = normalizeArchivedFinancialSnapshotOptions(options);
         const { cutoff } = query;
         return this.transaction<ArchivedFinancialSnapshots>(() => {
-            const obsRows = edinetCodes === undefined ? this.rows("SELECT * FROM archive_observations ORDER BY id LIMIT 10001") : this.rows(`WITH RECURSIVE linked(doc_id) AS (
-    SELECT doc_id FROM archive_observations WHERE edinet_code IN (${edinetCodes.map(() => "?").join(",")})
-    UNION SELECT a.doc_id FROM archive_observations a JOIN linked l ON a.parent_doc_id=l.doc_id
-    UNION SELECT a.parent_doc_id FROM archive_observations a JOIN linked l ON a.doc_id=l.doc_id WHERE a.parent_doc_id IS NOT NULL
-   ) SELECT * FROM archive_observations WHERE doc_id IN (SELECT doc_id FROM linked) ORDER BY id LIMIT 10001`, edinetCodes);
-            if (obsRows.length > 10000)
-                throw new Error("一回の選択は10,000観測までです。edinetCodesで会社の集合を分けてください");
-            const observations = obsRows.map(r => this.decodeObservation(r));
+            const observations = this.selectedObservations(edinetCodes);
             const preview = createObservedFinancialSnapshotsUsing(observations, [], query, createAutomaticFinancialSnapshots), selectedIDs = preview.selection.selected.filter(s => edinetCodes === undefined || edinetCodes.includes(s.observation.document.edinetCode ?? "")).map(s => s.observation.document.docID), declarations = new Map<string, {
                 body: ObservedFinancialSource;
                 ms: number;

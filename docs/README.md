@@ -118,3 +118,5 @@ ZIPの形式・容量・保存先の制約、既存キャッシュと失敗時�
 - [固定世代からの直接財務SQL検索](FINANCIAL_SEARCH_INDEX.md)
 
 - [母集団全件の分割構築・再開・世代集約](FINANCIAL_INDEX_BUILD.md)
+
+- [不足財務原本の取得・差分確認と再開](FINANCIAL_SOURCE_ACQUISITION.md)

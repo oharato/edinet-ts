@@ -619,6 +619,46 @@ program.command("screen-financial-index")
         finally { index?.close(); }
     });
 
+program.command("plan-financial-source-acquisition")
+    .description("選択された財務書類の保存済み原本と不足原本を、取得せず調べます")
+    .requiredOption("--archive <file>", "専用原本アーカイブ")
+    .requiredOption("--cutoff <timestamp>", "書類選択の観測時点")
+    .option("--edinet-codes <codes>", "会社集合（カンマ区切り、最大100社）")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let archive:ObservedFinancialArchive|undefined;
+        try {
+            archive=new ObservedFinancialArchive(path.resolve(options.archive),{readOnly:true});
+            const plan=archive.planSourceAcquisition({cutoff:options.cutoff,edinetCodes:options.edinetCodes?.split(",")});
+            console.log(JSON.stringify(plan,null,options.pretty?2:undefined));
+        } catch {console.error("原本アーカイブ・cutoff・会社集合を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally {archive?.close();}
+    });
+program.command("acquire-financial-sources")
+    .description("不足原本だけを既存cache/EDINETから取得し、一件ずつ保存して再開できます")
+    .requiredOption("--archive <file>", "書込可能な専用原本アーカイブ")
+    .requiredOption("--cutoff <timestamp>", "書類選択の観測時点（取得日時とは別）")
+    .option("--edinet-codes <codes>", "会社集合（カンマ区切り、最大100社）")
+    .option("--cache <directory>", "既存XBRL cache", "downloads")
+    .option("--limit <number>", "一回の最大取得数（1〜100）", "20")
+    .option("--after-doc-id <id>", "巡回を続ける書類cursor。失敗再試行時は省略")
+    .option("--timeout-ms <number>", "本文受信までの通信timeout", "60000")
+    .option("--pretty", "JSONを整形")
+    .action(async options => {
+        let archive:ObservedFinancialArchive|undefined;
+        const controller=new AbortController(), stop=()=>controller.abort();
+        try {
+            if (![options.limit,options.timeoutMs].every(v=>/^\d+$/.test(v)) || Number(options.limit)<1 || Number(options.limit)>100 || !Number.isSafeInteger(Number(options.timeoutMs)) || Number(options.timeoutMs)<1 || Number(options.timeoutMs)>2147483647) throw new Error();
+            archive=new ObservedFinancialArchive(path.resolve(options.archive));
+            const downloader=new EdinetXbrlDownloader({rootDir:path.resolve(options.cache),requestTimeoutMs:Number(options.timeoutMs)});
+            process.once("SIGINT",stop);
+            const result=await archive.acquireSources({cutoff:options.cutoff,edinetCodes:options.edinetCodes?.split(",")},(id,request)=>downloader.fetchXbrl(id,request),{limit:Number(options.limit),afterDocID:options.afterDocId,signal:controller.signal});
+            console.log(JSON.stringify(result,null,options.pretty?2:undefined));
+            if (result.aborted || result.results.some(r=>r.status==="failed")) process.exitCode=1;
+        } catch {console.error("原本取得・アーカイブ・取得条件を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally {process.removeListener("SIGINT",stop);archive?.close();}
+    });
+
 program.command("archive-financial-snapshots")
     .description("専用SQLiteへ一覧観測・原本を追記し、版付き解析結果を再利用します")
     .requiredOption("--db <path>", "新規または同形式の専用DB")

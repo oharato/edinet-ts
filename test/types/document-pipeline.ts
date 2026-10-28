@@ -160,3 +160,7 @@ declare const buildInput:FinancialIndexBuildInput;
 const buildState=new FinancialIndexBuild(":memory:");
 const buildProgress:FinancialIndexBuildProgress=buildState.begin(buildInput);
 void buildProgress.plan.population.edinetCodes;void buildProgress.tasks[0]?.partSha256;buildState.close();
+const sourcePlan=archive.planSourceAcquisition({cutoff:"2026-10-28T00:00:00Z",edinetCodes:["E12345"]});
+const sourceItems:import("edinet-ts").FinancialSourceAcquisitionItem[]=sourcePlan.items;
+const acquired:Promise<import("edinet-ts").FinancialSourceAcquisitionResult>=archive.acquireSources({cutoff:"2026-10-28T00:00:00Z"},async(_id,request)=>{request.signal?.throwIfAborted();return "<x/>";},{limit:1});
+void sourceItems;void acquired;
