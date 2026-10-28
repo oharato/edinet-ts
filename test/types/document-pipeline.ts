@@ -170,3 +170,9 @@ const sourceJobInput:FinancialSourceJobInput={id:'job',cutoff:'2026-10-28T00:00:
 const sourceJobPlan:FinancialSourceJobProgress=sourceJob.begin(sourceJobInput,indexSource);
 const sourceJobRun:Promise<FinancialSourceJobProgress&{aborted:boolean}>=sourceJob.runNext('job',indexSource,async()=>'<x/>');
 void sourceJobPlan;void sourceJobRun;
+import {backfillFinancialDocumentLists,archiveFinancialDocumentObservations,type FinancialListBackfillResult,type FinancialObservationTransferResult} from 'edinet-ts';
+import {EdinetRepository} from 'edinet-ts';
+const listRepository=new EdinetRepository(':memory:');
+const backed:Promise<FinancialListBackfillResult>=backfillFinancialDocumentLists(listRepository,async()=>[],{startDate:'2026-06-24',endDate:'2026-06-25'});
+const transferred:FinancialObservationTransferResult=archiveFinancialDocumentObservations(listRepository,archive,{sourceId:'source'});
+void backed;void transferred;

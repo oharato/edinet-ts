@@ -122,3 +122,5 @@ ZIPの形式・容量・保存先の制約、既存キャッシュと失敗時�
 - [不足財務原本の取得・差分確認と再開](FINANCIAL_SOURCE_ACQUISITION.md)
 
 - [全社の原本取得計画・試行履歴・再開](FINANCIAL_SOURCE_JOB.md)
+
+- [日別一覧backfill・原観測の財務アーカイブ転送](FINANCIAL_DOCUMENT_SYNC.md)

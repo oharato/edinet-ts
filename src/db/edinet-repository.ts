@@ -24,8 +24,10 @@ export interface EdinetRepositoryOptions {
 
 export class EdinetRepository {
     private db: NativeDatabase;
+    private readonly readOnly:boolean;
 
     constructor(dbPath?: string, options: EdinetRepositoryOptions = {}) {
+        this.readOnly=options.readOnly??false;
         const defaultPath = path.resolve(process.cwd(), "data", "edinet.db");
         const targetPath = dbPath || defaultPath;
 
@@ -160,6 +162,18 @@ export class EdinetRepository {
         } finally {
             stmt.close();
         }
+    }
+
+    public assertWritable():void {
+        if(this.readOnly||!this.db.isOpen)throw new Error("書込可能なメタデータDBが必要です");
+    }
+
+    /** 観測転送の開始時点を固定し、転送中に増えた観測は次の巡回へ回します。 */
+    public getLastObservationSequence(): number {
+        const table=this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='document_observations'");
+        try {if(!table.get())return 0;}finally{table.close();}
+        const statement=this.db.prepare("SELECT COALESCE(MAX(sequence),0) AS sequence FROM document_observations");
+        try {return Number(statement.get()!.sequence);}finally{statement.close();}
     }
 
     /** 一覧の原観測を上書きせず読む。旧DBにない履歴を復元した扱いにはしません。 */

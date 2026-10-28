@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {backfillFinancialDocumentLists,archiveFinancialDocumentObservations} from "./financial-document-sync";
 import {FinancialSourceJob,normalizeFinancialSourceJobInput} from "./db/financial-source-job";
 import { searchOfficerRemuneration } from "./officer-remuneration";
 import { searchOfficerDetails } from "./officer-details";
@@ -618,6 +619,45 @@ program.command("screen-financial-index")
             console.log(JSON.stringify(index.screen(cohort,query),null,options.pretty?2:undefined));
         } catch { console.error("財務索引の世代・同一比較集合・保存済み項目・数値条件を確認してください（入力内容は非表示）"); process.exitCode=1; }
         finally { index?.close(); }
+    });
+
+program.command("backfill-financial-document-lists")
+    .description("閉じた日を再利用し、空の日を含む原観測を日別に取得・保存します")
+    .requiredOption("--metadata <file>", "書込可能な一覧メタデータDB")
+    .requiredOption("--start-date <date>", "開始日")
+    .requiredOption("--end-date <date>", "終了日")
+    .option("--max-days <number>", "一回の最大取得日数（1〜100）", "20")
+    .option("--after-date <date>", "巡回を続ける日付cursor。失敗の再試行は省略")
+    .option("--timeout-ms <number>", "本文受信までの通信timeout", "60000")
+    .option("--pretty", "JSONを整形")
+    .action(async options=>{
+        let repository:EdinetRepository|undefined;const controller=new AbortController(),stop=()=>controller.abort();
+        try{
+            if(![options.maxDays,options.timeoutMs].every(v=>/^\d+$/.test(v))||Number(options.maxDays)<1||Number(options.maxDays)>100||!Number.isSafeInteger(Number(options.timeoutMs))||Number(options.timeoutMs)<1||Number(options.timeoutMs)>2147483647)throw new Error();
+            repository=new EdinetRepository(path.resolve(options.metadata));
+            const downloader=new EdinetXbrlDownloader({requestTimeoutMs:Number(options.timeoutMs)});process.once("SIGINT",stop);
+            const result=await backfillFinancialDocumentLists(repository,(date,request)=>downloader.search(date,undefined,request),{startDate:options.startDate,endDate:options.endDate,maxDays:Number(options.maxDays),afterDate:options.afterDate,signal:controller.signal});
+            console.log(JSON.stringify(result,null,options.pretty?2:undefined));if(result.aborted||result.days.some(d=>d.status==='failed'))process.exitCode=1;
+        }catch{console.error("一覧DB・日付範囲・取得条件を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{process.removeListener("SIGINT",stop);repository?.close();}
+    });
+program.command("archive-financial-document-observations")
+    .description("保存一覧の原観測を安定した取得元IDで財務アーカイブへ転送します")
+    .requiredOption("--metadata <file>", "readOnlyで読む一覧メタデータDB")
+    .requiredOption("--archive <file>", "書込可能な財務アーカイブ")
+    .requiredOption("--source-id <id>", "取得元を識別する固定ID（英数字/_.-、64文字まで）")
+    .option("--after-sequence <number>", "保存済み観測cursor", "0")
+    .option("--page-size <number>", "一batchの件数（1〜1000）", "1000")
+    .option("--max-pages <number>", "一回の最大batch数（1〜1000）", "20")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let repository:EdinetRepository|undefined,archive:ObservedFinancialArchive|undefined;
+        try{
+            if(!/^[A-Za-z0-9_.-]{1,64}$/.test(options.sourceId)||![options.afterSequence,options.pageSize,options.maxPages].every(v=>/^\d+$/.test(v))||!Number.isSafeInteger(Number(options.afterSequence))||Number(options.pageSize)<1||Number(options.pageSize)>1000||Number(options.maxPages)<1||Number(options.maxPages)>1000)throw new Error();
+            repository=new EdinetRepository(path.resolve(options.metadata),{readOnly:true});archive=new ObservedFinancialArchive(path.resolve(options.archive));
+            console.log(JSON.stringify(archiveFinancialDocumentObservations(repository,archive,{sourceId:options.sourceId,afterSequence:Number(options.afterSequence),pageSize:Number(options.pageSize),maxPages:Number(options.maxPages)}),null,options.pretty?2:undefined));
+        }catch{console.error("原観測DB・転送元ID・保存済みcursorを確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{archive?.close();repository?.close();}
     });
 
 program.command("plan-financial-source-job")

@@ -79,3 +79,5 @@ edinet-ts finish-financial-source-job --state data/source-job.sqlite \
 合成試験は、失敗優先順位・履歴/試行数、原本commit後のcheckpoint失敗と再利用、受信中中断、実processの受信待ちでのSIGKILL/復旧、別接続の二重取得排他、101社/10,003観測、一覧変更・原本差し替わり・状態破損を含みます。全市場実取得、日別一覧backfill/定期起動、原本/状態書込中の全クラッシュ地点、全市場の財務品質・本番/利用先切替は残工程です。
 
 独立SQLite処理でも、全5,911観測の指紋・3,813社の母集団・1,268 taskのmanifest、初期/現在の原本hash・13完了/1,255未処理と3試行のhash/時刻順を照合しました。全124ファイル/3,585テスト、ビルド、公開型・配布物NodeNext型検査、source/built・CommonJS確認が成功しています。
+
+一覧の原観測をアーカイブへ渡す前工程は、[日別一覧backfill・観測転送](FINANCIAL_DOCUMENT_SYNC.md)を参照してください。既存取得jobに新しい一覧を途中追加せず、新規計画へ切り替えます。

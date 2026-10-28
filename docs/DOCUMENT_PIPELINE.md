@@ -104,3 +104,5 @@ CLIの原本manifestは `docID / availableAt / sourceSha256 / file?` の配列�
 [母集団全件の分割構築・再開](FINANCIAL_INDEX_BUILD.md)では、原本指紋と母集団を固定し、会社別checkpointが全件揃ってから一つのSQL検索世代へ集約します。処理完了と原本/財務値の充足は分けて返します。
 
 [不足原本の取得と再開](FINANCIAL_SOURCE_ACQUISITION.md)をアーカイブへ接続しました。選択cutoffと今回の原本取得日時を分け、保存済みを再取得せず、一件ずつcommitします。[全社の固定取得job・試行履歴](FINANCIAL_SOURCE_JOB.md)も追加しました。日別一覧backfill/定期起動・全市場の実取得/充足率は引き続き残工程です。
+
+[日別一覧backfillと原観測転送](FINANCIAL_DOCUMENT_SYNC.md)を追加。既存の日別完了証跡を使い、空の日/当日再取得と取得元namespace付きcursor転送を接続します。取得jobの固定一覧を変更する場合は、新しい計画で扱います。

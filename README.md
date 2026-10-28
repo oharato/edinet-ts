@@ -284,6 +284,7 @@ if (info.holdingRatio !== undefined) {
 - [母集団全件の分割構築・再開・世代集約](docs/FINANCIAL_INDEX_BUILD.md)
 - [不足財務原本の取得・差分確認と再開](docs/FINANCIAL_SOURCE_ACQUISITION.md)
 - [全社の原本取得計画・試行履歴・再開](docs/FINANCIAL_SOURCE_JOB.md)
+- [日別一覧backfill・原観測の転送](docs/FINANCIAL_DOCUMENT_SYNC.md)
 
 #### dataMap への直接アクセス
 

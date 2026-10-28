@@ -202,6 +202,11 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
             throw new Error("観測の索引が不整合です");
         return o as DocumentVersionObservation;
     }
+    observation(id: string): DocumentVersionObservation | undefined {
+        if (typeof id !== "string" || !id.trim() || id.length > 256)
+            throw new Error("観測IDが不正です");
+        return this.transaction(() => { const row = this.rows("SELECT * FROM archive_observations WHERE id=?", [id])[0]; return row ? this.decodeObservation(row) : undefined; }, false);
+    }
     private selectedObservations(edinetCodes?: readonly string[]): DocumentVersionObservation[] {
         const obsRows = edinetCodes === undefined ? this.rows("SELECT * FROM archive_observations ORDER BY id LIMIT 10001") : this.rows(`WITH RECURSIVE linked(doc_id) AS (
     SELECT doc_id FROM archive_observations WHERE edinet_code IN (${edinetCodes.map(() => "?").join(",")})
