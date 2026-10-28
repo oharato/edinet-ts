@@ -266,11 +266,13 @@ const metrics = parsed.getKeyMetrics();
 ```typescript
 // 大量保有報告書の解析例
 const info: LargeShareholdingInfo = data.getLargeShareholdingInfo();
-if (info.holdingRatio) {
+if (info.holdingRatio !== undefined) {
     console.log(`提出者: ${info.filerName}`);
-    console.log(`保有割合: ${info.holdingRatio}%`);
+    console.log(`保有割合の原値: ${info.holdingRatio}（単位・集計範囲未検証）`);
 }
 ```
+
+一次大量保有の表紙・分母・連名合計・訂正と観測cutoffを確認する場合は、[出典付き一次明細API](docs/LARGE_HOLDING_REPORT.md)を使用してください。旧getterは先頭候補の原値で、報告全体の合計とは限りません。
 
 #### dataMap への直接アクセス
 
@@ -350,8 +352,8 @@ npx edinet-ts get --type LargeShareholding --verbose
 | `docDescription` | 書類名/件名 | 例: 有価証券報告書... |
 | `submitDate` | 提出日 | YYYY-MM-DD |
 | `issuerName` | **発行者名** | 大量保有報告書の場合のみ (例: Bitcoin Japan) |
-| `holdingRatio` | **保有割合** (%) | 大量保有報告書の場合のみ |
-| `prevHoldingRatio` | 直前保有割合 (%) | 大量保有報告書の場合または変更報告書 |
+| `holdingRatio` | 保有割合の先頭原値（単位・集計範囲未検証） | 大量保有報告書の場合のみ |
+| `prevHoldingRatio` | 直前保有割合の先頭原値（単位・集計範囲未検証） | 大量保有報告書の場合または変更報告書 |
 | `netSales` | 売上高 | 財務数値 (単位: 円) |
 | `operatingIncome` | 営業利益 | 財務数値 |
 | `netIncome` | 当期純利益 | 財務数値 |

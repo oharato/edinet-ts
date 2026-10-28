@@ -92,3 +92,6 @@ export { SHAREHOLDER_CATEGORIES_VERSION, ShareholderCategory, ShareholderCategor
 export type { ShareholderCategoryDeclaration, ShareholderCategoryDocument, ShareholderCategoryValue, ShareholderCategoryEntry, ShareholderCategoryGroup, ShareholderCategoryExtraction, ShareholderCategorySearchOptions } from "./shareholder-categories";
 export { MAJOR_SHAREHOLDER_DETAILS_VERSION, MajorShareholderTableKind, extractMajorShareholderDetails, searchMajorShareholderDetails } from "./major-shareholder-details";
 export type { MajorShareholderDocument, MajorShareholderValue, MajorShareholderRow, MajorShareholderGroup, MajorShareholderExtraction, MajorShareholderSearchOptions } from "./major-shareholder-details";
+
+export { LARGE_HOLDING_REPORT_VERSION, LargeHoldingMetric, extractLargeHoldingReport, searchLargeHoldingReports } from "./large-holding-report";
+export type { LargeHoldingMetadata, LargeHoldingDocument, LargeHoldingEvidence, LargeHoldingSelection, LargeHoldingRow, LargeHoldingReport, LargeHoldingSearchOptions } from "./large-holding-report";

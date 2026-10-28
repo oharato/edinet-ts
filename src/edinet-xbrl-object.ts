@@ -1,3 +1,4 @@
+import { selectLargeHoldingReport, type LargeHoldingMetadata, type LargeHoldingReport } from "./large-holding-report";
 import { selectDisclosureTables, type DisclosureTableKind, type DisclosureTableExtraction } from "./disclosure-tables";
 import { selectSubsidiaryHumanCapitalMetrics, type SubsidiaryHumanCapitalMetricId, type SubsidiaryHumanCapitalAnnotation, type SubsidiaryHumanCapitalMetricsExtraction } from "./subsidiary-human-capital-metrics";
 import { AUDIT_FEE_REGISTRY, type AuditFeeMetricId } from "./audit-fee-registry";
@@ -609,9 +610,15 @@ export class EdinetXbrlObject {
         });
     }
 
+    /** 明示メタデータと原fact・単位・次元出典を照合する一次大量保有の選択。 */
+    public selectLargeHoldingReport(metadata: LargeHoldingMetadata): LargeHoldingReport {
+        if (this._docID && metadata?.docID !== this._docID) throw new Error("大量保有の書類IDが解析対象と一致しません");
+        return selectLargeHoldingReport(metadata, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, ref => this.traceContextDimensions(ref));
+    }
+
     /**
-     * 大量保有報告書（変更報告書、訂正報告書を含む）から主要な情報を抽出します。
-     * ネームスペースは `jplvh_cor` を使用します。
+     * 互換用の簡易getter。先頭factの原値で、集計範囲・単位・訂正は検証しません。
+     * 厳密な一次明細にはselectLargeHoldingReportを使ってください。
      */
     public getLargeShareholdingInfo(): LargeShareholdingInfo {
         // ヘルパー: コンテキストを問わず、最初に見つかった値を返す
@@ -740,9 +747,9 @@ export interface LargeShareholdingInfo {
     filerName?: string;
     /** 発行者名 (氏名又は名称) */
     issuerName?: string;
-    /** 保有割合 (%) */
+    /** 先頭factの原値（単位/集計範囲未検証）。pure単位では0〜1です。 */
     holdingRatio?: number;
-    /** 直前報告書における保有割合 (%) */
+    /** 先頭factの直前報告原値（単位/集計範囲未検証）。 */
     prevHoldingRatio?: number;
     /** 共同保有者の数 */
     jointHoldersCount?: number;

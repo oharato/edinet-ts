@@ -1,6 +1,6 @@
 import { toSafeMetricNumber } from "./metric-selection";
 /** 本文表の単独数値だけを換算します。負数は明示した呼出元だけが採用します。元表示の精度や欠損理由は推測しません。 */
-export function parseReportedTableNumber(raw: string, multiplier: 1 | 1000 | 10000 | 1000000, allowNegative = false):
+export function parseReportedTableNumber(raw: string, multiplier: 1 | 100 | 1000 | 10000 | 1000000, allowNegative = false):
     { status: "numeric"; decimal: string; safeNumber?: number } | { status: "unavailable"; reason: "blank" | "dash" | "compound-or-unsupported-number" } {
     if (!raw) return { status: "unavailable", reason: "blank" };
     if (["－", "−", "—", "―", "-", "–"].includes(raw)) return { status: "unavailable", reason: "dash" };

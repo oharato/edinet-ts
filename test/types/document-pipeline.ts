@@ -93,3 +93,9 @@ declare const majorDocument: MajorShareholderDocument;
 const majorExtraction: MajorShareholderExtraction = extractMajorShareholderDetails(majorDocument);
 searchMajorShareholderDetails([majorDocument],{kind:MajorShareholderTableKind.MajorShareholders,date:{basis:'holding-as-of',value:'2026-03-31'},role:'named',metric:'holdingPercent'});
 void majorExtraction;
+
+import { extractLargeHoldingReport, searchLargeHoldingReports, LargeHoldingMetric, type LargeHoldingDocument, type LargeHoldingReport } from 'edinet-ts';
+declare const largeDocument: LargeHoldingDocument;
+const largeReport: LargeHoldingReport = extractLargeHoldingReport(largeDocument);
+searchLargeHoldingReports([largeDocument],{cutoff:'2026-10-28T00:00:00Z',dutyDate:'2025-06-16',scope:'report',metric:LargeHoldingMetric.HoldingPercent});
+void largeReport;
