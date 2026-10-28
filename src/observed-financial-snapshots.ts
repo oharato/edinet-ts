@@ -10,13 +10,8 @@ export interface ObservedFinancialSnapshotRecord {
  result:AutomaticFinancialSnapshots;
 }
 export type ObservedFinancialSourceReason="source-missing"|"not-available-at-cutoff"|"source-before-submission"|"source-not-loaded"|"source-hash-mismatch"|"source-parse-failed"|"issuer-mismatch"|"security-code-mismatch"|"period-mismatch"|"report-type-mismatch"|"metric-projection-mismatch";
-/** 観測系列・原本hash・DEIを接続。選択された原本を利用できなくても親へ戻しません。 */
-export function createObservedFinancialSnapshots(observations:readonly DocumentVersionObservation[],sources:readonly ObservedFinancialSource[],options:ObservedFinancialSnapshotOptions){
- if(!options||typeof options!=="object"||Array.isArray(options)||Object.keys(options).some(k=>!["cutoff","detailMetricIds"].includes(k)))throw new Error("観測cutoffと明細項目を指定してください");
- const cutoff=options.cutoff,requested=options.detailMetricIds;
- // 原本の有無に依存せず、指定項目を検証して固定します。
- const detailMetricIds=normalizeAutomaticFinancialDetailMetricIds(requested);
- const selection=selectDocumentVersions(observations,cutoff),cut=timestamp(cutoff,true)!;
+/** 内部共有: 原本宣言を一回取得して検証します。 */
+export function captureObservedFinancialSources(sources:readonly ObservedFinancialSource[]){
  if(!Array.isArray(sources))throw new Error("財務原本は100件以下です");
  const length=sources.length;
  if(!Number.isSafeInteger(length)||length<0||length>100)throw new Error("財務原本は100件以下です");
@@ -29,6 +24,22 @@ export function createObservedFinancialSnapshots(observations:readonly DocumentV
   return {docID,availableAt,sourceSha256,xml};
  });
  if(new Set(inputs.map(s=>s.docID)).size!==length||inputs.reduce((n,s)=>n+Buffer.byteLength(s.xml??""),0)>256*1024*1024)throw new Error("財務原本の重複/合計上限を確認してください");
+ return inputs;
+}
+/** 観測系列・原本hash・DEIを接続。選択された原本を利用できなくても親へ戻しません。 */
+export function createObservedFinancialSnapshots(observations:readonly DocumentVersionObservation[],sources:readonly ObservedFinancialSource[],options:ObservedFinancialSnapshotOptions){
+ return createObservedFinancialSnapshotsUsing(observations,sources,options,createAutomaticFinancialSnapshots);
+}
+/** 保存系の失敗を、通常の原本解析失敗へ読み替えないための内部境界です。 */
+export class ObservedFinancialResolutionFatalError extends Error {}
+/** 内部入口: 永続キャッシュも同じ観測/原本照合を通します。 */
+export function createObservedFinancialSnapshotsUsing(observations:readonly DocumentVersionObservation[],sources:readonly ObservedFinancialSource[],options:ObservedFinancialSnapshotOptions,resolve:(xml:string,input:AutomaticFinancialSnapshotOptions)=>AutomaticFinancialSnapshots){
+ if(!options||typeof options!=="object"||Array.isArray(options)||Object.keys(options).some(k=>!["cutoff","detailMetricIds"].includes(k)))throw new Error("観測cutoffと明細項目を指定してください");
+ const cutoff=options.cutoff,requested=options.detailMetricIds;
+ // 原本の有無に依存せず、指定項目を検証して固定します。
+ const detailMetricIds=normalizeAutomaticFinancialDetailMetricIds(requested);
+ const selection=selectDocumentVersions(observations,cutoff),cut=timestamp(cutoff,true)!;
+ const inputs=captureObservedFinancialSources(sources);
  const byID=new Map(inputs.map(s=>[s.docID,s])),records:ObservedFinancialSnapshotRecord[]=[],unavailableSources:{rootDocID:string;docID:string;reason:ObservedFinancialSourceReason}[]=[];
  for(const selected of selection.selected){
   const d=selected.observation.document,docID=d.docID,s=byID.get(docID);
@@ -40,7 +51,7 @@ export function createObservedFinancialSnapshots(observations:readonly DocumentV
   if(s.xml===undefined){fail("source-not-loaded");continue;}
   if(createHash("sha256").update(s.xml).digest("hex")!==s.sourceSha256){fail("source-hash-mismatch");continue;}
   let result:AutomaticFinancialSnapshots;
-  try{result=createAutomaticFinancialSnapshots(s.xml,{docID,detailMetricIds});}catch(error){fail(error instanceof AutomaticFinancialProjectionError?"metric-projection-mismatch":"source-parse-failed");continue;}
+  try{result=resolve(s.xml,{docID,detailMetricIds});}catch(error){if(error instanceof ObservedFinancialResolutionFatalError)throw error;fail(error instanceof AutomaticFinancialProjectionError?"metric-projection-mismatch":"source-parse-failed");continue;}
   if(result.basis.status==="selected"){
    const m=result.basis.metadata,p=selected.targetPeriod;
    if(m.edinetCode!==d.edinetCode){fail("issuer-mismatch");continue;}

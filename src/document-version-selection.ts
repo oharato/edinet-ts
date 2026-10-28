@@ -41,10 +41,9 @@ function availability(candidate: Candidate): DocumentVersionReason | undefined {
     const start = candidate.targetPeriod?.startDate ?? candidate.periodStart, end = candidate.targetPeriod?.endDate ?? candidate.periodEnd;
     if (!validDate(start) || !validDate(end) || start > end) return "period-unavailable";
 }
-/** 観測済みの有報/半期/四半期の訂正系列をcutoffで選択。訂正差分の財務値を合成しません。 */
-export function selectDocumentVersions(observations: readonly DocumentVersionObservation[], cutoff: string) {
-    const cutoffTime = timestamp(cutoff, true);
-    if (cutoffTime === undefined || !Array.isArray(observations)) throw new Error("timezone付きcutoffと10,000件以下の明示観測が必要です");
+/** 内部共有: 保存入口でも選択器と同じ項目・状態検証を使います。 */
+export function captureDocumentVersionObservations(observations:readonly DocumentVersionObservation[]){
+    if(!Array.isArray(observations))throw new Error("観測は配列です");
     const length = observations.length;
     if (!Number.isSafeInteger(length) || length < 0 || length > 10000) throw new Error("観測は10,000件以下の配列です");
     const captured = Array.from({length}, (_, index) => {
@@ -59,6 +58,13 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
         return { observed, relation: { observationId, ...(listDate === undefined ? {} : { listDate }), document }, periodStart, periodEnd };
     });
     const analyzed = analyzeDocumentRelations(captured.map(item => item.relation));
+    return {captured,analyzed};
+}
+/** 観測済みの有報/半期/四半期の訂正系列をcutoffで選択。訂正差分の財務値を合成しません。 */
+export function selectDocumentVersions(observations: readonly DocumentVersionObservation[], cutoff: string) {
+    const cutoffTime = timestamp(cutoff, true);
+    if (cutoffTime === undefined || !Array.isArray(observations)) throw new Error("timezone付きcutoffと10,000件以下の明示観測が必要です");
+    const {captured,analyzed}=captureDocumentVersionObservations(observations);
     const byObservationId = new Map(captured.map(item => [item.relation.observationId, item]));
     const latest = new Map<string, Candidate>(), ignored: { observationId: string; reason: "after-cutoff" | "unsupported-document-type" }[] = [];
     const identity = (item: Candidate) => {

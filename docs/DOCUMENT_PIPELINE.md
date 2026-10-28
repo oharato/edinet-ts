@@ -96,3 +96,5 @@ edinet-ts observed-financial-snapshots --observations observations.json \
 CLIの原本manifestは `docID / availableAt / sourceSha256 / file?` の配列（2MiB以下）で、観測JSONは16MiB以下です。fileはmanifestのディレクトリ基準で、既に宣言した原本が未読込の場合は省略できます。選択対象かつ時刻条件を満たした原本だけを読み、BOMもhash対象に保持します。読込失敗は未読込の理由付きJSON・終了0、入力宣言/条件の不正は入力内容を表示せず終了1です。API/CLIともネットワーク取得や既存DB更新は行いません。
 
 実2,402観測の635選択系列に保存済み2原本を接続し、残り633件を原本なしで保持しました。DEI22項目・財務値10件、原本hash、一覧との一致、既知時刻を独立したXML/JSON処理でも確認し、2025年cutoffで0件になることを確認しました。実訂正原本の完全版再構成を検証した結果ではありません。既存 `FinancialDetailGenerations` へのJ-GAAP明細2件の保存・再openも確認しています。合成した訂正前後の直接値では、cutoff選択→保存→中断再開→冪等保存→旧世代復帰を試験しました。既存Storeは観測/knownAtやIFRSを保存する型ではないため、これで観測付き本番永続化の完了とはしません。観測/原本の一体保存、訂正差分の再構成、IFRS等の永続索引・本番移行・利用先反映は残工程です。
+
+観測入力・原本・日本基準/IFRSの直接結果を再起動後も保持する入口は、[財務アーカイブ](OBSERVED_FINANCIAL_ARCHIVE.md)を参照してください。既存世代Storeとは別の専用形式で、原本履歴・cutoff・抽出版ごとの解析キャッシュを保持します。

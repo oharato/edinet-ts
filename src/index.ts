@@ -55,7 +55,8 @@ export * from "./annual-net-income-growth";
 export * from "./company-master";
 export * from "./average-assets-return";
 export * from "./financial-detail-coverage";
-export * from "./document-version-selection";
+export {selectDocumentVersions} from "./document-version-selection";
+export type {DocumentVersionObservation,DocumentVersionReason,DocumentVersionDecision,SelectedDocumentVersion} from "./document-version-selection";
 
 export * from "./db/financial-detail-generations";
 
@@ -115,3 +116,6 @@ export type {AutomaticFinancialSnapshotOptions,AutomaticFinancialSnapshots} from
 
 export {createObservedFinancialSnapshots} from "./observed-financial-snapshots";
 export type {ObservedFinancialSource,ObservedFinancialSnapshotOptions,ObservedFinancialSnapshotRecord,ObservedFinancialSourceReason} from "./observed-financial-snapshots";
+
+export {ObservedFinancialArchive,OBSERVED_FINANCIAL_ARCHIVE_VERSION} from "./db/observed-financial-archive";
+export type {ObservedFinancialArchiveOptions,ArchivedFinancialSnapshotOptions,ArchivedFinancialSnapshots} from "./db/observed-financial-archive";

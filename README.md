@@ -279,6 +279,7 @@ if (info.holdingRatio !== undefined) {
 - [役員報酬の区分集計・個人総額・会社別内訳](docs/OFFICER_REMUNERATION.md)
 - [IFRS連結の直接PL・CF明細](docs/IFRS_FINANCIAL_DETAILS.md)
 - [DEIから財務基準・当期を確定する](docs/FINANCIAL_REPORTING_BASIS.md)
+- [観測・原本・解析結果の財務アーカイブ](docs/OBSERVED_FINANCIAL_ARCHIVE.md)
 
 #### dataMap への直接アクセス
 

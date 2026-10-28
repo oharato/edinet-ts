@@ -112,3 +112,5 @@ ZIPの形式・容量・保存先の制約、既存キャッシュと失敗時�
 - [IFRS連結の直接PL・CF明細](IFRS_FINANCIAL_DETAILS.md): PL5/CF12の別範囲・原符号、明示期間/分類、完全一致重複と検索。
 
 - [DEIから財務基準・当期を確定する](FINANCIAL_REPORTING_BASIS.md): 年度末/当期末、累計・主範囲と提出者の照合、既存snapshotへの自動接続。
+
+- [観測・原本・解析結果の財務アーカイブ](OBSERVED_FINANCIAL_ARCHIVE.md)

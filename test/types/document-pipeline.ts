@@ -141,3 +141,9 @@ import {createObservedFinancialSnapshots} from "edinet-ts";
 const observedFinancial=createObservedFinancialSnapshots([],[],{cutoff:"2026-10-28T00:00:00Z"});
 void observedFinancial.selection.selected.map(s=>s.observation.document.docID);
 void observedFinancial.records.map(r=>r.result.status);
+
+import {ObservedFinancialArchive} from "edinet-ts";
+const archive=new ObservedFinancialArchive(":memory:");
+archive.append([],[]);
+void archive.createSnapshots({cutoff:"2026-10-28T00:00:00Z",extractorVersion:"example-1"}).provenance.mappingVersions.ifrsDetails;
+archive.close();

@@ -19,7 +19,10 @@ import { screenWorkforceDocuments } from "./workforce-screening";
 import { searchSubsidiaryHumanCapitalLabels, SubsidiaryHumanCapitalLabelOperator } from "./subsidiary-human-capital-labels";
 import { resolveFinancialReportingBasis } from "./financial-reporting-basis";
 import { createAutomaticFinancialSnapshots } from "./automatic-financial-snapshots";
-import { createObservedFinancialSnapshots } from "./observed-financial-snapshots";
+import { createObservedFinancialSnapshots,captureObservedFinancialSources } from "./observed-financial-snapshots";
+import {captureDocumentVersionObservations} from "./document-version-selection";
+import {createHash} from "node:crypto";
+import {ObservedFinancialArchive,normalizeArchivedFinancialSnapshotOptions} from "./db/observed-financial-archive";
 import { screenIfrsFinancialDetailDocuments } from "./ifrs-financial-detail-screening";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
 import "dotenv/config";
@@ -494,6 +497,48 @@ program.command("screen-large-holdings")
             });
             console.log(JSON.stringify(searchLargeHoldingReports(documents, query), null, options.pretty ? 2 : undefined));
         } catch { console.error("一次大量保有の原本・一覧メタデータ・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("archive-financial-snapshots")
+    .description("専用SQLiteへ一覧観測・原本を追記し、版付き解析結果を再利用します")
+    .requiredOption("--db <path>", "新規または同形式の専用DB")
+    .requiredOption("--cutoff <datetime>", "timezone付きの観測cutoff")
+    .requiredOption("--extractor-version <version>", "呼出元が固定した抽出版")
+    .option("--source-commit <sha>", "抽出コードの40桁commit")
+    .option("--observations <path>", "追記する一覧観測JSON配列（16MiB以下）")
+    .option("--manifest <path>", "追記するdocID/availableAt/sourceSha256/file（任意）配列")
+    .option("--detail-metrics <csv>", "明示するduration明細項目")
+    .option("--read-only", "元DBを変更せず私有コピーから読む")
+    .option("--edinet-codes <csv>", "対象会社。関連する親子訂正も同時に読む")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let archive: ObservedFinancialArchive | undefined;
+        try {
+            if (options.readOnly && (options.observations !== undefined || options.manifest !== undefined)) throw new Error();
+            const query = normalizeArchivedFinancialSnapshotOptions({cutoff:options.cutoff,extractorVersion:options.extractorVersion,sourceCommit:options.sourceCommit,edinetCodes:options.edinetCodes===undefined?undefined:options.edinetCodes.split(",").map((s:string)=>s.trim()),detailMetricIds:options.detailMetrics===undefined?undefined:options.detailMetrics.split(",").map((id:string)=>id.trim())});
+            const readJson = (file:string,limit:number) => JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(file,limit).bytes));
+            const observations = options.observations === undefined ? [] : readJson(path.resolve(options.observations),16*1024*1024);
+            let bytes = 0;
+            const sources = options.manifest === undefined ? [] : (() => {
+                const manifest = path.resolve(options.manifest),entries = readJson(manifest,LOCAL_IMPORT_LIMITS.manifestBytes);
+                if (!Array.isArray(entries) || entries.length > 100) throw new Error();
+                return entries.map(entry => {
+                    if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file","docID","availableAt","sourceSha256"].includes(k)) || entry.file !== undefined && (typeof entry.file !== "string" || !entry.file.trim())) throw new Error();
+                    const {file,...source} = entry;
+                    if (file === undefined) return source;
+                    const input = readRegularFile(path.resolve(path.dirname(manifest),file),Math.min(LOCAL_IMPORT_LIMITS.sourceBytes,LOCAL_IMPORT_LIMITS.totalBytes-bytes));
+                    bytes += input.bytes.byteLength;
+                    return {...source,xml:new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(input.bytes)};
+                });
+            })();
+            // 入力とhashだけを検証し、原本解析は版付きキャッシュへ任せます。
+            captureDocumentVersionObservations(observations);
+            for (const s of captureObservedFinancialSources(sources)) if (s.xml !== undefined && createHash("sha256").update(s.xml).digest("hex") !== s.sourceSha256) throw new Error();
+            archive = new ObservedFinancialArchive(path.resolve(options.db),{readOnly:!!options.readOnly});
+            const appended = options.observations !== undefined || options.manifest !== undefined ? archive.append(observations,sources) : undefined;
+            console.log(JSON.stringify({appended,...archive.createSnapshots(query)},null,options.pretty?2:undefined));
+        } catch { console.error("専用財務アーカイブ・一覧観測・原本hash・cutoff・抽出版を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+        finally { archive?.close(); }
     });
 
 program.command("observed-financial-snapshots")
