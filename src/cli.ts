@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {FinancialSourceJob,normalizeFinancialSourceJobInput} from "./db/financial-source-job";
 import { searchOfficerRemuneration } from "./officer-remuneration";
 import { searchOfficerDetails } from "./officer-details";
 import { searchPolicyShareholdings } from "./policy-shareholdings";
@@ -617,6 +618,72 @@ program.command("screen-financial-index")
             console.log(JSON.stringify(index.screen(cohort,query),null,options.pretty?2:undefined));
         } catch { console.error("財務索引の世代・同一比較集合・保存済み項目・数値条件を確認してください（入力内容は非表示）"); process.exitCode=1; }
         finally { index?.close(); }
+    });
+
+program.command("plan-financial-source-job")
+    .description("固定母集団・一覧観測から全社の原本取得jobを計画します")
+    .requiredOption("--state <file>", "専用取得状態DB")
+    .requiredOption("--archive <file>", "停止した原本アーカイブ")
+    .requiredOption("--population <file>", "母集団JSON")
+    .requiredOption("--id <id>", "取得job ID")
+    .requiredOption("--cutoff <timestamp>", "書類選択の観測時点")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let state:FinancialSourceJob|undefined,archive:ObservedFinancialArchive|undefined;
+        try {
+            const population=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.population),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            const input=normalizeFinancialSourceJobInput({id:options.id,cutoff:options.cutoff,population});
+            archive=new ObservedFinancialArchive(path.resolve(options.archive),{readOnly:true});state=new FinancialSourceJob(path.resolve(options.state));
+            console.log(JSON.stringify(state.begin(input,archive),null,options.pretty?2:undefined));
+        }catch{console.error("取得計画・固定母集団・原本アーカイブを確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{archive?.close();state?.close();}
+    });
+program.command("run-financial-source-job")
+    .description("未処理を先に取得し、失敗/中断履歴を保存して再開します")
+    .requiredOption("--state <file>", "専用取得状態DB")
+    .requiredOption("--archive <file>", "書込可能な原本アーカイブ")
+    .requiredOption("--id <id>", "取得job ID")
+    .option("--cache <directory>", "既存XBRL cache", "downloads")
+    .option("--limit <number>", "一回の最大取得数（1〜100）", "20")
+    .option("--timeout-ms <number>", "本文受信までの通信timeout", "60000")
+    .option("--pretty", "JSONを整形")
+    .action(async options=>{
+        let state:FinancialSourceJob|undefined,archive:ObservedFinancialArchive|undefined;
+        const controller=new AbortController(),stop=()=>controller.abort();
+        try {
+            if(![options.limit,options.timeoutMs].every(v=>/^\d+$/.test(v))||Number(options.limit)<1||Number(options.limit)>100||!Number.isSafeInteger(Number(options.timeoutMs))||Number(options.timeoutMs)<1||Number(options.timeoutMs)>2147483647)throw new Error();
+            state=new FinancialSourceJob(path.resolve(options.state));state.progress(options.id);
+            archive=new ObservedFinancialArchive(path.resolve(options.archive));
+            const downloader=new EdinetXbrlDownloader({rootDir:path.resolve(options.cache),requestTimeoutMs:Number(options.timeoutMs)});
+            process.once("SIGINT",stop);
+            const result=await state.runNext(options.id,archive,(id,request)=>downloader.fetchXbrl(id,request),{limit:Number(options.limit),signal:controller.signal});
+            console.log(JSON.stringify(result,null,options.pretty?2:undefined));
+            if(result.failed||result.running||result.aborted)process.exitCode=1;
+        }catch{console.error("取得checkpoint・固定一覧・原本取得条件を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{process.removeListener("SIGINT",stop);archive?.close();state?.close();}
+    });
+program.command("financial-source-job-progress")
+    .description("取得計画・試行履歴・残件をreadOnlyで確認します")
+    .requiredOption("--state <file>", "停止した専用取得状態DB")
+    .requiredOption("--id <id>", "取得job ID")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let state:FinancialSourceJob|undefined;
+        try{state=new FinancialSourceJob(path.resolve(options.state),{readOnly:true});console.log(JSON.stringify(state.progress(options.id),null,options.pretty?2:undefined));}
+        catch{console.error("取得状態・job IDを確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{state?.close();}
+    });
+program.command("finish-financial-source-job")
+    .description("全原本の完了を再検査し、後続へ渡す固定原本指紋を返します")
+    .requiredOption("--state <file>", "停止した専用取得状態DB")
+    .requiredOption("--archive <file>", "停止した原本アーカイブ")
+    .requiredOption("--id <id>", "取得job ID")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let state:FinancialSourceJob|undefined,archive:ObservedFinancialArchive|undefined;
+        try{state=new FinancialSourceJob(path.resolve(options.state),{readOnly:true});archive=new ObservedFinancialArchive(path.resolve(options.archive),{readOnly:true});console.log(JSON.stringify(state.finish(options.id,archive),null,options.pretty?2:undefined));}
+        catch{console.error("原本の全件完了・checkpoint・固定一覧を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{archive?.close();state?.close();}
     });
 
 program.command("plan-financial-source-acquisition")

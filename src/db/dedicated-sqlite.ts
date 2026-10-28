@@ -186,6 +186,22 @@ export class DedicatedSqliteDatabase {
             throw e;
         }
     }
+    /** 非同期workerの状態DBを一件の処理中だけ排他します。原本DBは別commitです。 */
+    protected async transactionAsync<T>(fn: () => Promise<T>): Promise<T> {
+        if (this.closed || this.readOnly)
+            throw new Error("close済み/readOnlyの専用DBです");
+        this.db.exec("BEGIN IMMEDIATE");
+        try {
+            this.assertFormat();
+            const result = await fn();
+            this.db.exec("COMMIT");
+            return result;
+        }
+        catch (error) {
+            this.db.exec("ROLLBACK");
+            throw error;
+        }
+    }
     protected readOnlySnapshotSha256(): string {
         if (this.closed || !this.readOnly || !this.snapshotFile)
             throw new Error("固定したreadOnlyファイルが必要です");

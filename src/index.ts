@@ -124,3 +124,6 @@ export type {FinancialIndexMetricId,FinancialIndexCohort,FinancialIndexSearchOpt
 
 export {FinancialIndexBuild,FINANCIAL_INDEX_BUILD_VERSION} from "./db/financial-index-build";
 export type {FinancialIndexBuildInput,FinancialIndexBuildPlan,FinancialIndexBuildTask,FinancialIndexBuildProgress} from "./db/financial-index-build";
+
+export {FinancialSourceJob,FINANCIAL_SOURCE_JOB_VERSION} from "./db/financial-source-job";
+export type {FinancialSourceJobInput,FinancialSourceJobPlan,FinancialSourceJobTask,FinancialSourceJobAttempt,FinancialSourceJobProgress} from "./db/financial-source-job";

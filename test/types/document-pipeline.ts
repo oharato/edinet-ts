@@ -164,3 +164,9 @@ const sourcePlan=archive.planSourceAcquisition({cutoff:"2026-10-28T00:00:00Z",ed
 const sourceItems:import("edinet-ts").FinancialSourceAcquisitionItem[]=sourcePlan.items;
 const acquired:Promise<import("edinet-ts").FinancialSourceAcquisitionResult>=archive.acquireSources({cutoff:"2026-10-28T00:00:00Z"},async(_id,request)=>{request.signal?.throwIfAborted();return "<x/>";},{limit:1});
 void sourceItems;void acquired;
+import {FinancialSourceJob,type FinancialSourceJobInput,type FinancialSourceJobProgress} from 'edinet-ts';
+const sourceJob=new FinancialSourceJob(':memory:');
+const sourceJobInput:FinancialSourceJobInput={id:'job',cutoff:'2026-10-28T00:00:00Z',population:buildInput.population};
+const sourceJobPlan:FinancialSourceJobProgress=sourceJob.begin(sourceJobInput,indexSource);
+const sourceJobRun:Promise<FinancialSourceJobProgress&{aborted:boolean}>=sourceJob.runNext('job',indexSource,async()=>'<x/>');
+void sourceJobPlan;void sourceJobRun;

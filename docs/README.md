@@ -120,3 +120,5 @@ ZIPの形式・容量・保存先の制約、既存キャッシュと失敗時�
 - [母集団全件の分割構築・再開・世代集約](FINANCIAL_INDEX_BUILD.md)
 
 - [不足財務原本の取得・差分確認と再開](FINANCIAL_SOURCE_ACQUISITION.md)
+
+- [全社の原本取得計画・試行履歴・再開](FINANCIAL_SOURCE_JOB.md)

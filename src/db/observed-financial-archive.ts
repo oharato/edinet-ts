@@ -212,6 +212,40 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
             throw new Error("一回の選択は10,000観測までです。edinetCodesで会社の集合を分けてください");
         return obsRows.map(r => this.decodeObservation(r));
     }
+    /** 取得による追記で変わらない、全一覧観測の指紋。会社の分割上限を超えて走査します。 */
+    observationsSha256(): string {
+        return this.transaction(() => {
+            const digest = createHash("sha256").update("edinet-observations-v1\n");
+            let after = "";
+            for (;;) {
+                const rows = this.rows("SELECT * FROM archive_observations WHERE id>? ORDER BY id LIMIT 1000", [after]);
+                for (const row of rows) {
+                    this.decodeObservation(row);
+                    digest.update(canonical([row.id, row.body]) + "\n");
+                }
+                if (rows.length < 1000)
+                    return digest.digest("hex");
+                after = String(rows.at(-1)!.id);
+            }
+        }, false);
+    }
+    /** 取得worker共有: 実時計と検査済み本文を一件commitし、観測metadataだけを返します。 */
+    appendAcquiredSource(docID: string, xml: string): Omit<ObservedFinancialSource, "xml"> {
+        if (this.closed || this.readOnly)
+            throw new Error("書込可能なアーカイブが必要です");
+        assertXmlInput(xml);
+        const availableAt = new Date().toISOString(), latest = this.rows("SELECT * FROM archive_sources WHERE doc_id=? ORDER BY available_ms DESC LIMIT 1", [docID])[0];
+        if (latest) {
+            const old = this.decode(latest) as ObservedFinancialSource;
+            if (old.docID !== docID || timestamp(old.availableAt, true) !== latest.available_ms || hash(canonical(old)) !== latest.id)
+                throw new Error("原本観測の索引が不整合です");
+            if (timestamp(availableAt, true)! <= timestamp(old.availableAt, true)!)
+                throw new Error("取得時計が原本観測以前です");
+        }
+        const source = { docID, availableAt, sourceSha256: hash(xml) };
+        this.append([], [{ ...source, xml }]);
+        return source;
+    }
     /** 原本取得の差分。解析せず、最新の原本観測と実byteを検査します。 */
     planSourceAcquisition(options: FinancialSourceAcquisitionOptions): FinancialSourceAcquisitionPlan {
         if (!options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["cutoff", "edinetCodes"].includes(k)))
@@ -272,13 +306,7 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                 const xml = await fetchXbrl(item.docID, { signal });
                 if (signal?.aborted)
                     break;
-                assertXmlInput(xml);
-                const availableAt = new Date().toISOString();
-                // 過去のcutoffを取得日時に転記せず、未来の既存観測にも逆行しません。
-                if (item.availableAt && timestamp(availableAt, true)! <= timestamp(item.availableAt, true)!)
-                    throw new Error("取得時計が原本観測以前です");
-                const sourceSha256 = hash(xml);
-                this.append([], [{ docID: item.docID, availableAt, sourceSha256, xml }]);
+                const { sourceSha256, availableAt } = this.appendAcquiredSource(item.docID, xml);
                 results.push({ docID: item.docID, status: "stored", sourceSha256, availableAt });
             }
             catch {
