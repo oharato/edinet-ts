@@ -119,3 +119,5 @@ export type {ObservedFinancialSource,ObservedFinancialSnapshotOptions,ObservedFi
 
 export {ObservedFinancialArchive,OBSERVED_FINANCIAL_ARCHIVE_VERSION} from "./db/observed-financial-archive";
 export type {ObservedFinancialArchiveOptions,ArchivedFinancialSnapshotOptions,ArchivedFinancialSnapshots} from "./db/observed-financial-archive";
+export {FinancialSearchIndex,FINANCIAL_SEARCH_INDEX_VERSION} from "./db/financial-search-index";
+export type {FinancialIndexMetricId,FinancialIndexCohort,FinancialIndexSearchOptions,FinancialIndexRow,FinancialIndexDiagnostic,FinancialIndexSearchResult,FinancialIndexGeneration} from "./db/financial-search-index";

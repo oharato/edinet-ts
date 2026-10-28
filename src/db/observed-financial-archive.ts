@@ -1,9 +1,5 @@
-import * as fs from "node:fs";
-import { join, resolve } from "node:path";
-import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
-import type { SQLInputValue } from "node:sqlite";
-import { Database, type NativeDatabase } from "./node-sqlite";
+import {DedicatedSqliteDatabase} from "./dedicated-sqlite";
 import { captureDocumentVersionObservations, selectDocumentVersions, type DocumentVersionObservation } from "../document-version-selection";
 import { captureObservedFinancialSources, createObservedFinancialSnapshotsUsing, ObservedFinancialResolutionFatalError, type ObservedFinancialSource, type ObservedFinancialSnapshotOptions, type ObservedFinancialSnapshotRecord, type ObservedFinancialSourceReason } from "../observed-financial-snapshots";
 import { createAutomaticFinancialSnapshots, normalizeAutomaticFinancialDetailMetricIds, AutomaticFinancialProjectionError, type AutomaticFinancialSnapshotOptions } from "../automatic-financial-snapshots";
@@ -44,30 +40,6 @@ const schema = {
 };
 const canonical = (v: unknown): string => JSON.stringify(v, (_k, item) => item && typeof item === "object" && !Array.isArray(item) ? Object.fromEntries(Object.keys(item).sort().map(k => [k, item[k]])) : item);
 const hash = (s: string | Uint8Array) => createHash("sha256").update(s).digest("hex");
-const identity = (s: fs.BigIntStats) => [s.dev, s.ino, s.size, s.mtimeNs, s.ctimeNs].join(":");
-const normalized = (s: string) => s.replace(/\s+/g, " ").trim();
-function inspect(file: string) {
-    let s: fs.Stats | undefined;
-    try {
-        s = fs.lstatSync(file);
-    }
-    catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== "ENOENT")
-            throw e;
-    }
-    if (s && (!s.isFile() || s.isSymbolicLink() || s.nlink !== 1))
-        throw new Error("専用DBには単一リンクの通常ファイルが必要です");
-    for (const suffix of ["-wal", "-shm", "-journal"])
-        try {
-            fs.lstatSync(file + suffix);
-            throw new Error("DB副ファイルがあります。停止した専用DBが必要です");
-        }
-        catch (e) {
-            if ((e as NodeJS.ErrnoException).code !== "ENOENT")
-                throw e;
-        }
-    return s;
-}
 /** 内部共有: CLIもDB作成前に抽出条件を検証します。 */
 export function normalizeArchivedFinancialSnapshotOptions(options: ArchivedFinancialSnapshotOptions) {
     if (!options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["cutoff", "detailMetricIds", "extractorVersion", "sourceCommit", "edinetCodes"].includes(k)))
@@ -93,138 +65,8 @@ export function normalizeArchivedFinancialSnapshotOptions(options: ArchivedFinan
     return { ...query, extractorVersion, sourceCommit, edinetCodes };
 }
 /** 専用の追記アーカイブ。旧DBを移行せず、原観測・原本と版付き解析結果を保持します。 */
-export class ObservedFinancialArchive {
-    private db!: NativeDatabase;
-    private scratch?: string;
-    private closed = false;
-    private readOnly: boolean;
-    constructor(file: string, options: ObservedFinancialArchiveOptions = {}) {
-        if (typeof file !== "string" || !file.trim() || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => k !== "readOnly"))
-            throw new Error("専用DBパスとreadOnlyを指定してください");
-        const readOnly = options.readOnly;
-        if (readOnly !== undefined && typeof readOnly !== "boolean")
-            throw new Error("readOnlyはbooleanです");
-        this.readOnly = readOnly ?? false;
-        try {
-            if (file === ":memory:") {
-                if (this.readOnly)
-                    throw new Error("readOnlyのmemory DBは作成できません");
-                this.db = new Database(file);
-                this.initialize();
-                return;
-            }
-            const target = resolve(file), exists = inspect(target);
-            if (!exists) {
-                if (this.readOnly)
-                    throw new Error("readOnlyのDBがありません");
-                const fd = fs.openSync(target, "wx", 0o600);
-                fs.closeSync(fd);
-                this.db = new Database(target);
-                this.initialize();
-                return;
-            }
-            // 未知の既存DBへSQLiteを接続せず、私有コピーで形式を検査します。
-            const dir = fs.mkdtempSync(join(tmpdir(), "edinet-observed-archive-")), probe = join(dir, "probe.sqlite");
-            this.scratch = dir;
-            const input = fs.openSync(target, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
-            let output: number | undefined, originalIdentity: string;
-            try {
-                output = fs.openSync(probe, "wx", 0o600);
-                const before = fs.fstatSync(input, { bigint: true });
-                if (!before.isFile() || before.nlink !== 1n)
-                    throw new Error("通常ファイルが必要です");
-                originalIdentity = identity(before);
-                const chunk = Buffer.alloc(1024 * 1024);
-                let total = 0;
-                while (BigInt(total) < before.size) {
-                    const remaining = before.size - BigInt(total), n = fs.readSync(input, chunk, 0, remaining > BigInt(chunk.length) ? chunk.length : Number(remaining), null);
-                    if (!n)
-                        break;
-                    let written = 0;
-                    while (written < n) {
-                        const count = fs.writeSync(output, chunk, written, n - written);
-                        if (!count)
-                            throw new Error("DBコピーを書き込めません");
-                        written += count;
-                    }
-                    total += n;
-                }
-                if (BigInt(total) !== before.size || identity(fs.fstatSync(input, { bigint: true })) !== originalIdentity)
-                    throw new Error("コピー中にDBが変化しました");
-            }
-            finally {
-                fs.closeSync(input);
-                if (output !== undefined)
-                    fs.closeSync(output);
-            }
-            this.db = new Database(probe, { readOnly: true });
-            this.assertFormat();
-            if (!this.readOnly) {
-                inspect(target);
-                if (identity(fs.statSync(target, { bigint: true })) !== originalIdentity!)
-                    throw new Error("形式検査中にDBが変化しました");
-                this.db.close();
-                this.db = new Database(target);
-                this.assertFormat();
-                fs.rmSync(dir, { recursive: true, force: true });
-                this.scratch = undefined;
-            }
-        }
-        catch (error) {
-            try {
-                this.db?.close();
-            }
-            finally {
-                this.closed = true;
-                if (this.scratch)
-                    fs.rmSync(this.scratch, { recursive: true, force: true });
-            }
-            throw error;
-        }
-    }
-    private rows(sql: string, args: SQLInputValue[] = []): Record<string, unknown>[] { if (this.closed)
-        throw new Error("アーカイブはclose済みです"); const s = this.db.prepare(sql); try {
-        return s.all(...args) as Record<string, unknown>[];
-    }
-    finally {
-        s.close();
-    } }
-    private run(sql: string, args: SQLInputValue[] = []) { const s = this.db.prepare(sql); try {
-        s.run(...args);
-    }
-    finally {
-        s.close();
-    } }
-    private initialize() { this.db.exec("BEGIN IMMEDIATE"); try {
-        for (const sql of Object.values(schema))
-            this.db.exec(sql);
-        this.run("INSERT INTO archive_format VALUES(?)", [kind]);
-        this.db.exec("COMMIT");
-    }
-    catch (e) {
-        this.db.exec("ROLLBACK");
-        throw e;
-    } this.assertFormat(); }
-    private assertFormat() {
-        const objects = this.rows("SELECT name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'");
-        if (objects.length !== Object.keys(schema).length || objects.some(o => typeof o.name !== "string" || !Object.hasOwn(schema, o.name) || typeof o.sql !== "string" || normalized(o.sql) !== normalized(schema[o.name as keyof typeof schema])))
-            throw new Error("専用アーカイブの固定schema以外は使えません");
-        const meta = this.rows("SELECT kind FROM archive_format");
-        if (meta.length !== 1 || meta[0].kind !== kind)
-            throw new Error("非対応のアーカイブ形式です");
-    }
-    private transaction<T>(fn: () => T, write = true): T { if (this.closed)
-        throw new Error("アーカイブはclose済みです"); if (write && this.readOnly)
-        throw new Error("readOnlyのアーカイブです"); this.db.exec(write ? "BEGIN IMMEDIATE" : "BEGIN"); try {
-        this.assertFormat();
-        const r = fn();
-        this.db.exec("COMMIT");
-        return r;
-    }
-    catch (e) {
-        this.db.exec("ROLLBACK");
-        throw e;
-    } }
+export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
+    constructor(file:string,options:ObservedFinancialArchiveOptions={}){super(file,options,{table:"archive_format",kind,schema});}
     private decode(row: Record<string, unknown>) { if (typeof row.id !== "string" || typeof row.body !== "string" || hash(canonical([row.id, row.body])) !== row.sha256)
         throw new Error("アーカイブrecordのhash不一致です"); return JSON.parse(row.body); }
     private putRecord(table: "archive_extractions", id: string, value: unknown) { const body = canonical(value), existing = this.rows(`SELECT * FROM ${table} WHERE id=?`, [id]); if (existing.length) {
@@ -394,7 +236,4 @@ export class ObservedFinancialArchive {
             return { selection: preview.selection, records, unavailableSources: [...unavailable.values()].map(s => conflicts.has(s.docID) ? { ...s, reason: "conflicting-source-observations" as const } : s), provenance: { archiveVersion: OBSERVED_FINANCIAL_ARCHIVE_VERSION, extractorVersion, sourceCommit, edinetCodes, mappingVersions: { ...mappingVersions } }, cache: { hits: cacheHits, extracted } };
         }, !this.readOnly);
     }
-    close() { if (this.closed)
-        return; this.db.close(); this.closed = true; if (this.scratch)
-        fs.rmSync(this.scratch, { recursive: true, force: true }); }
 }

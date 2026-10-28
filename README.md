@@ -280,6 +280,7 @@ if (info.holdingRatio !== undefined) {
 - [IFRS連結の直接PL・CF明細](docs/IFRS_FINANCIAL_DETAILS.md)
 - [DEIから財務基準・当期を確定する](docs/FINANCIAL_REPORTING_BASIS.md)
 - [観測・原本・解析結果の財務アーカイブ](docs/OBSERVED_FINANCIAL_ARCHIVE.md)
+- [固定世代からの直接財務SQL検索](docs/FINANCIAL_SEARCH_INDEX.md)
 
 #### dataMap への直接アクセス
 

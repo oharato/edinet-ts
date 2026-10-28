@@ -23,6 +23,7 @@ import { createObservedFinancialSnapshots,captureObservedFinancialSources } from
 import {captureDocumentVersionObservations} from "./document-version-selection";
 import {createHash} from "node:crypto";
 import {ObservedFinancialArchive,normalizeArchivedFinancialSnapshotOptions} from "./db/observed-financial-archive";
+import {FinancialSearchIndex,normalizeFinancialIndexSearch,isFinancialIndexGenerationId} from "./db/financial-search-index";
 import { screenIfrsFinancialDetailDocuments } from "./ifrs-financial-detail-screening";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
 import "dotenv/config";
@@ -497,6 +498,53 @@ program.command("screen-large-holdings")
             });
             console.log(JSON.stringify(searchLargeHoldingReports(documents, query), null, options.pretty ? 2 : undefined));
         } catch { console.error("一次大量保有の原本・一覧メタデータ・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("index-financial-snapshots")
+    .description("原本アーカイブを読取り、専用DBに財務検索の固定世代を保存します")
+    .requiredOption("--archive <path>", "停止した原本アーカイブ")
+    .requiredOption("--db <path>", "新規または同形式の財務検索索引")
+    .requiredOption("--generation <id>", "同内容だけ再実行できる固定世代ID")
+    .requiredOption("--cutoff <datetime>", "timezone付きの観測cutoff")
+    .requiredOption("--extractor-version <version>", "固定した抽出版")
+    .option("--source-commit <sha>", "40桁source commit")
+    .option("--edinet-codes <csv>", "対象会社（関連する訂正も検査）")
+    .option("--detail-metrics <csv>", "保存するduration明細項目")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let archive:ObservedFinancialArchive|undefined,index:FinancialSearchIndex|undefined;
+        try {
+            if (!isFinancialIndexGenerationId(options.generation)) throw new Error();
+            const query=normalizeArchivedFinancialSnapshotOptions({cutoff:options.cutoff,extractorVersion:options.extractorVersion,sourceCommit:options.sourceCommit,edinetCodes:options.edinetCodes===undefined?undefined:options.edinetCodes.split(",").map((s:string)=>s.trim()),detailMetricIds:options.detailMetrics===undefined?undefined:options.detailMetrics.split(",").map((s:string)=>s.trim())});
+            archive=new ObservedFinancialArchive(path.resolve(options.archive),{readOnly:true});
+            index=new FinancialSearchIndex(path.resolve(options.db));
+            console.log(JSON.stringify(index.materialize(options.generation,archive,query),null,options.pretty?2:undefined));
+        } catch { console.error("財務索引の専用DB・原本アーカイブ・固定世代・抽出条件を確認してください（入力内容は非表示）"); process.exitCode=1; }
+        finally { index?.close(); archive?.close(); }
+    });
+
+program.command("screen-financial-index")
+    .description("固定世代の直接財務値をSQLで条件検索・並べ替え・ページ指定します")
+    .requiredOption("--db <path>", "停止した財務検索索引")
+    .requiredOption("--cohort <path>", "generation/group/基準/scope/JPY/period/periodTypeのJSON")
+    .requiredOption("--metrics <csv>", "保存済み項目の明示subset")
+    .option("--conditions <json>", "metric/operator/valueの配列", "[]")
+    .option("--sort-by <metric>", "並べ替える明示項目")
+    .option("--order <order>", "ascまたはdesc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let index:FinancialSearchIndex|undefined;
+        try {
+            for (const value of [options.offset,options.limit]) if (value!==undefined&&!/^\d+$/.test(value)) throw new Error();
+            const cohort=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.cohort),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            const query={metricIds:options.metrics.split(",").map((s:string)=>s.trim()),conditions:JSON.parse(options.conditions),sortBy:options.sortBy,order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)};
+            normalizeFinancialIndexSearch(cohort,query);
+            index=new FinancialSearchIndex(path.resolve(options.db),{readOnly:true});
+            console.log(JSON.stringify(index.screen(cohort,query),null,options.pretty?2:undefined));
+        } catch { console.error("財務索引の世代・同一比較集合・保存済み項目・数値条件を確認してください（入力内容は非表示）"); process.exitCode=1; }
+        finally { index?.close(); }
     });
 
 program.command("archive-financial-snapshots")

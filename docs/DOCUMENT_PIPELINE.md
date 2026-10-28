@@ -98,3 +98,5 @@ CLIの原本manifestは `docID / availableAt / sourceSha256 / file?` の配列�
 実2,402観測の635選択系列に保存済み2原本を接続し、残り633件を原本なしで保持しました。DEI22項目・財務値10件、原本hash、一覧との一致、既知時刻を独立したXML/JSON処理でも確認し、2025年cutoffで0件になることを確認しました。実訂正原本の完全版再構成を検証した結果ではありません。既存 `FinancialDetailGenerations` へのJ-GAAP明細2件の保存・再openも確認しています。合成した訂正前後の直接値では、cutoff選択→保存→中断再開→冪等保存→旧世代復帰を試験しました。既存Storeは観測/knownAtやIFRSを保存する型ではないため、これで観測付き本番永続化の完了とはしません。観測/原本の一体保存、訂正差分の再構成、IFRS等の永続索引・本番移行・利用先反映は残工程です。
 
 観測入力・原本・日本基準/IFRSの直接結果を再起動後も保持する入口は、[財務アーカイブ](OBSERVED_FINANCIAL_ARCHIVE.md)を参照してください。既存世代Storeとは別の専用形式で、原本履歴・cutoff・抽出版ごとの解析キャッシュを保持します。
+
+固定世代から直接BS/明細をSQLで検索する別DBは、[財務検索索引](FINANCIAL_SEARCH_INDEX.md)を参照してください。原本アーカイブと従来の世代Storeを変更せず、検索用の固定世代へ転記します。従来の `FinancialDetailGenerations.screen` は引き続きメモリ検索です。
