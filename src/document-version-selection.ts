@@ -13,6 +13,13 @@ export interface DocumentVersionDecision {
     /** 訂正側の一覧で期間未記載の場合も、宣言された元書類から辿った根拠を明示します。 */
     targetPeriod?: { startDate: string; endDate: string; sourceDocID: string };
 }
+export interface SelectedDocumentVersion {
+    rootDocID: string; chainDocIDs: string[]; observationIds: string[];
+    observation: AnalyzedDocumentObservation;
+    /** 選択判断に使った系列内の最新観測時刻。提出時刻とは別です。 */
+    observedAt: string;
+    targetPeriod: { startDate: string; endDate: string; sourceDocID: string };
+}
 const families: Readonly<Record<string, string>> = { "120": "130", "140": "150", "160": "170" };
 const roots = Object.keys(families), corrections = Object.values(families);
 const validDate = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
@@ -37,8 +44,12 @@ function availability(candidate: Candidate): DocumentVersionReason | undefined {
 /** 観測済みの有報/半期/四半期の訂正系列をcutoffで選択。訂正差分の財務値を合成しません。 */
 export function selectDocumentVersions(observations: readonly DocumentVersionObservation[], cutoff: string) {
     const cutoffTime = timestamp(cutoff, true);
-    if (cutoffTime === undefined || !Array.isArray(observations) || observations.length > 10000) throw new Error("timezone付きcutoffと10,000件以下の明示観測が必要です");
-    const captured = Array.from(observations, value => {
+    if (cutoffTime === undefined || !Array.isArray(observations)) throw new Error("timezone付きcutoffと10,000件以下の明示観測が必要です");
+    const length = observations.length;
+    if (!Number.isSafeInteger(length) || length < 0 || length > 10000) throw new Error("観測は10,000件以下の配列です");
+    const captured = Array.from({length}, (_, index) => {
+        if (!Object.hasOwn(observations, index)) throw new Error("観測に疎配列は使えません");
+        const value = observations[index];
         if (!value || typeof value !== "object" || Object.keys(value).some(key => !["observationId", "listDate", "document", "observedAt", "sequence"].includes(key))) throw new Error("観測の形式が不正です");
         const { observationId, listDate, document, observedAt } = value;
         const observed = timestamp(observedAt, true);
@@ -139,5 +150,11 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
         decisions.push({ rootDocID, status: "selected", reason: "selected", selectedDocID, chainDocIDs: chain.reverse(), observationIds, targetPeriod: leaves[0].targetPeriod });
     }
     decisions.sort((a, b) => a.rootDocID < b.rootDocID ? -1 : a.rootDocID > b.rootDocID ? 1 : 0);
-    return { cutoff, decisions, ignored, financialValuesMerged: false as const, reconstructedUnobservedHistory: false as const };
+    const selected: SelectedDocumentVersion[] = decisions.filter(d => d.status === "selected").map(d => ({
+        rootDocID: d.rootDocID, chainDocIDs: [...d.chainDocIDs], observationIds: [...d.observationIds],
+        observation: structuredClone(latest.get(d.selectedDocID!)!.observation),
+        observedAt: new Date(Math.max(...d.observationIds.map(id => byObservationId.get(id)!.observed))).toISOString(),
+        targetPeriod: {...d.targetPeriod!}
+    }));
+    return { cutoff, decisions, selected, ignored, financialValuesMerged: false as const, reconstructedUnobservedHistory: false as const };
 }

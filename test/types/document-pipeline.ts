@@ -136,3 +136,8 @@ const basis=resolveFinancialReportingBasis(xml,"SAMPLE");
 if(basis.status==="selected"){const standard:"J-GAAP"|"IFRS"=basis.metadata.accountingStandard;void standard;}
 const automatic=createAutomaticFinancialSnapshots(xml,{docID:"SAMPLE"});
 if(automatic.status==="resolved"&&automatic.accountingStandard==="IFRS"&&automatic.details.status==="created"){void automatic.details.snapshot.selections.incomeTaxExpense;}
+
+import {createObservedFinancialSnapshots} from "edinet-ts";
+const observedFinancial=createObservedFinancialSnapshots([],[],{cutoff:"2026-10-28T00:00:00Z"});
+void observedFinancial.selection.selected.map(s=>s.observation.document.docID);
+void observedFinancial.records.map(r=>r.result.status);

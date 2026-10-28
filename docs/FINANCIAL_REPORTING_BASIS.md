@@ -84,3 +84,5 @@ edinet-ts financial-reporting-basis --file saved.xbrl --doc-id SAMPLE \
 元XMLはミライト2025年3月期、ユキグニ/アイティメディア/パーソル2026年3月期、ソフトバンク2024年3月期に加え、保存済みの年次/半期/Q2記載原本を使用しました。この追加確認はXMLと既存APIの照合であり、新規対象すべての財務値のPDF照合とは区別します。外部取得・費用はなく、元stock-dataキャッシュは読取専用で扱いました。
 
 全DEI版/様式、複数entityの主提出者分離、別scopeへの自動切替、非上場のsnapshot型、US/JMIS・IFRS単体・外貨、単四半期化・比較期間/訂正全文の再構成は残工程です。観測cutoff/最新版選択は[文書パイプライン](DOCUMENT_PIPELINE.md)と別に接続し、DEIの時点から未観測の履歴を作りません。永続索引、利用先の固定配布物と本番反映も引き続き対象です。
+
+観測cutoff・訂正選択からこのAPIへ接続する入口は、[文書パイプラインの自動財務snapshot](DOCUMENT_PIPELINE.md#選択原本からの自動財務snapshot)を参照してください。DEIだけでknownAtを作らず、選択原本の直接値を返します。

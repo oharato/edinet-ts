@@ -13,10 +13,8 @@ export type AutomaticFinancialSnapshots={inputXmlSha256:string;targetCurrency:"J
  {status:"resolved";accountingStandard:"J-GAAP";basis:Extract<FinancialReportingBasis,{status:"selected"}>;balanceSheet:SnapshotOutcome<BalanceSheetSnapshot>;details:SnapshotOutcome<FinancialDetailSnapshot>}|
  {status:"resolved";accountingStandard:"IFRS";basis:Extract<FinancialReportingBasis,{status:"selected"}>;balanceSheet:SnapshotOutcome<IfrsBalanceSheetSnapshot>;details:SnapshotOutcome<IfrsFinancialDetailSnapshot>}
 );
-/** 宣言のない基準へフォールバックしません。対象はDEIの当期・主たる財務範囲です。 */
-export function createAutomaticFinancialSnapshots(xml:string,input:AutomaticFinancialSnapshotOptions):AutomaticFinancialSnapshots{
- if(!input||typeof input!=="object"||Array.isArray(input)||Object.keys(input).some(k=>!["docID","detailMetricIds"].includes(k)))throw new Error("書類IDと明示するduration明細だけを指定してください");
- const docID=input.docID,requested=input.detailMetricIds;
+/** 内部共有: 原本がない入口でも同じ項目検証を適用します。 */
+export function normalizeAutomaticFinancialDetailMetricIds(requested:AutomaticFinancialSnapshotOptions["detailMetricIds"]){
  let metrics:(FinancialDetailMetricId|IfrsFinancialDetailMetricId)[]|undefined;
  if(requested!==undefined){
   if(!Array.isArray(requested))throw new Error("明細項目は配列です");
@@ -25,6 +23,14 @@ export function createAutomaticFinancialSnapshots(xml:string,input:AutomaticFina
   metrics=Array.from({length},(_,i)=>{if(!Object.hasOwn(requested,i))throw new Error("疎配列は使えません");return requested[i];});
   if(new Set(metrics).size!==metrics.length||metrics.some(id=>typeof id!=="string"||!Object.hasOwn(FINANCIAL_DETAIL_REGISTRY,id)&&!Object.hasOwn(IFRS_FINANCIAL_DETAIL_REGISTRY,id)))throw new Error("未知/重複/未記録の明細項目があります");
  }
+ return metrics;
+}
+export class AutomaticFinancialProjectionError extends Error {}
+/** 宣言のない基準へフォールバックしません。対象はDEIの当期・主たる財務範囲です。 */
+export function createAutomaticFinancialSnapshots(xml:string,input:AutomaticFinancialSnapshotOptions):AutomaticFinancialSnapshots{
+ if(!input||typeof input!=="object"||Array.isArray(input)||Object.keys(input).some(k=>!["docID","detailMetricIds"].includes(k)))throw new Error("書類IDと明示するduration明細だけを指定してください");
+ const docID=input.docID,requested=input.detailMetricIds;
+ const metrics=normalizeAutomaticFinancialDetailMetricIds(requested);
  const basis=resolveFinancialReportingBasis(xml,docID),inputXmlSha256=createHash("sha256").update(xml).digest("hex");
  if(basis.status!=="selected")return {status:"unresolved",reason:"basis-unresolved",basis,inputXmlSha256,targetCurrency:"JPY"};
  const m=basis.metadata;
@@ -34,14 +40,14 @@ export function createAutomaticFinancialSnapshots(xml:string,input:AutomaticFina
  // shortcut: 既存snapshotの検証契約を再利用するため最大3回解析。大量取り込みは解析済みobject共用へ移行します。
  if(m.accountingStandard==="J-GAAP"){
   const chosen=metrics??DEFAULT_FINANCIAL_DETAIL_METRICS.filter(id=>FINANCIAL_DETAIL_REGISTRY[id].periodType==="duration");
-  if(chosen.some(id=>!Object.hasOwn(FINANCIAL_DETAIL_REGISTRY,id)||FINANCIAL_DETAIL_REGISTRY[id as FinancialDetailMetricId].periodType!=="duration"))throw new Error("日本基準のduration明細だけを指定してください");
+  if(chosen.some(id=>!Object.hasOwn(FINANCIAL_DETAIL_REGISTRY,id)||FINANCIAL_DETAIL_REGISTRY[id as FinancialDetailMetricId].periodType!=="duration"))throw new AutomaticFinancialProjectionError("日本基準のduration明細だけを指定してください");
   return {status:"resolved",accountingStandard:"J-GAAP",basis,inputXmlSha256,targetCurrency:"JPY",
    balanceSheet:m.contexts.instant.length?{status:"created",snapshot:createBalanceSheetSnapshot(xml,{...common,accountingStandard:"J-GAAP",instant:m.instant})}:unavailable("instant"),
    details:m.contexts.duration.length?{status:"created",snapshot:createFinancialDetailSnapshot(xml,{...common,accountingStandard:"J-GAAP",period:m.period,periodType:m.periodType},chosen as FinancialDetailMetricId[])}:unavailable("duration")};
  }
  if(m.scope!=="Consolidated")return {status:"unresolved",reason:"unsupported-ifrs-scope",basis,inputXmlSha256,targetCurrency:"JPY"};
  const chosen=metrics??[...DEFAULT_IFRS_FINANCIAL_DETAIL_METRICS];
- if(chosen.some(id=>!Object.hasOwn(IFRS_FINANCIAL_DETAIL_REGISTRY,id)))throw new Error("IFRSのduration明細だけを指定してください");
+ if(chosen.some(id=>!Object.hasOwn(IFRS_FINANCIAL_DETAIL_REGISTRY,id)))throw new AutomaticFinancialProjectionError("IFRSのduration明細だけを指定してください");
  return {status:"resolved",accountingStandard:"IFRS",basis,inputXmlSha256,targetCurrency:"JPY",
   balanceSheet:m.contexts.instant.length?{status:"created",snapshot:createIfrsBalanceSheetSnapshot(xml,{...common,accountingStandard:"IFRS",scope:"Consolidated",instant:m.instant})}:unavailable("instant"),
   details:m.contexts.duration.length?{status:"created",snapshot:createIfrsFinancialDetailSnapshot(xml,{...common,accountingStandard:"IFRS",scope:"Consolidated",period:m.period,periodType:m.periodType},chosen as IfrsFinancialDetailMetricId[])}:unavailable("duration")};

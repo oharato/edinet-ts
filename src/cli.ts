@@ -19,6 +19,7 @@ import { screenWorkforceDocuments } from "./workforce-screening";
 import { searchSubsidiaryHumanCapitalLabels, SubsidiaryHumanCapitalLabelOperator } from "./subsidiary-human-capital-labels";
 import { resolveFinancialReportingBasis } from "./financial-reporting-basis";
 import { createAutomaticFinancialSnapshots } from "./automatic-financial-snapshots";
+import { createObservedFinancialSnapshots } from "./observed-financial-snapshots";
 import { screenIfrsFinancialDetailDocuments } from "./ifrs-financial-detail-screening";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
 import "dotenv/config";
@@ -493,6 +494,39 @@ program.command("screen-large-holdings")
             });
             console.log(JSON.stringify(searchLargeHoldingReports(documents, query), null, options.pretty ? 2 : undefined));
         } catch { console.error("一次大量保有の原本・一覧メタデータ・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("observed-financial-snapshots")
+    .description("観測済み訂正系列・原本hash・DEIを照合し、選択原本の直接snapshotを作ります")
+    .requiredOption("--observations <path>", "一覧の明示観測JSON配列")
+    .requiredOption("--manifest <path>", "docID/availableAt/sourceSha256/file（任意）の原本JSON配列")
+    .requiredOption("--cutoff <datetime>", "timezone付きの観測cutoff")
+    .option("--detail-metrics <csv>", "明示するduration明細項目")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifest = path.resolve(options.manifest);
+            const readJson = (file: string, limit = LOCAL_IMPORT_LIMITS.manifestBytes) => JSON.parse(new TextDecoder("utf-8", {fatal:true}).decode(readRegularFile(file,limit).bytes));
+            const entries = readJson(manifest), observations = readJson(path.resolve(options.observations),16*1024*1024);
+            if (!Array.isArray(entries) || entries.length > 100) throw new Error();
+            const sources = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["docID","availableAt","sourceSha256","file"].includes(k)) || entry.file !== undefined && (typeof entry.file !== "string" || !entry.file.trim())) throw new Error();
+                const {file,...source} = entry; return source;
+            });
+            const query = {cutoff:options.cutoff,detailMetricIds:options.detailMetrics===undefined?undefined:options.detailMetrics.split(",").map((id:string)=>id.trim())};
+            const preview = createObservedFinancialSnapshots(observations,sources,query);
+            const eligible = new Set(preview.unavailableSources.filter(s => s.reason === "source-not-loaded").map(s => s.docID));
+            let bytes = 0;
+            const loaded = sources.map((source,i) => {
+                if (!eligible.has(source.docID) || entries[i].file === undefined) return source;
+                try {
+                    const input = readRegularFile(path.resolve(path.dirname(manifest),entries[i].file),Math.min(LOCAL_IMPORT_LIMITS.sourceBytes,LOCAL_IMPORT_LIMITS.totalBytes-bytes));
+                    bytes += input.bytes.byteLength;
+                    return {...source,xml:new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(input.bytes)};
+                } catch { return source; }
+            });
+            console.log(JSON.stringify(createObservedFinancialSnapshots(observations,loaded,query),null,options.pretty?2:undefined));
+        } catch { console.error("財務原本・一覧観測・cutoff・明示項目を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("financial-reporting-basis")

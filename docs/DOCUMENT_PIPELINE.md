@@ -67,3 +67,32 @@ store.close();
 全76ファイル・2,606テストは世代Store追加時点で成功しました。価格選択追加後は、共有ホストの並列実行で時間超過が起きたため1ワーカーで再実行し、全77ファイル・2,619テストが成功しました。build・公開API型検査・保存保護5件も成功しています。実2社のCF3項目（6採用値）は一時DBへの保存・再openからの再開・JSON検索との一致・公開切替・旧世代復帰を確認しました。比較はJSON表現で行い、保存時に省略される任意属性の`undefined`は欠落と同じ扱いです。
 
 当期の基準・範囲・期間を原本から得る入口は[DEI財務基準判定](FINANCIAL_REPORTING_BASIS.md)です。DEIのinstantをknownAtや実際の提出時刻へ変換せず、観測・訂正版選択と原本の利用可能時刻はこのパイプライン側で保持します。自動snapshot接続はDB移行や最新版選択を行いません。
+
+## 選択原本からの自動財務snapshot
+
+`createObservedFinancialSnapshots(observations, sources, {cutoff, detailMetricIds?})` は、上記の書類選択と[DEIの財務基準・当期判定](FINANCIAL_REPORTING_BASIS.md)を接続します。`selectDocumentVersions` の `selected` には、選択された一覧情報、系列・観測ID、期間根拠と、その選択判断に必要だった系列内の最新観測時刻が含まれます。取下げ済み訂正の後日観測が元書類を選ぶ根拠になる場合も、既知時刻へ含めます。
+
+原本宣言は `docID / availableAt / sourceSha256 / xml?` です。取得時刻にtimezone、hashにUTF-8 XMLのSHA-256を必要とし、原本は100件・合計256MiBまでです。観測は既存の10,000件上限を利用します。選択された原本だけを解析し、hash、提出後かつcutoff以前の取得、DEIと一覧のEDINETコード・記載のある証券コード・対象期間・書類種別を照合します。半期160/170はHYまたは実原本で確認したQ2累計を扱い、四半期140/150はQ1/Q2/Q3、有報120/130はFYを必要とします。訂正側の一覧期間が空の場合も、親へ辿れた期間根拠を原本DEIと照合します。
+
+```ts
+const result = createObservedFinancialSnapshots(observations, [{
+  docID, availableAt, sourceSha256, xml
+}], {cutoff});
+for (const record of result.records) {
+  // result内のbasis/各group/各選択値の状態も確認する。
+  console.log(record.docID, record.knownAt, record.result.status);
+}
+```
+
+`records` は原本を処理できた結果です。基準不明やIFRS単体などは `record.result.status: unresolved` のまま保持し、採用済み財務値とは呼びません。DEIが確定できない場合、一覧との提出者・期間一致も確定しません。`knownAt` は必要な一覧観測と原本の取得時刻の遅い方で、DEIのinstantとは別です。
+
+`unavailableSources` は原本なし、cutoff後の取得、提出前の取得、未読込、hash不一致、解析失敗、提出者/コード/期間/書類種別の不一致を区別します。指定項目が基準に合わない場合は `metric-projection-mismatch` とし、XML解析失敗と混同しません。未知・重複など項目指定そのものの不正は、原本がない入力でも拒否します。未解決/利用不能な系列は `selection.decisions` に残ります。選択された訂正版が利用不能でも親へ戻さず、訂正版にない値を親で補完しません。生成物は一原本の直接snapshotであり、訂正差分を合成した完全版ではありません。
+
+```sh
+edinet-ts observed-financial-snapshots --observations observations.json \
+  --manifest sources.json --cutoff 2026-10-28T00:00:00+09:00 --pretty
+```
+
+CLIの原本manifestは `docID / availableAt / sourceSha256 / file?` の配列（2MiB以下）で、観測JSONは16MiB以下です。fileはmanifestのディレクトリ基準で、既に宣言した原本が未読込の場合は省略できます。選択対象かつ時刻条件を満たした原本だけを読み、BOMもhash対象に保持します。読込失敗は未読込の理由付きJSON・終了0、入力宣言/条件の不正は入力内容を表示せず終了1です。API/CLIともネットワーク取得や既存DB更新は行いません。
+
+実2,402観測の635選択系列に保存済み2原本を接続し、残り633件を原本なしで保持しました。DEI22項目・財務値10件、原本hash、一覧との一致、既知時刻を独立したXML/JSON処理でも確認し、2025年cutoffで0件になることを確認しました。実訂正原本の完全版再構成を検証した結果ではありません。既存 `FinancialDetailGenerations` へのJ-GAAP明細2件の保存・再openも確認しています。合成した訂正前後の直接値では、cutoff選択→保存→中断再開→冪等保存→旧世代復帰を試験しました。既存Storeは観測/knownAtやIFRSを保存する型ではないため、これで観測付き本番永続化の完了とはしません。観測/原本の一体保存、訂正差分の再構成、IFRS等の永続索引・本番移行・利用先反映は残工程です。
