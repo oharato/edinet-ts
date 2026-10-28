@@ -176,3 +176,5 @@ const listRepository=new EdinetRepository(':memory:');
 const backed:Promise<FinancialListBackfillResult>=backfillFinancialDocumentLists(listRepository,async()=>[],{startDate:'2026-06-24',endDate:'2026-06-25'});
 const transferred:FinancialObservationTransferResult=archiveFinancialDocumentObservations(listRepository,archive,{sourceId:'source'});
 void backed;void transferred;
+const indexQuality:import('edinet-ts').FinancialIndexQuality=financialIndex.quality('generation');
+void indexQuality;

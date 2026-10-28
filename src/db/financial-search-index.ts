@@ -111,6 +111,53 @@ export interface FinancialIndexGeneration {
         }[];
     }[];
 }
+export type FinancialIndexQualityState = "available" | "missing" | "unsupported" | "ambiguous" | "unsafe-number";
+export type FinancialIndexQualityCounts = Record<FinancialIndexQualityState, number>;
+export interface FinancialIndexCohortQuality {
+    cohort: Omit<FinancialIndexCohort, "generation" | "docIDs">;
+    rows: number;
+    companies: number;
+    documents: number;
+    companiesWithUsableValues: number;
+    duplicateCompanies: number;
+    duplicateSecurityCodes: number;
+    values: FinancialIndexQualityCounts;
+    byMetric: {
+        metric: FinancialIndexMetricId;
+        values: FinancialIndexQualityCounts;
+    }[];
+}
+export interface FinancialIndexQuality {
+    generation: string;
+    generationSha256: string;
+    cutoff: string;
+    population?: FinancialIndexPopulation;
+    populationCompanies?: number;
+    companiesWithSelectedDocuments: number;
+    companiesWithRows: number;
+    companiesWithUsableValues: number;
+    companiesWithoutSelectedDocument?: number;
+    selectedCompaniesWithoutRows: number;
+    selectedDocuments: number;
+    documentsWithRows: number;
+    selectedDocumentsWithoutRows: number;
+    rows: number;
+    unavailableSources: {
+        reason: string;
+        documents: number;
+    }[];
+    unresolvedRecords: {
+        reason: string;
+        documents: number;
+    }[];
+    unavailableGroups: {
+        group: string;
+        reason: string;
+        documents: number;
+    }[];
+    values: FinancialIndexQualityCounts;
+    cohorts: FinancialIndexCohortQuality[];
+}
 const schema = {
     financial_index_format: "CREATE TABLE financial_index_format(kind TEXT NOT NULL)",
     financial_generations: "CREATE TABLE financial_generations(id TEXT PRIMARY KEY,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
@@ -254,13 +301,17 @@ export class FinancialSearchIndex extends DedicatedSqliteDatabase {
         const planSha256 = c.planSha256, archiveSha256 = c.archiveSha256;
         return this.transaction(() => {
             const reports = parts.map(id => this.audit(id)), first = reports[0], population = normalizeFinancialIndexPopulation(c.population as FinancialIndexPopulation, first.selection.cutoff), codes = new Set<string>(), owners = new Map<string, string>(), base = ({ edinetCodes: _codes, ...p }: FinancialIndexGeneration["provenance"]) => p;
-            const merge = <T>(lists: T[][], key: (v: T) => string): T[] => { const map = new Map<string, T>(); for (const list of lists)
-                for (const item of list) {
-                    const k = key(item), old = map.get(k);
-                    if (old !== undefined && canonical(old) !== canonical(item))
-                        throw new Error("集約元の観測/財務記録が矛盾しています");
-                    map.set(k, item);
-                } return [...map].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, v]) => v); };
+            const merge = <T>(lists: T[][], key: (v: T) => string): T[] => {
+                const map = new Map<string, T>();
+                for (const list of lists)
+                    for (const item of list) {
+                        const k = key(item), old = map.get(k);
+                        if (old !== undefined && canonical(old) !== canonical(item))
+                            throw new Error("集約元の観測/財務記録が矛盾しています");
+                        map.set(k, item);
+                    }
+                return [...map].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, v]) => v);
+            };
             for (let i = 0; i < reports.length; i++) {
                 const r = reports[i], owner = r.provenance.edinetCodes;
                 if (r.assembly || !owner || owner.length !== 1 || codes.has(owner[0]) || parts[i] !== financialIndexBuildPartId(planSha256, owner[0]) || r.selection.cutoff !== first.selection.cutoff || canonical(base(r.provenance)) !== canonical(base(first.provenance)))
@@ -316,6 +367,99 @@ export class FinancialSearchIndex extends DedicatedSqliteDatabase {
         if (!isFinancialIndexGenerationId(idValue))
             throw new Error("世代IDが不正です");
         return this.transaction(() => this.audit(idValue), false);
+    }
+    /** 全保存本文と値索引を検査し、処理件数・会社/書類の充足・値の状態を分けます。 */
+    quality(id: string): FinancialIndexQuality {
+        if (!isFinancialIndexGenerationId(id))
+            throw new Error("世代IDが不正です");
+        return this.transaction(() => {
+            const report = this.audit(id), population = report.assembly?.population, owners = population ? new Set(population.edinetCodes) : undefined;
+            const selected = report.selection.selected.filter(s => owners === undefined || owners.has(s.observation.document.edinetCode!)), selectedDocs = new Set(selected.map(s => s.observation.document.docID)), selectedCompanies = new Set(selected.map(s => s.observation.document.edinetCode!));
+            const empty = (): FinancialIndexQualityCounts => ({ available: 0, missing: 0, unsupported: 0, ambiguous: 0, "unsafe-number": 0 });
+            const manifests = new Map(report.rows.map(r => [r.id, new Map(r.metrics.map(m => [m.id, m.sha256]))]));
+            const values = empty(), companies = new Set<string>(), usableCompanies = new Set<string>(), documents = new Set<string>();
+            const cohorts = new Map<string, {
+                cohort: FinancialIndexCohortQuality['cohort'];
+                rows: number;
+                companies: Map<string, number>;
+                securities: Map<string, number>;
+                documents: Set<string>;
+                usable: Set<string>;
+                values: FinancialIndexQualityCounts;
+                metrics: Map<FinancialIndexMetricId, FinancialIndexQualityCounts>;
+            }>();
+            let after = "", rows = 0;
+            for (;;) {
+                const batch = this.rows("SELECT * FROM financial_rows WHERE generation=? AND row_id>? ORDER BY row_id LIMIT 100", [id, after]);
+                for (const stored of batch) {
+                    if (typeof stored.body !== "string" || hash(canonical([rowColumns.map(k => stored[k]), stored.body])) !== stored.sha256)
+                        throw new Error("品質検査する財務本文のhash不一致です");
+                    const row = JSON.parse(stored.body) as FinancialIndexRow, prepared = prepare(id, row);
+                    if (!selectedDocs.has(row.snapshot.metadata.docID))
+                        throw new Error("財務行が選択書類に含まれていません");
+                    if (canonical(prepared.metadata) !== canonical(rowColumns.map(k => stored[k])) || prepared.digest !== stored.sha256)
+                        throw new Error("財務本文と索引が不整合です");
+                    const manifest = manifests.get(String(stored.row_id));
+                    if (!manifest || manifest.size !== prepared.values.length || prepared.values.some(v => manifest.get(String(v[2])) !== hash(canonical(v))))
+                        throw new Error("財務本文と値索引が不整合です");
+                    if (owners && !owners.has(row.edinetCode))
+                        throw new Error("財務行が固定母集団の対象外です");
+                    const { docID, secCode, ...metadata } = row.snapshot.metadata, cohort = { group: row.group, ...metadata }, key = canonical(cohort);
+                    let group = cohorts.get(key);
+                    if (!group) {
+                        group = { cohort, rows: 0, companies: new Map(), securities: new Map(), documents: new Set(), usable: new Set(), values: empty(), metrics: new Map() };
+                        cohorts.set(key, group);
+                    }
+                    rows++;
+                    companies.add(row.edinetCode);
+                    documents.add(docID);
+                    group.rows++;
+                    group.companies.set(row.edinetCode, (group.companies.get(row.edinetCode) ?? 0) + 1);
+                    group.securities.set(secCode, (group.securities.get(secCode) ?? 0) + 1);
+                    group.documents.add(docID);
+                    for (const value of prepared.values) {
+                        const metric = String(value[2]) as FinancialIndexMetricId, state = (value[8] ?? "available") as FinancialIndexQualityState;
+                        if (!Object.hasOwn(values, state))
+                            throw new Error("品質分類が不正です");
+                        values[state]++;
+                        group.values[state]++;
+                        const metricCounts = group.metrics.get(metric) ?? empty();
+                        metricCounts[state]++;
+                        group.metrics.set(metric, metricCounts);
+                        if (state === 'available') {
+                            usableCompanies.add(row.edinetCode);
+                            group.usable.add(row.edinetCode);
+                        }
+                    }
+                }
+                if (batch.length < 100)
+                    break;
+                after = String(batch.at(-1)!.row_id);
+            }
+            const countReasons = (input: {
+                reason: string;
+                docID: string;
+            }[]) => {
+                const groups = new Map<string, Set<string>>();
+                for (const r of input) {
+                    const docs = groups.get(r.reason) ?? new Set<string>();
+                    docs.add(r.docID);
+                    groups.set(r.reason, docs);
+                }
+                return [...groups].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([reason, docs]) => ({ reason, documents: docs.size }));
+            };
+            const groups = new Map<string, {
+                group: string;
+                reason: string;
+                docs: Set<string>;
+            }>();
+            for (const r of report.unavailableGroups) {
+                const key = canonical([r.group, r.reason]), bucket = groups.get(key) ?? { group: r.group, reason: r.reason, docs: new Set<string>() };
+                bucket.docs.add(r.docID);
+                groups.set(key, bucket);
+            }
+            return { generation: id, generationSha256: financialIndexGenerationSha256(report), cutoff: report.selection.cutoff, ...(population ? { population, populationCompanies: population.edinetCodes.length, companiesWithoutSelectedDocument: population.edinetCodes.length - selectedCompanies.size } : {}), companiesWithSelectedDocuments: selectedCompanies.size, companiesWithRows: companies.size, companiesWithUsableValues: usableCompanies.size, selectedCompaniesWithoutRows: [...selectedCompanies].filter(c => !companies.has(c)).length, selectedDocuments: selectedDocs.size, documentsWithRows: documents.size, selectedDocumentsWithoutRows: [...selectedDocs].filter(d => !documents.has(d)).length, rows, unavailableSources: countReasons(report.unavailableSources.filter(r => selectedDocs.has(r.docID))), unresolvedRecords: countReasons(report.unresolvedRecords.map(r => ({ docID: r.docID, reason: r.result.status === 'unresolved' ? r.result.reason : r.result.status }))), unavailableGroups: [...groups].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, g]) => ({ group: g.group, reason: g.reason, documents: g.docs.size })), values, cohorts: [...cohorts].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, g]) => ({ cohort: g.cohort, rows: g.rows, companies: g.companies.size, documents: g.documents.size, companiesWithUsableValues: g.usable.size, duplicateCompanies: [...g.companies.values()].filter(n => n > 1).length, duplicateSecurityCodes: [...g.securities.values()].filter(n => n > 1).length, values: g.values, byMetric: [...g.metrics].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([metric, counts]) => ({ metric, values: counts })) })) };
+        }, false);
     }
     screen(cohort: FinancialIndexCohort, options: FinancialIndexSearchOptions): FinancialIndexSearchResult {
         const q = normalizeFinancialIndexSearch(cohort, options), c = q.cohort, p = c.period;

@@ -621,6 +621,18 @@ program.command("screen-financial-index")
         finally { index?.close(); }
     });
 
+program.command("financial-index-quality")
+    .description("固定財務世代の全本文/値索引を検査し、母集団・書類・値の充足を集計します")
+    .requiredOption("--db <file>", "停止した財務検索索引")
+    .requiredOption("--generation <id>", "品質検査する世代")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let index:FinancialSearchIndex|undefined;
+        try{index=new FinancialSearchIndex(path.resolve(options.db),{readOnly:true});console.log(JSON.stringify(index.quality(options.generation),null,options.pretty?2:undefined));}
+        catch{console.error("固定世代・財務本文・値索引の整合を確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{index?.close();}
+    });
+
 program.command("backfill-financial-document-lists")
     .description("閉じた日を再利用し、空の日を含む原観測を日別に取得・保存します")
     .requiredOption("--metadata <file>", "書込可能な一覧メタデータDB")
