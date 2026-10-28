@@ -1,6 +1,6 @@
 # 開示本文の表とセルの出典
 
-`extractDisclosureTables`は、設備・関係会社・主要顧客・連結セグメント・役員・役員報酬・経営分析・所有者別状況の指定TextBlockを、本文とセルの位置付きで返します。元のHTMLを実行/描画せず、結合セルを同じ物理セルへの参照として展開します。数値や会社名の意味を確定する領域別APIとは別の前提機能です。
+`extractDisclosureTables`は、設備・関係会社・主要顧客・連結セグメント・役員・役員報酬・経営分析・所有者別状況・大株主の指定TextBlockを、本文とセルの位置付きで返します。元のHTMLを実行/描画せず、結合セルを同じ物理セルへの参照として展開します。数値や会社名の意味を確定する領域別APIとは別の前提機能です。
 
 ```ts
 import { extractDisclosureTables, searchDisclosureTableCells, DisclosureTableKind } from "edinet-ts";
@@ -10,6 +10,8 @@ const matches = searchDisclosureTableCells([{ xml: savedXml, selection }], { con
 ```
 
 表外の解析済み本文は`outsideTableText`でも返します。表内の数値/注釈を、表外の基準日の証拠へ使わないための情報で、元HTMLを実行しません。
+
+各物理表の`precedingText`は、直前の表が終わった後からその表までの表外本文です。日付/引用の対応を確認するための情報で、前の表の中身や注記を別表の数値へ混ぜません。
 
 ## 返却と検索
 
@@ -29,7 +31,7 @@ const matches = searchDisclosureTableCells([{ xml: savedXml, selection }], { con
 
 通信なしで既存2社×2025/2026年の4原本を読みました。6領域/主要顧客2期の計28本文中24本文が採用、104表/5,764物理セルの文字列・位置・結合範囲・展開gridと元XML/本文hashが独立したPython処理と一致しました。4役員本文は入れ子表のため非対応でした。この照合は原XMLの保持確認であり、5,764セルのPDF独立照合ではありません。
 
-本文表追加時点からの進展: [設備](FACILITY_DETAILS.md)・[顧客](MAIN_CUSTOMER_DETAILS.md)・[関係会社](AFFILIATED_COMPANY_DETAILS.md)・[セグメント](SEGMENT_DETAILS.md)・[受注](ORDER_DETAILS.md)・[株主分類](SHAREHOLDER_CATEGORIES.md)の個別モデル/検証を追加しました。各領域の対応形式と確認範囲に限定し、全形式の意味/期間確定、DB索引は未完了です。本文を構造化金融値と同等には扱いません。全体計画6a/6b/6cの完了ではありません。
+本文表追加時点からの進展: [設備](FACILITY_DETAILS.md)・[顧客](MAIN_CUSTOMER_DETAILS.md)・[関係会社](AFFILIATED_COMPANY_DETAILS.md)・[セグメント](SEGMENT_DETAILS.md)・[受注](ORDER_DETAILS.md)・[株主分類](SHAREHOLDER_CATEGORIES.md)・[大株主/引用](MAJOR_SHAREHOLDER_DETAILS.md)の個別モデル/検証を追加しました。各領域の対応形式と確認範囲に限定し、全形式の意味/期間確定、DB索引は未完了です。本文を構造化金融値と同等には扱いません。全体計画6a/6b/6cの完了ではありません。
 
 2026年設備表の限定PDF照合: エクシオPDF46ページ/ミライトPDF34ページを画像で確認し、7行45値セル（ダッシュを含む）がPDFからの独立転記と一致しました。全表/別年度のPDF照合は未完了です。
 

@@ -784,7 +784,7 @@ export interface ShareholderInfo {
     name: string;
     /** 所有株式数 */
     numberOfShares?: number;
-    /** 持株比率 (%) */
+    /** 原タグの数値（単位未検証）。pure単位では0〜1で、百分率は100倍です。 */
     ownershipRatio?: number;
 }
 

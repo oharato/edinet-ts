@@ -8,14 +8,16 @@ import type { ContextDimensionsTraceResult } from "./context-dimension-traces";
 
 /** 数値の意味は表別に確定します。この辞書は本文の所属だけを指定します。 */
 export const DisclosureTableKind = Object.freeze({ Facilities: "facilities", AffiliatedEntities: "affiliatedEntities", MainCustomers: "mainCustomers",
-    ShareholderCategories: "shareholderCategories", ManagementAnalysis: "managementAnalysis", Segments: "segments", Officers: "officers", OfficerRemuneration: "officerRemuneration" } as const);
+    MajorShareholders: "majorShareholders", ShareholderCategories: "shareholderCategories", ManagementAnalysis: "managementAnalysis", Segments: "segments", Officers: "officers", OfficerRemuneration: "officerRemuneration" } as const);
 export type DisclosureTableKind = typeof DisclosureTableKind[keyof typeof DisclosureTableKind];
 const tags: Record<DisclosureTableKind, string> = { facilities: "MajorFacilitiesTextBlock", affiliatedEntities: "OverviewOfAffiliatedEntitiesTextBlock",
     mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock",
-    shareholderCategories: "ShareholdingByShareholderCategoryTextBlock", managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
+    majorShareholders: "MajorShareholdersTextBlock", shareholderCategories: "ShareholdingByShareholderCategoryTextBlock", managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
 export const DISCLOSURE_TABLE_LIMITS = Object.freeze({ fragmentBytes: 2 * 1024 * 1024, tables: 200, rows: 5000, cells: 50000, columns: 100, expandedCells: 200000, depth: 64 });
 export interface DisclosureTableCell { row: number; column: number; rowSpan: number; columnSpan: number; kind: "td" | "th"; parsedText: string; }
-export interface DisclosureTable { index: number; cells: DisclosureTableCell[]; grid: (number | null)[][]; }
+export interface DisclosureTable { index: number;
+    /** 直前の物理表の後から、この表までの解析済み表外本文。 */
+    precedingText?: string; cells: DisclosureTableCell[]; grid: (number | null)[][]; }
 export interface DisclosureTableSource {
     docID: string; kind: DisclosureTableKind; key: string; contextRef: string; namespaceURI?: string;
     period?: EdinetContext["period"]; entity?: EdinetContext["entity"]; contextTrace: ContextDimensionsTraceResult;
@@ -64,6 +66,17 @@ function parseFragment(raw: string): { tables: DisclosureTable[]; parsedText: st
         }
     }
     inspect(nodes);
+    const preceding: string[] = []; let pendingText = "";
+    function collectPreceding(list: OrderedNode[]): void {
+        for (const node of list) {
+            if (typeof node["#text"] === "string") { pendingText += node["#text"]; continue; }
+            const key = element(node); if (!key) continue;
+            if (key === "table") { preceding.push(pendingText.trim()); pendingText = ""; continue; }
+            if (key === "br") pendingText += "\n";
+            else { collectPreceding(children(node, key)); if (block.has(key)) pendingText += "\n"; }
+        }
+    }
+    collectPreceding(nodes);
     let totalRows = 0, totalCells = 0, expanded = 0, gridSlots = 0;
     const tables = found.map((node, index) => {
         const rows: { node: OrderedNode; group: number }[] = []; let group = 0;
@@ -105,7 +118,7 @@ function parseFragment(raw: string): { tables: DisclosureTable[]; parsedText: st
         const width = Math.max(0, ...grid.map(row => row.length));
         gridSlots += width * rows.length; if (gridSlots > DISCLOSURE_TABLE_LIMITS.expandedCells) fail();
         // 欠けた枠はnull。同じ結合セルの値を複製して合計しません。
-        return { index, cells, grid: grid.map(row => Array.from({ length: width }, (_, col) => row[col] ?? null)) };
+        return { index, precedingText: preceding[index], cells, grid: grid.map(row => Array.from({ length: width }, (_, col) => row[col] ?? null)) };
     });
     return { tables, parsedText: text(nodes).trim(), outsideTableText: text(nodes, true).trim() };
 }

@@ -23,6 +23,11 @@ describe("開示本文の表と結合セルの出典", () => {
         expect(result.source).not.toHaveProperty("scope");
         expect(result.tables[0].cells[5]).not.toHaveProperty("value");
     });
+    it("表の前後の本文を物理表ごとに区切り、表内数値を含めない", () => {
+        const r = extract('<div><p>最初</p><table><tr><td>数値100</td></tr></table><p>次の表の注記</p><div><table><tr><td>数値200</td></tr></table></div><p>最後</p></div>');
+        expect(r.tables.map(t => t.precedingText)).toEqual(["最初", "次の表の注記"]);
+        expect(r.outsideTableText).toBe("最初\n次の表の注記\n\n最後");
+    });
     it("表なし・空本文を欠損と混同しない", () => {
         expect(extract("<p>該当事項はありません。</p>")).toMatchObject({ status: "selected", reason: "no-tables", parsedText: "該当事項はありません。" });
         expect(extract("")).toMatchObject({ status: "unsupported", reason: "raw-unavailable" });
@@ -64,7 +69,7 @@ describe("開示本文の表と結合セルの出典", () => {
         expect(extractDisclosureTables(xml(fact(table, 'unitRef="JPY"')), selection)).toMatchObject({ status: "unsupported", reason: "invalid-context" });
     });
     it.each(Object.values(DisclosureTableKind))("領域%sを別々の本文として扱う", kind => {
-        const tags = { shareholderCategories: "ShareholdingByShareholderCategoryTextBlock", managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", facilities: "MajorFacilitiesTextBlock", affiliatedEntities: "OverviewOfAffiliatedEntitiesTextBlock", mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
+        const tags = { majorShareholders: "MajorShareholdersTextBlock", shareholderCategories: "ShareholdingByShareholderCategoryTextBlock", managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", facilities: "MajorFacilitiesTextBlock", affiliatedEntities: "OverviewOfAffiliatedEntitiesTextBlock", mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
         expect(extractDisclosureTables(xml(fact(table, "", tags[kind])), { ...selection, kind })).toMatchObject({ status: "selected", source: { kind } });
     });
     it("状態の外部変更を解析済みobjectへ戻さない", () => {

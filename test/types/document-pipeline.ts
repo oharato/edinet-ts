@@ -87,3 +87,9 @@ declare const shareholderDocument: ShareholderCategoryDocument;
 const shareholderExtraction: ShareholderCategoryExtraction = extractShareholderCategories(shareholderDocument);
 searchShareholderCategories([shareholderDocument], {asOf:'2026-03-31',category:ShareholderCategory.ForeignNonIndividuals,metric:ShareholderCategoryMetric.OwnershipPercent});
 void shareholderExtraction;
+
+import { extractMajorShareholderDetails, searchMajorShareholderDetails, MajorShareholderTableKind, type MajorShareholderDocument, type MajorShareholderExtraction } from 'edinet-ts';
+declare const majorDocument: MajorShareholderDocument;
+const majorExtraction: MajorShareholderExtraction = extractMajorShareholderDetails(majorDocument);
+searchMajorShareholderDetails([majorDocument],{kind:MajorShareholderTableKind.MajorShareholders,date:{basis:'holding-as-of',value:'2026-03-31'},role:'named',metric:'holdingPercent'});
+void majorExtraction;

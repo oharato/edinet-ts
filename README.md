@@ -239,9 +239,11 @@ const shareholders = data.getMajorShareholders();
 shareholders.forEach(s => {
     console.log(`株主名: ${s.name}`);
     console.log(`持株数: ${s.numberOfShares}`);
-    console.log(`比率: ${s.ownershipRatio}%`);
+    console.log(`比率の原値: ${s.ownershipRatio}（単位未検証）`);
 });
 ```
+
+旧APIの比率は単位を検証しない原値です。pure単位なら0.2037は20.37％に相当します。百分率・基準日・分母と注記引用を区別する場合は、[大株主の明細API](docs/MAJOR_SHAREHOLDER_DETAILS.md)を使用してください。
 
 **四半期報告書・半期報告書への対応:**
 パーサーは、有価証券報告書（年次）だけでなく、四半期報告書（docTypeCode: 140）や半期報告書（docTypeCode: 160）にも対応しています。これらの報告書では文書固有の名前空間（例: `jpcrp040300-q2r_*`）が使用されることがありますが、パーサーは自動的に名前空間を識別して正しくデータを抽出します。

@@ -90,3 +90,5 @@ export { ORDER_DETAILS_VERSION, OrderMetric, extractOrderDetails, searchOrderDet
 export type { OrderPeriod, OrderTableDeclaration, OrderDetailDocument, OrderValue, OrderDetailRow, OrderDetailExtraction, OrderSearchOptions } from "./order-details";
 export { SHAREHOLDER_CATEGORIES_VERSION, ShareholderCategory, ShareholderCategoryMetric, extractShareholderCategories, searchShareholderCategories } from "./shareholder-categories";
 export type { ShareholderCategoryDeclaration, ShareholderCategoryDocument, ShareholderCategoryValue, ShareholderCategoryEntry, ShareholderCategoryGroup, ShareholderCategoryExtraction, ShareholderCategorySearchOptions } from "./shareholder-categories";
+export { MAJOR_SHAREHOLDER_DETAILS_VERSION, MajorShareholderTableKind, extractMajorShareholderDetails, searchMajorShareholderDetails } from "./major-shareholder-details";
+export type { MajorShareholderDocument, MajorShareholderValue, MajorShareholderRow, MajorShareholderGroup, MajorShareholderExtraction, MajorShareholderSearchOptions } from "./major-shareholder-details";
