@@ -14,7 +14,7 @@ const tags: Record<DisclosureTableKind, string> = { facilities: "MajorFacilities
     mainCustomers: "InformationForEachOfMainCustomersTextBlock", segments: "NotesSegmentInformationEtcConsolidatedFinancialStatementsTextBlock",
     policyShareholdings: "ShareholdingsTextBlock", majorShareholders: "MajorShareholdersTextBlock", shareholderCategories: "ShareholdingByShareholderCategoryTextBlock", managementAnalysis: "ManagementAnalysisOfFinancialPositionOperatingResultsAndCashFlowsTextBlock", officers: "InformationAboutOfficersTextBlock", officerRemuneration: "RemunerationForDirectorsAndOtherOfficersTextBlock" };
 export const DISCLOSURE_TABLE_LIMITS = Object.freeze({ fragmentBytes: 2 * 1024 * 1024, tables: 200, rows: 5000, cells: 50000, columns: 100, expandedCells: 200000, depth: 64 });
-export interface DisclosureTableCell { row: number; column: number; rowSpan: number; columnSpan: number; kind: "td" | "th"; parsedText: string; }
+export interface DisclosureTableCell { row: number; column: number; rowSpan: number; columnSpan: number; kind: "td" | "th"; parsedText: string; nestedTableCount?: number; }
 export interface DisclosureTable { index: number;
     /** 直前の物理表の後から、この表までの解析済み表外本文。 */
     precedingText?: string; cells: DisclosureTableCell[]; grid: (number | null)[][]; }
@@ -47,13 +47,16 @@ function text(nodes: OrderedNode[], excludeTables = false): string {
         return text(children(node, key), excludeTables) + (block.has(key) ? "\n" : "");
     }).join("");
 }
-function parseFragment(raw: string): { tables: DisclosureTable[]; parsedText: string; outsideTableText: string } {
+function countNestedTables(nodes: OrderedNode[]): number {
+    return nodes.reduce((n, node) => { const key = element(node); return n + (key === "table" ? 1 : 0) + (key ? countNestedTables(children(node, key)) : 0); }, 0);
+}
+function parseFragment(raw: string, biographicalTables = false): { tables: DisclosureTable[]; parsedText: string; outsideTableText: string } {
     if (Buffer.byteLength(raw) > DISCLOSURE_TABLE_LIMITS.fragmentBytes) fail();
     const wrapped = `<fragment>${raw}</fragment>`;
     assertXmlInput(wrapped);
     const nodes = new XMLParser({ preserveOrder: true, ignoreAttributes: false, parseTagValue: false, parseAttributeValue: false,
         trimValues: false, maxNestedTags: DISCLOSURE_TABLE_LIMITS.depth }).parse(wrapped)[0].fragment as OrderedNode[];
-    const found: OrderedNode[] = []; let count = 0;
+    const found: OrderedNode[] = []; let count = 0, tableCount = 0, rowCount = 0, cellCount = 0;
     function inspect(list: OrderedNode[], insideTable = false): void {
         for (const node of list) {
             if (++count > 200000) fail();
@@ -61,7 +64,11 @@ function parseFragment(raw: string): { tables: DisclosureTable[]; parsedText: st
             if (key.includes(":") || ["script", "style", "iframe", "object", "embed", "svg", "math", "template"].includes(key.toLowerCase())) fail();
             const attrs = node[":@"] as Record<string, string> | undefined;
             if (attrs && Object.keys(attrs).some(k => k.startsWith("@_xmlns") && (k !== "@_xmlns" || attrs[k] !== "http://www.w3.org/1999/xhtml"))) fail();
-            if (key === "table") { if (insideTable || found.length >= DISCLOSURE_TABLE_LIMITS.tables) fail(); found.push(node); }
+            if (key === "tr" && ++rowCount > DISCLOSURE_TABLE_LIMITS.rows || (key === "td" || key === "th") && ++cellCount > DISCLOSURE_TABLE_LIMITS.cells) fail();
+            if (key === "table") {
+                if (++tableCount > DISCLOSURE_TABLE_LIMITS.tables || insideTable && !biographicalTables) fail();
+                if (!insideTable) found.push(node);
+            }
             inspect(children(node, key), insideTable || key === "table");
         }
     }
@@ -111,7 +118,8 @@ function parseFragment(raw: string): { tables: DisclosureTable[]; parsedText: st
                 for (let r = row; r < row + rowSpan; r++) for (let c = column; c < column + columnSpan; c++) {
                     if (grid[r][c] !== undefined) fail(); grid[r][c] = cellIndex;
                 }
-                cells.push({ row, column, rowSpan, columnSpan, kind: tag as "td" | "th", parsedText: text(children(cell, tag)).trim() });
+                const nestedTableCount = biographicalTables ? countNestedTables(children(cell, tag)) : 0;
+                cells.push({ row, column, rowSpan, columnSpan, kind: tag as "td" | "th", parsedText: text(children(cell, tag)).trim(), ...(nestedTableCount ? { nestedTableCount } : {}) });
                 column += columnSpan;
             }
         }
@@ -141,7 +149,7 @@ export function selectDisclosureTables(docID: string, kind: DisclosureTableKind,
     if (!context?.namespaceVerified || !context.periodValid || !context.entity || duplicates.has(contextRef) || contextTrace.status !== "resolved" || fact.unitRef) return unsupported("invalid-context");
     if (fact.nil) return structuredClone({ ...base, status: "missing", reason: "nil" });
     if (fact.rawValue === undefined) return unsupported("raw-unavailable");
-    try { const parsed = parseFragment(fact.rawValue); return structuredClone({ ...base, ...parsed, status: "selected", reason: parsed.tables.length ? "parsed-tables" : "no-tables" }); }
+    try { const parsed = parseFragment(fact.rawValue, kind === DisclosureTableKind.Officers); return structuredClone({ ...base, ...parsed, status: "selected", reason: parsed.tables.length ? "parsed-tables" : "no-tables" }); }
     catch { return unsupported("unsupported-fragment"); }
 }
 export function extractDisclosureTables(xml: string, selection: { docID: string; kind: DisclosureTableKind; contextRef: string }): DisclosureTableExtraction {

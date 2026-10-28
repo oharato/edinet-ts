@@ -112,3 +112,9 @@ declare const policyDocument:PolicyShareholdingDocument;
 const policyExtraction=extractPolicyShareholdings(policyDocument);
 const policySearch=searchPolicyShareholdings([policyDocument],{kind:"specified",periodEnd:"2026-03-31",metric:"reportedAmount"});
 void [policyExtraction.entries,policySearch.excluded];
+
+import {extractOfficerDetails,searchOfficerDetails,type OfficerDocument} from "edinet-ts";
+declare const officerDocument:OfficerDocument;
+const officers=extractOfficerDetails(officerDocument);
+const officerRows=searchOfficerDetails([officerDocument],{status:"as-filed",rosterDate:"2026-06-24",role:"named",metric:"record"});
+void [officers.groups,officerRows.rows];

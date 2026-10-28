@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { searchOfficerDetails } from "./officer-details";
 import { searchPolicyShareholdings } from "./policy-shareholdings";
 import { searchObservedLargeHoldingReports } from "./observed-large-holding";
 import { searchLargeHoldingReports } from "./large-holding-report";
@@ -488,6 +489,36 @@ program.command("screen-large-holdings")
             });
             console.log(JSON.stringify(searchLargeHoldingReports(documents, query), null, options.pretty ? 2 : undefined));
         } catch { console.error("一次大量保有の原本・一覧メタデータ・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("search-officers")
+    .description("現任/予定と原表合計を分けて役員名・略歴・株数を検索します")
+    .requiredOption("--manifest <path>", "file/selection/tablesのJSON配列")
+    .requiredOption("--status <status>", "as-filed/proposed")
+    .requiredOption("--roster-date <date>", "本文記載の提出日または開催予定日")
+    .requiredOption("--role <role>", "named/reported-total")
+    .requiredOption("--metric <metric>", "record/reportedShares")
+    .option("--name-contains <text>", "氏名原文に含まれる文字列")
+    .option("--position-contains <text>", "役職原文に含まれる文字列")
+    .option("--biography-contains <text>", "略歴原文に含まれる文字列")
+    .option("--condition <json>", "operator/valueの条件（株）")
+    .option("--sort <order>", "value-asc/value-desc（株数検索のみ）")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数", "100")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifest = path.resolve(options.manifest), entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifest, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error();
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "selection", "tables"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
+                const input = readRegularFile(path.resolve(path.dirname(manifest), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes)); bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), selection: entry.selection, tables: entry.tables };
+            });
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            console.log(JSON.stringify(searchOfficerDetails(documents, { status: options.status, rosterDate: options.rosterDate, role: options.role, metric: options.metric, nameContains: options.nameContains, positionContains: options.positionContains, biographyContains: options.biographyContains, condition: options.condition === undefined ? undefined : JSON.parse(options.condition), sort: options.sort, offset: Number(options.offset), limit: Number(options.limit) }), null, options.pretty ? 2 : undefined));
+        } catch { console.error("役員の原本・状態/日付根拠・表参照・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("search-policy-shareholdings")

@@ -101,3 +101,5 @@ export { searchObservedLargeHoldingReports } from "./observed-large-holding";
 export type { ObservedLargeHoldingSource } from "./observed-large-holding";
 export {POLICY_SHAREHOLDINGS_VERSION,extractPolicyShareholdings,searchPolicyShareholdings} from "./policy-shareholdings";
 export type {PolicyShareholdingKind,PolicyShareholdingDeclaration,PolicyShareholdingDocument,PolicyShareholdingValue,PolicyShareholdingEntry,PolicyShareholdingExtraction,PolicyShareholdingSearchOptions} from "./policy-shareholdings";
+export {OFFICER_DETAILS_VERSION,extractOfficerDetails,searchOfficerDetails} from "./officer-details";
+export type {OfficerTableDeclaration,OfficerDocument,OfficerCellReference,OfficerShares,OfficerRow,OfficerGroup,OfficerExtraction,OfficerSearchOptions} from "./officer-details";
