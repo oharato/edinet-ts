@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { searchObservedLargeHoldingReports } from "./observed-large-holding";
 import { searchLargeHoldingReports } from "./large-holding-report";
 import { searchMajorShareholderDetails } from "./major-shareholder-details";
 import { searchShareholderCategories } from "./shareholder-categories";
@@ -441,6 +442,7 @@ program.command("screen-subsidiary-human-capital")
 program.command("screen-large-holdings")
     .description("一次大量保有を観測cutoff・義務発生日・報告全体/保有者別に検索します")
     .requiredOption("--manifest <path>", "file/metadataのJSON配列")
+    .option("--observations <path>", "一覧観測JSON配列。指定時のmanifestはfile/docID/availableAt/sourceSha256/coverContextRef")
     .requiredOption("--cutoff <datetime>", "timezone付きの観測cutoff")
     .requiredOption("--duty-date <date>", "報告義務発生日")
     .requiredOption("--scope <scope>", "reportまたはholder")
@@ -456,15 +458,34 @@ program.command("screen-large-holdings")
         try {
             const manifest = path.resolve(options.manifest), entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifest, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
             if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error();
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            const query = { cutoff: options.cutoff, dutyDate: options.dutyDate, scope: options.scope, metric: options.metric,
+                holderContains: options.holderContains, issuerEdinetCode: options.issuerEdinetCode, condition: options.condition === undefined ? undefined : JSON.parse(options.condition), sort: options.sort, offset: Number(options.offset), limit: Number(options.limit) };
             let bytes = 0;
+            if (options.observations !== undefined) {
+                const observations = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(path.resolve(options.observations), LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+                const sources = entries.map(entry => {
+                    if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "docID", "availableAt", "sourceSha256", "coverContextRef"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
+                    const { file, ...source } = entry; return source;
+                });
+                const preview = searchObservedLargeHoldingReports(observations, sources, query);
+                const selected = new Set(preview.selection.selected.map(s => s.observation.document.docID));
+                const loaded = sources.map((source, i) => {
+                    if (!selected.has(source.docID) || Date.parse(source.availableAt) > Date.parse(options.cutoff)) return source;
+                    try {
+                        const input = readRegularFile(path.resolve(path.dirname(manifest), entries[i].file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
+                        bytes += input.bytes.byteLength;
+                        return { ...source, xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes) };
+                    } catch { return source; }
+                });
+                console.log(JSON.stringify(searchObservedLargeHoldingReports(observations, loaded, query), null, options.pretty ? 2 : undefined)); return;
+            }
             const documents = entries.map(entry => {
                 if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "metadata"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
                 const input = readRegularFile(path.resolve(path.dirname(manifest), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes)); bytes += input.bytes.byteLength;
-                return { xml: new TextDecoder("utf-8", { fatal: true }).decode(input.bytes), metadata: entry.metadata };
+                return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), metadata: entry.metadata };
             });
-            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
-            console.log(JSON.stringify(searchLargeHoldingReports(documents, { cutoff: options.cutoff, dutyDate: options.dutyDate, scope: options.scope, metric: options.metric,
-                holderContains: options.holderContains, issuerEdinetCode: options.issuerEdinetCode, condition: options.condition === undefined ? undefined : JSON.parse(options.condition), sort: options.sort, offset: Number(options.offset), limit: Number(options.limit) }), null, options.pretty ? 2 : undefined));
+            console.log(JSON.stringify(searchLargeHoldingReports(documents, query), null, options.pretty ? 2 : undefined));
         } catch { console.error("一次大量保有の原本・一覧メタデータ・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 

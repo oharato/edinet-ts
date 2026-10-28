@@ -99,3 +99,10 @@ declare const largeDocument: LargeHoldingDocument;
 const largeReport: LargeHoldingReport = extractLargeHoldingReport(largeDocument);
 searchLargeHoldingReports([largeDocument],{cutoff:'2026-10-28T00:00:00Z',dutyDate:'2025-06-16',scope:'report',metric:LargeHoldingMetric.HoldingPercent});
 void largeReport;
+
+import {selectLargeHoldingReportVersions,searchObservedLargeHoldingReports,type ObservedLargeHoldingSource,type LargeHoldingVersionObservation} from "edinet-ts";
+declare const holdingObservations: LargeHoldingVersionObservation[];
+declare const holdingSources: ObservedLargeHoldingSource[];
+const holdingVersions=selectLargeHoldingReportVersions(holdingObservations,"2026-10-28T00:00:00Z");
+const observedHolding=searchObservedLargeHoldingReports(holdingObservations,holdingSources,{cutoff:"2026-10-28T00:00:00Z",dutyDate:"2025-06-16",scope:"report",metric:"holdingPercent"});
+void [holdingVersions.selected,observedHolding.unavailableSources];

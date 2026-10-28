@@ -95,3 +95,7 @@ export type { MajorShareholderDocument, MajorShareholderValue, MajorShareholderR
 
 export { LARGE_HOLDING_REPORT_VERSION, LargeHoldingMetric, extractLargeHoldingReport, searchLargeHoldingReports } from "./large-holding-report";
 export type { LargeHoldingMetadata, LargeHoldingDocument, LargeHoldingEvidence, LargeHoldingSelection, LargeHoldingRow, LargeHoldingReport, LargeHoldingSearchOptions } from "./large-holding-report";
+export { LARGE_HOLDING_VERSIONS_VERSION, selectLargeHoldingReportVersions } from "./large-holding-versions";
+export type { LargeHoldingVersionDocument, LargeHoldingVersionObservation, LargeHoldingVersionReason, LargeHoldingVersionDecision, SelectedLargeHoldingObservation, LargeHoldingVersionSelection } from "./large-holding-versions";
+export { searchObservedLargeHoldingReports } from "./observed-large-holding";
+export type { ObservedLargeHoldingSource } from "./observed-large-holding";
