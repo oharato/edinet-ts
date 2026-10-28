@@ -83,3 +83,6 @@ export type { MainCustomerDocument, MainCustomerRow, MainCustomerExtraction, Mai
 
 export { SEGMENT_DETAILS_VERSION, SegmentMetric, extractSegmentDetails, searchSegmentDetails } from "./segment-details";
 export type { SegmentColumnRole, SegmentPeriod, SegmentTableDeclaration, SegmentDetailDocument, SegmentValue, SegmentColumn, SegmentDetailExtraction, SegmentSearchOptions } from "./segment-details";
+
+export { AFFILIATED_COMPANY_DETAILS_VERSION, AffiliatedRelationship, extractAffiliatedCompanies, searchAffiliatedCompanies } from "./affiliated-company-details";
+export type { CapitalCurrency, AffiliatedCompanyDocument, AffiliatedCapital, AffiliatedPercent, AffiliatedVotingDisplay, AffiliatedCompanyRow, AffiliatedCompanyExtraction, AffiliatedCompanySearchOptions } from "./affiliated-company-details";

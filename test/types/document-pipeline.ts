@@ -65,3 +65,13 @@ if (segmentProfit.status === "missing") { const absentProfit: string = segmentPr
 searchSegmentDetails([segmentDocument], { period: { startDate: "2025-04-01", endDate: "2026-03-31" }, role: "reported-segment" });
 // @ts-expect-error セグメントと集計の役割を未指定で混ぜない
 searchSegmentDetails([segmentDocument], { period: { startDate: "2025-04-01", endDate: "2026-03-31" } });
+
+import { extractAffiliatedCompanies, searchAffiliatedCompanies, AffiliatedRelationship, type AffiliatedCompanyDocument } from "../../src/index";
+const affiliateInput: AffiliatedCompanyDocument = { xml: "xml", selection: { docID: "SAMPLE", kind: DisclosureTableKind.AffiliatedEntities, contextRef: "filing" }, reportingPeriodEnd: "2026-03-31", accountingStandard: "J-GAAP", proof: { rawSha256: "hash", indirectIncluded: true }, tables: [{ tableIndex: 0 }] };
+const relatedCapital = extractAffiliatedCompanies(affiliateInput).rows[0].capital;
+if (relatedCapital.currency !== null && relatedCapital.amount.status === "numeric") { const exactCapital: string = relatedCapital.amount.decimal; }
+// @ts-expect-error 未確認の通貨/値をJPYへ置換しない
+if (relatedCapital.currency === null) { const unknownAmount = relatedCapital.amount.decimal; }
+searchAffiliatedCompanies([affiliateInput], { reportingPeriodEnd: "2026-03-31", relationship: AffiliatedRelationship.Parent, entryKind: "named" });
+// @ts-expect-error 関係会社区分と集計/個別を未指定で混ぜない
+searchAffiliatedCompanies([affiliateInput], { reportingPeriodEnd: "2026-03-31" });

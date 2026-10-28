@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { searchAffiliatedCompanies } from "./affiliated-company-details";
 import { searchSegmentDetails } from "./segment-details";
 import { searchMainCustomerDetails } from "./main-customer-details";
 import { screenSubsidiaryHumanCapitalMetrics } from "./subsidiary-human-capital-metrics";
@@ -431,6 +432,37 @@ program.command("screen-subsidiary-human-capital")
             for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error();
             console.log(JSON.stringify(screenSubsidiaryHumanCapitalMetrics(documents, options.metric, { conditions: JSON.parse(options.conditions), labelContains: options.labelContains, childcareMethod: options.childcareMethod, order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit) }), null, options.pretty ? 2 : undefined));
         } catch { console.error("子会社表の原本・対象期末・項目・定義・注記宣言を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("search-affiliated-companies")
+    .description("関係会社区分・記載名・通貨/議決権条件で逆引きします")
+    .requiredOption("--manifest <path>", "file/selection/reportingPeriodEnd/accountingStandard/proof/tablesのJSON配列")
+    .requiredOption("--period-end <date>", "報告年度の期末（関係成立日ではありません）")
+    .requiredOption("--relationship <kind>", "consolidated-subsidiary/parent等の記載区分")
+    .requiredOption("--entry-kind <kind>", "namedまたはaggregate")
+    .option("--name-contains <text>", "元の会社表示名に含まれる文字列")
+    .option("--address-contains <text>", "元の住所に含まれる文字列")
+    .option("--business-contains <text>", "元の事業内容に含まれる文字列")
+    .option("--capital <json>", "currency/operator/valueの基本通貨単位条件")
+    .option("--voting <json>", "direction/component/operator/valueの百分率条件")
+    .option("--sort <order>", "name-ascまたはname-desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数", "100")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifest = path.resolve(options.manifest), entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifest, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error();
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "selection", "reportingPeriodEnd", "accountingStandard", "proof", "tables"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
+                const input = readRegularFile(path.resolve(path.dirname(manifest), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes)); bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true }).decode(input.bytes), selection: entry.selection, reportingPeriodEnd: entry.reportingPeriodEnd, accountingStandard: entry.accountingStandard, proof: entry.proof, tables: entry.tables };
+            });
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            console.log(JSON.stringify(searchAffiliatedCompanies(documents, { reportingPeriodEnd: options.periodEnd, relationship: options.relationship, entryKind: options.entryKind, nameContains: options.nameContains,
+                addressContains: options.addressContains, businessContains: options.businessContains, capital: options.capital === undefined ? undefined : JSON.parse(options.capital), voting: options.voting === undefined ? undefined : JSON.parse(options.voting), sort: options.sort, offset: Number(options.offset), limit: Number(options.limit) }), null, options.pretty ? 2 : undefined));
+        } catch { console.error("関係会社の原本・報告期末・表の区分/継続・通貨・注記・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("search-segments")
