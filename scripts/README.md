@@ -47,3 +47,11 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 
 - **`src/utils/type-doc-defs.ts`**: 自動生成されます。**手動で編集しないでください。**
 - **`src/utils/type-doc-helpers.ts`**: ヘルパー関数群です。こちらは手動で管理される静的なファイルです。
+
+## 固定年次取得の実行補助
+
+`roadmap/acquisition-batch-control.mjs` は固定runtimeの取得scriptが使う補助です。単体ではDBや通信を開きません。既存SDKの上限100件と同じ取得順のprefixを使い、20件単位の停止判定・3試行上限、本文取得前後の32GiB+2GiB空き容量確認を保ちます。キャッシュ即時返却時も停止signalを処理するためevent loopへ制御を返します。
+
+固定runtimeへのコピー、全ファイルmanifest、実行scriptの指紋とunitの引継ぎは [専用サービス](../docs/ROADMAP_RUNTIME.md)を参照してください。稼働runtime内のファイルを直接更新する運用は行いません。
+
+`isSourceReady` は構築待機側が使う検査です。現在のsystemd unit PID・期待する取得scriptのSHA-256・固定計画・正確なscript argvが一致した場合だけ、新workerの初期summaryと認めます。古いsummaryや同名に似たパスを起動完了の証拠として使いません。
