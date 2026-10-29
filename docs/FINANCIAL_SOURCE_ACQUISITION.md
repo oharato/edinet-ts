@@ -14,6 +14,9 @@
 | `declaration-only` | 最新hashの観測はあるが内容なし |
 | `stored` | 最新hashの内容があり、保存byteのhashも一致 |
 | `conflicting` | 最新の同時刻観測に複数hashあり |
+| `unavailable` | 選択された一覧観測でXBRL未提供が明示され、保存済みXMLなし |
+
+`unavailable` の理由は `xbrl-not-provided`。`formatAvailability` は選択書類自身の観測ID・時刻とXBRL/PDF/CSV/添付/英文の宣言です。各形式の `0`/`1` は未提供/提供、欠損・null・未知コードはそれぞれ区別します。未知の場合は従来どおり取得対象です。検査済みの保存XMLがあれば `stored` を優先し、形式宣言だけで原本を消しません。未提供は取得通信から除外しますが、財務利用の欠損理由として残します。
 
 原本観測の索引/record hash、保存内容のhashが破損していれば計画を失敗させます。破損を不足扱いにして再取得・上書きしません。異なる書類が同じhashを持つ場合は既存の内容を共有します。
 

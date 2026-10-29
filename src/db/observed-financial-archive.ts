@@ -1,7 +1,7 @@
 import { assertXmlInput } from "../xml-input";
 import { createHash } from "node:crypto";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
-import { captureDocumentVersionObservations, selectDocumentVersions, type DocumentVersionObservation } from "../document-version-selection";
+import { captureDocumentVersionObservations, selectDocumentVersions, type DocumentVersionObservation, type SelectedDocumentVersion } from "../document-version-selection";
 import { captureObservedFinancialSources, createObservedFinancialSnapshotsUsing, ObservedFinancialResolutionFatalError, type ObservedFinancialSource, type ObservedFinancialSnapshotOptions, type ObservedFinancialSnapshotRecord, type ObservedFinancialSourceReason } from "../observed-financial-snapshots";
 import { createAutomaticFinancialSnapshots, normalizeAutomaticFinancialDetailMetricIds, AutomaticFinancialProjectionError, type AutomaticFinancialSnapshotOptions } from "../automatic-financial-snapshots";
 import { parseDocumentTimestamp as timestamp } from "../document-timestamp";
@@ -22,7 +22,9 @@ export interface FinancialSourceAcquisitionItem {
     rootDocID: string;
     docID: string;
     edinetCode: string;
-    status: "missing" | "declaration-only" | "stored" | "conflicting";
+    status: "missing" | "declaration-only" | "stored" | "conflicting" | "unavailable";
+    reason?: "xbrl-not-provided";
+    formatAvailability?: SelectedDocumentVersion["formatAvailability"];
     availableAt?: string;
     sourceSha256?: string;
     availableByCutoff: boolean;
@@ -296,15 +298,17 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                     return body;
                 });
                 const latest = declarations[0];
-                const item: FinancialSourceAcquisitionItem = { rootDocID: s.rootDocID, docID, edinetCode: s.observation.document.edinetCode!, status: "missing", availableByCutoff: false };
+                const item: FinancialSourceAcquisitionItem = { rootDocID: s.rootDocID, docID, edinetCode: s.observation.document.edinetCode!, status: "missing", availableByCutoff: false, ...(s.formatAvailability?{formatAvailability:s.formatAvailability}:{}) };
+                const absent = ():FinancialSourceAcquisitionItem => s.formatAvailability?.formats.xbrl.state === "not-provided" ? {...item,status:"unavailable",reason:"xbrl-not-provided"} : item;
                 if (!latest)
-                    return item;
+                    return absent();
                 const latestMs = timestamp(latest.availableAt, true)!;
                 if (new Set(declarations.filter(d => timestamp(d.availableAt, true) === latestMs).map(d => d.sourceSha256)).size > 1)
                     return { ...item, status: "conflicting", availableAt: latest.availableAt };
                 const content = this.rows("SELECT xml FROM archive_contents WHERE sha256=?", [latest.sourceSha256]);
                 if (content.length && (!(content[0].xml instanceof Uint8Array) || hash(content[0].xml) !== latest.sourceSha256))
                     throw new Error("保存原本のhashが一致しません");
+                if (!content.length && s.formatAvailability?.formats.xbrl.state === "not-provided") return absent();
                 return { ...item, status: content.length ? "stored" : "declaration-only", sourceSha256: latest.sourceSha256, availableAt: latest.availableAt, availableByCutoff: content.length > 0 && latestMs <= timestamp(cutoff, true)! };
             }).sort((a, b) => a.docID < b.docID ? -1 : a.docID > b.docID ? 1 : 0);
             return { cutoff, edinetCodes, selection, items };
@@ -325,7 +329,7 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
         const { limit = 20, afterDocID, signal } = batch;
         if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || afterDocID !== undefined && (typeof afterDocID !== "string" || (!afterDocID.trim() || afterDocID.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(afterDocID))) || signal !== undefined && !(signal instanceof AbortSignal))
             throw new Error("取得は1〜100件・書類cursor・AbortSignalで指定してください");
-        const plan = this.planSourceAcquisition(options), pending = plan.items.filter(i => i.status !== "stored" && (afterDocID === undefined || i.docID > afterDocID));
+        const plan = this.planSourceAcquisition(options), pending = plan.items.filter(i => i.status !== "stored" && i.status !== "unavailable" && (afterDocID === undefined || i.docID > afterDocID));
         const results: FinancialSourceAcquisitionResult["results"] = [];
         let cursor = afterDocID;
         for (const item of pending.slice(0, limit)) {

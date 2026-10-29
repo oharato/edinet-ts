@@ -3,14 +3,14 @@ import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import { ObservedFinancialArchive, type FinancialSourceAcquisitionItem } from "./observed-financial-archive";
 import { normalizeFinancialIndexPopulation, isFinancialIndexGenerationId, type FinancialIndexPopulation } from "./financial-search-index";
 import { parseDocumentTimestamp as timestamp } from "../document-timestamp";
-export const FINANCIAL_SOURCE_JOB_VERSION = "1";
+export const FINANCIAL_SOURCE_JOB_VERSION = "2";
 export interface FinancialSourceJobInput {
     id: string;
     cutoff: string;
     population: FinancialIndexPopulation;
 }
 export interface FinancialSourceJobPlan extends FinancialSourceJobInput {
-    jobVersion: typeof FINANCIAL_SOURCE_JOB_VERSION;
+    jobVersion: "1" | typeof FINANCIAL_SOURCE_JOB_VERSION;
     archiveSha256: string;
     observationsSha256: string;
     documents: FinancialSourceAcquisitionItem[];
@@ -22,7 +22,7 @@ export interface FinancialSourceJobPlan extends FinancialSourceJobInput {
 }
 export interface FinancialSourceJobTask {
     docID: string;
-    status: "pending" | "running" | "failed" | "complete";
+    status: "pending" | "running" | "failed" | "complete" | "unavailable";
     attempts: number;
     sourceSha256?: string;
     availableAt?: string;
@@ -45,6 +45,7 @@ export interface FinancialSourceJobProgress {
     running: number;
     failed: number;
     completed: number;
+    unavailable: number;
     finished: boolean;
 }
 const schema = {
@@ -108,7 +109,7 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
             const plan: FinancialSourceJobPlan = { ...fixed, jobVersion: FINANCIAL_SOURCE_JOB_VERSION, archiveSha256, observationsSha256, documents, selectionCounts }, body = canonical(plan);
             this.run("INSERT INTO source_job_plans VALUES(?,?,?)", [plan.id, body, hash(body)]);
             for (const d of documents)
-                this.writeTask(plan.id, { docID: d.docID, status: d.status === "stored" ? "complete" : "pending", attempts: 0, ...(d.status === "stored" ? { sourceSha256: d.sourceSha256, availableAt: d.availableAt } : {}) }, true);
+                this.writeTask(plan.id, { docID: d.docID, status: d.status === "stored" ? "complete" : d.status === "unavailable" ? "unavailable" : "pending", attempts: 0, ...(d.status === "stored" ? { sourceSha256: d.sourceSha256, availableAt: d.availableAt } : {}) }, true);
             return this.readProgress(plan.id);
         });
     }
@@ -142,10 +143,10 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
             throw new Error("取得計画が未保存またはhash不一致です");
         const plan = JSON.parse(row.body) as FinancialSourceJobPlan;
         normalizeFinancialSourceJobInput({ id: plan.id, cutoff: plan.cutoff, population: plan.population });
-        if (plan.id !== id || plan.jobVersion !== FINANCIAL_SOURCE_JOB_VERSION || !sha(plan.archiveSha256) || !sha(plan.observationsSha256) || !Array.isArray(plan.documents) || plan.documents.length > 100000)
+        if (plan.id !== id || !["1",FINANCIAL_SOURCE_JOB_VERSION].includes(plan.jobVersion) || !sha(plan.archiveSha256) || !sha(plan.observationsSha256) || !Array.isArray(plan.documents) || plan.documents.length > 100000)
             throw new Error("取得計画が不整合です");
         const targets = new Map(plan.documents.map(d => [d.docID, d])), codes = new Set(plan.population.edinetCodes);
-        if (targets.size !== plan.documents.length || plan.documents.some(d => typeof d.docID !== "string" || !d.docID || !codes.has(d.edinetCode) || !["missing", "declaration-only", "conflicting", "stored"].includes(d.status)))
+        if (targets.size !== plan.documents.length || plan.documents.some(d => typeof d.docID !== "string" || !d.docID || !codes.has(d.edinetCode) || !["missing", "declaration-only", "conflicting", "stored", "unavailable"].includes(d.status) || d.status === "unavailable" && (plan.jobVersion !== "2" || d.reason !== "xbrl-not-provided" || d.formatAvailability?.formats.xbrl.state !== "not-provided" || d.formatAvailability?.formats.xbrl.code !== "0" || typeof d.formatAvailability?.observationId !== "string" || !d.formatAvailability.observationId.trim() || timestamp(d.formatAvailability.observedAt,true) === undefined)))
             throw new Error("取得対象が不整合です");
         const tasks = this.rows("SELECT * FROM source_job_tasks WHERE job=? ORDER BY doc_id", [id]).map(r => this.decode(r, id) as FinancialSourceJobTask), history = this.rows("SELECT * FROM source_job_attempts WHERE job=? ORDER BY doc_id,number", [id]).map(r => this.decode(r, id, true) as FinancialSourceJobAttempt);
         if (tasks.length !== targets.size)
@@ -156,15 +157,16 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
             list.push(attempt);
             byDocument.set(attempt.docID, list);
         }
-        const counts = { pending: 0, running: 0, failed: 0, completed: 0 };
+        const counts = { pending: 0, running: 0, failed: 0, completed: 0, unavailable: 0 };
         for (const task of tasks) {
-            if (!targets.has(task.docID) || !Number.isSafeInteger(task.attempts) || task.attempts < 0 || !["pending", "running", "failed", "complete"].includes(task.status) || task.status === "complete" && (!sha(task.sourceSha256) || timestamp(task.availableAt, true) === undefined))
+            if (!targets.has(task.docID) || !Number.isSafeInteger(task.attempts) || task.attempts < 0 || !["pending", "running", "failed", "complete", "unavailable"].includes(task.status) || task.status === "complete" && (!sha(task.sourceSha256) || timestamp(task.availableAt, true) === undefined))
                 throw new Error("取得taskが不整合です");
             const attempts = byDocument.get(task.docID) ?? [];
             if (attempts.length !== task.attempts || attempts.some((a, i) => a.number !== i + 1 || timestamp(a.startedAt, true) === undefined || !["started", "complete", "failed", "interrupted"].includes(a.status) || a.status !== "started" && (timestamp(a.endedAt, true) === undefined || timestamp(a.endedAt, true)! < timestamp(a.startedAt, true)!) || a.status === "started" && (i !== attempts.length - 1 || task.status !== "running")))
                 throw new Error("取得試行履歴が不整合です");
             if (attempts.some(a => a.status === 'started' && (a.endedAt !== undefined || a.outcome !== undefined || a.errorCode !== undefined) || a.status === 'complete' && (!['downloaded', 'reused'].includes(a.outcome ?? '') || a.errorCode !== undefined) || a.status === 'failed' && (a.errorCode !== 'source-acquisition-failed' || a.outcome !== undefined) || a.status === 'interrupted' && (a.errorCode !== 'source-acquisition-interrupted' || a.outcome !== undefined)))
                 throw new Error("試行結果が不整合です");
+            if (task.status === "unavailable" && (plan.jobVersion !== "2" || targets.get(task.docID)!.status !== "unavailable" || task.attempts !== 0 || task.sourceSha256 !== undefined || task.availableAt !== undefined) || task.status !== "unavailable" && targets.get(task.docID)!.status === "unavailable") throw new Error("未提供taskの根拠が不整合です");
             const last = attempts.at(-1);
             if (task.status === "running" && last?.status !== "started" || task.status === "failed" && !['failed', 'interrupted'].includes(last?.status ?? '') || task.status === "pending" && task.attempts !== 0 || task.status === "complete" && task.attempts > 0 && last?.status !== "complete" || task.status === "complete" && task.attempts === 0 && targets.get(task.docID)!.status !== "stored")
                 throw new Error("取得taskと履歴が一致しません");
@@ -175,7 +177,7 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
         }
         if (history.some(a => !targets.has(a.docID)))
             throw new Error("対象外の試行履歴があります");
-        return { plan, planSha256: String(row.sha256), tasks, history, ...counts, finished: counts.completed === tasks.length };
+        return { plan, planSha256: String(row.sha256), tasks, history, ...counts, finished: counts.completed + counts.unavailable === tasks.length };
     }
     progress(id: string): FinancialSourceJobProgress {
         if (this.working)
@@ -186,7 +188,7 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
         if (archive.observationsSha256() !== progress.plan.observationsSha256)
             throw new Error("一覧観測の指紋が計画と異なります");
         const targets = new Map(progress.plan.documents.map(d => [d.docID, d])), groups = new Map<string, FinancialSourceJobTask[]>();
-        for (const task of progress.tasks.filter(t => t.status === 'complete')) {
+        for (const task of progress.tasks.filter(t => t.status === 'complete' || t.status === 'unavailable')) {
             const code = targets.get(task.docID)!.edinetCode, list = groups.get(code) ?? [];
             list.push(task);
             groups.set(code, list);
@@ -195,6 +197,11 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
             const inventory = new Map(archive.planSourceAcquisition({ cutoff: progress.plan.cutoff, edinetCodes: [code] }).items.map(d => [d.docID, d]));
             for (const task of tasks) {
                 const item = inventory.get(task.docID);
+                if (task.status === 'unavailable') {
+                    if (item?.status !== 'unavailable' || item.reason !== 'xbrl-not-provided' || canonical(item.formatAvailability) !== canonical(targets.get(task.docID)!.formatAvailability))
+                        throw new Error("未提供checkpointと一覧観測が一致しません");
+                    continue;
+                }
                 if (item?.status !== 'stored' || item.sourceSha256 !== task.sourceSha256 || item.availableAt !== task.availableAt)
                     throw new Error("完了checkpointと保存原本が一致しません");
             }
@@ -207,13 +214,14 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
         selectionCutoff: string;
         population: FinancialIndexPopulation;
         documents: number;
+        unavailableDocuments: FinancialSourceAcquisitionItem[];
     } {
         const progress = this.progress(id);
         if (!progress.finished)
             throw new Error("原本取得は全件完了していません");
         const archiveSha256 = archive.snapshotSha256();
         this.auditCompleted(progress, archive);
-        return { planSha256: progress.planSha256, archiveSha256, selectionCutoff: progress.plan.cutoff, population: progress.plan.population, documents: progress.completed };
+        return { planSha256: progress.planSha256, archiveSha256, selectionCutoff: progress.plan.cutoff, population: progress.plan.population, documents: progress.completed, unavailableDocuments: progress.plan.documents.filter(d=>d.status==="unavailable") };
     }
     async runNext(id: string, archive: ObservedFinancialArchive, fetchXbrl: (docID: string, request: {
         signal?: AbortSignal;
@@ -235,7 +243,7 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
         archive.append([], []);
         this.working = true;
         try {
-            const chosen = before.tasks.filter(t => t.status !== 'complete').sort((a, b) => (a.status === 'pending' ? 0 : 1) - (b.status === 'pending' ? 0 : 1) || a.attempts - b.attempts || (a.docID < b.docID ? -1 : 1)).slice(0, limit);
+            const chosen = before.tasks.filter(t => t.status !== 'complete' && t.status !== 'unavailable').sort((a, b) => (a.status === 'pending' ? 0 : 1) - (b.status === 'pending' ? 0 : 1) || a.attempts - b.attempts || (a.docID < b.docID ? -1 : 1)).slice(0, limit);
             for (const candidate of chosen) {
                 if (signal?.aborted)
                     break;
@@ -266,6 +274,7 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
                     if (archive.observationsSha256() !== plan.observationsSha256)
                         throw new Error("一覧観測の指紋が計画と異なります");
                     const status = archive.planSourceAcquisition({ cutoff: plan.cutoff, edinetCodes: [target.edinetCode] }).items.find(i => i.docID === target.docID && i.rootDocID === target.rootDocID);
+                    if (status?.status === "unavailable") throw new Error("取得可否が計画と異なります");
                     if (!status)
                         throw new Error("取得対象の選択が変わっています");
                     let source: {

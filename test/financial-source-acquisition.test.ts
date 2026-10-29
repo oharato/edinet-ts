@@ -63,3 +63,10 @@ it('原本commitの失敗を成功とせず、再巡回で保存し直す',()=>f
 it('取得途中のclose後に次の原本へ通信を続けない',()=>fixture(async a=>{
  const f=vi.fn(async()=>{a.close();return xml;});await expect(a.acquireSources({cutoff},f)).rejects.toThrow('close');expect(f).toHaveBeenCalledTimes(1);
 }));
+it('未提供宣言より検査済み原本を優先し、不明宣言は取得する',()=>fixture(async a=>{
+ a.append(['A1','A2','A3'].map(docID=>({...observation(docID),observationId:docID+'-format',observedAt:'2026-06-27T00:00:00Z',document:{...observation(docID).document,xbrlFlag:docID==='A3'?'unknown':'0'}})));
+ a.append([],[{docID:'A1',availableAt:'2026-06-28T00:00:00Z',sourceSha256:hash(xml),xml}]);
+ expect(a.planSourceAcquisition({cutoff}).items.map(i=>i.status)).toEqual(['stored','unavailable','missing']);
+ const f=vi.fn(async()=>xml);const result=await a.acquireSources({cutoff},f);expect(result.results.map(r=>r.docID)).toEqual(['A3']);expect(f).toHaveBeenCalledTimes(1);
+ expect(a.createSnapshots({cutoff,extractorVersion:'test'}).unavailableSources).toContainEqual(expect.objectContaining({docID:'A2',reason:'xbrl-not-provided'}));
+}));

@@ -1,3 +1,4 @@
+import {DOCUMENT_FORMAT_KEYS,describeDocumentFormats,type DocumentFormats} from "./document-formats";
 import { parseDocumentTimestamp as timestamp } from "./document-timestamp";
 import { analyzeDocumentRelations, type DocumentRelationObservation, type AnalyzedDocumentObservation } from "./document-relations";
 
@@ -15,6 +16,7 @@ export interface DocumentVersionDecision {
 }
 export interface SelectedDocumentVersion {
     rootDocID: string; chainDocIDs: string[]; observationIds: string[];
+    formatAvailability?: {observationId:string;observedAt:string;formats:DocumentFormats};
     observation: AnalyzedDocumentObservation;
     /** 選択判断に使った系列内の最新観測時刻。提出時刻とは別です。 */
     observedAt: string;
@@ -160,7 +162,8 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
         rootDocID: d.rootDocID, chainDocIDs: [...d.chainDocIDs], observationIds: [...d.observationIds],
         observation: structuredClone(latest.get(d.selectedDocID!)!.observation),
         observedAt: new Date(Math.max(...d.observationIds.map(id => byObservationId.get(id)!.observed))).toISOString(),
-        targetPeriod: {...d.targetPeriod!}
+        targetPeriod: {...d.targetPeriod!},
+        ...(DOCUMENT_FORMAT_KEYS.some(k=>latest.get(d.selectedDocID!)!.observation.document[k]!==undefined)?{formatAvailability:{observationId:latest.get(d.selectedDocID!)!.observation.observationId,observedAt:new Date(latest.get(d.selectedDocID!)!.observedAt).toISOString(),formats:describeDocumentFormats(latest.get(d.selectedDocID!)!.observation.document)}}:{})
     }));
     return { cutoff, decisions, selected, ignored, financialValuesMerged: false as const, reconstructedUnobservedHistory: false as const };
 }

@@ -9,7 +9,7 @@ export interface ObservedFinancialSnapshotRecord {
  /** 選択された一原本の直接結果。訂正差分と親原本を合成した完全版ではありません。 */
  result:AutomaticFinancialSnapshots;
 }
-export type ObservedFinancialSourceReason="source-missing"|"not-available-at-cutoff"|"source-before-submission"|"source-not-loaded"|"source-hash-mismatch"|"source-parse-failed"|"issuer-mismatch"|"security-code-mismatch"|"period-mismatch"|"report-type-mismatch"|"metric-projection-mismatch";
+export type ObservedFinancialSourceReason="xbrl-not-provided"|"source-missing"|"not-available-at-cutoff"|"source-before-submission"|"source-not-loaded"|"source-hash-mismatch"|"source-parse-failed"|"issuer-mismatch"|"security-code-mismatch"|"period-mismatch"|"report-type-mismatch"|"metric-projection-mismatch";
 /** 内部共有: 原本宣言を一回取得して検証します。 */
 export function captureObservedFinancialSources(sources:readonly ObservedFinancialSource[]){
  if(!Array.isArray(sources))throw new Error("財務原本は100件以下です");
@@ -44,7 +44,7 @@ export function createObservedFinancialSnapshotsUsing(observations:readonly Docu
  for(const selected of selection.selected){
   const d=selected.observation.document,docID=d.docID,s=byID.get(docID);
   const fail=(reason:ObservedFinancialSourceReason)=>unavailableSources.push({rootDocID:selected.rootDocID,docID,reason});
-  if(!s){fail("source-missing");continue;}
+  if(!s){fail(selected.formatAvailability?.formats.xbrl.state==="not-provided"?"xbrl-not-provided":"source-missing");continue;}
   const available=timestamp(s.availableAt,true)!;
   if(available>cut){fail("not-available-at-cutoff");continue;}
   if(available<timestamp(d.submitDateTime,false)!){fail("source-before-submission");continue;}

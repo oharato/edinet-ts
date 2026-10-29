@@ -71,3 +71,20 @@ it('失敗だけが残っても試行数の少ない書類から再試行する'
 it('完了後の新しい原本観測を同じcheckpointの内容に読み替えない',()=>fixture(async s=>{
  s.state.begin(input,s.frozen);await s.state.runNext('job',s.archive,async()=>xml);s.archive.append([],[{docID:'A1',availableAt:'2099-01-01T00:00:00Z',sourceSha256:createHash('sha256').update(xml).digest('hex'),xml}]);const f=vi.fn(async()=>xml);await expect(s.state.runNext('job',s.archive,f)).rejects.toThrow('完了checkpoint');expect(f).not.toHaveBeenCalled();
 }));
+it('XBRL未提供を取得成功に数えず根拠付きで完了し、fetchしない',()=>fixture(async s=>{
+ s.archive.append(['A1','A2','A3'].map(docID=>({observationId:docID+'-formats',observedAt:'2026-06-27T00:00:00Z',document:{docID,parentDocID:null,docTypeCode:'120',edinetCode:'E12345',secCode:'10010',periodStart:'2025-04-01',periodEnd:'2026-03-31',submitDateTime:'2026-06-24 10:00',withdrawalStatus:'0',disclosureStatus:'0',docInfoEditStatus:'0',xbrlFlag:'0',pdfFlag:'1'}})));
+ s.archive.close();const ro=new ObservedFinancialArchive(s.archivePath,{readOnly:true});s.reopen();try{
+ const p=s.state.begin(input,ro);expect(p).toMatchObject({unavailable:3,completed:0,pending:0,finished:true,history:[]});
+ expect(p.tasks.every(t=>t.status==='unavailable'&&t.attempts===0&&t.sourceSha256===undefined)).toBe(true);
+ const fetcher=vi.fn(async()=>xml);expect((await s.state.runNext('job',s.archive,fetcher)).finished).toBe(true);expect(fetcher).not.toHaveBeenCalled();
+ expect(s.state.finish('job',ro)).toMatchObject({documents:0,unavailableDocuments:expect.arrayContaining([expect.objectContaining({docID:'A1',reason:'xbrl-not-provided'})])});
+ }finally{ro.close();}
+}));
+it('形式宣言のない旧版1計画を変更せず再開できる',()=>fixture(async s=>{
+ s.state.begin(input,s.frozen);s.state.close();const db=new Database(s.statePath);
+ try{
+ const row=db.prepare('SELECT body FROM source_job_plans WHERE id=?').get('job') as {body:string};
+ const plan=JSON.parse(row.body);plan.jobVersion='1';const body=JSON.stringify(plan);db.prepare('UPDATE source_job_plans SET body=?,sha256=? WHERE id=?').run(body,createHash('sha256').update(body).digest('hex'),'job');
+ }finally{db.close();}
+ s.reopen();expect(s.state.progress('job').plan.jobVersion).toBe('1');expect((await s.state.runNext('job',s.archive,async()=>xml)).completed).toBe(3);s.archive.close();const finishedArchive=new ObservedFinancialArchive(s.archivePath,{readOnly:true});try{expect(s.state.finish('job',finishedArchive).unavailableDocuments).toEqual([]);}finally{finishedArchive.close();}
+}));

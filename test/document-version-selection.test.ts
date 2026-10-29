@@ -81,3 +81,17 @@ describe("観測済みの訂正系列をcutoffで選択", () => {
         expect(selectDocumentVersions([a, b], cutoff).decisions[0].selectedDocID).toBe("B");
     });
 });
+
+it("形式宣言は訂正書類自身の観測を参照し、将来の宣言を混ぜない", () => {
+ const root=observation("A",undefined,undefined,{xbrlFlag:"1"});
+ const correction=observation("B","A","2025-06-25 11:00",{xbrlFlag:0,pdfFlag:"1"});
+ root.observedAt="2025-06-25T12:30:00+09:00";
+ const future=structuredClone(correction);future.observationId="B-future";future.observedAt="2025-06-26T12:00:00+09:00";future.document.xbrlFlag="1";
+ const result=selectDocumentVersions([root,correction,future],cutoff);
+ expect(result.selected[0]).toMatchObject({formatAvailability:{observationId:"B",observedAt:"2025-06-25T03:00:00.000Z",formats:{xbrl:{state:"not-provided",code:"0"}}}});
+});
+it("同時刻の形式宣言の矛盾を選択しない",()=>{
+ const a=observation("A",undefined,undefined,{xbrlFlag:"0"}),b=structuredClone(a);b.observationId="copy";b.document.xbrlFlag="1";
+ expect(selectDocumentVersions([a,b],cutoff).decisions[0]).toMatchObject({status:"unresolved",reason:"conflicting-observations"});
+ b.document.xbrlFlag=0;expect(selectDocumentVersions([a,b],cutoff).decisions[0].status).toBe("selected");
+});

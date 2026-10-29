@@ -1,3 +1,4 @@
+import {DOCUMENT_FORMAT_KEYS,normalizeDocumentFormatFlag,type DocumentFormatFlag} from "./document-formats";
 /** API一覧の状態区分。財務値の正しさや採用する原本を決める値ではありません。 */
 export const DocumentWithdrawalStatus = Object.freeze({ Other: "0", WithdrawalNotice: "1", Withdrawn: "2" } as const);
 export type DocumentWithdrawalStatus = typeof DocumentWithdrawalStatus[keyof typeof DocumentWithdrawalStatus];
@@ -14,6 +15,7 @@ export const DOCUMENT_RELATIONS_MAX_PARENT_REFERENCES = 100000;
 
 export interface DocumentRelationDocument {
     docID: string;
+    xbrlFlag?: DocumentFormatFlag; pdfFlag?: DocumentFormatFlag; csvFlag?: DocumentFormatFlag; attachDocFlag?: DocumentFormatFlag; englishDocFlag?: DocumentFormatFlag;
     parentDocID?: string | null;
     withdrawalStatus?: string | number | null;
     docInfoEditStatus?: string | number | null;
@@ -51,7 +53,7 @@ export interface DocumentRelationsResult {
     diagnostics: DocumentRelationDiagnostic[];
     summary: { observations: number; documents: number; relations: number; diagnostics: number };
 }
-const documentKeys = ["docID", "parentDocID", "withdrawalStatus", "docInfoEditStatus", "disclosureStatus", "docTypeCode", "edinetCode", "secCode", "submitDateTime", "opeDateTime"] as const;
+const documentKeys = ["docID", "parentDocID", "withdrawalStatus", "docInfoEditStatus", "disclosureStatus", "docTypeCode", "edinetCode", "secCode", "submitDateTime", "opeDateTime", ...DOCUMENT_FORMAT_KEYS] as const;
 const statusKeys = ["withdrawalStatus", "docInfoEditStatus", "disclosureStatus"] as const;
 const labels = {
     withdrawalStatus: { "0": "取下区分はその他", "1": "取下書", "2": "取下げられた書類" },
@@ -82,6 +84,7 @@ function snapshot(value: DocumentRelationObservation): AnalyzedDocumentObservati
         const item = captured[key];
         if (item !== undefined && item !== null && (typeof item !== "string" || item.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(item))) throw new Error("任意の書類情報は256文字以下の文字列/null/未記録で指定してください");
     }
+    for (const key of DOCUMENT_FORMAT_KEYS) if (Object.hasOwn(captured,key)) captured[key] = normalizeDocumentFormatFlag(captured[key]);
     const statuses = Object.fromEntries(statusKeys.map(key => [key, status(captured[key], key)])) as AnalyzedDocumentObservation["statuses"];
     return { observationId, ...(listDate === undefined ? {} : { listDate }), document: captured as DocumentRelationDocument, statuses };
 }
