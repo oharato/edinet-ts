@@ -135,3 +135,5 @@ export {PublishedFinancialIndex} from "./published-financial-index";
 export type {PublishedFinancialIndexSnapshot,PublishedFinancialIndexSearchResult} from "./published-financial-index";
 
 export * from "./company-master-changes";
+
+export * from "./corporate-registry";
