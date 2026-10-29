@@ -41,7 +41,7 @@ it('不正cursor/重複/未来の対象日/過大状態を拒否する',()=>fixt
 }));
 it('7日より古い対象日を日次収集へ加え、同じ実行の再投入では通信しない',()=>fixture(async repo=>{
  old();repo.saveDocumentList([doc('A')],'2026-09-01');now();const state:any=daily(),fetch=vi.fn(async(date:string)=>date==='2026-10-24'?[edit()]:date==='2026-09-01'?[doc('A')]:[]);
- expect(await collectDailyMetadata(repo,fetch,state,()=>{})).toEqual({status:'complete',throughDate:'2026-10-29'});expect(fetch.mock.calls.map(c=>c[0])).toEqual(['2026-10-30',...Array.from({length:7},(_,i)=>`2026-10-${23+i}`),'2026-09-01']);expect(state.version).toBe(2);expect(state.notices.pending).toEqual([]);expect(state.notices.seen).toHaveLength(1);
+ expect(await collectDailyMetadata(repo,fetch,state,()=>{})).toEqual({status:'complete',throughDate:'2026-10-29'});expect(fetch.mock.calls.map(c=>c[0])).toEqual(['2026-10-30',...Array.from({length:7},(_,i)=>`2026-10-${23+i}`),'2026-09-01']);expect(state.version).toBe(3);expect(state.notices.pending).toEqual([]);expect(state.notices.seen).toHaveLength(1);
  fetch.mockClear();expect(await collectDailyMetadata(repo,fetch,state,()=>{})).toEqual({status:'already-complete'});expect(fetch).not.toHaveBeenCalled();expect(repo.getDocumentObservations({docID:'A'})[0].observedAt).toBe('2026-10-29T00:00:00.000Z');
 }));
 it('日別commit後・通知cursor保存前の停止でも、元一覧を再取得せず対象日を復元する',()=>fixture(async repo=>{

@@ -1,6 +1,6 @@
 import {it,expect,vi} from 'vitest';
 import {EdinetRepository} from '../dist/db/edinet-repository.js';
-import {collectDailyMetadata,canStartDailyMetadata} from '../scripts/roadmap/daily-metadata-control.mjs';
+import {collectDailyMetadata,canStartDailyMetadata,assertCompletedMetadataRun} from '../scripts/roadmap/daily-metadata-control.mjs';
 const initial=()=>({version:1,throughDate:'2026-10-28',budget:{date:'2026-10-30',requests:0}});
 async function fixture(fn:(repo:EdinetRepository)=>Promise<void>){vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-30T01:00:00.000Z'));const repo=new EdinetRepository(':memory:');try{await fn(repo)}finally{repo.close();vi.useRealTimers()}}
 it('当日probe後に7日を再観測し、同日再投入は通信しない',()=>fixture(async repo=>{
@@ -48,3 +48,15 @@ it('年次取得が固定計画・全件完了・停止を満たすまでは日�
  for(const status of ['active','activating','failed'])expect(canStartDailyMetadata(summary,status,expected)).toBe(false);
  expect(canStartDailyMetadata(undefined,'inactive',expected)).toBe(false);
 });
+
+it('完了証跡はprobeと固定末尾を保持し、改変した証跡を拒否する',()=>fixture(async repo=>{
+ const state:any=initial();await collectDailyMetadata(repo,async()=>[],state,()=>{});
+ expect(state.version).toBe(3);expect(state.active).toBeUndefined();expect(state.lastCompletedRun).toMatchObject({throughSequence:0,closedThrough:'2026-10-29',unresolvedNotices:0,probe:{date:'2026-10-30',documents:0}});
+ expect(()=>assertCompletedMetadataRun(state.lastCompletedRun,0,'2026-10-29')).not.toThrow();
+ for(const change of [{throughSequence:1},{completedAt:'2026-10-31T01:00:00.000Z'},{closedThrough:'2026-10-28'},{unresolvedNotices:-1},{probe:{...state.lastCompletedRun.probe,sha256:'invalid'}}])expect(()=>assertCompletedMetadataRun({...state.lastCompletedRun,...change},0,'2026-10-29')).toThrow('receipt');
+}));
+it('旧版の完了記録には証跡を捏造せず、新しいprobeと再観測で移行する',()=>fixture(async repo=>{
+ const state:any=initial(),fetch=vi.fn(async()=>[]);await collectDailyMetadata(repo,fetch,state,()=>{});
+ state.version=2;delete state.lastCompletedRun;vi.setSystemTime(new Date('2026-10-30T02:00:00Z'));fetch.mockClear();
+ expect((await collectDailyMetadata(repo,fetch,state,()=>{})).status).toBe('complete');expect(fetch).toHaveBeenCalledTimes(8);expect(state.lastCompletedRun.refreshAfter).toBe('2026-10-30T02:00:00.000Z');
+}));

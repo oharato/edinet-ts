@@ -18,7 +18,8 @@ const keys = (value, allowed) => value && typeof value === 'object' && !Array.is
 export async function collectDailyMetadata(repository, fetchList, state, save, {signal} = {}) {
     const today = jstDate(Date.now()), yesterday = shift(today, -1);
     if (typeof fetchList !== 'function' || typeof save !== 'function'
-        || !keys(state, ['version', 'throughDate', 'completedDay', 'budget', 'active', 'notices']) || ![1, 2].includes(state.version)
+        || !keys(state, ['version', 'throughDate', 'completedDay', 'budget', 'active', 'notices', 'lastCompletedRun']) || ![1, 2, 3].includes(state.version)
+        || state.version < 3 && state.lastCompletedRun !== undefined
         || state.version === 1 && state.notices !== undefined
         || !validDate(state.throughDate) || state.throughDate > yesterday
         || state.completedDay !== undefined && (!validDate(state.completedDay) || state.completedDay > today)
@@ -39,8 +40,10 @@ export async function collectDailyMetadata(repository, fetchList, state, save, {
             throw Error('Invalid daily metadata run');
     }
     repository.assertWritable();
-    if (state.version === 1) { state.version = 2; state.notices = {afterSequence: 0, seen: [], pending: [], unresolved: []}; }
+    if (state.version === 1) state.notices = {afterSequence: 0, seen: [], pending: [], unresolved: []};
+    state.version = 3;
     assertDailyNoticeState(state.notices, repository);
+    if (state.lastCompletedRun !== undefined) assertCompletedMetadataRun(state.lastCompletedRun, repository.getLastObservationSequence(), state.throughDate);
     const persist = () => save(structuredClone(state));
     const result = (status, fields = {}) => ({status, ...fields,
         ...(state.notices.pending.length ? {pendingNoticeDates: state.notices.pending.length} : {}),
@@ -48,7 +51,8 @@ export async function collectDailyMetadata(repository, fetchList, state, save, {
     if ((await scanDailyMetadataNotices(repository, state.notices, persist, {signal})).aborted) return result('aborted');
     if (state.budget.date !== today) state.budget = {date: today, requests: 0};
     if (!state.active) {
-        if (state.completedDay === today && !state.notices.pending.length) return result('already-complete');
+        if (state.completedDay === today && !state.notices.pending.length && state.lastCompletedRun?.probe.date === today
+            && state.lastCompletedRun.throughSequence === state.notices.afterSequence) return result('already-complete');
         const startDate = [shift(today, -7), shift(state.throughDate, 1)].sort()[0];
         state.active = {startDate, endDate: [yesterday, shift(startDate, 1830)].sort()[0], refreshAfter: new Date().toISOString()};
         await persist();
@@ -87,6 +91,8 @@ export async function collectDailyMetadata(repository, fetchList, state, save, {
         if (!pending.size) {
             state.throughDate = [state.throughDate, run.endDate].sort()[1];
             if (run.endDate === yesterday) state.completedDay = today;
+            state.lastCompletedRun = {startDate: run.startDate, endDate: run.endDate, refreshAfter: run.refreshAfter, probe: structuredClone(run.probe),
+                throughSequence: state.notices.afterSequence, closedThrough: state.throughDate, completedAt: new Date().toISOString(), unresolvedNotices: state.notices.unresolved.length};
             delete state.active;
             await persist();
             return result('complete', {throughDate: state.throughDate});
@@ -110,4 +116,18 @@ export function canStartDailyMetadata(summary, unit, expected) {
         && Number.isSafeInteger(summary.unavailable) && summary.unavailable >= 0
         && Number.isSafeInteger(summary.documents) && summary.documents > 0
         && summary.completed + summary.unavailable === summary.documents;
+}
+
+/** 完了時の提供元probeと対象範囲を、次の実行や財務計画からも照合します。 */
+export function assertCompletedMetadataRun(run, maxSequence, closedThrough) {
+    if (!keys(run, ['startDate','endDate','refreshAfter','probe','throughSequence','closedThrough','completedAt','unresolvedNotices'])
+        || !validDate(run.startDate) || !validDate(run.endDate) || run.startDate > run.endDate || !validDate(run.closedThrough)
+        || run.endDate > run.closedThrough || run.closedThrough !== closedThrough || run.closedThrough >= jstDate(Date.now())
+        || !validTime(run.refreshAfter) || !validTime(run.completedAt) || Date.parse(run.completedAt) > Date.now()
+        || Date.parse(run.refreshAfter) > Date.parse(run.completedAt) || !Number.isSafeInteger(run.throughSequence) || run.throughSequence < 0 || run.throughSequence > maxSequence
+        || !Number.isSafeInteger(run.unresolvedNotices) || run.unresolvedNotices < 0 || run.unresolvedNotices > 10000
+        || !keys(run.probe, ['date','observedAt','documents','sha256']) || !validDate(run.probe.date) || !validTime(run.probe.observedAt)
+        || jstDate(Date.parse(run.probe.observedAt)) !== run.probe.date || Date.parse(run.probe.observedAt) < Date.parse(run.refreshAfter)
+        || Date.parse(run.probe.observedAt) > Date.parse(run.completedAt) || !Number.isSafeInteger(run.probe.documents) || run.probe.documents < 0
+        || !/^[a-f0-9]{64}$/.test(run.probe.sha256)) throw Error('Invalid completed metadata run receipt');
 }
