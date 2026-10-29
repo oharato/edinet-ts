@@ -21,20 +21,20 @@ it('保存直後の停止は同じ開始時刻で再開し、保存済みの日�
  expect((await collectDailyMetadata(repo,fetch,checkpoint,()=>{})).status).toBe('complete');expect(fetch.mock.calls.map((c:any)=>c[0])).toEqual(Array.from({length:6},(_,i)=>`2026-10-${24+i}`));expect(repo.hasCompleteListForDate('2026-10-23',watermark)).toBe(true);
 }));
 it('API呼出し前に日次上限を保存し、翌日に同じ実行時刻と新しいprobeで再開する',()=>fixture(async repo=>{
- const state=initial();state.budget.requests=31;let checkpoint:any;const fetch=vi.fn(async()=>[]);
- expect(await collectDailyMetadata(repo,fetch,state,(s:any)=>{checkpoint=s})).toEqual({status:'budget-exhausted'});expect(fetch).toHaveBeenCalledTimes(1);expect(checkpoint.budget.requests).toBe(32);const start=checkpoint.active.refreshAfter;
+ const state=initial();state.budget.requests=255;let checkpoint:any;const fetch=vi.fn(async()=>[]);
+ expect(await collectDailyMetadata(repo,fetch,state,(s:any)=>{checkpoint=s})).toEqual({status:'budget-exhausted'});expect(fetch).toHaveBeenCalledTimes(1);expect(checkpoint.budget.requests).toBe(256);const start=checkpoint.active.refreshAfter;
  vi.setSystemTime(new Date('2026-10-31T01:00:00Z'));fetch.mockClear();expect((await collectDailyMetadata(repo,fetch,checkpoint,()=>{})).status).toBe('complete');expect(fetch.mock.calls[0][0]).toBe('2026-10-31');expect(checkpoint.throughDate).toBe('2026-10-29');expect(checkpoint.completedDay).toBeUndefined();expect(repo.hasCompleteListForDate('2026-10-29',start)).toBe(true);
 }));
 it('最終commit後のcheckpoint失敗を再開時に認識し、予算0でも完了する',()=>fixture(async repo=>{
  const state=initial();let checkpoint:any;const fetch=vi.fn(async()=>[]);
- await expect(collectDailyMetadata(repo,fetch,state,(s:any)=>{if(!s.active)throw Error('disk');checkpoint=s})).rejects.toThrow('disk');checkpoint.budget.requests=32;fetch.mockClear();expect((await collectDailyMetadata(repo,fetch,checkpoint,()=>{})).status).toBe('complete');expect(fetch).not.toHaveBeenCalled();
+ await expect(collectDailyMetadata(repo,fetch,state,(s:any)=>{if(!s.active)throw Error('disk');checkpoint=s})).rejects.toThrow('disk');checkpoint.budget.requests=256;fetch.mockClear();expect((await collectDailyMetadata(repo,fetch,checkpoint,()=>{})).status).toBe('complete');expect(fetch).not.toHaveBeenCalled();
 }));
 it('直近7日より古い未取得期間も飛ばさず、翌日も再観測する',()=>fixture(async repo=>{
  const state={...initial(),throughDate:'2026-10-19'},fetch=vi.fn(async()=>[]);await collectDailyMetadata(repo,fetch,state,()=>{});expect(fetch.mock.calls[1][0]).toBe('2026-10-20');
  vi.setSystemTime(new Date('2026-10-31T01:00:00Z'));fetch.mockClear();await collectDailyMetadata(repo,fetch,state,()=>{});expect(fetch.mock.calls.map((c:any)=>c[0])).toEqual(['2026-10-31',...Array.from({length:7},(_,i)=>`2026-10-${24+i}`)]);
 }));
 it('不正checkpoint・未来・巻戻った時計を通信前に拒否する',()=>fixture(async repo=>{
- const fetch=vi.fn(async()=>[]);for(const changed of [{version:2},{throughDate:'bad'},{throughDate:'2026-10-30'},{budget:{date:'2026-10-31',requests:0}},{budget:{date:'2026-10-30',requests:33}},{active:{startDate:'2026-10-23',endDate:'2026-10-29',refreshAfter:'2026-10-31T01:00:00.000Z'}}])await expect(collectDailyMetadata(repo,fetch,{...initial(),...changed},()=>{})).rejects.toThrow();expect(fetch).not.toHaveBeenCalled();
+ const fetch=vi.fn(async()=>[]);for(const changed of [{version:2},{throughDate:'bad'},{throughDate:'2026-10-30'},{budget:{date:'2026-10-31',requests:0}},{budget:{date:'2026-10-30',requests:257}},{active:{startDate:'2026-10-23',endDate:'2026-10-29',refreshAfter:'2026-10-31T01:00:00.000Z'}}])await expect(collectDailyMetadata(repo,fetch,{...initial(),...changed},()=>{})).rejects.toThrow();expect(fetch).not.toHaveBeenCalled();
 }));
 it('日付跨ぎと中断は新たな取得を止める',()=>fixture(async repo=>{
  const state=initial(),c=new AbortController(),fetch=vi.fn(async()=>{c.abort();return[]});expect(await collectDailyMetadata(repo,fetch,state,()=>{},{signal:c.signal})).toEqual({status:'aborted'});expect(fetch).toHaveBeenCalledTimes(1);

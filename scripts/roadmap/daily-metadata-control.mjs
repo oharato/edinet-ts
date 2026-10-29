@@ -1,5 +1,8 @@
 import {createHash} from 'node:crypto';
 import {backfillFinancialDocumentLists} from '../../dist/index.js';
+import {assertDailyNoticeState,scanDailyMetadataNotices} from './daily-metadata-notices.mjs';
+
+export const DAILY_METADATA_MAX_REQUESTS = 256;
 
 const DAY = 86400000;
 const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -15,11 +18,12 @@ const keys = (value, allowed) => value && typeof value === 'object' && !Array.is
 export async function collectDailyMetadata(repository, fetchList, state, save, {signal} = {}) {
     const today = jstDate(Date.now()), yesterday = shift(today, -1);
     if (typeof fetchList !== 'function' || typeof save !== 'function'
-        || !keys(state, ['version', 'throughDate', 'completedDay', 'budget', 'active']) || state.version !== 1
+        || !keys(state, ['version', 'throughDate', 'completedDay', 'budget', 'active', 'notices']) || ![1, 2].includes(state.version)
+        || state.version === 1 && state.notices !== undefined
         || !validDate(state.throughDate) || state.throughDate > yesterday
         || state.completedDay !== undefined && (!validDate(state.completedDay) || state.completedDay > today)
         || !keys(state.budget, ['date', 'requests']) || !validDate(state.budget.date) || state.budget.date > today
-        || !Number.isSafeInteger(state.budget.requests) || state.budget.requests < 0 || state.budget.requests > 32)
+        || !Number.isSafeInteger(state.budget.requests) || state.budget.requests < 0 || state.budget.requests > DAILY_METADATA_MAX_REQUESTS)
         throw Error('Invalid daily metadata checkpoint');
     if (state.active !== undefined) {
         const run = state.active;
@@ -35,10 +39,16 @@ export async function collectDailyMetadata(repository, fetchList, state, save, {
             throw Error('Invalid daily metadata run');
     }
     repository.assertWritable();
+    if (state.version === 1) { state.version = 2; state.notices = {afterSequence: 0, seen: [], pending: [], unresolved: []}; }
+    assertDailyNoticeState(state.notices, repository);
     const persist = () => save(structuredClone(state));
+    const result = (status, fields = {}) => ({status, ...fields,
+        ...(state.notices.pending.length ? {pendingNoticeDates: state.notices.pending.length} : {}),
+        ...(state.notices.unresolved.length ? {unresolvedNotices: state.notices.unresolved.length} : {})});
+    if ((await scanDailyMetadataNotices(repository, state.notices, persist, {signal})).aborted) return result('aborted');
     if (state.budget.date !== today) state.budget = {date: today, requests: 0};
     if (!state.active) {
-        if (state.completedDay === today) return {status: 'already-complete'};
+        if (state.completedDay === today && !state.notices.pending.length) return result('already-complete');
         const startDate = [shift(today, -7), shift(state.throughDate, 1)].sort()[0];
         state.active = {startDate, endDate: [yesterday, shift(startDate, 1830)].sort()[0], refreshAfter: new Date().toISOString()};
         await persist();
@@ -47,42 +57,48 @@ export async function collectDailyMetadata(repository, fetchList, state, save, {
     const reserve = async () => {
         if (signal?.aborted) return false;
         // 日付を跨いだ実行は次の起動で新しい当日probeを取得します。
-        if (jstDate(Date.now()) !== today || state.budget.requests === 32) return false;
+        if (jstDate(Date.now()) !== today || state.budget.requests === DAILY_METADATA_MAX_REQUESTS) return false;
         state.budget.requests++;
         await persist();
         return true;
     };
     if (run.probe?.date !== today) {
-        if (!await reserve()) return {status: signal?.aborted ? 'aborted' : 'budget-exhausted'};
+        if (!await reserve()) return result(signal?.aborted ? 'aborted' : 'budget-exhausted');
         let documents;
         try { documents = await fetchList(today, {signal}); }
-        catch { return {status: signal?.aborted ? 'aborted' : 'probe-failed'}; }
-        if (signal?.aborted) return {status: 'aborted'};
-        if (jstDate(Date.now()) !== today) return {status: 'day-changed'};
+        catch { return result(signal?.aborted ? 'aborted' : 'probe-failed'); }
+        if (signal?.aborted) return result('aborted');
+        if (jstDate(Date.now()) !== today) return result('day-changed');
         if (!Array.isArray(documents)) throw Error('Invalid daily metadata probe');
         run.probe = {date: today, observedAt: new Date().toISOString(), documents: documents.length,
             sha256: createHash('sha256').update(JSON.stringify(documents)).digest('hex')};
         await persist();
     }
     while (!signal?.aborted && jstDate(Date.now()) === today) {
-        // 予約残高なしでも、commit済み・checkpoint未保存の日は完了へ進められます。
-        const pending = [];
+        if ((await scanDailyMetadataNotices(repository, state.notices, persist, {signal})).aborted) return result('aborted');
+        // DB commit直後の停止も、保存済みmarkerで再開します。通知cursorは原観測から再生できます。
+        const remainingNotices = state.notices.pending.filter(p => !repository.hasCompleteListForDate(p.date, p.notBefore));
+        if (remainingNotices.length !== state.notices.pending.length) { state.notices.pending = remainingNotices; await persist(); }
+        const pending = new Map();
         for (let day = run.startDate; day <= run.endDate; day = shift(day, 1))
-            if (!repository.hasCompleteListForDate(day, run.refreshAfter)) pending.push(day);
-        if (!pending.length) {
+            if (!repository.hasCompleteListForDate(day, run.refreshAfter)) pending.set(day, run.refreshAfter);
+        for (const target of state.notices.pending)
+            pending.set(target.date, [pending.get(target.date) ?? target.notBefore, target.notBefore].sort()[1]);
+        if (!pending.size) {
             state.throughDate = [state.throughDate, run.endDate].sort()[1];
             if (run.endDate === yesterday) state.completedDay = today;
             delete state.active;
             await persist();
-            return {status: 'complete', throughDate: state.throughDate};
+            return result('complete', {throughDate: state.throughDate});
         }
-        if (!await reserve()) return {status: signal?.aborted ? 'aborted' : 'budget-exhausted'};
-        const result = await backfillFinancialDocumentLists(repository, fetchList,
-            {startDate: pending[0], endDate: pending[0], refreshAfter: run.refreshAfter, maxDays: 1, signal});
-        if (result.aborted) return {status: 'aborted'};
-        if (!result.complete) return {status: 'fetch-failed', date: pending[0]};
+        if (!await reserve()) return result(signal?.aborted ? 'aborted' : 'budget-exhausted');
+        const [day, notBefore] = pending.entries().next().value;
+        const page = await backfillFinancialDocumentLists(repository, fetchList,
+            {startDate: day, endDate: day, refreshAfter: notBefore, maxDays: 1, signal});
+        if (page.aborted) return result('aborted');
+        if (!page.complete) return result('fetch-failed', {date: day});
     }
-    return {status: signal?.aborted ? 'aborted' : 'day-changed'};
+    return result(signal?.aborted ? 'aborted' : 'day-changed');
 }
 
 /** 固定計画の全task完了と取得unit停止の両方が必要です。 */

@@ -58,4 +58,4 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 
 ## 日次metadata収集
 
-`roadmap/daily-metadata-control.mjs` と `roadmap/run-daily-metadata.mjs` は別metadata forkの観測を追記する運用補助です。固定年次計画が完了して取得unitが停止するまでAPI通信せず、当日probe・JST日次32要求・再開checkpoint・flock・34GiB容量余裕を使います。秘密値を出力せず、既存年次アーカイブや公開SDKは変更しません。固定runtime/configと定期起動の条件は [書類同期](../docs/FINANCIAL_DOCUMENT_SYNC.md#専用日次収集の運用補助)を参照してください。
+`roadmap/daily-metadata-control.mjs` と `roadmap/run-daily-metadata.mjs` は別metadata forkの観測を追記する運用補助です。`roadmap/daily-metadata-notices.mjs` は保存通知から既知の過去一覧日を追加し、通知cursor/identity/対象日と不明通知を保持します。固定年次計画が完了して取得unitが停止するまでAPI通信せず、当日probe・JST日次256要求・再開checkpoint・flock・34GiB容量余裕を使います。秘密値を出力せず、既存年次アーカイブや公開SDKは変更しません。固定runtime/configと定期起動の条件は [書類同期](../docs/FINANCIAL_DOCUMENT_SYNC.md#専用日次収集の運用補助)を参照してください。

@@ -22,7 +22,7 @@ try {
 
 開始/終了は有効な暦日で、終了は日本時間の当日まで、一回の指定範囲は日付差1,830日までです。この上限は本APIの処理上限であり、提供元の保存期間を宣言するものではありません。`maxDays` は新規取得日数で既定20・最大100。取得済みの閉じた日は再利用し、上限に数えません。
 
-一覧は書類種別で絞らず、日ごとに既存 `saveDocumentList` で原子的に保存します。書類0件の日にも取得証跡を残します。当日中の取得は完了扱いにせず、日本時間で翌日以降に一度取り直します。取得完了済み過去日の再取得は下記refreshAfterで指定します。修正通知の全形式解決は別の運用です。
+一覧は書類種別で絞らず、日ごとに既存 `saveDocumentList` で原子的に保存します。書類0件の日にも取得証跡を残します。当日中の取得は完了扱いにせず、日本時間で翌日以降に一度取り直します。取得完了済み過去日の再取得は下記refreshAfterで指定します。修正通知の既知対象日への再観測は下記の日次補助で扱い、未観測の原提出日や全履歴の復元は別です。
 
 `days` は `cached / fetched / failed` と `closed` を返します。通信・保存の失敗は `document-list-fetch-failed` とし、入力値や例外本文を返さず後続の日へ進みます。signal中断時は受信後でも保存せず、すでにcommitした日を維持します。readOnly/close済みDBは通信前に拒否します。
 
@@ -116,11 +116,24 @@ edinet-ts backfill-financial-document-lists --metadata data/daily.sqlite \
 
 `scripts/roadmap/run-daily-metadata.mjs <private-config.json>` は、固定年次取得が完了してunitも停止した後にだけ、別metadata DBを更新する運用scriptです。公開CLI/APIではありません。SDKのbuild済みdistと併せて固定runtimeへ配置し、元metadataのコピー・専用checkpointを事前作成します。原本/状態DBや公開catalogへ自動追記しません。
 
-- Linuxの`flock`でcheckpointごとに排他し、checkpointは一時fileのfsync・atomic rename・親directoryのfsyncで保存します。API要求前に通信枠を保存し、停止で枠を消費しても過剰再試行しません。SDKの自動再試行は0、上限32要求/JST日（当日probeも含む）、timeout60秒です。
+- Linuxの`flock`でcheckpointごとに排他し、checkpointは一時fileのfsync・atomic rename・親directoryのfsyncで保存します。API要求前に通信枠を保存し、停止で枠を消費しても過剰再試行しません。SDKの自動再試行は0、上限256要求/JST日（当日probeも含む）、timeout60秒です。
 - 当日一覧の取得成功を確認してから直近7日と前回の完了日以降の空白期間を再観測します。当日一覧自体を閉じた日のmetadataへ保存しません。probeの取得時刻・件数・解析済み一覧配列のSHA-256をcheckpointへ保存します。
 - 対象日とrefreshAfterは実行を跨いで固定します。各日のDB commitが再開位置となるためcursor保存前の停止でも同じ日を重複取得しません。失敗時は次の定期起動で再開し、JST日が変われば予算を更新して当日probeを取り直します。同日の完了後は追加通信しません。
 - 取得前に元seedの物理SHAと全観測prefixが残っていることを照合し、各要求前に34GiBの空き容量を要求します。`.env`は通信開始条件成立後にdotenvで読み、値・通信URL・例外本文を出力しません。
 
 configはversion1で、絶対pathのmetadataPath/checkpointPath/envPath/guardSummaryPath/seedPath、guardUnit、guardPlanSha256、guardWorkerSha256、seedSha256、安定したsourceIdを指定します。checkpointのenvelopeはversion1・metadataPath・seedSha256・sourceId・checkpointを持ち、内部checkpointは `{version:1, throughDate, budget:{date, requests:0}}` から始めます。throughDateはseedで取得済みの閉じた最終日です。コピー先・namespaceを別用途のforkと共有しないでください。
 
-通常はoneshot user serviceをJST09〜23時台に5分間隔のtimerで起動します（boot時の確認を除く）。当日一覧がまだ更新されない早朝に予算を使い切らないための運用設定です。取得待機は正常終了、排他中はexit75、一覧取得失敗はexit1です。プロセス終了後の新規財務取得計画/アーカイブ作成・解析・品質検査・公開は別工程です。直近7日より古い既取得日の修正を全件検知した保証はなく、訂正通知に基づく対象日更新や全期間再巡回も別途必要です。機械の実再起動試験もこの補助の単体試験には含みません。
+通常はoneshot user serviceをJST09〜23時台に5分間隔のtimerで起動します（boot時の確認を除く）。当日一覧がまだ更新されない早朝に予算を使い切らないための運用設定です。取得待機は正常終了、排他中はexit75、一覧取得失敗はexit1です。プロセス終了後の新規財務取得計画/アーカイブ作成・解析・品質検査・公開は別工程です。直近7日より古い既取得日の修正を全件検知した保証はなく、通知から辿れない対象日や取得範囲外の変更には、全期間再巡回等の別の補完が必要です。機械の実再起動試験もこの補助の単体試験には含みません。
+
+
+### 変更通知から既知の過去一覧日を再観測する
+
+内部checkpoint版2のnoticesは、原観測のafterSequence、通知identityのseen、日付/最低観測時刻のpending、参照元が不明な通知の原観測sequenceを持ちます。旧版1は保持した予算/実行範囲を使って版2へ移行します。旧runtimeへ戻す場合は旧checkpointも復元し、版2を版1として読ませません。
+
+取下書はparentDocIDを、書類情報修正/不開示開始/解除の通知はdocIDと親宣言を使い、保存済み観測のうち通知一覧日より前の既知一覧日を探します。既知日と通知の実observedAtを同じcheckpointへ保存し、その時刻以降の取得markerがない日を直近7日とは別に取り直します。通知を新しく保存した直後・cursor保存前に停止しても、原観測の再読込で対象日を復元します。通知の原本文/過去のobservedAtを書き換えません。
+
+通知の一覧日/ID/親/状態/操作日時/提出日時からidentityを作り、同一通知を一覧再取得の度に再追加しません。新しい操作時刻など別identityは新たな再観測要求とします。空日の完了markerも使い、原観測/参照元の検索は1000行ごとに読み切ります。原観測pageごとのcursor/通知/対象日を一緒に保存します。seenは100,000件、pending/不明通知は各10,000件を上限とし、超過は黙って捨てず停止します。保存失敗時は未保存のメモリ状態を破棄し、最後の永続checkpointから再開します。
+
+参照元が分からない通知はunresolvedに原観測番号を残し、後続の原観測が追加されたときに再照合します。結果のunresolvedNoticesを失敗なし/対象外へ置き換えません。completeは指定範囲と既知対象日の再観測完了であり、全通知の解決・全履歴の捕捉・財務値の検査完了ではありません。当日probeは提供元の準備確認に限り、当日の通知は翌日以降に閉じた一覧として保存して処理します。
+
+年間保存一覧で対象候補が143日に及んだため、初回も処理できるよう256要求/JST日へ上限を見直しました（probeを含む、既存毎秒1要求・自動retry0）。追加の認証や有料データ源は使いません。日次財務の新規計画/解析/品質/公開は引き続き別工程です。
