@@ -121,6 +121,32 @@ export function financialArchiveExtractionProvenance(options: ArchivedFinancialS
 }
 /** 専用の追記アーカイブ。旧DBを移行せず、原観測・原本と版付き解析結果を保持します。 */
 export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
+    private readonly validatedObservationRows = new Map<string, Record<string, unknown>>();
+    private validatedObservationBytes = 0;
+    /** 全列が不変な行だけ再解析を省略。本文/索引は毎回SQLiteから読み直します。 */
+    private validateFingerprintObservation(row: Record<string, unknown>) {
+        const previous = typeof row.id === "string" ? this.validatedObservationRows.get(row.id) : undefined;
+        if (previous && Object.keys(previous).length === Object.keys(row).length && Object.keys(previous).every(k => Object.hasOwn(row,k) && previous[k] === row[k])) return;
+        this.decodeObservation(row);
+        if (previous) {
+            this.validatedObservationBytes -= this.observationRowBytes(previous);
+            this.validatedObservationRows.delete(row.id as string);
+        }
+        const bytes = this.observationRowBytes(row);
+        if (this.validatedObservationRows.size < 100000 && this.validatedObservationBytes + bytes <= 128 * 1024 * 1024) {
+            this.validatedObservationRows.set(row.id as string, {...row});
+            this.validatedObservationBytes += bytes;
+        }
+    }
+    private observationRowBytes(row: Record<string, unknown>) {
+        return 256 + Object.values(row).reduce<number>((n,v) => n + (typeof v === "string" ? 2*v.length : 16),0);
+    }
+    close() {
+        this.validatedObservationRows.clear();
+        this.validatedObservationBytes = 0;
+        super.close();
+    }
+
     constructor(file: string, options: ObservedFinancialArchiveOptions = {}) { super(file, options, { table: "archive_format", kind, schema }); }
     /** 停止した原本アーカイブのreadOnlyコピー全体を固定します。 */
     snapshotSha256(): string { return this.readOnlySnapshotSha256(); }
@@ -225,7 +251,7 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
             for (;;) {
                 const rows = this.rows("SELECT * FROM archive_observations WHERE id>? ORDER BY id LIMIT 1000", [after]);
                 for (const row of rows) {
-                    this.decodeObservation(row);
+                    this.validateFingerprintObservation(row);
                     digest.update(canonical([row.id, row.body]) + "\n");
                 }
                 if (rows.length < 1000)
