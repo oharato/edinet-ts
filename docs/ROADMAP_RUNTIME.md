@@ -1,12 +1,12 @@
-# 固定年次計画を実行する専用サービス
+# 固定年次計画と日次更新を実行する専用サービス
 
 2026-10-30時点で、進行中の取得と構築待機はユーザーsystemdの専用永続unitで実行します。会話側の実行セッションから分離し、同じ固定計画をcheckpointから続けます。元の`stock-data.service`や元stock-data作業ツリーは変更しません。
 
 ## 固定した入力とコード
 
-- 対象は基準日2026-10-27の上場3,813社、2025-10-29〜2026-10-28の365日/83,828観測から作成した7,337原本の計画です。日付変更で現在のmasterへ差し替えません。
+- 対象は基準日2026-10-27の上場3,813社、2025-10-29〜2026-10-28の365日/83,828観測から作成した7,337書類（XBRL未提供9件を別計上）の取得計画です。日付変更で現在のmasterへ差し替えません。
 - 現行計画IDは `year-window-current-population-formats-v2`、SHA-256は `4d95e355096cdcce8f2ccd0aaceace01696d45b0377e41291386b741e54d963a`。元計画e0ae20b/source f073df8と履歴はpreviousJobへ保持し、SDK・実行補助のcommitとscript hashを別に記録します。
-- 現在の内部実行SDKは1cf4c08384af64385e402a3e7d5244dcdf662013、配布物SHA-256は `a27ebb0c43de5350ff002ff5605ae0741e014542b2b94e6d7e3df0b428aca44e`。公開配布/利用先のPINは3cc4618を維持しています。固定sourceからのクリーンビルドとテスト済み出力が一致した204ファイルです。
+- 現在の内部年次実行SDKは1cf4c08384af64385e402a3e7d5244dcdf662013、配布物SHA-256は `a27ebb0c43de5350ff002ff5605ae0741e014542b2b94e6d7e3df0b428aca44e`。公開配布/利用先のPINは3cc4618を維持しています。固定sourceからのクリーンビルドとテスト済み出力が一致した204ファイルです。
 - 私有実行環境は `/home/oharato/workspace/edinet-roadmap-runtime-1cf4c08-batch100`。クリーンな固定sourceのlockfile/依存treeをコピーし、検証済みSDKと2つの実行script・取得制御補助を固定しています。開発中のroot `dist`やSDKのcurrent pointerを参照しません。
 - `runtime-manifest.json`で2,496ファイル/リンクとNode v26.12.1・作業ディレクトリ・取得configのhashを検査。余分なファイル・変更・外へ出る依存リンクはジョブ開始前に拒否します。検査は整合確認であり、OSの不変mountや外部署名ではありません。
 - `.env`はコピーせず、既存の作業ディレクトリでdotenvが認証へ利用します。値は表示・manifest記録しません。自己検査ではDBも通信も開きません。
@@ -17,12 +17,14 @@
 |---|---|---:|
 | `edinet-roadmap-year-acquisition-batch100.service` | 固定原本jobの残件取得・完了指紋検査 | 10秒 |
 | `edinet-roadmap-year-build-batch100.service` | 取得完了を待ち、同じ計画指紋から全社索引/品質を構築 | 15秒 |
+| `edinet-roadmap-daily-metadata.timer` | 年次完了後の別metadata再観測・通知対象日追加 | — |
 
-両unitは`~/.config/systemd/user/`に置き、`WantedBy=default.target`でenableしています。`Restart=on-failure`、300秒内3回の起動上限、`TimeoutStopSec=600`、`UMask=0077`。絶対パスの固定Nodeで私有環境の`.mts`を実行し、Node標準の型除去だけを使います。ユーザーmanagerのLingerは既存でyesだったため変更していません。自動再起動は失敗時のみで、正常終了や安全条件による停止から無制限に取得し直しません。
+年次の両serviceは`~/.config/systemd/user/`に置き、`WantedBy=default.target`でenableしています。`Restart=on-failure`、300秒内3回の起動上限、`TimeoutStopSec=600`、`UMask=0077`。絶対パスの固定Nodeで私有環境の`.mts`を実行し、Node標準の型除去だけを使います。ユーザーmanagerのLingerは既存でyesだったため変更していません。自動再起動は失敗時のみで、正常終了や安全条件による停止から無制限に取得し直しません。
 
 ```sh
 systemctl --user status edinet-roadmap-year-acquisition-batch100.service
 systemctl --user status edinet-roadmap-year-build-batch100.service
+systemctl --user status edinet-roadmap-daily-metadata.timer
 ```
 
 ログ/状態は元リポジトリの私有`data/roadmap`に保持します。
@@ -79,3 +81,12 @@ SDK source4a47cd9・運用補助84dc837を別runtime `edinet-roadmap-runtime-dai
 元seed・日次DBの初期物理SHA一致、checkpoint不変・排他exit75、期待cwd以外の起動拒否、timer symlink/FragmentPath/内容hash、元stock-dataの6ユーザー変更ファイル不変を確認しました。Lingerは既存yesのままです。当日probeや実日次API収集は年次完了待ちのため未実行で、新規財務計画/解析/品質/公開は後続工程です。実機再bootは未試験です。停止する場合はtimerと実行中のoneshotの両方を停止し、再開はtimerを起動します。
 
 通常の定期確認はJST 09〜23時台の5分ごと（`*-*-* 09..23:00/5:00`）へ調整しました。boot後2分とPersistentの取り逃し確認は残します。当日一覧がまだ更新されない早朝の失敗probeだけで32要求を使い切ることを避ける運用時刻であり、提供元の更新完了時刻を保証するものではありません。変更後のtimer構文・実NextElapse・unit hashと予算0件を `data/roadmap/daily-provider-window-proof.json` に保存しました。SDK/運用補助/runtime/configの指紋は変更していません。
+
+
+## 通知対応の日次runtimeへ引継ぎ（2026-10-30）
+
+日次側はSDK source fa61ab5（206配布ファイル）・運用補助e8f5d4dを `/home/oharato/workspace/edinet-roadmap-runtime-daily-fa61ab5-notices` へ固定しました。2,493ファイル/リンク・configを起動前検査し、manifest SHA-256は45b8d49445d032bc9a3b1396adc50f52bd8e04592f8b0c3b1d5974ce0e8b4f62です。通知モジュールに試験変更を加えた候補の起動拒否と、復元後の全指紋一致も確認しました。元の年次runtime1cf4c08と公開SDK3cc4618は変更しません。
+
+同じ専用metadata/sourceId/configを保持し、日次serviceのExecStartだけを切り替えました。新環境で待機→旧環境で待機→新環境で待機の順に正常終了し、年次取得PIDの不変・元seed/日次DB/checkpointの物理SHA不変、日次通信0件を確認。timerはenable/activeで次の通常確認は09:00JST、09〜23時台の5分間隔です。元stock-dataの6ユーザー変更ファイルも不変です。設定/manifestと引継ぎの証跡は私有data/roadmap/daily-notice-{runtime,before,deployment}-proof.jsonに保持します。
+
+日次通信が始まるとcheckpoint内部を版2へ移行し、通知cursor/identity・既知対象日と最低観測時刻・未解決通知を保持します。初回143日も処理するため上限は256要求/JST日、毎秒1要求・retry0・34GiB余裕です。版2移行後の旧環境への無条件復帰を検証したものではありません。旧版へ戻す場合は適合するcheckpoint/候補を別途用意し、版2を旧補助へ渡しません。現在は年次完了待ちのため実APIによる日次再観測/移行は未実行です。実機再boot・日次財務の反復取得/解析/品質/公開は後続工程です。
