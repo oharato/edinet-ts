@@ -18,7 +18,7 @@ const SDK_ROOT=fileURLToPath(new URL('../../',import.meta.url)),RESERVE=32n*1024
 const object=(v,fields)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>fields.includes(k));
 const jstDate=ms=>new Date(ms+9*3600000).toISOString().slice(0,10);
 const chain=(previous,id)=>sha256(previous+':'+id),EMPTY_CHAIN=sha256('financial-cycle-source-ids-v1');
-function software(){
+export function financialCycleSoftware(){
     const paths=['package.json','README.md','LICENSE'];
     const visit=relative=>{for(const d of readdirSync(join(SDK_ROOT,relative),{withFileTypes:true}).sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0)){
         const p=relative+'/'+d.name;if(d.isDirectory())visit(p);else if(d.isFile())paths.push(p);else throw Error('SDK contains an unsupported file');
@@ -52,7 +52,7 @@ function origin(config,repository,input){
     if(state.notices.afterSequence!==config.throughSequence||state.notices.pending.length)throw Error('Daily metadata notice cursor is incomplete');
     return {checkpointPath:config.metadataCheckpointPath,checkpointSha256:snapshot.sha256,checkpointText:snapshot.text,completedDay:state.completedDay,throughDate:state.throughDate,completedRun:structuredClone(state.lastCompletedRun),unresolvedNotices:state.notices.unresolved.length};
 }
-function loadProgress(path,inputSha256){
+export function readFinancialCycleProgress(path,inputSha256){
     const envelope=readJSONSnapshot(path).value,p=envelope?.body;
     if(!object(envelope,['version','inputSha256','body','sha256'])||envelope.version!==1||envelope.inputSha256!==inputSha256||sha256(canonical([inputSha256,p]))!==envelope.sha256
         ||!object(p,['metadataCursor','sourcesComplete','afterSourceId','sourceCount','sourceChain','receipt'])||!Number.isSafeInteger(p.metadataCursor)||p.metadataCursor<0
@@ -83,7 +83,7 @@ export async function prepareFinancialCycle(settings,{signal,maxObservationPages
         const prior=existsSync(inputPath)?readJSONSnapshot(inputPath).value:undefined;
         if(prior&&(prior.version!==1||sha256(canonical(prior.recipe))!==prior.inputSha256))throw Error('Financial cycle recipe integrity failed');
         const metadataOrigin=prior?.recipe?.origin??origin(config,repository,input),metadata=await prefix(repository,config.throughSequence,cutoff,signal);if(!metadata)return {status:'aborted'};
-        const pinnedSoftware=software(),recipe={...config,input,metadataPrefix:metadata,software:pinnedSoftware,...(metadataOrigin?{origin:metadataOrigin}:{})},inputSha256=sha256(canonical(recipe));
+        const pinnedSoftware=financialCycleSoftware(),recipe={...config,input,metadataPrefix:metadata,software:pinnedSoftware,...(metadataOrigin?{origin:metadataOrigin}:{})},inputSha256=sha256(canonical(recipe));
         if(!existsSync(directory))mkdirSync(directory,{mode:0o700});
         const directoryStat=lstatSync(directory);if(!directoryStat.isDirectory()||directoryStat.isSymbolicLink()||realpathSync(directory)!==directory)throw Error('Cycle output must be a normal directory');
         if(!existsSync(inputPath)){
@@ -91,7 +91,7 @@ export async function prepareFinancialCycle(settings,{signal,maxObservationPages
             atomicJSON(inputPath,{version:1,inputSha256,recipe},{createOnly:true});
         }else{const stored=readJSONSnapshot(inputPath).value;if(stored.version!==1||stored.inputSha256!==inputSha256||canonical(stored.recipe)!==canonical(recipe))throw Error('Financial cycle recipe changed')}
         let progress;
-        if(existsSync(progressPath))progress=loadProgress(progressPath,inputSha256);
+        if(existsSync(progressPath))progress=readFinancialCycleProgress(progressPath,inputSha256);
         else{progress={metadataCursor:0,sourcesComplete:false,sourceCount:0,sourceChain:EMPTY_CHAIN};atomicJSON(progressPath,{version:1,inputSha256,body:progress,sha256:sha256(canonical([inputSha256,progress]))},{createOnly:true})}
         if(progress.metadataCursor>config.throughSequence||progress.sourcesComplete&&progress.metadataCursor!==config.throughSequence)throw Error('Financial cycle cursor is invalid');
         if(progress.receipt){if(!progress.sourcesComplete||progress.receipt.status!=='prepared'||progress.receipt.inputSha256!==inputSha256||progress.receipt.archivePath!==archivePath||progress.receipt.statePath!==statePath)throw Error('Preparation receipt is invalid');normalFile(archivePath);normalFile(statePath);const job=new FinancialSourceJob(statePath,{readOnly:true});try{const current=job.progress(input.id);if(current.planSha256!==progress.receipt.planSha256||current.plan.archiveSha256!==progress.receipt.preparationArchiveSha256)throw Error('Prepared source plan changed')}finally{job.close()}return {...progress.receipt,reused:true}}
@@ -111,7 +111,7 @@ export async function prepareFinancialCycle(settings,{signal,maxObservationPages
         target.close();target=undefined;pool?.close();pool=undefined;
         if(signal?.aborted||progress.metadataCursor<config.throughSequence||!progress.sourcesComplete)return {status:signal?.aborted?'aborted':'partial',inputSha256,metadataCursor:progress.metadataCursor,sourcesComplete:progress.sourcesComplete,sourceCount:progress.sourceCount};
         const again=await prefix(repository,config.throughSequence,cutoff,signal);if(!again)return {status:'aborted'};
-        if(canonical(again)!==canonical(metadata)||canonical(software())!==canonical(pinnedSoftware))throw Error('Preparation inputs or software changed');
+        if(canonical(again)!==canonical(metadata)||canonical(financialCycleSoftware())!==canonical(pinnedSoftware))throw Error('Preparation inputs or software changed');
         const inspect=new DatabaseSync(archivePath,{readOnly:true});try{
             if(inspect.prepare('SELECT count(*) AS count FROM archive_observations').get().count!==metadata.count)throw Error('Unexpected prepared observation set');
             let count=0,digest=EMPTY_CHAIN;for(const row of inspect.prepare('SELECT substr(id,1,65) AS id,length(body) AS body_length,substr(body,1,2049) AS body,substr(sha256,1,65) AS sha256 FROM archive_sources ORDER BY id').iterate()){

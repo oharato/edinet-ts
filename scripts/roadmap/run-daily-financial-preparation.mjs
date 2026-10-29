@@ -3,9 +3,11 @@ import {resolve,join,isAbsolute,dirname} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 import {execFileSync,spawnSync} from 'node:child_process';
-import {EdinetRepository,queryCompanyMaster} from '../../dist/index.js';
+import {EdinetRepository,queryCompanyMaster,EdinetXbrlDownloader} from '../../dist/index.js';
 import {canStartDailyMetadata,assertCompletedMetadataRun} from './daily-metadata-control.mjs';
 import {assertDailyNoticeState} from './daily-metadata-notices.mjs';
+import {config as loadEnv} from 'dotenv';
+import {acquirePreparedFinancialCycle} from './acquire-financial-cycle.mjs';
 import {prepareFinancialCycle} from './prepare-financial-cycle.mjs';
 import {normalFile,readJSONSnapshot,atomicJSON,canonical,sha256} from './operational-files.mjs';
 
@@ -91,7 +93,14 @@ async function main(){
         if(child.error)throw Error('Financial preparation lock failed');process.exitCode=child.status??1;return;
     }
     const controller=new AbortController(),stop=()=>controller.abort();process.once('SIGINT',stop);process.once('SIGTERM',stop);
-    try{const result=await runDailyFinancialPreparation(config,{signal:controller.signal});console.log(JSON.stringify(result));if(result.status==='aborted')process.exitCode=1}
+    try{
+        const prepared=await runDailyFinancialPreparation(config,{signal:controller.signal});
+        const result=prepared.status==='prepared'?await acquirePreparedFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal,createFetchXbrl:()=>{
+            normalFile(daily.envPath);loadEnv({path:daily.envPath,quiet:true});if(!process.env.EDINET_API_KEY)throw Error('Source acquisition credentials are missing');
+            const client=new EdinetXbrlDownloader({rootDir:join(config.outputDirectory,'provider-cache'),requestTimeoutMs:60000,maxRetries:0});return (docID,request)=>client.fetchXbrl(docID,request);
+        }}):prepared;
+        console.log(JSON.stringify(result));if(result.status==='aborted')process.exitCode=1;
+    }
     finally{process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop)}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)main().catch(()=>{console.error('Daily financial preparation stopped; check fixed acquisition, completed metadata, population and storage (details hidden).');process.exitCode=1});

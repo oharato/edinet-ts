@@ -27,7 +27,7 @@ CLIは出力先に対するflockを取得し、日次checkpoint指定時はそ�
 
 空き容量は出力先と一時領域で32GiB+2GiBを維持し、読取用の私有コピー等に必要な追加容量も開始前に確認します。pool全体のコピー/指紋確認があるため、時刻上限で除外する原本が多くても開始費用はpool全体に依存します。出力やpoolの自動削除はありません。
 
-日次自動runnerへの接続、原本poolの更新と保存寿命管理、取得後の最終cutoffからの再構築、財務値の品質判定・公開は後続工程です。この準備の成功を実日次運用や財務値の正しさの証明には使いません。
+原本poolの更新と保存寿命管理、取得後の最終cutoffからの再構築、財務値の品質判定・公開は後続工程です。この準備の成功を実日次運用や財務値の正しさの証明には使いません。
 
 ## 日次収集からの自動引継ぎ
 
@@ -41,6 +41,20 @@ node scripts/roadmap/run-daily-financial-preparation.mjs /absolute/path/daily-fi
 
 `handoff.json` に設定/運用コードの指紋、元checkpoint本文/物理hash、母集団ファイルhash、準備設定を先に永続化します。cutoffと原本取得時刻上限には日次runの完了時刻を使います。以降の起動ではこの引継ぎを再利用し、別日のmetadataや新たな母集団を途中へ混ぜません。別設定や変更した運用コードでの再開は拒否するため、運用時はruntimeを固定します。
 
-その後、`metadata-completion.json` と `preparation-config.json` を復元可能な凍結入力として作り、`candidate/` に準備します。完了ならstatus preparedとnextStage source-acquisitionを返します。同じ出力先は未消化の単一候補に対応し、翌日もその候補を保持します。取得/解析/品質/公開や保存寿命管理が接続されるまでは、別日の候補を自動で増やしません。候補を削除して新しい日次処理の代わりにする運用も行いません。
+その後、`metadata-completion.json` と `preparation-config.json` を復元可能な凍結入力として作り、`candidate/` に準備します。完了ならstatus preparedとnextStage source-acquisitionを返します。同じ出力先は未消化の単一候補に対応し、翌日もその候補を保持します。解析/品質/公開や保存寿命管理が接続されるまでは、別日の候補を自動で増やしません。候補を削除して新しい日次処理の代わりにする運用も行いません。
 
-定期起動はmetadata処理と別のoneshot/timerを使えます。排他競合75や準備のpartialは次の定期起動で再試行します。1回の上限は既定の原観測100ページ/原本100ページです。SIGINT/SIGTERMで中断できます。通信や公開はこの引継ぎ処理では行いません。実行ログに記録する待機状態は、取得や財務値検証の完了を意味しません。
+定期起動はmetadata処理と別のoneshot/timerを使えます。排他競合75や準備のpartialは次の定期起動で再試行します。1回の上限は既定の原観測100ページ/原本100ページです。SIGINT/SIGTERMで中断できます。準備関数自体は通信や公開を行いません。日次CLIの準備後の取得段階は次節のとおりです。実行ログに記録する待機状態は、取得や財務値検証の完了を意味しません。
+
+## 不足原本の取得と完了監査
+
+日次運用CLIは、準備が完了すると `acquire-financial-cycle.mjs` の取得段階へ進みます。関数 `runDailyFinancialPreparation` 自体は従来どおり準備結果までを返します。関数を直接使う場合、取得中も候補と実metadataの両方の排他が必要です。
+
+取得段階は固定入力/SDK/運用指紋と準備receipt・取得計画を照合し、既定で最大100書類の1batchを実行します。保存済み原本は再利用し、XBRL未提供taskは通信しません。選ばれた書類に不足原本がある場合だけ `.env` をquietに読み、EDINETクライアントを初期化します。初期化失敗は書類の取得試行を消費しません。日次クライアントは1要求/秒、timeout 60秒、SDK内部retry 0です。既存の一般downloadsキャッシュを新しい取得の根拠にせず、この運用出力先の専用キャッシュ設定を使います。
+
+`candidate/acquisition.json` に、準備入力/計画/取得運用コードの指紋、連続進捗なし単位、batch開始時の対象/試行数、完了監査結果をatomic rename/fsyncで保存します。通信前に対象batchを保存し、DB commit後のcheckpoint未保存では次回にtask履歴から停止判定を復元します。原本commit後にtask更新が未完了なら、保存済み原本を再利用してtaskを進めます。書類ごとに最大3試行、20件単位で連続5単位の進捗なしで停止し、起動し直しても上限をリセットしません。
+
+status acquiringは残りあり、acquisition-pausedは容量余裕/試行上限/進捗なしでの停止です。残件を完了扱いにしません。SIGINT/SIGTERMは通信を中断して保存し、status abortedを返します。32GiB+2GiBの余裕に加え、専用DBのopen/完了監査に必要な私有コピー容量を確認します。
+
+全taskが完了または根拠付き未提供となった場合だけ、writerを閉じ、readOnlyアーカイブと状態の `finish` / `audit` で完了証跡を保存します。status acquiredのnextStageはfinancial-reconstructionです。再投入時も完了した原本/状態の指紋を監査し、変更を検知します。財務値検証済みを意味しません。
+
+取得後cutoffでの最終候補再構築・財務値の品質条件・公開、raw poolの更新/候補の保存寿命、hot journal復旧の自動引継ぎは後続工程です。停止済みDBの私有コピー復旧APIは別に存在しますが、この取得scriptはjournalを自動削除しません。
