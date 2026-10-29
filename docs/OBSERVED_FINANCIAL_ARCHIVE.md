@@ -100,3 +100,37 @@ manifestは `docID / availableAt / sourceSha256 / file?` の配列で2MiB以下�
 固定した365日分の83,828観測では、旧版の5回が約1.73〜2.45秒、追加後の初回は約3.37秒、2回目以降は約0.93〜1.02秒でした。概算保持量は109,803,178 bytesで、全行が上限内に収まりました。旧版/追加後の全指紋が一致し、独立Python/SQLite処理でも全行のhash・索引と同じ指紋を確認。これは観測検査単体の計測で、ネットワークや原本全体の検査を含む取得処理全体の倍率ではありません。
 
 追加後の全142ファイル/3,799テスト・build・公開NodeNext型（型定義検査を省略しない）が成功。専用13テストで全7列の変更・別接続の正当更新/削除・rollback・容量/件数上限・readOnlyコピー・closeを確認。配布物の書込/読取専用とCommonJSも同じ83,828観測の指紋を返し、DBの全byte hashは不変でした。公開配布PIN3cc4618より後の改善で、アーカイブ形式/指紋形式・既存の抽出/保存結果は変更しません。
+
+## 全版の原本を別アーカイブへ引き継ぐ
+
+可否宣言などを元metadataから再構成した新しいアーカイブへ、既に取得した原本を再ダウンロードせず引き継げます。元の観測・原本・計画・試行履歴は保持します。
+
+```ts
+const source = new ObservedFinancialArchive("stopped-old.sqlite", {readOnly: true});
+const target = new ObservedFinancialArchive("new.sqlite");
+try {
+  const sourceArchiveSha256 = source.snapshotSha256();
+  let afterId: string | undefined;
+  for (;;) {
+    const page = source.transferSourcesTo(target, {sourceArchiveSha256, afterId, limit: 20});
+    // この結果と元指紋を永続化してから次のpageへ進めます。
+    if (page.complete) break;
+    afterId = page.nextAfterId;
+  }
+} finally {
+  target.close(); source.close();
+}
+```
+
+`sourceArchiveSha256` は停止した転送元全体の物理指紋で、cursorはこの指紋と組で保存します。各回は最大100原本観測・内容合計256MiB、原本内容は一件ずつ読みます。同一書類の全版、取得時刻、内容なしの宣言、共有内容、BOMを保持し、record/索引/hash/UTF-8を検査します。破損を不足へ読み替えません。一件ごとの追記なので、後続で失敗しても先に保存した分は残り、同じpageを再実行すると重複せず続行できます。
+
+転送元はreadOnly、転送先は異なる書込可能アーカイブです。一覧観測・解析cache・取得jobの試行履歴を転送するAPIではありません。一覧は元metadataから同じnamespaceで再構成し、旧job/履歴は別の固定ファイルとして保存して引継ぎ記録に紐付けます。新しい一覧指紋を既存計画へ上書きせず、新規IDの計画を作ります。
+
+```sh
+edinet-ts transfer-financial-archive-sources \
+  --source stopped-old.sqlite --archive new.sqlite \
+  --source-sha256 <固定した転送元SHA-256> --limit 20 --pretty
+# 続きは同じ指紋と --after-id <nextAfterId> を指定
+```
+
+CLIも指紋が一致する前に転送先を作成せず、入力内容をエラーへ表示しません。

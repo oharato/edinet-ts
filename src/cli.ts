@@ -728,6 +728,26 @@ program.command("archive-financial-document-observations")
         finally{archive?.close();repository?.close();}
     });
 
+program.command("transfer-financial-archive-sources")
+    .description("固定原本アーカイブから全版の原本宣言/内容を別アーカイブへ転送します")
+    .requiredOption("--source <file>", "停止した転送元アーカイブ")
+    .requiredOption("--archive <file>", "転送先アーカイブ")
+    .requiredOption("--source-sha256 <hash>", "転送元の物理SHA-256")
+    .option("--after-id <id>", "前回のnextAfterId")
+    .option("--limit <number>", "一回の最大原本観測数（1〜100）", "20")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let source: ObservedFinancialArchive | undefined, target: ObservedFinancialArchive | undefined;
+        try {
+            if (!/^\d+$/.test(options.limit) || Number(options.limit) < 1 || Number(options.limit) > 100 || !/^[a-f0-9]{64}$/.test(options.sourceSha256) || options.afterId !== undefined && !/^[a-f0-9]{64}$/.test(options.afterId) || path.resolve(options.source) === path.resolve(options.archive)) throw new Error();
+            source = new ObservedFinancialArchive(path.resolve(options.source), { readOnly: true });
+            if (source.snapshotSha256() !== options.sourceSha256) throw new Error();
+            target = new ObservedFinancialArchive(path.resolve(options.archive));
+            console.log(JSON.stringify(source.transferSourcesTo(target, { sourceArchiveSha256: options.sourceSha256, afterId: options.afterId, limit: Number(options.limit) }), null, options.pretty ? 2 : undefined));
+        } catch { console.error("固定原本指紋・転送cursor・異なる転送先を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+        finally { target?.close(); source?.close(); }
+    });
+
 program.command("plan-financial-source-job")
     .description("固定母集団・一覧観測から全社の原本取得jobを計画します")
     .requiredOption("--state <file>", "専用取得状態DB")

@@ -1,5 +1,6 @@
 import { assertXmlInput } from "../xml-input";
 import { createHash } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import { captureDocumentVersionObservations, selectDocumentVersions, type DocumentVersionObservation, type SelectedDocumentVersion } from "../document-version-selection";
 import { captureObservedFinancialSources, createObservedFinancialSnapshotsUsing, ObservedFinancialResolutionFatalError, type ObservedFinancialSource, type ObservedFinancialSnapshotOptions, type ObservedFinancialSnapshotRecord, type ObservedFinancialSourceReason } from "../observed-financial-snapshots";
@@ -13,6 +14,19 @@ import { IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION } from "../ifrs-financial-detail
 export const OBSERVED_FINANCIAL_ARCHIVE_VERSION = "1";
 export interface ObservedFinancialArchiveOptions {
     readOnly?: boolean;
+}
+export interface FinancialArchiveSourceTransferOptions {
+    sourceArchiveSha256: string;
+    afterId?: string;
+    limit?: number;
+}
+export interface FinancialArchiveSourceTransferResult {
+    sourceArchiveSha256: string;
+    transferredIds: string[];
+    insertedSources: number;
+    insertedContents: number;
+    nextAfterId?: string;
+    complete: boolean;
 }
 export interface FinancialSourceAcquisitionOptions {
     cutoff: string;
@@ -123,6 +137,7 @@ export function financialArchiveExtractionProvenance(options: ArchivedFinancialS
 }
 /** 専用の追記アーカイブ。旧DBを移行せず、原観測・原本と版付き解析結果を保持します。 */
 export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
+    private readonly archiveFile?: string;
     private readonly validatedObservationRows = new Map<string, Record<string, unknown>>();
     private validatedObservationBytes = 0;
     /** 全列が不変な行だけ再解析を省略。本文/索引は毎回SQLiteから読み直します。 */
@@ -149,9 +164,58 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
         super.close();
     }
 
-    constructor(file: string, options: ObservedFinancialArchiveOptions = {}) { super(file, options, { table: "archive_format", kind, schema }); }
+    constructor(file: string, options: ObservedFinancialArchiveOptions = {}) {
+        super(file, options, { table: "archive_format", kind, schema });
+        this.archiveFile = file === ":memory:" ? undefined : realpathSync(file);
+    }
     /** 停止した原本アーカイブのreadOnlyコピー全体を固定します。 */
     snapshotSha256(): string { return this.readOnlySnapshotSha256(); }
+    /** 固定readOnly原本から全版の宣言/内容を追記。各原本をcommitし、再投入は冪等です。 */
+    transferSourcesTo(target: ObservedFinancialArchive, options: FinancialArchiveSourceTransferOptions): FinancialArchiveSourceTransferResult {
+        if (!(target instanceof ObservedFinancialArchive) || target === this || this.archiveFile !== undefined && this.archiveFile === target.archiveFile || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["sourceArchiveSha256", "afterId", "limit"].includes(k)))
+            throw new Error("異なる転送先と固定原本指紋を指定してください");
+        const { sourceArchiveSha256, afterId, limit = 20 } = options;
+        if (typeof sourceArchiveSha256 !== "string" || !/^[a-f0-9]{64}$/.test(sourceArchiveSha256) || afterId !== undefined && (typeof afterId !== "string" || !/^[a-f0-9]{64}$/.test(afterId)) || !Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+            throw new Error("原本転送は固定指紋・原本ID・1〜100件で指定してください");
+        if (this.snapshotSha256() !== sourceArchiveSha256)
+            throw new Error("転送元snapshot指紋が異なります");
+        target.append([], []);
+        return this.transaction(() => {
+            if (afterId !== undefined && !this.rows("SELECT id FROM archive_sources WHERE id=?", [afterId]).length)
+                throw new Error("転送cursorが固定原本にありません");
+            const rows = this.rows("SELECT * FROM archive_sources WHERE id>? ORDER BY id LIMIT ?", [afterId ?? "", limit + 1]);
+            const transferredIds: string[] = [];
+            let insertedSources = 0, insertedContents = 0, bytes = 0;
+            for (const row of rows.slice(0, limit)) {
+                const body = this.decode(row) as ObservedFinancialSource;
+                const [source] = captureObservedFinancialSources([body]);
+                const normalized = { docID: source.docID, availableAt: new Date(timestamp(source.availableAt, true)!).toISOString(), sourceSha256: source.sourceSha256 };
+                if (canonical(body) !== canonical(normalized) || body.docID !== row.doc_id || timestamp(body.availableAt, true) !== row.available_ms || hash(canonical(body)) !== row.id)
+                    throw new Error("転送原本の宣言/索引が不整合です");
+                const size = this.rows("SELECT length(xml) AS bytes FROM archive_contents WHERE sha256=?", [body.sourceSha256]);
+                const length = size[0]?.bytes;
+                if (size.length && (typeof length !== "number" || !Number.isSafeInteger(length) || length < 0 || length > 256 * 1024 * 1024))
+                    throw new Error("転送原本は256MiB以下です");
+                if (typeof length === "number" && bytes + length > 256 * 1024 * 1024 && transferredIds.length) break;
+                let xml: string | undefined;
+                if (size.length) {
+                    const raw = this.rows("SELECT xml FROM archive_contents WHERE sha256=?", [body.sourceSha256])[0]?.xml;
+                    if (!(raw instanceof Uint8Array) || raw.byteLength !== length || hash(raw) !== body.sourceSha256)
+                        throw new Error("転送原本内容のhash不一致です");
+                    xml = Buffer.from(raw).toString("utf8");
+                    if (!Buffer.from(xml, "utf8").equals(raw)) throw new Error("転送原本はUTF-8です");
+                    bytes += raw.byteLength;
+                }
+                const added = target.append([], [{ ...normalized, ...(xml === undefined ? {} : { xml }) }]);
+                insertedSources += added.insertedSources;
+                insertedContents += added.insertedContents;
+                transferredIds.push(String(row.id));
+            }
+            if (this.snapshotSha256() !== sourceArchiveSha256) throw new Error("転送元snapshotが変化しました");
+            const complete = rows.length === transferredIds.length;
+            return { sourceArchiveSha256, transferredIds, insertedSources, insertedContents, ...(complete ? {} : { nextAfterId: transferredIds.at(-1) }), complete };
+        }, false);
+    }
     private decode(row: Record<string, unknown>) {
         if (typeof row.id !== "string" || typeof row.body !== "string" || hash(canonical([row.id, row.body])) !== row.sha256)
             throw new Error("アーカイブrecordのhash不一致です");
