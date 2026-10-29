@@ -56,3 +56,5 @@ transient unitは再起動後の自動起動を設定していません。再boo
 
 
 2026-10-30 [hot journalの復旧API/CLI](SQLITE_RECOVERY.md)を追加しました。停止した6種類の専用DB/journalの固定指紋から、新規の私有候補だけをrollbackし、構造/固定schema/元ページ数を検査します。復旧後のアプリケーションrecord監査は別で、稼働runtimeへの自動適用は未実装です。合成の取得checkpointでは履歴を保持した残件再開まで確認し、旧取得状態の私有コピーでも全7,337task/2,939履歴と全DB byteが元のコミット済み状態へ一致しました。実稼働の取得process/元状態を強制終了した検査ではありません。現行runtime1cf4c08と公開SDK3cc4618はそのままです。
+
+2026-10-30 復旧候補の再開前監査として、[`FinancialSourceJob.audit` / `audit-financial-source-job`](FINANCIAL_SOURCE_JOB.md)を追加しました。状態/原本をreadOnlyで開き、期待計画・停止原本指紋・全task/履歴と完了原本/未提供根拠を照合します。未完了でも監査可能で、元の復旧manifestは変更せず別の監査結果を保持します。実復旧候補の7,337 task/2,939履歴と保存2,931原本の照合が成功し、復旧候補・停止原本・旧状態の指紋不変を確認。財務値の検査や実行中のconfig書換え・公開切替を行うAPIではありません。現行runtime1cf4c08は維持し、固定configへの引継ぎ自動化と再boot/日次運用は残工程です。

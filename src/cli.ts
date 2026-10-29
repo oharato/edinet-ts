@@ -817,6 +817,25 @@ program.command("financial-source-job-progress")
         catch{console.error("取得状態・job IDを確認してください（入力内容は非表示）");process.exitCode=1;}
         finally{state?.close();}
     });
+program.command("audit-financial-source-job")
+    .description("未完了を含む停止checkpointと原本を固定指紋からreadOnlyで照合します")
+    .requiredOption("--state <file>", "停止した専用取得状態DB（復旧候補も可）")
+    .requiredOption("--archive <file>", "停止した原本アーカイブ")
+    .requiredOption("--id <id>", "取得job ID")
+    .requiredOption("--plan-sha256 <hash>", "期待する固定計画のSHA-256")
+    .requiredOption("--archive-sha256 <hash>", "停止した原本snapshotのSHA-256")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let state: FinancialSourceJob | undefined, archive: ObservedFinancialArchive | undefined;
+        try {
+            if (![options.planSha256, options.archiveSha256].every(v => /^[a-f0-9]{64}$/.test(v))) throw new Error();
+            state = new FinancialSourceJob(path.resolve(options.state), {readOnly: true});
+            archive = new ObservedFinancialArchive(path.resolve(options.archive), {readOnly: true});
+            console.log(JSON.stringify(state.audit(options.id, archive, {planSha256: options.planSha256, archiveSha256: options.archiveSha256}), null, options.pretty ? 2 : undefined));
+        } catch { console.error("停止checkpoint・期待計画/原本指紋・保存原本と未提供の根拠を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+        finally { archive?.close(); state?.close(); }
+    });
+
 program.command("finish-financial-source-job")
     .description("全原本の完了を再検査し、後続へ渡す固定原本指紋を返します")
     .requiredOption("--state <file>", "停止した専用取得状態DB")

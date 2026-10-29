@@ -88,3 +88,40 @@ edinet-ts finish-financial-source-job --state data/source-job.sqlite \
 
 
 停止後にhot journalが残った場合は、[専用DB復旧候補](SQLITE_RECOVERY.md)で元DB/journalを保持して別ファイルへ復旧できます。復旧の構造検査だけで既存計画へ戻さず、`progress` で全計画/task/履歴と期待する計画指紋を検査し、原本との照合も行います。実行config/runtimeが固定する状態DBパス・指紋の引継ぎは別の管理操作です。通常のコンストラクタや `runNext` が元journalを消して再開することはありません。
+
+## 復旧候補・未完了checkpointの再開前監査
+
+`audit` / `audit-financial-source-job` は、指定jobの計画・全task/試行履歴と、完了原本/未提供根拠をreadOnlyで照合します。途中までしか取得できていないcheckpointも対象です。
+
+```ts
+import {FinancialSourceJob, ObservedFinancialArchive} from "edinet-ts";
+
+const state = new FinancialSourceJob(recovery.output.path, {readOnly: true});
+const archive = new ObservedFinancialArchive(stoppedArchivePath, {readOnly: true});
+try {
+  const audit = state.audit(jobId, archive, {
+    planSha256: expectedPlanSha256,
+    archiveSha256: stoppedArchiveSha256,
+  });
+  if (audit.stateSha256 !== recovery.output.sha256) throw new Error("復旧候補が異なります");
+  // この状態/原本/計画の指紋を新しい固定実行configへ渡します。
+} finally { archive.close(); state.close(); }
+```
+
+両接続は停止したファイルから開くreadOnly接続が必要です。`planSha256` は保存済みの期待計画指紋です。`archiveSha256` は**今回停止した原本アーカイブの物理指紋**で、取得開始時の初期アーカイブ指紋とは異なります。原本の追加で物理指紋が変わっても、一覧観測は計画時の指紋と一致する必要があります。
+
+監査結果は版1で、状態/原本/一覧観測/計画の指紋と、完了・未処理・失敗・保存された実行中task・未提供・試行履歴の件数を返します。完了taskのhash/取得時刻と実内容、未提供taskの選択観測/形式宣言を再検査します。原本欠損/破損・一覧追加・期待指紋違いを受け入れません。`running` は保存されたtaskの状態であり、processが稼働している証拠ではありません。
+
+`finished` は取得処理の状態で、未完了でも監査は成功し得ます。未提供を完了原本件数へ足しません。`financialValuesValidated` はfalseで、DEI/会計基準・財務値・検索品質・公開条件の検査は後続のsnapshot/索引工程で行います。別jobや未参照の解析cacheを監査した結果ではありません。
+
+```sh
+edinet-ts audit-financial-source-job \
+  --state recovery-attempt-1/recovered.sqlite \
+  --archive stopped-archive.sqlite --id "$SOURCE_JOB_ID" \
+  --plan-sha256 "$SOURCE_JOB_PLAN_SHA256" \
+  --archive-sha256 "$STOPPED_ARCHIVE_SHA256" --pretty
+```
+
+CLIは入力ファイルを書き換えず、成功時だけ監査結果をJSONで返します。失敗は終了1と内容非表示のエラーです。復旧候補への切替では、旧config/runtime/状態と原本を保持し、監査済みの指紋と状態パスを新しく固定してから再開します。現在のruntime/configを実行中に書換える操作や、監査結果だけでの公開切替は行いません。
+
+計画開始時から保存済みの原本は、試行0・完了の状態と計画に記録したhash/取得時刻を保持します。taskのrecord hashが一致していても、これらの初期保存済みtaskを未処理へ戻したり別の原本へ付け替えたりした状態は拒否します。

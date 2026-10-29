@@ -71,3 +71,5 @@ edinet-ts recover-sqlite-snapshot \
 
 
 実状態の私有コピーでの追加検証: 停止済み旧取得状態（7,337 task・2,939試行履歴、完了2,931）を別ファイルへコピーし、16 taskの未commit更新をspillしてSIGKILLしました。復旧後の物理SHA-256は元状態の `65409dfc7d39949d6a79585c829e0e911b396edf03a3a4dfc9db1e637f2193b6` と一致し、`FinancialSourceJob.progress` による全計画/task/履歴も完全一致しました。元の旧状態とクラッシュした試験入力は不変です。この検査では履歴に残る旧running markerを実processの稼働証拠には使わず、旧unit停止を確認しています。試験記録は私有 `data/roadmap/real-state-recovery-proof.json` に保持します。
+
+取得状態の復旧後は、[`FinancialSourceJob.audit` / `audit-financial-source-job`](FINANCIAL_SOURCE_JOB.md#復旧候補未完了checkpointの再開前監査) で期待計画・停止原本と全task/履歴を照合できます。一般の復旧manifestにある `applicationRecordsValidated: false` を書き換えず、指定jobの監査結果を別の証跡として保持します。結果の状態指紋が復旧manifestの出力指紋と一致することを確認し、新しい固定実行configへ渡します。財務値/公開条件の検査は引き続き別工程です。

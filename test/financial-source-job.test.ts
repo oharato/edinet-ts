@@ -88,3 +88,37 @@ it('形式宣言のない旧版1計画を変更せず再開できる',()=>fixtur
  }finally{db.close();}
  s.reopen();expect(s.state.progress('job').plan.jobVersion).toBe('1');expect((await s.state.runNext('job',s.archive,async()=>xml)).completed).toBe(3);s.archive.close();const finishedArchive=new ObservedFinancialArchive(s.archivePath,{readOnly:true});try{expect(s.state.finish('job',finishedArchive).unavailableDocuments).toEqual([]);}finally{finishedArchive.close();}
 }));
+function withAudit(s:ReturnType<typeof setup>,fn:(state:FinancialSourceJob,archive:ObservedFinancialArchive,options:{planSha256:string;archiveSha256:string})=>void){
+ s.state.close();s.archive.close();const state=new FinancialSourceJob(s.statePath,{readOnly:true}),archive=new ObservedFinancialArchive(s.archivePath,{readOnly:true});
+ try{fn(state,archive,{planSha256:state.progress('job').planSha256,archiveSha256:archive.snapshotSha256()});}finally{archive.close();state.close();}
+}
+it('未完了checkpointをreadOnlyで監査し、完了/財務品質と区別する',()=>fixture(async s=>{
+ s.state.begin(input,s.frozen);await s.state.runNext('job',s.archive,async()=>xml,{limit:1});
+ expect(()=>s.state.audit('job',s.frozen,{planSha256:s.state.progress('job').planSha256,archiveSha256:s.frozen.snapshotSha256()})).toThrow('readOnly');
+ withAudit(s,(state,archive,options)=>{
+ const stateBefore=readFileSync(s.statePath),archiveBefore=readFileSync(s.archivePath),audit=state.audit('job',archive,options);
+ expect(audit).toMatchObject({auditVersion:'1',id:'job',completed:1,pending:2,failed:0,running:0,unavailable:0,documents:3,attempts:1,finished:false,financialValuesValidated:false,...options});expect(audit.stateSha256).toBe(createHash('sha256').update(stateBefore).digest('hex'));expect(audit.observationsSha256).toBe(state.progress('job').plan.observationsSha256);
+ expect(readFileSync(s.statePath).equals(stateBefore)).toBe(true);expect(readFileSync(s.archivePath).equals(archiveBefore)).toBe(true);
+ for(const changed of [{planSha256:'0'.repeat(64)},{archiveSha256:'0'.repeat(64)},{planSha256:'bad'},{extra:true}])expect(()=>state.audit('job',archive,{...options,...changed} as never)).toThrow();
+ });
+}));
+it.each(['missing','corrupt'])('checkpointの保存原本が%sなら監査を失敗させる',mode=>fixture(async s=>{
+ s.state.begin(input,s.frozen);await s.state.runNext('job',s.archive,async()=>xml,{limit:1});s.archive.close();const raw=new Database(s.archivePath);try{raw.exec(mode==='missing'?'DELETE FROM archive_contents':"UPDATE archive_contents SET xml=x'00'");}finally{raw.close();}
+ withAudit(s,(state,archive,options)=>expect(()=>state.audit('job',archive,options)).toThrow(mode==='missing'?'完了checkpoint':'hash'));
+}));
+it('監査時点の原本指紋が正しくても一覧観測の追加を受け入れない',()=>fixture(async s=>{
+ s.state.begin(input,s.frozen);s.archive.append([{observationId:'extra',observedAt:'2026-06-26T00:00:00Z',document:{docID:'EXTRA'}}]);
+ withAudit(s,(state,archive,options)=>expect(()=>state.audit('job',archive,options)).toThrow('一覧観測'));
+}));
+it('未提供の根拠を監査し、取得済み原本件数へ足さない',()=>fixture(async s=>{
+ s.archive.append(['A1','A2','A3'].map(docID=>{const o=s.frozen.observation(docID)!;return{...o,observationId:docID+'-flag',observedAt:'2026-06-27T00:00:00Z',document:{...o.document,xbrlFlag:'0'}}}));s.archive.close();const planned=new ObservedFinancialArchive(s.archivePath,{readOnly:true});try{s.state.begin(input,planned);}finally{planned.close();}
+ withAudit(s,(state,archive,options)=>expect(state.audit('job',archive,options)).toMatchObject({completed:0,unavailable:3,pending:0,documents:3,attempts:0,finished:true,financialValuesValidated:false}));
+}));
+it.each(['sourceSha256','availableAt','status'])('計画時保存済みtaskの%sをrecord hashごと変えても採用しない',field=>fixture(async s=>{
+ for(const docID of ['A1','A2','A3'])s.archive.appendAcquiredSource(docID,xml);s.archive.close();const planned=new ObservedFinancialArchive(s.archivePath,{readOnly:true});let planSha256:string;try{planSha256=s.state.begin(input,planned).planSha256;}finally{planned.close();}s.state.close();
+ const db=new Database(s.statePath);try{
+ const task=JSON.parse(String(db.prepare("SELECT body FROM source_job_tasks WHERE job='job' AND doc_id='A1'").get()!.body));task[field]=field==='sourceSha256'?'f'.repeat(64):field==='availableAt'?'2099-01-01T00:00:00Z':'pending';
+ const body=JSON.stringify(Object.fromEntries(Object.keys(task).sort().map(k=>[k,task[k]]))),digest=createHash('sha256').update(JSON.stringify(['job','A1',task.status,body])).digest('hex');db.prepare("UPDATE source_job_tasks SET status=?,body=?,sha256=? WHERE job='job' AND doc_id='A1'").run(task.status,body,digest);
+ }finally{db.close();}
+ const state=new FinancialSourceJob(s.statePath,{readOnly:true}),archive=new ObservedFinancialArchive(s.archivePath,{readOnly:true});try{expect(()=>state.progress('job')).toThrow('計画時の保存済み');expect(()=>state.audit('job',archive,{planSha256:planSha256!,archiveSha256:archive.snapshotSha256()})).toThrow('計画時の保存済み');}finally{archive.close();state.close();}
+}));

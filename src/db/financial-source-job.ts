@@ -48,6 +48,20 @@ export interface FinancialSourceJobProgress {
     unavailable: number;
     finished: boolean;
 }
+export interface FinancialSourceJobAuditOptions {
+    planSha256: string;
+    archiveSha256: string;
+}
+export interface FinancialSourceJobAudit extends Pick<FinancialSourceJobProgress, "planSha256" | "completed" | "pending" | "running" | "failed" | "unavailable" | "finished"> {
+    auditVersion: "1";
+    id: string;
+    stateSha256: string;
+    archiveSha256: string;
+    observationsSha256: string;
+    documents: number;
+    attempts: number;
+    financialValuesValidated: false;
+}
 const schema = {
     source_job_format: "CREATE TABLE source_job_format(kind TEXT NOT NULL)",
     source_job_plans: "CREATE TABLE source_job_plans(id TEXT PRIMARY KEY,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
@@ -167,6 +181,9 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
             if (attempts.some(a => a.status === 'started' && (a.endedAt !== undefined || a.outcome !== undefined || a.errorCode !== undefined) || a.status === 'complete' && (!['downloaded', 'reused'].includes(a.outcome ?? '') || a.errorCode !== undefined) || a.status === 'failed' && (a.errorCode !== 'source-acquisition-failed' || a.outcome !== undefined) || a.status === 'interrupted' && (a.errorCode !== 'source-acquisition-interrupted' || a.outcome !== undefined)))
                 throw new Error("試行結果が不整合です");
             if (task.status === "unavailable" && (plan.jobVersion !== "2" || targets.get(task.docID)!.status !== "unavailable" || task.attempts !== 0 || task.sourceSha256 !== undefined || task.availableAt !== undefined) || task.status !== "unavailable" && targets.get(task.docID)!.status === "unavailable") throw new Error("未提供taskの根拠が不整合です");
+            const target = targets.get(task.docID)!;
+            if (target.status === "stored" && (task.status !== "complete" || task.attempts !== 0 || task.sourceSha256 !== target.sourceSha256 || task.availableAt !== target.availableAt))
+                throw new Error("計画時の保存済み原本と取得taskが一致しません");
             const last = attempts.at(-1);
             if (task.status === "running" && last?.status !== "started" || task.status === "failed" && !['failed', 'interrupted'].includes(last?.status ?? '') || task.status === "pending" && task.attempts !== 0 || task.status === "complete" && task.attempts > 0 && last?.status !== "complete" || task.status === "complete" && task.attempts === 0 && targets.get(task.docID)!.status !== "stored")
                 throw new Error("取得taskと履歴が一致しません");
@@ -206,6 +223,18 @@ export class FinancialSourceJob extends DedicatedSqliteDatabase {
                     throw new Error("完了checkpointと保存原本が一致しません");
             }
         }
+    }
+    /** 未完了のcheckpointも、固定した状態/原本のreadOnlyコピーで再開前に照合します。 */
+    audit(id: string, archive: ObservedFinancialArchive, options: FinancialSourceJobAuditOptions): FinancialSourceJobAudit {
+        if (!(archive instanceof ObservedFinancialArchive) || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["planSha256", "archiveSha256"].includes(k)))
+            throw new Error("固定計画/原本指紋とreadOnlyアーカイブが必要です");
+        const { planSha256, archiveSha256 } = options;
+        if (!sha(planSha256) || !sha(archiveSha256)) throw new Error("計画/原本指紋が不正です");
+        const stateSha256 = this.readOnlySnapshotSha256(), progress = this.progress(id);
+        if (progress.planSha256 !== planSha256) throw new Error("監査する取得計画の指紋が異なります");
+        if (archive.snapshotSha256() !== archiveSha256) throw new Error("監査する原本snapshotの指紋が異なります");
+        this.auditCompleted(progress, archive);
+        return { auditVersion: "1", id, planSha256, stateSha256, archiveSha256, observationsSha256: progress.plan.observationsSha256, documents: progress.tasks.length, attempts: progress.history.length, completed: progress.completed, pending: progress.pending, running: progress.running, failed: progress.failed, unavailable: progress.unavailable, finished: progress.finished, financialValuesValidated: false };
     }
     /** 停止したreadOnly原本を再検査し、後続の固定世代構築に使える指紋を返します。 */
     finish(id: string, archive: ObservedFinancialArchive): {
