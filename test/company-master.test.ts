@@ -47,3 +47,10 @@ describe("公式EDINETコードリストの観測マスター", () => {
         expect(() => queryCompanyMaster([a, b], query)).toThrow();
     });
 });
+it('CSV/保存観測とknownAtの存在しない暦日を拒否する',()=>{
+ const s={asOf:'2026-02-27',observedAt:'2026-02-28T00:00:00Z',sourceUrl:'https://example.com/master.csv',sourceSha256:'a'.repeat(64),records:[]};
+ expect(()=>queryCompanyMaster([{...s,observedAt:'2026-02-30T00:00:00Z'}],{asOf:'2026-02-28',knownAt:'2026-03-03T00:00:00Z'})).toThrow();
+ expect(()=>queryCompanyMaster([s],{asOf:'2026-02-28',knownAt:'2026-02-30T00:00:00Z'})).toThrow();
+ expect(()=>parseEdinetCodeList(csv('2026年2月27日現在'),{...origin,observedAt:'2026-02-30T00:00:00Z'})).toThrow();
+ expect(queryCompanyMaster([s],{asOf:'2026-02-28',knownAt:'2026-02-28T12:00Z'}).status).toBe('available');
+});

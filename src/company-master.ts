@@ -14,6 +14,9 @@ export interface CompanyMasterSnapshot {
 const validDate = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
     Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
 
+const validObservationTime = (value: unknown): value is string => typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) && validDate(value.slice(0, 10)) && Number.isFinite(Date.parse(value));
+
 /** 公式固定URLを1回取得。認証不要、元ZIP/CSVのhashを保持し、DBやファイルは変更しません。 */
 export async function fetchEdinetCompanyMaster(options: { signal?: AbortSignal; timeoutMs?: number } = {}): Promise<CompanyMasterSnapshot> {
     const timeout = options.timeoutMs ?? 30000;
@@ -69,7 +72,7 @@ function csvRows(input: string): string[][] {
 /** CP932は呼出元で復号。公式日付をそのまま保存し、現在の属性を過去へ遡及しません。 */
 export function parseEdinetCodeList(csv: string, provenance: { observedAt: string; sourceUrl: string }): CompanyMasterSnapshot {
     if (typeof csv !== "string" || Buffer.byteLength(csv) > 32 * 1024 * 1024 || !provenance ||
-        !/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(provenance.observedAt) || !Number.isFinite(Date.parse(provenance.observedAt))) throw new Error("CSVと取得日時が必要です");
+        !validObservationTime(provenance.observedAt)) throw new Error("CSVと取得日時が必要です");
     const url = new URL(provenance.sourceUrl);
     if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new Error("認証情報のないHTTPS出典URLが必要です");
     const rows = csvRows(csv.replace(/^\uFEFF/, "")), match = /^(\d{4})年(\d{1,2})月(\d{1,2})日現在$/.exec(rows[0]?.[1] ?? "");
@@ -101,14 +104,14 @@ export function parseEdinetCodeList(csv: string, provenance: { observedAt: strin
 export interface CompanyMasterQuery { asOf: string; knownAt: string; industry?: string; listingStatus?: CompanyMasterRecord["listingStatus"]; fiscalYearEndMonth?: number; nameContains?: string; securityCode?: string; }
 /** 保存済みスナップショットのas-of観測。正確な改称/合併/廃止日を推測しません。 */
 export function queryCompanyMaster(snapshots: readonly CompanyMasterSnapshot[], query: CompanyMasterQuery) {
-    if (!Array.isArray(snapshots) || !query || !validDate(query.asOf) || !/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(query.knownAt) || !Number.isFinite(Date.parse(query.knownAt)) ||
+    if (!Array.isArray(snapshots) || !query || !validDate(query.asOf) || !validObservationTime(query.knownAt) ||
         query.fiscalYearEndMonth !== undefined && (!Number.isInteger(query.fiscalYearEndMonth) || query.fiscalYearEndMonth < 1 || query.fiscalYearEndMonth > 12) ||
         query.listingStatus !== undefined && !["listed", "unlisted", "unknown"].includes(query.listingStatus) || query.securityCode !== undefined && !/^[0-9A-Z]{4,5}$/.test(query.securityCode) ||
         [query.industry, query.nameContains].some(value => value !== undefined && typeof value !== "string") ||
         Object.keys(query).some(key => !["asOf", "knownAt", "industry", "listingStatus", "fiscalYearEndMonth", "nameContains", "securityCode"].includes(key))) throw new Error("不正な企業マスター検索条件です");
     const inputs: readonly CompanyMasterSnapshot[] = Array.from(snapshots);
     const eligible = inputs.filter(snapshot => {
-        if (!validDate(snapshot.asOf) || !/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(snapshot.observedAt) || !Number.isFinite(Date.parse(snapshot.observedAt)) ||
+        if (!validDate(snapshot.asOf) || !validObservationTime(snapshot.observedAt) ||
             Date.parse(snapshot.asOf + "T00:00:00+09:00") > Date.parse(snapshot.observedAt) || !/^[a-f0-9]{64}$/.test(snapshot.sourceSha256) || !Array.isArray(snapshot.records)) throw new Error("不正な保存マスターです");
         const source = new URL(snapshot.sourceUrl), seen = new Set<string>();
         if (source.protocol !== "https:" || source.username || source.password || source.search || source.hash) throw new Error("保存マスターの出典が不正です");
