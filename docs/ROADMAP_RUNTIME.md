@@ -69,3 +69,11 @@ DBをまだ開いていない構築待機だけを意図的に終了し、system
 旧unitを正常停止した時点で、保存4,007件・未処理3,320件・未提供9件と、制御停止による中断1件を保持。新unitは初期summaryで同じcheckpointを読み、最初の100件すべてを追加保存しました。保存4,107・未処理3,220・中断による失敗task1・未提供9、通信失敗試行0。全旧完了/未提供taskと既存1,077試行履歴の内容が不変で、次のbatchの全原本検査後に新要求へ進んだことも確認しました。中断taskは履歴を消さず、未処理優先の既存順序で後から再試行します。
 
 最初の100件は405,034ms、そのうち初回の原本open/全検査を含む要求前69,053ms、要求区間335,981msでした。旧32 batchの中央値との条件を揃えた比較ではなく、速度保証とは扱いません。両永続unitはenable・実PID・再起動0、Lingerは既存yes、WantedBy/default.target symlink・FragmentPath・unit内容のhashを照合。構築は新SDKパスの指紋2607e855を固定し、取得完了を待っています。記録は私有 `data/roadmap/batch100-handoff-proof.json`。実機の再bootは未試験です。
+
+## 日次metadataの別fork（2026-10-30）
+
+SDK source4a47cd9・運用補助84dc837を別runtime `edinet-roadmap-runtime-daily-4a47cd9` に固定し、2,492ファイル/リンクとconfigを起動前に検査します。manifest SHA-256はe9b8582899dbfb0fccf791521dc93442896af5d0ece1c8c8cf818c549c8b0c3b。年次取得runtime1cf4c08と公開SDK3cc4618は変更しません。
+
+`edinet-roadmap-daily-metadata.timer` をenableして稼働確認しました。boot後2分と5分ごとのoneshot `edinet-roadmap-daily-metadata.service` で、取得計画4d95e35の全件完了・取得unit停止まで正常待機します。元seedの365閉日/83,828観測を複製した専用 `data/roadmap/daily-metadata-20261030.sqlite` と専用checkpoint/configを使います。namespaceはdaily-metadata-20261030-v1です。`daily-metadata-service.log` が実行結果、`daily-deployment-proof.json` が配置/指紋/待機/予算0件の証跡です。
+
+元seed・日次DBの初期物理SHA一致、checkpoint不変・排他exit75、期待cwd以外の起動拒否、timer symlink/FragmentPath/内容hash、元stock-dataの6ユーザー変更ファイル不変を確認しました。Lingerは既存yesのままです。当日probeや実日次API収集は年次完了待ちのため未実行で、新規財務計画/解析/品質/公開は後続工程です。実機再bootは未試験です。停止する場合はtimerと実行中のoneshotの両方を停止し、再開はtimerを起動します。
