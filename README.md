@@ -408,6 +408,7 @@ npx edinet-ts parse --file ./downloads/report.xbrl --pretty
 
 * [要件・提供機能](docs/REQUIREMENTS.md) / [技術仕様](docs/SPECIFICATIONS.md)
 * [EDINET DB比較・21指標辞書](docs/EDINET_DB_COMPARISON.md) / [他ライブラリ設計調査](docs/EDINET_LIBRARY_RESEARCH.md)
+* [企業マスター観測の永続保存](docs/COMPANY_MASTER_STORE.md)
 * [確認した負債構成を使うROIC](docs/ROIC.md)
 * [改善計画と受入条件](docs/plans/EDINET_TS_ROADMAP.md)
 * [タクソノミ更新手順](docs/TAXONOMY_UPDATE.md) / [財務諸表本表](docs/TAXONOMY_JPPFS_COR.md) / [企業情報](docs/TAXONOMY_JPCRP_COR.md)
