@@ -38,6 +38,7 @@ export class DedicatedSqliteDatabase {
     protected db!: NativeDatabase;
     private scratch?: string;
     private snapshotFile?: string;
+    private snapshotFingerprint?: { identity: string; sha256: string };
     protected closed = false;
     protected readOnly: boolean;
     constructor(file: string, options: {
@@ -205,11 +206,18 @@ export class DedicatedSqliteDatabase {
     protected readOnlySnapshotSha256(): string {
         if (this.closed || !this.readOnly || !this.snapshotFile)
             throw new Error("固定したreadOnlyファイルが必要です");
-        const fd = fs.openSync(this.snapshotFile, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
+        const fd = fs.openSync(this.snapshotFile, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW);
         try {
             const before = fs.fstatSync(fd, { bigint: true });
-            if (!before.isFile())
-                throw new Error("通常ファイルが必要です");
+            if (!before.isFile() || before.nlink !== 1n)
+                throw new Error("単一リンクの通常ファイルが必要です");
+            // 読取専用の私有コピー。同じinode/size/mtime/ctimeの指紋だけ再利用します。
+            const currentIdentity = identity(before);
+            if (this.snapshotFingerprint) {
+                if (currentIdentity !== this.snapshotFingerprint.identity)
+                    throw new Error("固定したsnapshotが変化しました");
+                return this.snapshotFingerprint.sha256;
+            }
             const digest = createHash("sha256"), chunk = Buffer.alloc(1024 * 1024);
             let bytes = 0;
             while (BigInt(bytes) < before.size) {
@@ -221,7 +229,9 @@ export class DedicatedSqliteDatabase {
             }
             if (BigInt(bytes) !== before.size || identity(before) !== identity(fs.fstatSync(fd, { bigint: true })))
                 throw new Error("指紋計算中にDBが変化しました");
-            return digest.digest("hex");
+            const sha256 = digest.digest("hex");
+            this.snapshotFingerprint = { identity: currentIdentity, sha256 };
+            return sha256;
         }
         finally {
             fs.closeSync(fd);
