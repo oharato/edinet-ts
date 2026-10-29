@@ -1,39 +1,39 @@
 # 固定年次計画を実行する専用サービス
 
-2026-10-30時点で、進行中の取得と構築待機をユーザーsystemdの専用transient unitへ引き継ぎました。会話側の実行セッションから分離し、同じ固定計画をcheckpointから続けます。元の`stock-data.service`や元stock-data作業ツリーは変更しません。
+2026-10-30時点で、進行中の取得と構築待機はユーザーsystemdの専用永続unitで実行します。会話側の実行セッションから分離し、同じ固定計画をcheckpointから続けます。元の`stock-data.service`や元stock-data作業ツリーは変更しません。
 
 ## 固定した入力とコード
 
 - 対象は基準日2026-10-27の上場3,813社、2025-10-29〜2026-10-28の365日/83,828観測から作成した7,337原本の計画です。日付変更で現在のmasterへ差し替えません。
-- 計画SHA-256は `e0ae20b2ce8765110b4a0e6a710a3861a78ac65a63cd713d10a3509938ba459a`。元の計画source commit f073df8は保持し、実行SDKのcommitとscript hashを別に記録します。
+- 現行計画IDは `year-window-current-population-formats-v2`、SHA-256は `4d95e355096cdcce8f2ccd0aaceace01696d45b0377e41291386b741e54d963a`。元計画e0ae20b/source f073df8と履歴はpreviousJobへ保持し、SDK・実行補助のcommitとscript hashを別に記録します。
 - 現在の内部実行SDKは1cf4c08384af64385e402a3e7d5244dcdf662013、配布物SHA-256は `a27ebb0c43de5350ff002ff5605ae0741e014542b2b94e6d7e3df0b428aca44e`。公開配布/利用先のPINは3cc4618を維持しています。固定sourceからのクリーンビルドとテスト済み出力が一致した204ファイルです。
-- 私有実行環境は `/home/oharato/workspace/edinet-roadmap-runtime-1cf4c08`。クリーンな固定sourceのlockfile/依存treeをコピーし、検証済みSDKと2つの実行scriptを固定しています。開発中のroot `dist`やSDKのcurrent pointerを参照しません。
-- `runtime-manifest.json`で2,495ファイル/リンクとNode v26.12.1・作業ディレクトリ・取得configのhashを検査。余分なファイル・変更・外へ出る依存リンクはジョブ開始前に拒否します。検査は整合確認であり、OSの不変mountや外部署名ではありません。
+- 私有実行環境は `/home/oharato/workspace/edinet-roadmap-runtime-1cf4c08-batch100`。クリーンな固定sourceのlockfile/依存treeをコピーし、検証済みSDKと2つの実行script・取得制御補助を固定しています。開発中のroot `dist`やSDKのcurrent pointerを参照しません。
+- `runtime-manifest.json`で2,496ファイル/リンクとNode v26.12.1・作業ディレクトリ・取得configのhashを検査。余分なファイル・変更・外へ出る依存リンクはジョブ開始前に拒否します。検査は整合確認であり、OSの不変mountや外部署名ではありません。
 - `.env`はコピーせず、既存の作業ディレクトリでdotenvが認証へ利用します。値は表示・manifest記録しません。自己検査ではDBも通信も開きません。
 
 ## 稼働するunit
 
 | unit | 処理 | RestartSec |
 |---|---|---:|
-| `edinet-roadmap-year-acquisition-1cf4c08.service` | 固定原本jobの残件取得・完了指紋検査 | 10秒 |
-| `edinet-roadmap-year-build-1cf4c08.service` | 取得完了を待ち、同じ計画指紋から全社索引/品質を構築 | 15秒 |
+| `edinet-roadmap-year-acquisition-batch100.service` | 固定原本jobの残件取得・完了指紋検査 | 10秒 |
+| `edinet-roadmap-year-build-batch100.service` | 取得完了を待ち、同じ計画指紋から全社索引/品質を構築 | 15秒 |
 
-両unitは`Restart=on-failure`、300秒内3回の起動上限、`TimeoutStopSec=600`、`UMask=0077`。絶対パスの固定Nodeで私有環境の`.mts`を実行し、Node標準の型除去だけを使います。ユーザーmanagerのLingerは既存でyesだったため変更していません。自動再起動は失敗時のみで、正常終了や安全条件による停止から無制限に取得し直しません。
+両unitは`~/.config/systemd/user/`に置き、`WantedBy=default.target`でenableしています。`Restart=on-failure`、300秒内3回の起動上限、`TimeoutStopSec=600`、`UMask=0077`。絶対パスの固定Nodeで私有環境の`.mts`を実行し、Node標準の型除去だけを使います。ユーザーmanagerのLingerは既存でyesだったため変更していません。自動再起動は失敗時のみで、正常終了や安全条件による停止から無制限に取得し直しません。
 
 ```sh
-systemctl --user status edinet-roadmap-year-acquisition-1cf4c08.service
-systemctl --user status edinet-roadmap-year-build-1cf4c08.service
+systemctl --user status edinet-roadmap-year-acquisition-batch100.service
+systemctl --user status edinet-roadmap-year-build-batch100.service
 ```
 
 ログ/状態は元リポジトリの私有`data/roadmap`に保持します。
 
-- `year-financial-source-service-1cf4c08.log` / `year-financial-source-summary.json`
-- `year-financial-build-service-1cf4c08.log` / `year-financial-build-config.json`
+- `year-financial-source-service-batch100.log` / `year-financial-source-summary.json`
+- `year-financial-build-service-batch100.log` / `year-financial-build-config.json`
 - 既存のstate/archive/metadata SQLiteと全試行履歴
 
 停止は該当unitへ`systemctl --user stop`でSIGTERMを送り、終了を確認します。停止のためにDBや副ファイルを削除しません。稼働判断にはunitのMainPID/実processを確認し、状態ファイルの時刻やtaskのrunning markerだけを使いません。過去の中断で残ったrunning taskは、pending優先の既存順序で後から中断履歴化・再試行します。
 
-取得の1秒間隔・本文timeout/再試行・原本ごとのcommit・3試行上限・disk reserveは既存のままです。完了時の原本指紋と固定計画、および保存済み原本/未提供の件数合計を検証した後だけ、3,813社の構築へ進みます。未提供は財務品質の充足に数えません。構築の再起動では同じSDK/入力を要求し、PIDだけを更新します。公開catalogの自動切替は行いません。
+取得の1秒間隔・本文timeout/再試行・原本ごとのcommitは維持し、一回の取得は最大100件です。3試行済みは候補から除き、進展なしの判定は従来と同じ20件単位5回の枠から残りの件数を決めます。本文の前後でも32GiB+2GiBの空き容量を確認します。完了時の原本指紋と固定計画、および保存済み原本/未提供の件数合計を検証した後だけ、3,813社の構築へ進みます。未提供は財務品質の充足に数えません。構築の再起動では同じSDK/入力を要求し、PIDだけを更新します。公開catalogの自動切替は行いません。
 
 ## 検証と残工程
 
@@ -41,7 +41,7 @@ systemctl --user status edinet-roadmap-year-build-1cf4c08.service
 
 DBをまだ開いていない構築待機だけを意図的に終了し、systemdによる自動再起動を確認。SDK指紋とconfigはPID以外不変で、待機へ戻りました。実取得中の強制終了やhot journalの自動回復を試した結果ではありません。
 
-transient unitは再起動後の自動起動を設定していません。再boot時のunit再作成、日次カレンダー巡回、実行scriptの汎用化/配布、hot journal復旧候補の運用への組込み、本番移行と全市場品質/公開条件の解消は残工程です。安全停止理由や繰返し失敗があれば、保存状態を検査してから再開します。
+旧transient unitは停止して保持し、現行の永続unitは既存のLinger=yesとdefault.targetから同じ有限計画を再開する設定です。実機の再bootは試験していません。日次カレンダー巡回、実行scriptの汎用化/配布、hot journal復旧候補の運用への組込み、本番移行と全市場品質/公開条件の解消は残工程です。安全停止理由や繰返し失敗があれば、保存状態を検査してから再開します。
 
 2026-10-30の観測行検査改善では、クリーンsource78c342cの全142ファイル/3,799テストと配布物hashを確認し、内部runtimeだけを更新しました。公開SDK3cc4618との差分はアーカイブのJS/型定義2ファイルだけです。全2,493ファイル/リンクの新manifestと両scriptの自己検査後、旧3cc unitをcheckpoint停止。完了2,244taskと元config/計画指紋を保持し、新unitで追加79件以上の完了と全2,244完了taskの不変を確認しました。旧runtime/停止unitと未開始の構築configも保持し、raw/schema/取得窓は初期化していません。
 
@@ -58,3 +58,14 @@ transient unitは再起動後の自動起動を設定していません。再boo
 2026-10-30 [hot journalの復旧API/CLI](SQLITE_RECOVERY.md)を追加しました。停止した6種類の専用DB/journalの固定指紋から、新規の私有候補だけをrollbackし、構造/固定schema/元ページ数を検査します。復旧後のアプリケーションrecord監査は別で、稼働runtimeへの自動適用は未実装です。合成の取得checkpointでは履歴を保持した残件再開まで確認し、旧取得状態の私有コピーでも全7,337task/2,939履歴と全DB byteが元のコミット済み状態へ一致しました。実稼働の取得process/元状態を強制終了した検査ではありません。現行runtime1cf4c08と公開SDK3cc4618はそのままです。
 
 2026-10-30 復旧候補の再開前監査として、[`FinancialSourceJob.audit` / `audit-financial-source-job`](FINANCIAL_SOURCE_JOB.md)を追加しました。状態/原本をreadOnlyで開き、期待計画・停止原本指紋・全task/履歴と完了原本/未提供根拠を照合します。未完了でも監査可能で、元の復旧manifestは変更せず別の監査結果を保持します。実復旧候補の7,337 task/2,939履歴と保存2,931原本の照合が成功し、復旧候補・停止原本・旧状態の指紋不変を確認。財務値の検査や実行中のconfig書換え・公開切替を行うAPIではありません。現行runtime1cf4c08は維持し、固定configへの引継ぎ自動化と再boot/日次運用は残工程です。
+
+
+100件処理ではsummary/progress JSONの更新はbatch完了時です。原本/状態のcommitは一件ごとで、途中には20要求ごとの `source-request-start` を記録します。この記録は取得開始の通知で、成功件数ではありません。稼働判断はunit PIDを使い、古いsummaryだけで停止や再起動を判断しません。
+
+構築待機は、systemdの現在の取得PID・固定計画・期待する取得scriptのSHA-256と正確なargvで、新workerの初期summaryを確認します。起動直後の古いPID/summaryを誤認せず、取得完了ファイルを待ちます。単なる起動順や同じSDK commitだけを根拠に先へ進みません。
+
+2026-10-30 100件単位/永続unitへの実行引継ぎ: 取得制御補助はd696dcf、全149ファイル/3,869テストと固定SDK1cf4c08の別実行試験を確認。SDK全204ファイル/依存関係・固定計画4d95e35・元configを保持したまま、全2,496ファイル/リンクの新manifestを固定し、両scriptの起動前検査とunit構文検査が成功しました。元のstock-dataサービスと変更6ファイルは維持しています。
+
+旧unitを正常停止した時点で、保存4,007件・未処理3,320件・未提供9件と、制御停止による中断1件を保持。新unitは初期summaryで同じcheckpointを読み、最初の100件すべてを追加保存しました。保存4,107・未処理3,220・中断による失敗task1・未提供9、通信失敗試行0。全旧完了/未提供taskと既存1,077試行履歴の内容が不変で、次のbatchの全原本検査後に新要求へ進んだことも確認しました。中断taskは履歴を消さず、未処理優先の既存順序で後から再試行します。
+
+最初の100件は405,034ms、そのうち初回の原本open/全検査を含む要求前69,053ms、要求区間335,981msでした。旧32 batchの中央値との条件を揃えた比較ではなく、速度保証とは扱いません。両永続unitはenable・実PID・再起動0、Lingerは既存yes、WantedBy/default.target symlink・FragmentPath・unit内容のhashを照合。構築は新SDKパスの指紋2607e855を固定し、取得完了を待っています。記録は私有 `data/roadmap/batch100-handoff-proof.json`。実機の再bootは未試験です。

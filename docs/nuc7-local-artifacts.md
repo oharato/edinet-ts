@@ -64,3 +64,5 @@ stock-dataのlocal builderに `--edinet-generation "$OUT/current"` を渡す場�
 
 
 内部jobの現行固定版は1cf4c08384af64385e402a3e7d5244dcdf662013/SHA-256 a27ebb0c43de5350ff002ff5605ae0741e014542b2b94e6d7e3df0b428aca44e（204ファイル/2,526,512 bytes）です。全145ファイル/3,822テストと公開型/CJS、固定sourceのクリーンビルドとテスト済み出力の一致を確認。形式可否を保持した新計画へ移し、元の83,828観測・2,931原本/全履歴の保持と追加20件の取得を確認しました。詳細は[専用runtimeの引継ぎ記録](ROADMAP_RUNTIME.md)を参照してください。公開配布/consumerのPIN3cc4618は継続しています。
+
+内部jobのSDK PIN1cf4c08/a27ebb0cと公開配布/consumerのPIN3cc4618を保ち、取得制御補助d696dcfを固定した永続unitへ実行を引き継ぎました。一回最大100件、20件単位の停止枠・3試行上限・本文前後の容量/中断確認・一件ずつcommitを維持し、旧4,007完了task/全履歴を保持して追加100件の保存を確認。user default.targetでenableし、既存Linger=yesと実PID/再起動0を確認しました。実機再bootと日次新規計画は検証していません。[現行サービス/引継ぎ記録](ROADMAP_RUNTIME.md)を参照してください。
