@@ -27,7 +27,7 @@ CLIは出力先に対するflockを取得し、日次checkpoint指定時はそ�
 
 空き容量は出力先と一時領域で32GiB+2GiBを維持し、読取用の私有コピー等に必要な追加容量も開始前に確認します。pool全体のコピー/指紋確認があるため、時刻上限で除外する原本が多くても開始費用はpool全体に依存します。出力やpoolの自動削除はありません。
 
-原本poolの更新と保存寿命管理、取得後の最終cutoffからの再構築、財務値の品質判定・公開は後続工程です。この準備の成功を実日次運用や財務値の正しさの証明には使いません。
+原本poolの更新と保存寿命管理、財務値の品質判定・公開は後続工程です。この準備の成功を実日次運用や財務値の正しさの証明には使いません。
 
 ## 日次収集からの自動引継ぎ
 
@@ -57,4 +57,16 @@ status acquiringは残りあり、acquisition-pausedは容量余裕/試行上限
 
 全taskが完了または根拠付き未提供となった場合だけ、writerを閉じ、readOnlyアーカイブと状態の `finish` / `audit` で完了証跡を保存します。status acquiredのnextStageはfinancial-reconstructionです。再投入時も完了した原本/状態の指紋を監査し、変更を検知します。財務値検証済みを意味しません。
 
-取得後cutoffでの最終候補再構築・財務値の品質条件・公開、raw poolの更新/候補の保存寿命、hot journal復旧の自動引継ぎは後続工程です。停止済みDBの私有コピー復旧APIは別に存在しますが、この取得scriptはjournalを自動削除しません。
+財務値の解析・品質条件・公開、raw poolの更新/候補の保存寿命、hot journal復旧の自動引継ぎは後続工程です。停止済みDBの私有コピー復旧APIは別に存在しますが、この取得scriptはjournalを自動削除しません。
+
+## 取得後の別候補再構築
+
+日次CLIは取得監査の完了後、`reconstruct-financial-cycle.mjs` の再構築へ進みます。元の準備入力・取得完了checkpoint・SDK指紋を照合し、`candidate/reconstruction-input.json` に再構築条件を先に保存します。原観測のsourceId/throughSequenceと母集団を保ち、cutoffと原本上限は取得完了時刻で固定します。日次完了checkpointの元本文とhashも再構築入力へ引き継ぎます。
+
+`candidate/reconstructed/` に、固定原観測と時刻上限内の全原本宣言を原本ID順で転送して別アーカイブを作ります。取得時刻・内容hash・BOMを保ち、履歴原本も含めます。原観測1000件/原本100件ごとに再開でき、SIGINT/SIGTERMを境界で受け付けます。元の取得アーカイブや状態を変更・削除しません。
+
+再構築後は、元の取得状態をreadOnlyで開き、新候補に対して元の取得計画を監査します。取得完了時の状態の物理hashも一致する必要があります。成功時は `candidate/reconstruction.json` に新候補の物理hash、元の選択cutoff・取得完了cutoff、原観測末尾、監査結果とFinancialIndexBuild入力を保存します。status reconstructed、nextStage financial-buildです。再投入時もこの監査を繰り返します。
+
+`metadataCurrentForCutoff` は、日次完了証跡の閉日が、取得完了cutoffの前日まで達しているかを示します。取得が日を跨いで閉日が古くなった場合や、日次完了証跡がない手動の小規模入力はfalseです。このフラグだけで通知の未解決や財務品質が合格したとは判定しません。原観測の完了証跡・不明通知は元の記録を保持します。
+
+再構築が成功しても財務値検証済みにはしません。保存したbuildInputをFinancialIndexBuildへ渡せますが、日次での解析・品質・公開の自動接続、raw pool/候補の保存寿命、自動hot journal復旧は引き続き後続工程です。

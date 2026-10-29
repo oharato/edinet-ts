@@ -7,6 +7,7 @@ import {EdinetRepository,queryCompanyMaster,EdinetXbrlDownloader} from '../../di
 import {canStartDailyMetadata,assertCompletedMetadataRun} from './daily-metadata-control.mjs';
 import {assertDailyNoticeState} from './daily-metadata-notices.mjs';
 import {config as loadEnv} from 'dotenv';
+import {reconstructAcquiredFinancialCycle} from './reconstruct-financial-cycle.mjs';
 import {acquirePreparedFinancialCycle} from './acquire-financial-cycle.mjs';
 import {prepareFinancialCycle} from './prepare-financial-cycle.mjs';
 import {normalFile,readJSONSnapshot,atomicJSON,canonical,sha256} from './operational-files.mjs';
@@ -95,10 +96,11 @@ async function main(){
     const controller=new AbortController(),stop=()=>controller.abort();process.once('SIGINT',stop);process.once('SIGTERM',stop);
     try{
         const prepared=await runDailyFinancialPreparation(config,{signal:controller.signal});
-        const result=prepared.status==='prepared'?await acquirePreparedFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal,createFetchXbrl:()=>{
+        let result=prepared.status==='prepared'?await acquirePreparedFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal,createFetchXbrl:()=>{
             normalFile(daily.envPath);loadEnv({path:daily.envPath,quiet:true});if(!process.env.EDINET_API_KEY)throw Error('Source acquisition credentials are missing');
             const client=new EdinetXbrlDownloader({rootDir:join(config.outputDirectory,'provider-cache'),requestTimeoutMs:60000,maxRetries:0});return (docID,request)=>client.fetchXbrl(docID,request);
         }}):prepared;
+        if(result.status==='acquired')result=await reconstructAcquiredFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal});
         console.log(JSON.stringify(result));if(result.status==='aborted')process.exitCode=1;
     }
     finally{process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop)}

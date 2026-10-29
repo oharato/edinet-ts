@@ -2,7 +2,7 @@
 
 開始日: 2026-10-28。利用者の「全体ロードマップの残工程まで」の指示により、[全体計画](EDINET_TS_ROADMAP.md)の全段階を対象に継続します。外部データは無償・既存データを優先します。下表の保留は対象外への変更を意味しません。実装・原本照合・運用/利用先反映の完了は別に確認します。
 
-直近確認（2026-10-30）: 全154ファイル/3,952テストが成功（SDK本体のbuild/公開型検査は09152b9時点で成功、今回は運用JSを変更）。有限年次取得は7,007完了・320待ち・中断task1・XBRL未提供9（計7,337書類）で継続中、通信失敗試行0です。日次財務の再開可能な準備を追加し、保存済み83,828観測・3,813社で計画/監査・再投入を検証しました。日次metadataは別DB/固定runtimeで年次完了待機中。全体ロードマップは未完了です。
+直近確認（2026-10-30）: 全155ファイル/3,962テストが成功（SDK本体のbuild/公開型検査は09152b9時点で成功、今回は運用JSを変更）。有限年次取得は7,307完了・20待ち・中断task1・XBRL未提供9（計7,337書類）で継続中、通信失敗試行0です。日次財務の再開可能な準備を追加し、保存済み83,828観測・3,813社で計画/監査・再投入を検証しました。日次metadataは別DB/固定runtimeで年次完了待機中。全体ロードマップは未完了です。
 
 | 段階 | 残る成果物 | 状態・次の検証 |
 |---|---|---|
@@ -284,3 +284,9 @@ XML検証の重複後方走査を除去: 参照検査を各tag/text区間内へ�
 2026-10-30 差分取得の実原本再利用と配置: 旧保存XML100件/106,411,201 bytesを、準備後にtask未更新のまま別候補へ転送し、認証/提供元初期化0・ネット通信0で100試行すべてreusedとして回復しました。実83,828観測・27日基準3,813社の固定計画で、完了2→102、残り7,226、未提供9、失敗/実行中0の未完了readOnly監査が成功。全体取得の完了や実API再取得の証明ではありません。Python/sqlite3/hashlibで全83,828観測のrecord hash・原本102件の宣言/内容hash・転送100件の元取得時刻/hash保持・全plan/task/attempt hashと100件のreused結果・checkpoint hashを独立照合し、元metadata/原本pool/旧原本の物理SHA不変を確認しました。証跡はdata/roadmap/daily-financial-acquisition-{real,independent}-proof.json。
 
 SDK09152b9/運用41a1b16と全2,498ファイル/リンクを別runtimeへ固定して日次財務serviceを切り替えました。取得モジュール改変の起動拒否、新→旧→新の年次完了待機が成功。専用metadata/seed/checkpoint/config・既存metadata unit/timer・財務timerのSHA、年次取得PID371224、元stock-dataの6ユーザー変更は不変、追加通信/候補作成0です。財務timerはenabled/active、次回09:02JST。証跡はdaily-financial-acquisition-{runtime,deployment}-proof.json、ログ/独立処理/コードの連結は同validation-receipt.json。切戻し試験はhandoff作成前のみです。実日次APIからの初回取得完了、取得後再構築/品質/公開・保存寿命管理・hot journal自動復旧引継ぎ・実再bootを含む全体残工程は継続します。
+
+2026-10-30 取得後の別候補再構築を接続: 元の取得入力/完了checkpoint/SDK指紋を検証し、取得完了時刻を原本上限/cutoffとして、同じsourceId/throughSequenceと母集団から原本ID順の別候補を再構築します。固定入力・日次完了証跡・新候補の物理hash・元取得履歴に対するreadOnly監査結果とFinancialIndexBuild入力を保存します。writer/元履歴を変更せず、境界再開・完了直後停止・確定後の変更検知・metadataの後続追加・日跨ぎ時の閉日鮮度falseを検証しました。関連38件・全155ファイル/3,962テスト成功。閉日鮮度は財務品質や不明通知の解決を意味しません。
+
+実年次2原本（JMホールディングス/VALUENEX）と原観測prefix332件の宣言した2社集合で、既存原本102件の宣言/内容を保持した再構築、元取得履歴の再監査、既存FinancialIndexBuildでの2社/4行/10値の生成が成功しました。Python/sqlite3/hashlib/xml.etreeで全観測/原本/世代/行/metricと再構築証跡のhashを照合し、10値を原XMLのnamespace/context/期間/単位/entity・数値と独立突合しました。元metadata/pool/作業原本/取得状態が不変、追加通信0・公開なしです。全市場やPDFを検証した意味ではありません。証跡はdata/roadmap/financial-reconstruction-{annual,independent}-proof.json。
+
+別の実半期2原本（コニカミノルタ/中部電力）・prefix4,070件では、再構築と構築自体は完了しましたがperiod-mismatchで0財務行となりました（financial-reconstruction-real-proof.json）。この保留を成功値に読み替えず、一覧期間とDEI期間の対応を次の調査対象として残します。日次の解析/品質/公開自動接続・保存寿命管理・hot journal自動復旧を含む全体残工程は継続します。
