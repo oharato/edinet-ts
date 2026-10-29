@@ -10,8 +10,8 @@ import subprocess
 import uuid
 from artifact_store import activate, archive, digest, locked, publish, run
 
-PIN = '53eb2ad24228539969ebe3b46d97b864a5e020a2'
-EXPECTED = '98de4e0698c9f56b7465984e10b473a9c064713fd133e7815e7f02688ec8d366'
+PIN = '3cc4618e5fa8d3e35604e15dc49c31f9f35ebdd7'
+EXPECTED = '69e50093645fdd38a31c46c5b676e7efe32b523033e37def135c3d5b657d7a94'
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--output', required=True, type=Path)
 p.add_argument('--rollback', help='Verify and activate an existing generation basename')

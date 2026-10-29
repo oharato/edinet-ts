@@ -273,7 +273,7 @@ const result = screenFinancialDetailDocuments(documents, { metricIds,
 
 ## 自己資本の構成科目（registry 7）
 
-`shareholdersEquity`（株主資本）と`valuationAndTranslationAdjustments`（評価・換算差額等/連結のその他の包括利益累計額）を、対応するJ-GAAPの時点直接タグから明示取得できます。既定5項目は維持し、原値に負値があってもそのまま保持します。これらの和を使う計算ROEは[平均自己資本利益率](AVERAGE_EQUITY_RETURN.md)を参照してください。純資産・新株予約権・非支配株主持分を同じ科目と扱いません。この追加の検証当時の固定配布物e673e8aはregistry 6でした。現在の固定配布物53eb2adにはregistry 7までを反映し、CP/短期社債のregistry 8はその後のローカル実装です。
+`shareholdersEquity`（株主資本）と`valuationAndTranslationAdjustments`（評価・換算差額等/連結のその他の包括利益累計額）を、対応するJ-GAAPの時点直接タグから明示取得できます。既定5項目は維持し、原値に負値があってもそのまま保持します。これらの和を使う計算ROEは[平均自己資本利益率](AVERAGE_EQUITY_RETURN.md)を参照してください。純資産・新株予約権・非支配株主持分を同じ科目と扱いません。この追加の検証当時の固定配布物e673e8aはregistry 6でした。現在の固定配布物3cc4618にはCP/短期社債を含むregistry 8まで反映済みです。
 
 ## CP・短期社債（registry 8）
 

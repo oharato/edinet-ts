@@ -1,11 +1,11 @@
 # 固定source配布物のローカル作成・保持
 
-状態: 現行の保存方針。更新日: 2026-10-29。[ADR 0001](adr/0001-local-distribution.md) を参照。
+状態: 現行の保存方針。更新日: 2026-10-30。[ADR 0001](adr/0001-local-distribution.md) を参照。
 GitHubの保存量を増やさず、固定sourceからローカルで配布物を再現する。既存の公開物は削除しない。手動workflowもtag・release・npm/GitHub Packages公開は行わない。
 
 ## 固定入力と実行
 
-`python3 scripts/build-local.py` は、実行時の作業ブランチではなく、明示的に固定されたsource `53eb2ad24228539969ebe3b46d97b864a5e020a2` とlockfileを一時checkoutしてbuildする。期待する配布物SHA-256は `98de4e0698c9f56b7465984e10b473a9c064713fd133e7815e7f02688ec8d366`。現在のheadの配布物を自動で作るスクリプトではない。
+`python3 scripts/build-local.py` は、実行時の作業ブランチではなく、明示的に固定されたsource `3cc4618e5fa8d3e35604e15dc49c31f9f35ebdd7` とlockfileを一時checkoutしてbuildする。期待する配布物SHA-256は `69e50093645fdd38a31c46c5b676e7efe32b523033e37def135c3d5b657d7a94`。現在のheadの配布物を自動で作るスクリプトではない。
 
 ```sh
 OUT=/absolute/private/path/edinet-ts-artifacts
@@ -30,6 +30,8 @@ rollbackはhashを確認してpointerを切り替える。
 python3 scripts/build-local.py --output "$OUT" --rollback GENERATION_BASENAME
 ```
 
+2026-10-30の現在版は3cc4618・202ファイル/2,512,120 bytesです。以下の53eb2ad/e673e8aの件数は前世代の履歴で、現在の検証は末尾に追記します。
+
 ## 利用先更新
 
 stock-dataのlocal builderに `--edinet-generation "$OUT/current"` を渡す場合も、利用先の固定hash/provenanceとの一致確認が必要。未検証のregistry版を代用しない。
@@ -48,3 +50,12 @@ stock-dataのlocal builderに `--edinet-generation "$OUT/current"` を渡す場�
 
 
 利用先offline buildの検証（2026-10-29）: 別worktree `36e4ddf` のクリーンbuildで全63テスト・型・static buildが成功。元データ31,435ファイル/6,899,939,392 bytesを、WAL不在・前後metadata一致・全ファイルhash一致で私有snapshotへコピーし、そのコピーだけを入力にしました。元DBの他processによるlockや既存サービス状態は変更していません。検証用世代 `20261028T160348Z-dcea22de` は既存3,881銘柄と公開財務3行を保持し、manifest hash・exportとのbyte一致・localhost HTTPの3資源を確認。完了時にも元31,435ファイルのmetadata一致とWAL不在を確認しました。取得済みデータの時点を更新するbuildではありません。
+
+
+2026-10-30更新: 現在の固定sourceは3cc4618e5fa8d3e35604e15dc49c31f9f35ebdd7、SHA-256は69e50093645fdd38a31c46c5b676e7efe32b523033e37def135c3d5b657d7a94です。202ファイル/2,512,120 bytesをクリーン作成し、正規builderの全141ファイル/3,786テストと同じhashを再現。旧53eb2ad世代への切替と新版復帰も確認しました。ROIC/評価API、企業マスター観測保存・法人番号原記録参照、XML/固定snapshot検査の改善を含みます。
+
+利用先c473948のvendor/lock/provenanceを更新し、installed全202ファイルのbyte一致・全63テスト・型・保存保護14件が成功。初回は旧registry 7の固定期待値で1失敗し、registry 8とCP/短期社債の取得を確認する回帰へ更新後、全件を再実行しました。実公開財務3行/9値は旧SDK出力とbyte一致し、未承認catalog拒否と再投入も非破壊で成功。元の作業ツリー/サービスは変更していません。
+
+利用先の新版世代は `20261029T150317Z-d25da03e`（UTC名）。私有snapshotの31,436入力・6,899,995,270 bytesを使い、全63テスト・型・static buildが成功しました。この入力には従来の31,435元データに加え、取得済みの公開財務JSON1ファイルが含まれます。全43,184出力ファイル/7,443,341,343 bytesのmanifest hashを独立検査し、3,881銘柄・公開財務3行/元exportとのbyte一致・localhost3資源を確認。公開出力への認証値混入も値非表示で検査しました。全入力metadataの前後一致とWAL不在、旧static世代36e4ddfへの切替と新版c473948への復帰を確認。既存の利用者変更6ファイルもhash不変です。
+
+進行中の固定年次取得/構築待機は、同じSDKと依存関係を固定した[専用サービス](ROADMAP_RUNTIME.md)へ引き継ぎました。これは有限計画の実行分離と復旧確認であり、日次巡回/再boot後自動起動や元本番サービスの移行完了ではありません。
