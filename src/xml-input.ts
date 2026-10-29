@@ -24,17 +24,19 @@ function assertCharactersAndBytes(value: string): void {
 
 /** DTDを許さないため、組込み5種とXML1.0で有効な数値文字参照だけを受理します。 */
 function assertReferences(value: string, start: number, end: number): void {
-    let cursor = start;
-    while ((cursor = value.indexOf("&", cursor)) !== -1 && cursor < end) {
-        const terminator = value.indexOf(";", cursor + 1);
-        if (terminator === -1 || terminator >= end) invalidXml();
+    // 各tag/text区間の外を検索すると、参照の少ないXMLで後方全体を繰り返し走査します。
+    for (let cursor = start; cursor < end; cursor++) {
+        if (value.charCodeAt(cursor) !== 38) continue;
+        let terminator = cursor + 1;
+        while (terminator < end && value.charCodeAt(terminator) !== 59) terminator++;
+        if (terminator === end) invalidXml();
         const reference = value.slice(cursor + 1, terminator);
         if (!["amp", "lt", "gt", "quot", "apos"].includes(reference)) {
             if (!/^#(?:[0-9]+|x[0-9a-fA-F]+)$/.test(reference)) invalidXml();
             const code = reference[1] === "x" ? Number.parseInt(reference.slice(2), 16) : Number(reference.slice(1));
             if (!Number.isInteger(code) || !validXmlCharacter(code)) invalidXml();
         }
-        cursor = terminator + 1;
+        cursor = terminator;
     }
 }
 
