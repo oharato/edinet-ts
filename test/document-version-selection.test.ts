@@ -132,3 +132,17 @@ it('多数の旧訂正参照による失効根拠の出力膨張を上限で止�
  const removed:DocumentVersionObservation={observationId:'removed',observedAt:cutoff,document:{docID:'B',docTypeCode:null,withdrawalStatus:'0',docInfoEditStatus:'0',disclosureStatus:'0'}};
  expect(()=>selectDocumentVersions([...roots,...history,removed],cutoff)).toThrow('100000');
 });
+
+it.each(['130',null])('同時刻に親が競合した訂正（種別%s）は、両方の旧系列を止める',type=>{
+ const a=observation('A'),x=observation('X'),b=observation('B','A','2025-06-25 11:00');
+ const other=observation('B','X','2025-06-25 11:00',{docTypeCode:type});other.observationId='conflict';
+ const result=selectDocumentVersions([a,x,b,other],cutoff);expect(result.selected).toEqual([]);
+ for(const id of ['A','X'])expect(result.decisions.find(d=>d.rootDocID===id)).toMatchObject({reason:'unresolved-correction',observationIds:expect.arrayContaining(['B','conflict'])});
+ expect(result.decisions.find(d=>d.rootDocID==='B')?.reason).toBe('conflicting-observations');expect(selectDocumentVersions([other,b,x,a],cutoff)).toEqual(result);
+ other.observedAt='2025-06-26T00:00:00Z';expect(selectDocumentVersions([a,x,b,other],cutoff).selected.map(s=>s.observation.document.docID).sort()).toEqual(['B','X']);
+});
+it('種類が消えた訂正に別の親宣言が残れば、旧参照先も新宣言先も採用しない',()=>{
+ const a=observation('A'),x=observation('X'),b=observation('B','A','2025-06-25 11:00');
+ const removed:DocumentVersionObservation={observationId:'removed',observedAt:cutoff,document:{docID:'B',docTypeCode:null,parentDocID:'X',withdrawalStatus:'0',docInfoEditStatus:'0',disclosureStatus:'0'}};
+ expect(selectDocumentVersions([a,x,b,removed],cutoff).selected).toEqual([]);
+});

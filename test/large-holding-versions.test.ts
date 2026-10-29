@@ -85,3 +85,15 @@ describe('大量保有の項目削除を伴う日次再観測',()=>{
   const after=removed();after.observedAt='2026-10-29T00:00:00Z';expect(select([obs(),after],cutoff).selected[0].rootDocID).toBe('A');
  });
 });
+
+it('同時刻の種別消失を伴う参照先競合でも、両方の旧大量保有系列を止める',()=>{
+ const a=obs(),x=obs('X'),b=obs('B','A'),other=obs('B','X',{docTypeCode:null});other.observationId='conflict';
+ const result=select([a,x,b,other],cutoff);expect(result.selected).toEqual([]);
+ for(const id of ['A','X'])expect(result.decisions.find(d=>d.rootDocID===id)).toMatchObject({reason:'unresolved-correction',observationIds:expect.arrayContaining([b.observationId,'conflict'])});
+ expect(select([other,b,x,a],cutoff)).toEqual(result);
+});
+it('種別が消えた大量保有訂正の旧参照先と新宣言先を、根拠付きで両方止める',()=>{
+ const b=obs('B','A'),after=obs('B','X',{docTypeCode:null},'2025-07-01T00:00:00Z');
+ const result=select([obs(),obs('X'),b,after],cutoff);expect(result.selected).toEqual([]);
+ for(const id of ['A','X'])expect(result.decisions.find(d=>d.rootDocID===id)?.observationIds).toEqual(expect.arrayContaining([b.observationId,after.observationId]));
+});

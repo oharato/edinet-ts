@@ -68,6 +68,7 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
     if (cutoffTime === undefined || !Array.isArray(observations)) throw new Error("timezone付きcutoffと10,000件以下の明示観測が必要です");
     const {captured,analyzed}=captureDocumentVersionObservations(observations);
     const byObservationId = new Map(captured.map(item => [item.relation.observationId, item]));
+    const documentsByObservationId = new Map(analyzed.observations.map(o => [o.observationId, o.document]));
     const latest = new Map<string, Candidate>(), ignored: { observationId: string; reason: "after-cutoff" | "unsupported-document-type" }[] = [];
     const history = new Map<string, { ids: string[]; parents: Set<string> }>();
     const supported = (type: string | null | undefined) => roots.includes(type ?? "") || corrections.includes(type ?? "");
@@ -105,15 +106,21 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
     const failed = (candidate: Candidate, reason: DocumentVersionReason, path: string[]) => decisions.push({ rootDocID: candidate.observation.document.docID,
         status: "unresolved", reason, chainDocIDs: path, observationIds: candidate.observationIds });
     for (const candidate of latest.values()) {
-        if (!supported(candidate.observation.document.docTypeCode)) {
+        if (candidate.conflict || !supported(candidate.observation.document.docTypeCode))
             candidate.observationIds = [...new Set([...candidate.observationIds, ...history.get(candidate.observation.document.docID)!.ids])];
-            const inactive = availability(candidate), reason = candidate.conflict ? "conflicting-observations" : ["withdrawn", "non-disclosed", "notice-only"].includes(inactive ?? "") ? inactive! : "document-type-unavailable";
+        if (candidate.conflict) {
+            failedRoots.set(candidate.observation.document.docID, "conflicting-observations");
+            failed(candidate, "conflicting-observations", [candidate.observation.document.docID]); continue;
+        }
+        if (!supported(candidate.observation.document.docTypeCode)) {
+            const inactive = availability(candidate), reason = ["withdrawn", "non-disclosed", "notice-only"].includes(inactive ?? "") ? inactive! : "document-type-unavailable";
             decisions.push({rootDocID: candidate.observation.document.docID, status: ["withdrawn", "non-disclosed", "notice-only"].includes(reason) ? "unavailable" : "unresolved", reason, chainDocIDs: [candidate.observation.document.docID], observationIds: candidate.observationIds});
             continue;
         }
         const path: string[] = [], seen = new Set<string>(); let current = candidate, reason: DocumentVersionReason | undefined;
         while (true) {
             const doc = current.observation.document;
+            if (current.conflict) { path.push(doc.docID); reason = "conflicting-observations"; break; }
             const failure = failedRoots.get(doc.docID);
             if (failure) { path.push(doc.docID); reason = failure; break; }
             const resolved = resolvedRoots.get(doc.docID);
@@ -153,9 +160,10 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
         const inactive = ["withdrawn", "non-disclosed", "notice-only"].includes(availability(candidate) ?? "");
         if (inactive && supported(candidate.observation.document.docTypeCode)) continue;
         const destination = inactive ? inactiveEvidence : blocked;
-        const parents = (item: Candidate) => supported(item.observation.document.docTypeCode)
-            ? [item.observation.document.parentDocID].filter((id): id is string => !!id)
-            : [...history.get(item.observation.document.docID)!.parents];
+        const parents = (item: Candidate) => item.conflict || !supported(item.observation.document.docTypeCode)
+            ? [...new Set([...history.get(item.observation.document.docID)!.parents,
+                ...item.observationIds.map(id => documentsByObservationId.get(id)!.parentDocID).filter((id): id is string => !!id)])]
+            : [item.observation.document.parentDocID].filter((id): id is string => !!id);
         const queue = parents(candidate), seen = new Set<string>(), evidence = [...candidate.observationIds];
         for (let i = 0; i < queue.length; i++) {
             const parentID = queue[i]; if (seen.has(parentID)) continue; seen.add(parentID);
@@ -169,7 +177,7 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
                 }
                 destination.set(id, refs); continue;
             }
-            if (!supported(parent.observation.document.docTypeCode)) evidence.push(...history.get(parentID)!.ids, ...parent.observationIds);
+            if (parent.conflict || !supported(parent.observation.document.docTypeCode)) evidence.push(...history.get(parentID)!.ids, ...parent.observationIds);
             queue.push(...parents(parent));
         }
     }

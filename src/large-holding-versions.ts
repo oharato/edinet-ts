@@ -68,10 +68,13 @@ export function selectLargeHoldingReportVersions(observations: readonly LargeHol
         if (history.has(s.id)) return true;
         ignored.push(...ids(s).map(observationId => ({ observationId, reason: "unsupported-document-type" as const }))); return false;
     }).sort((a, b) => compare(a.id, b.id));
-    const evidence = (s: State) => s.variants.every(v => !knownType(v.observation.document.docTypeCode))
+    const evidence = (s: State) => s.conflict || s.variants.every(v => !knownType(v.observation.document.docTypeCode))
         ? [...new Set([...ids(s), ...history.get(s.id)!.ids])].sort(compare) : ids(s);
-    const parents = (s: State) => s.variants.every(v => !knownType(v.observation.document.docTypeCode))
-        ? [...(history.get(s.id)?.parents ?? [])] : s.variants.filter(v => v.observation.document.docTypeCode === "360").map(v => v.observation.document.parentDocID).filter((v): v is string => !!v);
+    const parents = (s: State) => [...new Set([
+        ...(s.conflict || s.variants.every(v => !knownType(v.observation.document.docTypeCode)) ? history.get(s.id)?.parents ?? [] : []),
+        ...s.variants.filter(v => v.observation.document.docTypeCode === "360" || !knownType(v.observation.document.docTypeCode))
+            .map(v => v.observation.document.parentDocID).filter((v): v is string => !!v)
+    ])];
     const decisions: LargeHoldingVersionDecision[] = [], cache = new Map<string, { root?: string; reason?: LargeHoldingVersionReason }>(), groups = new Map<string, State[]>(), failures: State[] = [];
     let steps = 0;
     const step = () => { if (++steps > 100000) throw new Error("大量保有の系列参照は100000ステップ以下です"); };

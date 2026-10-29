@@ -106,3 +106,11 @@ it('会社コードも消えた新観測を会社指定でも読み、旧原本�
   }finally{db.close()}
  }
 }));
+
+it('会社を跨ぐ親参照の競合は、各社指定の取得計画でも両系列を止める',()=>{
+ const db=new ObservedFinancialArchive(':memory:');try{
+  const a=observation('A'),x=observation('X',undefined,{edinetCode:'E54321',secCode:'20020'}),b=observation('B','A'),other=observation('B','X',{edinetCode:'E54321',secCode:'20020'});other.observationId='conflict';
+  db.append([a,x,b,other]);
+  for(const [code,id] of [['E12345','A'],['E54321','X']]){const plan=db.planSourceAcquisition({cutoff:query.cutoff,edinetCodes:[code]});expect(plan.items).toEqual([]);expect(plan.selection.decisions.find(d=>d.rootDocID===id)).toMatchObject({reason:'unresolved-correction',observationIds:expect.arrayContaining(['B','conflict'])})}
+ }finally{db.close()}
+});
