@@ -41,7 +41,7 @@ systemctl --user status edinet-roadmap-year-build-1cf4c08.service
 
 DBをまだ開いていない構築待機だけを意図的に終了し、systemdによる自動再起動を確認。SDK指紋とconfigはPID以外不変で、待機へ戻りました。実取得中の強制終了やhot journalの自動回復を試した結果ではありません。
 
-transient unitは再起動後の自動起動を設定していません。再boot時のunit再作成、日次カレンダー巡回、実行scriptの汎用化/配布、hot journal回復、本番移行と全市場品質/公開条件の解消は残工程です。安全停止理由や繰返し失敗があれば、保存状態を検査してから再開します。
+transient unitは再起動後の自動起動を設定していません。再boot時のunit再作成、日次カレンダー巡回、実行scriptの汎用化/配布、hot journal復旧候補の運用への組込み、本番移行と全市場品質/公開条件の解消は残工程です。安全停止理由や繰返し失敗があれば、保存状態を検査してから再開します。
 
 2026-10-30の観測行検査改善では、クリーンsource78c342cの全142ファイル/3,799テストと配布物hashを確認し、内部runtimeだけを更新しました。公開SDK3cc4618との差分はアーカイブのJS/型定義2ファイルだけです。全2,493ファイル/リンクの新manifestと両scriptの自己検査後、旧3cc unitをcheckpoint停止。完了2,244taskと元config/計画指紋を保持し、新unitで追加79件以上の完了と全2,244完了taskの不変を確認しました。旧runtime/停止unitと未開始の構築configも保持し、raw/schema/取得窓は初期化していません。
 
@@ -53,3 +53,6 @@ transient unitは再起動後の自動起動を設定していません。再boo
 旧unitをSIGTERMで正常停止し、保存済み2,931件・旧状態DB/全試行履歴・旧configを保持。全2,931原本宣言と内容3,995,485,866 bytesを転送し、別のSQLite/Python検査でも全行/byte/hash一致と旧ファイルの不変を確認しました。新計画IDは `year-window-current-population-formats-v2`、計画SHA-256は `4d95e355096cdcce8f2ccd0aaceace01696d45b0377e41291386b741e54d963a`。開始時は原本2,931件・未取得4,397件・明示的XBRL未提供9件。新計画は保存済み原本を試行0で再利用し、旧履歴は `previousJob` の物理指紋/旧計画指紋とファイル参照で保持します。旧状態の実失敗3件はいずれも未提供9件に含まれ、履歴を成功へ書き換えていません。
 
 新アーカイブ/状態は `data/roadmap/year-financial-{archive,source-state}-formats-1793291136311.sqlite`、引継ぎの照合記録は `data/roadmap/source-format-*.json`。旧78c342cのruntime/unit/アーカイブ/状態と公開SDK3cc4618は保持します。未提供を取得成功や数値0へ変換せず、PDF等での財務値対応・全市場品質は残工程です。
+
+
+2026-10-30 [hot journalの復旧API/CLI](SQLITE_RECOVERY.md)を追加しました。停止した6種類の専用DB/journalの固定指紋から、新規の私有候補だけをrollbackし、構造/固定schema/元ページ数を検査します。復旧後のアプリケーションrecord監査は別で、稼働runtimeへの自動適用は未実装です。合成の取得checkpointでは履歴を保持した残件再開まで確認し、旧取得状態の私有コピーでも全7,337task/2,939履歴と全DB byteが元のコミット済み状態へ一致しました。実稼働の取得process/元状態を強制終了した検査ではありません。現行runtime1cf4c08と公開SDK3cc4618はそのままです。

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {recoverDedicatedSqliteSnapshot,type DedicatedSqliteRecoveryKind} from "./db/sqlite-recovery";
 import {PublishedFinancialIndex} from "./published-financial-index";
 import {FinancialIndexPublication} from "./db/financial-index-publication";
 import {backfillFinancialDocumentLists,archiveFinancialDocumentObservations} from "./financial-document-sync";
@@ -726,6 +727,21 @@ program.command("archive-financial-document-observations")
             console.log(JSON.stringify(archiveFinancialDocumentObservations(repository,archive,{sourceId:options.sourceId,afterSequence:Number(options.afterSequence),pageSize:Number(options.pageSize),maxPages:Number(options.maxPages)}),null,options.pretty?2:undefined));
         }catch{console.error("原観測DB・転送元ID・保存済みcursorを確認してください（入力内容は非表示）");process.exitCode=1;}
         finally{archive?.close();repository?.close();}
+    });
+
+program.command("recover-sqlite-snapshot")
+    .description("停止した専用DBとhot journalのコピーを新規候補へ復旧します")
+    .requiredOption("--source <file>", "停止したDB（同名-journalも必要）")
+    .requiredOption("--output-directory <directory>", "まだ存在しない復旧候補directory")
+    .requiredOption("--kind <kind>", "専用DB形式")
+    .requiredOption("--database-sha256 <hash>", "停止したDBのSHA-256")
+    .requiredOption("--journal-sha256 <hash>", "停止したjournalのSHA-256")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const result = recoverDedicatedSqliteSnapshot({source: options.source, outputDirectory: options.outputDirectory, kind: options.kind as DedicatedSqliteRecoveryKind, databaseSha256: options.databaseSha256, journalSha256: options.journalSha256});
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+        } catch { console.error("停止した専用DB/journal・両指紋・新規復旧先を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("transfer-financial-archive-sources")

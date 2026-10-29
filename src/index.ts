@@ -145,3 +145,6 @@ export * from "./db/company-master-store";
 export * from "./valuation";
 
 export * from "./document-formats";
+
+export {recoverDedicatedSqliteSnapshot,SQLITE_RECOVERY_MAX_BYTES} from "./db/sqlite-recovery";
+export type {DedicatedSqliteRecoveryKind,DedicatedSqliteRecoveryOptions,DedicatedSqliteRecoveryResult} from "./db/sqlite-recovery";
