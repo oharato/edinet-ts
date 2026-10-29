@@ -137,3 +137,25 @@ CLIも指紋が一致する前に転送先を作成せず、入力内容をエ�
 
 
 停止中のhot journalから別候補へ戻す処理は[専用DBの復旧](SQLITE_RECOVERY.md)を参照してください。復旧後は構造一致だけで原本/財務データを利用可能にせず、一覧観測指紋と全原本宣言/内容を既存APIで検査します。通常のコンストラクタの副ファイル拒否は維持しています。
+
+### 原本の取得時刻を固定した転送
+
+`transferSourcesTo` の `availableBy` はtimezone付きの上限（inclusive）です。その時刻以前の全版/宣言/内容を転送し、結果のavailableByはUTCへ正規化します。省略時は従来どおり全版です。原本はdocIDごとの最新だけへ縮約せず、同時刻の異なるhashや宣言だけの原本も保持します。
+
+```ts
+const page = source.transferSourcesTo(candidate, {
+  sourceArchiveSha256, availableBy: cycle.sourceAvailableBy, afterId, limit: 20
+});
+```
+
+```sh
+edinet-ts transfer-financial-archive-sources --source data/stopped-pool.sqlite \
+  --archive data/new-cycle.sqlite --source-sha256 "$SOURCE_POOL_SHA256" \
+  --available-by "$SOURCE_AVAILABLE_BY" --after-id "$SAVED_SOURCE_ID"
+```
+
+再開時は元snapshot指紋と同じavailableByを使います。取得時点の範囲外のcursorは拒否します。条件を変更する場合は新しい候補へcursorなしで始めてください。IDはhash順であり、時刻条件を広げて同じcursorを続けると前方の追加原本を読み落とすためです。転送先は追記先であり、すでにある未来原本を消す処理ではありません。
+
+宣言は1000件ごとに読み、原本ID/本文/hash/索引を検査してから時刻で絞ります。未来へ偽装された索引で過去原本を隠し、空集合として完了することを防ぎます。SQLから宣言の実長と先頭2049文字だけを読み、実長2048文字の上限を検査するため、巨大な宣言をJSへ全量読みしません。転送本文として対象外の未来XMLを読み出しません（固定snapshotのコピー/全体指紋検査は別です）。対象原本の既存の256MiB上限・UTF-8/BOM・内容hash検査、原本ごとのcommitは維持します。
+
+原観測の固定末尾と組み合わせ、同じSDK/SQLite版・入力/追加順・観測pageSizeで新しい空候補へ再作成すると、後から増えた観測/原本を除いた入力を再現できます。未来データ追加後のpoolの物理指紋は変わるため、新しいsource指紋で読み、以前の候補の期待指紋と照合した別の再生成証跡を残します。過去のmanifestを書き換えません。上限以前の原本が後から追加された場合等は期待指紋が変わるため、同じ候補として黙って受け入れません。異なるSDK/SQLite版や解析cache追加後のbyte一致を保証する機能ではありません。

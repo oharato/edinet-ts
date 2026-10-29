@@ -51,3 +51,13 @@ it('空の一覧も再観測証跡を更新し、翌実行の新しい開始時�
  vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-06-26T00:00:00Z'));s.repo.saveDocumentList([],'2026-06-24');vi.setSystemTime(new Date('2026-06-26T01:00:00Z'));const f=vi.fn(async()=>[]),q={startDate:'2026-06-24',endDate:'2026-06-24',refreshAfter:'2026-06-26T01:00:00Z'};expect((await backfillFinancialDocumentLists(s.repo,f,q)).complete).toBe(true);expect(s.repo.getLastObservationSequence()).toBe(0);vi.setSystemTime(new Date('2026-06-27T01:00:00Z'));expect((await backfillFinancialDocumentLists(s.repo,f,{...q,refreshAfter:'2026-06-27T01:00:00Z'})).days[0].status).toBe('fetched');expect(f).toHaveBeenCalledTimes(2);
  for(const refreshAfter of ['SECRET','2026-06-27T01:00:00','2099-01-01T00:00:00Z'])await expect(backfillFinancialDocumentLists(s.repo,f,{...q,refreshAfter})).rejects.toThrow();expect(()=>s.repo.hasCompleteListForDate(q.startDate,'bad')).toThrow();
 }));
+
+it('計画で固定した末尾より後の既存/追加原観測を、分割再開で混ぜない',()=>fixture(async s=>{
+ s.repo.saveDocumentList(['A','B','C'].map(doc),'2026-06-24');const options={sourceId:'fixed',throughSequence:2,pageSize:1,maxPages:1};
+ const first=archiveFinancialDocumentObservations(s.repo,s.archive,options);expect(first).toMatchObject({complete:false,throughSequence:2,nextAfterSequence:1});s.repo.saveDocumentList([doc('D')],'2026-06-25');
+ const last=archiveFinancialDocumentObservations(s.repo,s.archive,{...options,afterSequence:1});expect(last).toMatchObject({complete:true,throughSequence:2,nextAfterSequence:2,insertedObservations:1});expect(s.archive.observation('metadata:fixed:3')).toBeUndefined();expect(s.archive.observation('metadata:fixed:4')).toBeUndefined();expect(archiveFinancialDocumentObservations(s.repo,s.archive,{...options,maxPages:10}).insertedObservations).toBe(0);
+}));
+it('固定末尾0と不正な末尾を扱い、cursorが上限を超えた場合も書込前に止める',()=>fixture(async s=>{
+ s.repo.saveDocumentList([doc('A')],'2026-06-24');expect(archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'zero',throughSequence:0})).toMatchObject({complete:true,readObservations:0,throughSequence:0});const append=vi.spyOn(s.archive,'append');
+ for(const throughSequence of [-1,2,1.5,NaN,null])expect(()=>archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'fixed',throughSequence} as never)).toThrow();expect(()=>archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'fixed',throughSequence:0,afterSequence:1})).toThrow();expect(append).not.toHaveBeenCalled();append.mockRestore();
+}));

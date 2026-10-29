@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { parseDocumentTimestamp } from "./document-timestamp";
 import {recoverDedicatedSqliteSnapshot,type DedicatedSqliteRecoveryKind} from "./db/sqlite-recovery";
 import {PublishedFinancialIndex} from "./published-financial-index";
 import {FinancialIndexPublication} from "./db/financial-index-publication";
@@ -717,15 +718,19 @@ program.command("archive-financial-document-observations")
     .requiredOption("--archive <file>", "書込可能な財務アーカイブ")
     .requiredOption("--source-id <id>", "取得元を識別する固定ID（英数字/_.-、64文字まで）")
     .option("--after-sequence <number>", "保存済み観測cursor", "0")
+    .option("--through-sequence <number>", "同じ計画で固定する観測の末尾")
     .option("--page-size <number>", "一batchの件数（1〜1000）", "1000")
     .option("--max-pages <number>", "一回の最大batch数（1〜1000）", "20")
     .option("--pretty", "JSONを整形")
     .action(options=>{
         let repository:EdinetRepository|undefined,archive:ObservedFinancialArchive|undefined;
         try{
-            if(!/^[A-Za-z0-9_.-]{1,64}$/.test(options.sourceId)||![options.afterSequence,options.pageSize,options.maxPages].every(v=>/^\d+$/.test(v))||!Number.isSafeInteger(Number(options.afterSequence))||Number(options.pageSize)<1||Number(options.pageSize)>1000||Number(options.maxPages)<1||Number(options.maxPages)>1000)throw new Error();
-            repository=new EdinetRepository(path.resolve(options.metadata),{readOnly:true});archive=new ObservedFinancialArchive(path.resolve(options.archive));
-            console.log(JSON.stringify(archiveFinancialDocumentObservations(repository,archive,{sourceId:options.sourceId,afterSequence:Number(options.afterSequence),pageSize:Number(options.pageSize),maxPages:Number(options.maxPages)}),null,options.pretty?2:undefined));
+            if(!/^[A-Za-z0-9_.-]{1,64}$/.test(options.sourceId)||![options.afterSequence,options.pageSize,options.maxPages].every(v=>/^\d+$/.test(v))||!Number.isSafeInteger(Number(options.afterSequence))||options.throughSequence!==undefined&&(!/^\d+$/.test(options.throughSequence)||!Number.isSafeInteger(Number(options.throughSequence)))||Number(options.pageSize)<1||Number(options.pageSize)>1000||Number(options.maxPages)<1||Number(options.maxPages)>1000)throw new Error();
+            repository=new EdinetRepository(path.resolve(options.metadata),{readOnly:true});
+            const last=repository.getLastObservationSequence(),through=options.throughSequence===undefined?last:Number(options.throughSequence);
+            if(through>last||Number(options.afterSequence)>through)throw new Error();
+            archive=new ObservedFinancialArchive(path.resolve(options.archive));
+            console.log(JSON.stringify(archiveFinancialDocumentObservations(repository,archive,{sourceId:options.sourceId,afterSequence:Number(options.afterSequence),throughSequence:options.throughSequence===undefined?undefined:Number(options.throughSequence),pageSize:Number(options.pageSize),maxPages:Number(options.maxPages)}),null,options.pretty?2:undefined));
         }catch{console.error("原観測DB・転送元ID・保存済みcursorを確認してください（入力内容は非表示）");process.exitCode=1;}
         finally{archive?.close();repository?.close();}
     });
@@ -751,16 +756,17 @@ program.command("transfer-financial-archive-sources")
     .requiredOption("--archive <file>", "転送先アーカイブ")
     .requiredOption("--source-sha256 <hash>", "転送元の物理SHA-256")
     .option("--after-id <id>", "前回のnextAfterId")
+    .option("--available-by <timestamp>", "同じ計画で固定する原本の取得時点")
     .option("--limit <number>", "一回の最大原本観測数（1〜100）", "20")
     .option("--pretty", "JSONを整形")
     .action(options => {
         let source: ObservedFinancialArchive | undefined, target: ObservedFinancialArchive | undefined;
         try {
-            if (!/^\d+$/.test(options.limit) || Number(options.limit) < 1 || Number(options.limit) > 100 || !/^[a-f0-9]{64}$/.test(options.sourceSha256) || options.afterId !== undefined && !/^[a-f0-9]{64}$/.test(options.afterId) || path.resolve(options.source) === path.resolve(options.archive)) throw new Error();
+            if (!/^\d+$/.test(options.limit) || Number(options.limit) < 1 || Number(options.limit) > 100 || !/^[a-f0-9]{64}$/.test(options.sourceSha256) || options.afterId !== undefined && !/^[a-f0-9]{64}$/.test(options.afterId) || options.availableBy !== undefined && parseDocumentTimestamp(options.availableBy, true) === undefined || path.resolve(options.source) === path.resolve(options.archive)) throw new Error();
             source = new ObservedFinancialArchive(path.resolve(options.source), { readOnly: true });
             if (source.snapshotSha256() !== options.sourceSha256) throw new Error();
             target = new ObservedFinancialArchive(path.resolve(options.archive));
-            console.log(JSON.stringify(source.transferSourcesTo(target, { sourceArchiveSha256: options.sourceSha256, afterId: options.afterId, limit: Number(options.limit) }), null, options.pretty ? 2 : undefined));
+            console.log(JSON.stringify(source.transferSourcesTo(target, { sourceArchiveSha256: options.sourceSha256, afterId: options.afterId, availableBy: options.availableBy, limit: Number(options.limit) }), null, options.pretty ? 2 : undefined));
         } catch { console.error("固定原本指紋・転送cursor・異なる転送先を確認してください（入力内容は非表示）"); process.exitCode = 1; }
         finally { target?.close(); source?.close(); }
     });

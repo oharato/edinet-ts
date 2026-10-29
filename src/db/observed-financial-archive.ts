@@ -18,10 +18,13 @@ export interface ObservedFinancialArchiveOptions {
 export interface FinancialArchiveSourceTransferOptions {
     sourceArchiveSha256: string;
     afterId?: string;
+    /** 指定時刻以前に取得できていた原本宣言/内容だけを転送します。 */
+    availableBy?: string;
     limit?: number;
 }
 export interface FinancialArchiveSourceTransferResult {
     sourceArchiveSha256: string;
+    availableBy?: string;
     transferredIds: string[];
     insertedSources: number;
     insertedContents: number;
@@ -172,26 +175,53 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
     snapshotSha256(): string { return this.readOnlySnapshotSha256(); }
     /** 固定readOnly原本から全版の宣言/内容を追記。各原本をcommitし、再投入は冪等です。 */
     transferSourcesTo(target: ObservedFinancialArchive, options: FinancialArchiveSourceTransferOptions): FinancialArchiveSourceTransferResult {
-        if (!(target instanceof ObservedFinancialArchive) || target === this || this.archiveFile !== undefined && this.archiveFile === target.archiveFile || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["sourceArchiveSha256", "afterId", "limit"].includes(k)))
+        if (!(target instanceof ObservedFinancialArchive) || target === this || this.archiveFile !== undefined && this.archiveFile === target.archiveFile || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["sourceArchiveSha256", "afterId", "availableBy", "limit"].includes(k)))
             throw new Error("異なる転送先と固定原本指紋を指定してください");
-        const { sourceArchiveSha256, afterId, limit = 20 } = options;
+        const { sourceArchiveSha256, afterId, availableBy, limit = 20 } = options;
+        const availableTime = availableBy === undefined ? undefined : timestamp(availableBy, true);
+        if (availableBy !== undefined && availableTime === undefined) throw new Error("原本の取得時点にはtimezone付き日時が必要です");
         if (typeof sourceArchiveSha256 !== "string" || !/^[a-f0-9]{64}$/.test(sourceArchiveSha256) || afterId !== undefined && (typeof afterId !== "string" || !/^[a-f0-9]{64}$/.test(afterId)) || !Number.isSafeInteger(limit) || limit < 1 || limit > 100)
             throw new Error("原本転送は固定指紋・原本ID・1〜100件で指定してください");
         if (this.snapshotSha256() !== sourceArchiveSha256)
             throw new Error("転送元snapshot指紋が異なります");
         target.append([], []);
         return this.transaction(() => {
-            if (afterId !== undefined && !this.rows("SELECT id FROM archive_sources WHERE id=?", [afterId]).length)
-                throw new Error("転送cursorが固定原本にありません");
-            const rows = this.rows("SELECT * FROM archive_sources WHERE id>? ORDER BY id LIMIT ?", [afterId ?? "", limit + 1]);
-            const transferredIds: string[] = [];
-            let insertedSources = 0, insertedContents = 0, bytes = 0;
-            for (const row of rows.slice(0, limit)) {
+            const headers = "SELECT substr(id,1,65) AS id,substr(doc_id,1,257) AS doc_id,CASE WHEN typeof(available_ms) IN ('integer','real') THEN available_ms END AS available_ms,length(body) AS body_length,substr(body,1,2049) AS body,substr(sha256,1,65) AS sha256 FROM archive_sources";
+            const decodeSource = (row: Record<string, unknown>) => {
+                if (typeof row.body_length !== "number" || row.body_length > 2048) throw new Error("原本の宣言は2048文字以下です");
                 const body = this.decode(row) as ObservedFinancialSource;
                 const [source] = captureObservedFinancialSources([body]);
                 const normalized = { docID: source.docID, availableAt: new Date(timestamp(source.availableAt, true)!).toISOString(), sourceSha256: source.sourceSha256 };
                 if (canonical(body) !== canonical(normalized) || body.docID !== row.doc_id || timestamp(body.availableAt, true) !== row.available_ms || hash(canonical(body)) !== row.id)
                     throw new Error("転送原本の宣言/索引が不整合です");
+                return normalized;
+            };
+            if (afterId !== undefined) {
+                const previous = this.rows(headers + " WHERE id=?", [afterId])[0];
+                if (!previous) throw new Error("転送cursorが固定原本にありません");
+                const source = decodeSource(previous);
+                if (availableTime !== undefined && timestamp(source.availableAt, true)! > availableTime) throw new Error("転送cursorが指定した取得時点の範囲外です");
+            }
+            const archive = this;
+            function* candidates() {
+                let cursor = afterId ?? "";
+                for (;;) {
+                    const rows = archive.rows(headers + " WHERE id>? ORDER BY id LIMIT 1000", [cursor]);
+                    for (const row of rows) {
+                        const source = decodeSource(row);
+                        cursor = String(row.id);
+                        // 索引が壊れた未来行で過去の原本を隠せないよう、宣言/索引を検査してから絞ります。
+                        if (availableTime === undefined || timestamp(source.availableAt, true)! <= availableTime) yield {row, source};
+                    }
+                    if (rows.length < 1000) return;
+                }
+            }
+            const iterator = candidates();
+            let candidate = iterator.next();
+            const transferredIds: string[] = [];
+            let insertedSources = 0, insertedContents = 0, bytes = 0;
+            for (; !candidate.done && transferredIds.length < limit; candidate = iterator.next()) {
+                const {row, source: normalized} = candidate.value, body = normalized;
                 const size = this.rows("SELECT length(xml) AS bytes FROM archive_contents WHERE sha256=?", [body.sourceSha256]);
                 const length = size[0]?.bytes;
                 if (size.length && (typeof length !== "number" || !Number.isSafeInteger(length) || length < 0 || length > 256 * 1024 * 1024))
@@ -212,8 +242,8 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                 transferredIds.push(String(row.id));
             }
             if (this.snapshotSha256() !== sourceArchiveSha256) throw new Error("転送元snapshotが変化しました");
-            const complete = rows.length === transferredIds.length;
-            return { sourceArchiveSha256, transferredIds, insertedSources, insertedContents, ...(complete ? {} : { nextAfterId: transferredIds.at(-1) }), complete };
+            const complete = candidate.done === true;
+            return { sourceArchiveSha256, ...(availableTime === undefined ? {} : {availableBy: new Date(availableTime).toISOString()}), transferredIds, insertedSources, insertedContents, ...(complete ? {} : { nextAfterId: transferredIds.at(-1) }), complete };
         }, false);
     }
     private decode(row: Record<string, unknown>) {

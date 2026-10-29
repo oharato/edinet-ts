@@ -84,6 +84,8 @@ export async function backfillFinancialDocumentLists(repository: EdinetRepositor
 export interface FinancialObservationTransferOptions {
     sourceId: string;
     afterSequence?: number;
+    /** 計画時の末尾を固定し、後から増えた原観測を混ぜません。 */
+    throughSequence?: number;
     pageSize?: number;
     maxPages?: number;
     signal?: AbortSignal;
@@ -100,14 +102,14 @@ export interface FinancialObservationTransferResult {
 }
 /** 原観測を安定namespaceで追記。cursorは原本commit後にだけ進めます。 */
 export function archiveFinancialDocumentObservations(repository: EdinetRepository, archive: ObservedFinancialArchive, options: FinancialObservationTransferOptions): FinancialObservationTransferResult {
-    if (!(repository instanceof EdinetRepository) || !(archive instanceof ObservedFinancialArchive) || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["sourceId", "afterSequence", "pageSize", "maxPages", "signal"].includes(k)))
+    if (!(repository instanceof EdinetRepository) || !(archive instanceof ObservedFinancialArchive) || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["sourceId", "afterSequence", "throughSequence", "pageSize", "maxPages", "signal"].includes(k)))
         throw new Error("観測転送の入力が不正です");
-    const { sourceId, afterSequence = 0, pageSize = 1000, maxPages = 20, signal } = options;
+    const { sourceId, afterSequence = 0, throughSequence: requestedThrough, pageSize = 1000, maxPages = 20, signal } = options;
     if (typeof sourceId !== "string" || !/^[A-Za-z0-9_.-]{1,64}$/.test(sourceId) || !Number.isSafeInteger(afterSequence) || afterSequence < 0 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 1000 || !Number.isSafeInteger(maxPages) || maxPages < 1 || maxPages > 1000 || !signalValid(signal))
         throw new Error("転送元ID・cursor・batch条件が不正です");
-    const throughSequence = repository.getLastObservationSequence();
-    if (afterSequence > throughSequence)
-        throw new Error("転送cursorが転送元の末尾より先です");
+    const lastSequence = repository.getLastObservationSequence(), throughSequence = requestedThrough === undefined ? lastSequence : requestedThrough;
+    if (!Number.isSafeInteger(throughSequence) || throughSequence < 0 || throughSequence > lastSequence || afterSequence > throughSequence)
+        throw new Error("転送cursorと固定末尾は保存済みの原観測範囲で指定してください");
     const convert = (o: ReturnType<EdinetRepository['getDocumentObservations']>[number]): DocumentVersionObservation => ({ ...o, observationId: `metadata:${sourceId}:${o.sequence}` });
     archive.append([], []);
     if (afterSequence) {

@@ -137,3 +137,30 @@ configはversion1で、絶対pathのmetadataPath/checkpointPath/envPath/guardSum
 参照元が分からない通知はunresolvedに原観測番号を残し、後続の原観測が追加されたときに再照合します。結果のunresolvedNoticesを失敗なし/対象外へ置き換えません。completeは指定範囲と既知対象日の再観測完了であり、全通知の解決・全履歴の捕捉・財務値の検査完了ではありません。当日probeは提供元の準備確認に限り、当日の通知は翌日以降に閉じた一覧として保存して処理します。
 
 年間保存一覧で対象候補が143日に及んだため、初回も処理できるよう256要求/JST日へ上限を見直しました（probeを含む、既存毎秒1要求・自動retry0）。追加の認証や有料データ源は使いません。日次財務の新規計画/解析/品質/公開は引き続き別工程です。
+
+## 日次財務計画へ渡す原観測の末尾を固定する
+
+`archiveFinancialDocumentObservations` の `throughSequence` には、計画対象の日次runの完了を確認して採番した末尾を指定できます。後続の呼出しでも同じ値を使うと、途中で元DBへ新しい観測が増えても同じ入力集合を転送します。0は空集合、未記録の末尾/負数/小数やafterSequenceより小さい値は書込前に拒否します。省略時は従来どおり各呼出し開始時の末尾を固定します。
+
+```ts
+// 日次writerと同じ排他内で完了状態を確認し、sourceId/throughSequenceを計画へ永続化する。
+const throughSequence = repository.getLastObservationSequence();
+let afterSequence = 0;
+do {
+  const page = archiveFinancialDocumentObservations(repository, candidateArchive, {
+    sourceId, throughSequence, afterSequence, pageSize: 1000, maxPages: 20
+  });
+  afterSequence = page.nextAfterSequence; // 原本commit後に永続化
+  if (page.complete) break;
+} while (true);
+```
+
+```sh
+edinet-ts archive-financial-document-observations --metadata data/daily.sqlite \
+  --archive data/new-cycle.sqlite --source-id daily-metadata-20261030-v1 \
+  --through-sequence "$CYCLE_THROUGH_SEQUENCE" --after-sequence "$SAVED_SEQUENCE"
+```
+
+この上限は追加する観測の範囲です。転送先にすでにある後続観測を消しません。財務の別計画には新しい候補アーカイブを用意し、既存の計画/公開世代へ後続観測を混ぜません。原本は [取得時刻を固定した転送](OBSERVED_FINANCIAL_ARCHIVE.md#原本の取得時刻を固定した転送)と組み合わせられます。
+
+候補の再作成には、少なくともsourceId・throughSequence・原本availableBy・書類選択cutoff・母集団・SDK/Node/SQLiteの固定版・観測pageSize・期待する観測指紋/候補指紋を保持します。原観測転送、原本転送、FinancialSourceJob.beginを順に実行して入力を封じ、取得後の別cutoff/候補から構築へ進みます。これらの境界を使う日次財務の自動runnerと、raw pool/候補の保存寿命管理・構築/品質/公開の反復接続は後続工程です。

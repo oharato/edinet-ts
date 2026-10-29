@@ -14,6 +14,8 @@ it('固定指紋の原本をCLIで分割転送し、再投入と不正指紋を�
  const first=run(['--source-sha256',sha,'--limit','1']);expect(first.status,first.stderr).toBe(0);const page=JSON.parse(first.stdout);expect(page).toMatchObject({complete:false,insertedSources:1,insertedContents:1});
  const last=run(['--source-sha256',sha,'--after-id',page.nextAfterId]);expect(last.status,last.stderr).toBe(0);expect(JSON.parse(last.stdout)).toMatchObject({complete:true,insertedSources:1,insertedContents:0});
  const repeated=run(['--source-sha256',sha]);expect(repeated.status,repeated.stderr).toBe(0);expect(JSON.parse(repeated.stdout)).toMatchObject({complete:true,insertedSources:0,insertedContents:0});
+ const historical=join(dir,'historical.sqlite'),past=run(['--archive',historical,'--source-sha256',sha,'--available-by','2025-12-31T23:59:59Z']);expect(past.status,past.stderr).toBe(0);expect(JSON.parse(past.stdout)).toMatchObject({complete:true,transferredIds:[],availableBy:'2025-12-31T23:59:59.000Z'});
+ const unavailable=join(dir,'invalid-time.sqlite'),invalidTime=run(['--archive',unavailable,'--source-sha256',sha,'--available-by','SECRET']);expect(invalidTime.status).toBe(1);expect(invalidTime.stderr).not.toContain('SECRET');expect(existsSync(unavailable)).toBe(false);
  const absent=join(dir,'absent.sqlite'),bad=run(['--archive',absent,'--source-sha256','0'.repeat(64)]);expect(bad.status).toBe(1);expect(existsSync(absent)).toBe(false);expect(bad.stderr).not.toContain('00000000');expect(readFileSync(source)).toEqual(before);
  }finally{rmSync(dir,{recursive:true,force:true});}
 },30000);
