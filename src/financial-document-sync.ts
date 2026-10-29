@@ -1,3 +1,4 @@
+import { parseDocumentTimestamp as timestamp } from "./document-timestamp";
 import { EdinetRepository } from "./db/edinet-repository";
 import { ObservedFinancialArchive } from "./db/observed-financial-archive";
 import type { EdinetDocument } from "./edinet-xbrl-downloader";
@@ -7,9 +8,12 @@ export interface FinancialListBackfillOptions {
     endDate: string;
     maxDays?: number;
     afterDate?: string;
+    /** 同じ値で再開可能。この時刻以降に再観測した閉じた日だけを再利用します。 */
+    refreshAfter?: string;
     signal?: AbortSignal;
 }
 export interface FinancialListBackfillResult {
+    refreshAfter?: string;
     days: {
         date: string;
         status: "cached" | "fetched" | "failed";
@@ -28,9 +32,11 @@ const signalValid = (s: unknown) => s === undefined || s instanceof AbortSignal;
 export async function backfillFinancialDocumentLists(repository: EdinetRepository, fetchList: (date: string, request: {
     signal?: AbortSignal;
 }) => Promise<EdinetDocument[]>, options: FinancialListBackfillOptions): Promise<FinancialListBackfillResult> {
-    if (!(repository instanceof EdinetRepository) || typeof fetchList !== "function" || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["startDate", "endDate", "maxDays", "afterDate", "signal"].includes(k)))
+    if (!(repository instanceof EdinetRepository) || typeof fetchList !== "function" || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["startDate", "endDate", "maxDays", "afterDate", "refreshAfter", "signal"].includes(k)))
         throw new Error("一覧補完の入力が不正です");
-    const { startDate, endDate, maxDays = 20, afterDate, signal } = options, today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+    const { startDate, endDate, maxDays = 20, afterDate, refreshAfter, signal } = options, today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+    const refreshTime = refreshAfter === undefined ? undefined : timestamp(refreshAfter, true);
+    if (refreshAfter !== undefined && (refreshTime === undefined || refreshTime > Date.now())) throw new Error("再観測開始時刻は現在以前のtimezone付き日時です");
     if (!date(startDate) || !date(endDate) || startDate > endDate || endDate > today || (Date.parse(endDate) - Date.parse(startDate)) / 86400000 > 1830 || !Number.isSafeInteger(maxDays) || maxDays < 1 || maxDays > 100 || afterDate !== undefined && (!date(afterDate) || afterDate < startDate || afterDate > endDate) || !signalValid(signal))
         throw new Error("一覧補完は過去〜当日の日付範囲・1〜100取得日で指定してください");
     repository.assertWritable();
@@ -42,7 +48,7 @@ export async function backfillFinancialDocumentLists(repository: EdinetRepositor
             continue;
         if (signal?.aborted)
             break;
-        if (repository.hasCompleteListForDate(day)) {
+        if (repository.hasCompleteListForDate(day, refreshAfter)) {
             days.push({ date: day, status: 'cached', closed: true });
             cursor = day;
             continue;
@@ -55,7 +61,7 @@ export async function backfillFinancialDocumentLists(repository: EdinetRepositor
             if (signal?.aborted)
                 break;
             repository.saveDocumentList(documents, day);
-            days.push({ date: day, status: 'fetched', documents: documents.length, closed: repository.hasCompleteListForDate(day) });
+            days.push({ date: day, status: 'fetched', documents: documents.length, closed: repository.hasCompleteListForDate(day, refreshAfter) });
         }
         catch {
             if (signal?.aborted)
@@ -67,13 +73,13 @@ export async function backfillFinancialDocumentLists(repository: EdinetRepositor
     let remainingDates = 0, complete = true;
     for (let ms = Date.parse(startDate); ms <= Date.parse(endDate); ms += 86400000) {
         const day = new Date(ms).toISOString().slice(0, 10);
-        if (!repository.hasCompleteListForDate(day)) {
+        if (!repository.hasCompleteListForDate(day, refreshAfter)) {
             complete = false;
             if (cursor === undefined || day > cursor)
                 remainingDates++;
         }
     }
-    return { days, ...(remainingDates && cursor !== undefined ? { nextAfterDate: cursor } : {}), remainingDates, complete, aborted: signal?.aborted ?? false };
+    return { ...(refreshTime === undefined ? {} : {refreshAfter: new Date(refreshTime).toISOString()}), days, ...(remainingDates && cursor !== undefined ? { nextAfterDate: cursor } : {}), remainingDates, complete, aborted: signal?.aborted ?? false };
 }
 export interface FinancialObservationTransferOptions {
     sourceId: string;

@@ -1,3 +1,4 @@
+import { parseDocumentTimestamp } from "../document-timestamp";
 import type { SQLInputValue } from "node:sqlite";
 import { Database, type NativeDatabase } from "./node-sqlite";
 import * as path from "path";
@@ -123,11 +124,14 @@ export class EdinetRepository {
     }
 
     /** 当日中の取得は完了扱いせず、日付が閉じた後に一度取り直します（日本時間）。 */
-    public hasCompleteListForDate(date: string): boolean {
+    public hasCompleteListForDate(date: string, notBefore?: string): boolean {
+        const threshold = notBefore === undefined ? undefined : parseDocumentTimestamp(notBefore, true);
+        if (notBefore !== undefined && threshold === undefined) throw new Error("一覧の再観測開始時刻にはtimezone付き日時が必要です");
         const table = this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='document_list_fetches'");
         try { if (!table.get()) return false; } finally { table.close(); }
-        const statement = this.db.prepare("SELECT 1 FROM document_list_fetches WHERE list_date=? AND date(fetched_at, '+9 hours') > list_date");
-        try { return !!statement.get(date); } finally { statement.close(); }
+        const statement = this.db.prepare("SELECT 1 FROM document_list_fetches WHERE list_date=? AND date(fetched_at, '+9 hours') > list_date AND (? IS NULL OR julianday(fetched_at) >= julianday(?))");
+        const observedAfter = threshold === undefined ? null : new Date(threshold).toISOString();
+        try { return !!statement.get(date, observedAfter, observedAfter); } finally { statement.close(); }
     }
 
     private writeBatch(docs: EdinetDocument[], submitDate: string, complete: boolean) {

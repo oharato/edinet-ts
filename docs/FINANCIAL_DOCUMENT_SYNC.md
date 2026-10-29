@@ -22,7 +22,7 @@ try {
 
 開始/終了は有効な暦日で、終了は日本時間の当日まで、一回の指定範囲は日付差1,830日までです。この上限は本APIの処理上限であり、提供元の保存期間を宣言するものではありません。`maxDays` は新規取得日数で既定20・最大100。取得済みの閉じた日は再利用し、上限に数えません。
 
-一覧は書類種別で絞らず、日ごとに既存 `saveDocumentList` で原子的に保存します。書類0件の日にも取得証跡を残します。当日中の取得は完了扱いにせず、日本時間で翌日以降に一度取り直します。取得完了済み過去日の強制再取得・修正通知の全形式解決は別の運用です。
+一覧は書類種別で絞らず、日ごとに既存 `saveDocumentList` で原子的に保存します。書類0件の日にも取得証跡を残します。当日中の取得は完了扱いにせず、日本時間で翌日以降に一度取り直します。取得完了済み過去日の再取得は下記refreshAfterで指定します。修正通知の全形式解決は別の運用です。
 
 `days` は `cached / fetched / failed` と `closed` を返します。通信・保存の失敗は `document-list-fetch-failed` とし、入力値や例外本文を返さず後続の日へ進みます。signal中断時は受信後でも保存せず、すでにcommitした日を維持します。readOnly/close済みDBは通信前に拒否します。
 
@@ -85,3 +85,29 @@ source/builtの4,209件転送とキャッシュだけの一覧再巡回、CLI2�
 専用metadata DBで2025-10-29〜2026-10-28の365日を取得し、全日が閉じた後の完了証跡と83,828観測を保存しました。新しい専用財務アーカイブへ10,000件ごとにcursorを保存し、末尾83,828まで全件転送。独立SQLite/JSON処理で全観測ID/hash、1,005,936項目、親/会社索引、一覧日/実観測日時、日別365件の完了証跡と件数が元metadata DBと一致しました。これらは取得時に実観測した履歴であり、過去日に既知だった履歴へ戻しません。
 
 元の短い提出窓・1,268原本の取得/検索世代を変更せず、新しい一覧指紋とcutoffから別の原本取得計画へ進みます。1年分の一覧取得と、全原本/全指標の充足・公開可否は別の検証です。
+
+## 実行開始時刻を固定して閉じた日を再観測する
+
+`refreshAfter` を指定すると、その時刻以降に取得した閉じた日だけを再利用します。省略時は従来どおり取得済みの閉じた日を再利用します。
+
+```ts
+const refreshAfter = new Date().toISOString(); // この実行の状態として永続化
+const page = await backfillFinancialDocumentLists(repository, fetchList, {
+  startDate, endDate, refreshAfter, maxDays: 20, afterDate, signal,
+});
+// 次page/失敗再試行にも同じrefreshAfterを渡す
+```
+
+この時刻は現在以前でtimezone必須です。結果にもUTCへ正規化した `refreshAfter` を返します。再開時に時刻を作り直すと既に取り直した日まで再取得するため、同じ実行では固定します。取得commit後・cursor保存前に停止しても、保存済みの新しい完了証跡を再利用できます。新しい実行の開始時刻を指定した場合は、古い閉じた日も再取得します。
+
+再取得に失敗した日を、以前の完了証跡だけで今回も成功したとは扱いません。`complete`/`remainingDates`/`closed` は指定時刻以降の取得証跡で判定します。cursorより前の失敗があれば `remainingDates=0` でも `complete=false` となるため、従来どおりcursorなしで失敗を再試行します。空の一覧も新しい完了証跡を保存し、同じ実行の再投入では通信/観測追加を行いません。
+
+原観測は追記し、過去のobservedAtやJSONを更新しません。取得元DBの `hasCompleteListForDate(date, notBefore)` でも、指定時刻以降の閉じた日かを確認できます。これは観測の最低時刻で、全日を同一瞬間に取得した証明や、未観測の訂正履歴の復元ではありません。
+
+```sh
+edinet-ts backfill-financial-document-lists --metadata data/daily.sqlite \
+  --start-date 2026-06-01 --end-date 2026-06-30 \
+  --refresh-after "$LIST_RUN_STARTED_AT" --max-days 20
+```
+
+公式仕様では過去日の情報も日次更新され、当日分ファイルが取得可能になれば前日までの更新完了を判断できます。日次運用ではこの確認と対象日/再観測範囲を別途固定し、`refreshAfter` だけで提供元の更新完了を宣言しません。[EDINET API仕様書3-1-3](https://disclosure2dl.edinet-fsa.go.jp/guide/static/disclosure/download/ESE140206.pdf)を参照してください。既存の年次取得計画へ新しい一覧を途中追加しない制約は変わりません。

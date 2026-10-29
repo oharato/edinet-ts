@@ -697,6 +697,7 @@ program.command("backfill-financial-document-lists")
     .requiredOption("--end-date <date>", "終了日")
     .option("--max-days <number>", "一回の最大取得日数（1〜100）", "20")
     .option("--after-date <date>", "巡回を続ける日付cursor。失敗の再試行は省略")
+    .option("--refresh-after <timestamp>", "この時刻以降の再観測を要求。同じ時刻で途中再開")
     .option("--timeout-ms <number>", "本文受信までの通信timeout", "60000")
     .option("--pretty", "JSONを整形")
     .action(async options=>{
@@ -705,7 +706,7 @@ program.command("backfill-financial-document-lists")
             if(![options.maxDays,options.timeoutMs].every(v=>/^\d+$/.test(v))||Number(options.maxDays)<1||Number(options.maxDays)>100||!Number.isSafeInteger(Number(options.timeoutMs))||Number(options.timeoutMs)<1||Number(options.timeoutMs)>2147483647)throw new Error();
             repository=new EdinetRepository(path.resolve(options.metadata));
             const downloader=new EdinetXbrlDownloader({requestTimeoutMs:Number(options.timeoutMs)});process.once("SIGINT",stop);
-            const result=await backfillFinancialDocumentLists(repository,(date,request)=>downloader.search(date,undefined,request),{startDate:options.startDate,endDate:options.endDate,maxDays:Number(options.maxDays),afterDate:options.afterDate,signal:controller.signal});
+            const result=await backfillFinancialDocumentLists(repository,(date,request)=>downloader.search(date,undefined,request),{startDate:options.startDate,endDate:options.endDate,maxDays:Number(options.maxDays),afterDate:options.afterDate,refreshAfter:options.refreshAfter,signal:controller.signal});
             console.log(JSON.stringify(result,null,options.pretty?2:undefined));if(result.aborted||result.days.some(d=>d.status==='failed'))process.exitCode=1;
         }catch{console.error("一覧DB・日付範囲・取得条件を確認してください（入力内容は非表示）");process.exitCode=1;}
         finally{process.removeListener("SIGINT",stop);repository?.close();}
