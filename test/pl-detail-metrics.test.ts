@@ -25,7 +25,7 @@ const doc = (code: string, raw: string): FinancialDetailDocument => ({ xml: xml(
 
 describe("PL追加明細5項目（売上総利益・営業外収益/費用・税引前・法人税等）", () => {
     it("辞書v6でも既定5項目は不変で、新5項目は明示時だけ返す", () => {
-        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("7");
+        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("8");
         expect(DEFAULT_FINANCIAL_DETAIL_METRICS).toEqual(["noncurrentAssets", "noncurrentLiabilities", "cashAndDeposits", "costOfSales", "sellingGeneralAndAdministrativeExpenses"]);
         expect(Object.keys(createFinancialDetailSnapshot(xml(), metadata()).selections).sort()).toEqual(["costOfSales", "sellingGeneralAndAdministrativeExpenses"]);
         expect(Object.keys(createFinancialDetailSnapshot(xml(), metadata(), ids).selections).sort()).toEqual([...ids].sort());

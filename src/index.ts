@@ -137,3 +137,5 @@ export type {PublishedFinancialIndexSnapshot,PublishedFinancialIndexSearchResult
 export * from "./company-master-changes";
 
 export * from "./corporate-registry";
+
+export * from "./roic";

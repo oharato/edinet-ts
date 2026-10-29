@@ -5,6 +5,8 @@ import { createFinancialDetailSnapshot, screenFinancialDetailDocuments, Financia
 import { instance, fact, standalone } from "./fixtures/metric-boundaries";
 
 const mappings = [
+    [FinancialDetailMetricId.CommercialPapers, "CommercialPapersLiabilities"],
+    [FinancialDetailMetricId.ShortTermBondsPayable, "ShortTermBondsPayable"],
     [FinancialDetailMetricId.ShortTermLoansPayable, "ShortTermLoansPayable"],
     [FinancialDetailMetricId.CurrentPortionOfLongTermLoansPayable, "CurrentPortionOfLongTermLoansPayable"],
     [FinancialDetailMetricId.LongTermLoansPayable, "LongTermLoansPayable"],
@@ -23,9 +25,9 @@ const xml = (raw = "120.5000", omit?: string, extra = "", contexts = context()) 
     instance(mappings.filter(([id]) => id !== omit).map(([, tag]) => tagFact(tag, raw)).join("") + extra, contexts);
 const doc = (code: string, raw: string): FinancialDetailDocument => ({ xml: xml(raw), metadata: metadata(code) });
 
-describe("借入・社債・リースの直接7残高", () => {
+describe("借入・社債・リースの直接9残高", () => {
     it("辞書v6でも既定5項目の集合を維持する", () => {
-        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("7");
+        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("8");
         expect(DEFAULT_FINANCIAL_DETAIL_METRICS).toEqual(["noncurrentAssets", "noncurrentLiabilities", "cashAndDeposits", "costOfSales", "sellingGeneralAndAdministrativeExpenses"]);
         const oldFacts = ["NoncurrentAssets", "NoncurrentLiabilities", "CashAndDeposits"].map(tag => tagFact(tag, "10")).join("");
         const input = xml("100", undefined, oldFacts);

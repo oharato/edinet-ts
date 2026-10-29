@@ -12,6 +12,7 @@ export const FinancialDetailMetricId = Object.freeze({
     IncomeTaxesPaidCashFlow: "incomeTaxesPaidCashFlow", CashDividendsPaidCashFlow: "cashDividendsPaidCashFlow",
     LongTermLoansRepaymentCashFlow: "longTermLoansRepaymentCashFlow",
     ShortTermLoansPayable: "shortTermLoansPayable",
+    CommercialPapers: "commercialPapers", ShortTermBondsPayable: "shortTermBondsPayable",
     CurrentPortionOfLongTermLoansPayable: "currentPortionOfLongTermLoansPayable",
     LongTermLoansPayable: "longTermLoansPayable",
     CurrentPortionOfBonds: "currentPortionOfBonds",
@@ -47,6 +48,8 @@ export const FINANCIAL_DETAIL_REGISTRY: Readonly<Record<FinancialDetailMetricId,
     incomeTaxesPaidCashFlow: define("incomeTaxesPaidCashFlow", "IncomeTaxesPaidOpeCF", "duration"),
     cashDividendsPaidCashFlow: define("cashDividendsPaidCashFlow", "CashDividendsPaidFinCF", "duration"),
     longTermLoansRepaymentCashFlow: define("longTermLoansRepaymentCashFlow", "RepaymentOfLongTermLoansPayableFinCF", "duration"),
+    commercialPapers: define("commercialPapers", "CommercialPapersLiabilities", "instant"),
+    shortTermBondsPayable: define("shortTermBondsPayable", "ShortTermBondsPayable", "instant"),
     shortTermLoansPayable: define("shortTermLoansPayable", "ShortTermLoansPayable", "instant"),
     currentPortionOfLongTermLoansPayable: define("currentPortionOfLongTermLoansPayable", "CurrentPortionOfLongTermLoansPayable", "instant"),
     longTermLoansPayable: define("longTermLoansPayable", "LongTermLoansPayable", "instant"),
@@ -57,4 +60,4 @@ export const FINANCIAL_DETAIL_REGISTRY: Readonly<Record<FinancialDetailMetricId,
     shareholdersEquity: define("shareholdersEquity", "ShareholdersEquity", "instant"),
     valuationAndTranslationAdjustments: define("valuationAndTranslationAdjustments", "ValuationAndTranslationAdjustments", "instant")
 });
-export const FINANCIAL_DETAIL_REGISTRY_VERSION = "7";
+export const FINANCIAL_DETAIL_REGISTRY_VERSION = "8";
