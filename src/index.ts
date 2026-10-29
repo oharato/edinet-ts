@@ -141,3 +141,5 @@ export * from "./corporate-registry";
 export * from "./roic";
 
 export * from "./db/company-master-store";
+
+export * from "./valuation";
