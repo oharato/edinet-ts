@@ -6,7 +6,7 @@ export interface DocumentVersionObservation extends DocumentRelationObservation 
 export type DocumentVersionReason = "selected" | "unknown-status" | "withdrawn" | "non-disclosed" | "notice-only" |
     "conflicting-observations" | "parent-missing" | "cycle" | "unexpected-parent" | "wrong-parent-type" |
     "company-mismatch" | "company-unavailable" | "period-mismatch" | "period-unavailable" | "submit-time-unavailable" |
-    "non-chronological-chain" | "multiple-correction-leaves" | "inactive-parent" | "unresolved-correction";
+    "non-chronological-chain" | "multiple-correction-leaves" | "inactive-parent" | "unresolved-correction" | "document-type-unavailable";
 export interface DocumentVersionDecision {
     rootDocID: string; status: "selected" | "unavailable" | "unresolved"; reason: DocumentVersionReason;
     /** 選択時はroot→leaf、未解決時は失敗までの既知の経路です。 */
@@ -69,6 +69,8 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
     const {captured,analyzed}=captureDocumentVersionObservations(observations);
     const byObservationId = new Map(captured.map(item => [item.relation.observationId, item]));
     const latest = new Map<string, Candidate>(), ignored: { observationId: string; reason: "after-cutoff" | "unsupported-document-type" }[] = [];
+    const history = new Map<string, { ids: string[]; parents: Set<string> }>();
+    const supported = (type: string | null | undefined) => roots.includes(type ?? "") || corrections.includes(type ?? "");
     const identity = (item: Candidate) => {
         const { withdrawalStatus: _w, disclosureStatus: _d, docInfoEditStatus: _e, ...document } = item.observation.document;
         return JSON.stringify([document, item.observation.statuses, item.periodStart, item.periodEnd]);
@@ -78,7 +80,12 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
         const input = byObservationId.get(observation.observationId)!, doc = observation.document;
         const submittedAt = timestamp(doc.submitDateTime, false);
         if (input.observed > cutoffTime || submittedAt !== undefined && submittedAt > cutoffTime) { ignored.push({ observationId: observation.observationId, reason: "after-cutoff" }); continue; }
-        if (!roots.includes(doc.docTypeCode ?? "") && !corrections.includes(doc.docTypeCode ?? "")) { ignored.push({ observationId: observation.observationId, reason: "unsupported-document-type" }); continue; }
+        if (supported(doc.docTypeCode)) {
+            const prior = history.get(doc.docID) ?? { ids: [], parents: new Set<string>() };
+            prior.ids.push(observation.observationId);
+            if (corrections.includes(doc.docTypeCode!) && doc.parentDocID) prior.parents.add(doc.parentDocID);
+            history.set(doc.docID, prior);
+        } else ignored.push({ observationId: observation.observationId, reason: "unsupported-document-type" });
         const candidate: Candidate = { observation, observedAt: input.observed, submittedAt, periodStart: input.periodStart, periodEnd: input.periodEnd, observationIds: [observation.observationId], conflict: false };
         const previous = latest.get(doc.docID);
         if (!previous || candidate.observedAt > previous.observedAt) latest.set(doc.docID, candidate);
@@ -87,10 +94,23 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
             previous.observationIds.push(observation.observationId);
         }
     }
+    // 種類が消えた新観測も、過去に対象だった同じdocIDを失効させます。
+    const retained = new Set<string>();
+    for (const [id, candidate] of latest) {
+        if (!history.has(id)) latest.delete(id);
+        else for (const observationId of candidate.observationIds) retained.add(observationId);
+    }
+    for (let i = ignored.length - 1; i >= 0; i--) if (ignored[i].reason === "unsupported-document-type" && retained.has(ignored[i].observationId)) ignored.splice(i, 1);
     const decisions: DocumentVersionDecision[] = [], groups = new Map<string, Candidate[]>(), resolvedRoots = new Map<string, Candidate>(), failedRoots = new Map<string, DocumentVersionReason>();
     const failed = (candidate: Candidate, reason: DocumentVersionReason, path: string[]) => decisions.push({ rootDocID: candidate.observation.document.docID,
         status: "unresolved", reason, chainDocIDs: path, observationIds: candidate.observationIds });
     for (const candidate of latest.values()) {
+        if (!supported(candidate.observation.document.docTypeCode)) {
+            candidate.observationIds = [...new Set([...candidate.observationIds, ...history.get(candidate.observation.document.docID)!.ids])];
+            const inactive = availability(candidate), reason = candidate.conflict ? "conflicting-observations" : ["withdrawn", "non-disclosed", "notice-only"].includes(inactive ?? "") ? inactive! : "document-type-unavailable";
+            decisions.push({rootDocID: candidate.observation.document.docID, status: ["withdrawn", "non-disclosed", "notice-only"].includes(reason) ? "unavailable" : "unresolved", reason, chainDocIDs: [candidate.observation.document.docID], observationIds: candidate.observationIds});
+            continue;
+        }
         const path: string[] = [], seen = new Set<string>(); let current = candidate, reason: DocumentVersionReason | undefined;
         while (true) {
             const doc = current.observation.document;
@@ -126,21 +146,35 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
         group.push(candidate); groups.set(root, group);
     }
     // 解決不能の訂正を落として古い元書類を「最新」と返さないよう、参照先系列も止めます。
-    const blocked = new Map<string, string[]>();
+    const blocked = new Map<string, Set<string>>(), inactiveEvidence = new Map<string, Set<string>>();
+    let retainedReferences = 0;
     for (const decision of decisions) {
         const candidate = latest.get(decision.rootDocID)!;
-        if (["withdrawn", "non-disclosed", "notice-only"].includes(availability(candidate) ?? "")) continue;
-        let parentID = candidate.observation.document.parentDocID; const seen = new Set<string>();
-        while (parentID && !seen.has(parentID)) {
-            seen.add(parentID);
-            const parent = latest.get(parentID); if (!parent) break;
+        const inactive = ["withdrawn", "non-disclosed", "notice-only"].includes(availability(candidate) ?? "");
+        if (inactive && supported(candidate.observation.document.docTypeCode)) continue;
+        const destination = inactive ? inactiveEvidence : blocked;
+        const parents = (item: Candidate) => supported(item.observation.document.docTypeCode)
+            ? [item.observation.document.parentDocID].filter((id): id is string => !!id)
+            : [...history.get(item.observation.document.docID)!.parents];
+        const queue = parents(candidate), seen = new Set<string>(), evidence = [...candidate.observationIds];
+        for (let i = 0; i < queue.length; i++) {
+            const parentID = queue[i]; if (seen.has(parentID)) continue; seen.add(parentID);
+            const parent = latest.get(parentID); if (!parent) continue;
             const root = resolvedRoots.get(parentID);
-            if (root) { const id = root.observation.document.docID, refs = blocked.get(id) ?? []; refs.push(...candidate.observationIds); blocked.set(id, refs); break; }
-            parentID = parent.observation.document.parentDocID;
+            if (root) {
+                const id = root.observation.document.docID, refs = destination.get(id) ?? new Set<string>();
+                for (const ref of evidence) if (!refs.has(ref)) {
+                    if (++retainedReferences > 100000) throw new Error("訂正系列の観測根拠は100000参照以下です");
+                    refs.add(ref);
+                }
+                destination.set(id, refs); continue;
+            }
+            if (!supported(parent.observation.document.docTypeCode)) evidence.push(...history.get(parentID)!.ids, ...parent.observationIds);
+            queue.push(...parents(parent));
         }
     }
     for (const [rootDocID, group] of groups) {
-        const root = latest.get(rootDocID)!, rootReason = availability(root), observationIds = group.flatMap(item => item.observationIds);
+        const root = latest.get(rootDocID)!, rootReason = availability(root), observationIds = [...new Set([...group.flatMap(item => item.observationIds), ...(inactiveEvidence.get(rootDocID) ?? [])])];
         if (rootReason) {
             decisions.push({ rootDocID, status: ["withdrawn", "non-disclosed", "notice-only"].includes(rootReason) ? "unavailable" : "unresolved", reason: rootReason, chainDocIDs: [rootDocID], observationIds }); continue;
         }

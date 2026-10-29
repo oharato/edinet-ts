@@ -3,7 +3,7 @@ import { parseDocumentTimestamp as timestamp } from "./document-timestamp";
 export const LARGE_HOLDING_VERSIONS_VERSION = "1";
 export interface LargeHoldingVersionDocument extends DocumentRelationDocument { issuerEdinetCode?: string | null; formCode?: string | null; }
 export interface LargeHoldingVersionObservation { observationId: string; observedAt: string; listDate?: string; document: LargeHoldingVersionDocument; }
-export type LargeHoldingVersionReason = "selected" | "conflicting-observations" | "unknown-status" | "withdrawn" | "non-disclosed" | "notice-only" | "edited-metadata-unverified" | "submit-time-unavailable" | "filer-unavailable" | "issuer-unavailable" | "form-unavailable" | "parent-missing" | "cycle" | "wrong-parent-type" | "filer-mismatch" | "issuer-mismatch" | "non-chronological-chain" | "unresolved-correction" | "inactive-parent" | "multiple-correction-leaves";
+export type LargeHoldingVersionReason = "selected" | "conflicting-observations" | "unknown-status" | "withdrawn" | "non-disclosed" | "notice-only" | "edited-metadata-unverified" | "submit-time-unavailable" | "filer-unavailable" | "issuer-unavailable" | "form-unavailable" | "parent-missing" | "cycle" | "wrong-parent-type" | "filer-mismatch" | "issuer-mismatch" | "non-chronological-chain" | "unresolved-correction" | "inactive-parent" | "multiple-correction-leaves" | "document-type-unavailable";
 export interface LargeHoldingVersionDecision { rootDocID: string; status: "selected" | "unresolved" | "unavailable"; reason: LargeHoldingVersionReason; selectedDocID?: string; chainDocIDs: string[]; observationIds: string[]; inactiveDocuments?: { docID: string; reason: LargeHoldingVersionReason }[]; }
 export interface SelectedLargeHoldingObservation { rootDocID: string; observedAt: string; observationIds: string[]; observation: AnalyzedDocumentObservation & { document: LargeHoldingVersionDocument }; }
 export interface LargeHoldingVersionSelection { version: typeof LARGE_HOLDING_VERSIONS_VERSION; cutoff: string; decisions: LargeHoldingVersionDecision[]; selected: SelectedLargeHoldingObservation[]; ignored: { observationId: string; reason: "after-cutoff" | "superseded-observation" | "unsupported-document-type" }[]; holdingValuesMerged: false; reconstructedUnobservedHistory: false; }
@@ -44,9 +44,16 @@ export function selectLargeHoldingReportVersions(observations: readonly LargeHol
     });
     const analyzed = analyzeDocumentRelations(captured.map(c => c.relation)), source = new Map(captured.map(c => [c.relation.observationId, c]));
     const states = new Map<string, State>(), ignored: LargeHoldingVersionSelection["ignored"] = [];
+    const history = new Map<string, {ids: string[]; parents: Set<string>}>();
     for (const entry of analyzed.observations) {
         const c = source.get(entry.observationId)!;
         if (c.observed > cut) { ignored.push({ observationId: entry.observationId, reason: "after-cutoff" }); continue; }
+        if (knownType(c.original.docTypeCode)) {
+            const prior = history.get(c.original.docID) ?? {ids: [], parents: new Set<string>()};
+            prior.ids.push(entry.observationId);
+            if (c.original.docTypeCode === "360" && c.original.parentDocID) prior.parents.add(c.original.parentDocID);
+            history.set(c.original.docID, prior);
+        }
         const observation = { ...entry, document: { ...entry.document, ...(Object.hasOwn(c.original, "parentDocID") ? { parentDocID: c.original.parentDocID } : { parentDocID: undefined }), ...(Object.hasOwn(c.original, "issuerEdinetCode") ? { issuerEdinetCode: c.original.issuerEdinetCode } : {}), ...(Object.hasOwn(c.original, "formCode") ? { formCode: c.original.formCode } : {}) } };
         const { withdrawalStatus: _w, disclosureStatus: _d, docInfoEditStatus: _e, ...identity } = observation.document;
         const variant: Variant = { observation, observed: c.observed, submitted: c.submitted, signature: JSON.stringify([identity, observation.statuses]) }, previous = states.get(observation.document.docID);
@@ -58,9 +65,13 @@ export function selectLargeHoldingReportVersions(observations: readonly LargeHol
     }
     const ids = (s: State) => s.variants.map(v => v.observation.observationId).sort(compare), doc = (s: State) => s.variants[0].observation.document;
     const relevant = [...states.values()].filter(s => {
-        if (s.variants.some(v => knownType(v.observation.document.docTypeCode))) return true;
+        if (history.has(s.id)) return true;
         ignored.push(...ids(s).map(observationId => ({ observationId, reason: "unsupported-document-type" as const }))); return false;
     }).sort((a, b) => compare(a.id, b.id));
+    const evidence = (s: State) => s.variants.every(v => !knownType(v.observation.document.docTypeCode))
+        ? [...new Set([...ids(s), ...history.get(s.id)!.ids])].sort(compare) : ids(s);
+    const parents = (s: State) => s.variants.every(v => !knownType(v.observation.document.docTypeCode))
+        ? [...(history.get(s.id)?.parents ?? [])] : s.variants.filter(v => v.observation.document.docTypeCode === "360").map(v => v.observation.document.parentDocID).filter((v): v is string => !!v);
     const decisions: LargeHoldingVersionDecision[] = [], cache = new Map<string, { root?: string; reason?: LargeHoldingVersionReason }>(), groups = new Map<string, State[]>(), failures: State[] = [];
     let steps = 0;
     const step = () => { if (++steps > 100000) throw new Error("大量保有の系列参照は100000ステップ以下です"); };
@@ -75,7 +86,7 @@ export function selectLargeHoldingReportVersions(observations: readonly LargeHol
             if (current.conflict) { reason = "conflicting-observations"; break; }
             const d = doc(current);
             if (d.docTypeCode === "350") { root = current.id; break; }
-            if (d.docTypeCode !== "360") { reason = "wrong-parent-type"; break; }
+            if (d.docTypeCode !== "360") { reason = "document-type-unavailable"; break; }
             const parent = d.parentDocID ? states.get(d.parentDocID) : undefined;
             if (!parent) { reason = "parent-missing"; break; }
             if (!parent.conflict) {
@@ -93,24 +104,26 @@ export function selectLargeHoldingReportVersions(observations: readonly LargeHol
         for (const id of path) cache.set(id, root ? { root } : { reason });
         if (!root) {
             const available = availability(start), why = inactive(available) ? available! : reason!;
-            decisions.push({ rootDocID: start.id, status: inactive(why) ? "unavailable" : "unresolved", reason: why, chainDocIDs: path, observationIds: ids(start) });
-            if (!inactive(available)) failures.push(start);
+            decisions.push({ rootDocID: start.id, status: inactive(why) ? "unavailable" : "unresolved", reason: why, chainDocIDs: path, observationIds: evidence(start) });
+            if (!inactive(available) || start.variants.every(v => !knownType(v.observation.document.docTypeCode))) failures.push(start);
         } else { const group = groups.get(root) ?? []; group.push(start); groups.set(root, group); }
     }
-    const blocked = new Map<string, Set<string>>();
+    const blocked = new Map<string, Set<string>>(), inactiveEvidence = new Map<string, Set<string>>();
     for (const failed of failures) {
-        const queue = failed.variants.filter(v => v.observation.document.docTypeCode === "360").map(v => v.observation.document.parentDocID).filter((v): v is string => !!v), seen = new Set<string>();
+        const destination = inactive(availability(failed)) ? inactiveEvidence : blocked;
+        const queue = parents(failed), seen = new Set<string>(), refs = new Set(evidence(failed));
         for (let i = 0; i < queue.length; i++) {
             step(); const id = queue[i]; if (seen.has(id)) continue; seen.add(id);
             const s = states.get(id); if (!s) continue;
             const root = cache.get(id)?.root;
-            if (root) { const refs = blocked.get(root) ?? new Set<string>(); for (const obs of ids(failed)) refs.add(obs); blocked.set(root, refs); continue; }
-            for (const v of s.variants) if (v.observation.document.docTypeCode === "360" && v.observation.document.parentDocID) queue.push(v.observation.document.parentDocID);
+            if (root) { const saved = destination.get(root) ?? new Set<string>(); for (const obs of refs) { step(); saved.add(obs); } destination.set(root, saved); continue; }
+            if (history.has(s.id)) for (const obs of evidence(s)) refs.add(obs);
+            queue.push(...parents(s));
         }
     }
     const selected: SelectedLargeHoldingObservation[] = [];
     for (const [rootDocID, group] of [...groups].sort(([a], [b]) => compare(a, b))) {
-        const root = states.get(rootDocID)!, rootReason = availability(root), observationIds = group.flatMap(ids).sort(compare), chain = group.map(s => s.id).sort(compare);
+        const root = states.get(rootDocID)!, rootReason = availability(root), observationIds = [...new Set([...group.flatMap(ids), ...(inactiveEvidence.get(rootDocID) ?? [])])].sort(compare), chain = group.map(s => s.id).sort(compare);
         const inactiveDocuments = group.flatMap(s => { const r = availability(s); return inactive(r) ? [{ docID: s.id, reason: r! }] : []; });
         const fail = (reason: LargeHoldingVersionReason, more: string[] = []) => decisions.push({ rootDocID, status: inactive(reason) ? "unavailable" : "unresolved", reason, chainDocIDs: chain, observationIds: [...new Set([...observationIds, ...more])].sort(compare), ...(inactiveDocuments.length ? { inactiveDocuments } : {}) });
         if (rootReason) { fail(rootReason); continue; }
@@ -124,7 +137,7 @@ export function selectLargeHoldingReportVersions(observations: readonly LargeHol
         const leaf = leaves[0], chainDocIDs: string[] = []; let id = leaf.id;
         for (;;) { chainDocIDs.push(id); if (id === rootDocID) break; id = doc(states.get(id)!).parentDocID!; }
         decisions.push({ rootDocID, status: "selected", reason: "selected", selectedDocID: leaf.id, chainDocIDs: chainDocIDs.reverse(), observationIds, ...(inactiveDocuments.length ? { inactiveDocuments } : {}) });
-        selected.push({ rootDocID, observedAt: new Date(Math.max(...group.map(s => s.observed))).toISOString(), observationIds: ids(leaf), observation: leaf.variants[0].observation });
+        selected.push({ rootDocID, observedAt: new Date(Math.max(...group.map(s => s.observed), ...[...(inactiveEvidence.get(rootDocID) ?? [])].map(id => source.get(id)!.observed))).toISOString(), observationIds: ids(leaf), observation: leaf.variants[0].observation });
     }
     decisions.sort((a, b) => compare(a.rootDocID, b.rootDocID)); selected.sort((a, b) => compare(a.observation.document.docID, b.observation.document.docID)); ignored.sort((a, b) => compare(a.observationId, b.observationId) || compare(a.reason, b.reason));
     return { version: LARGE_HOLDING_VERSIONS_VERSION, cutoff, decisions, selected, ignored, holdingValuesMerged: false, reconstructedUnobservedHistory: false };

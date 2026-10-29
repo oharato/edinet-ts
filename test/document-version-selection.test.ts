@@ -95,3 +95,40 @@ it("同時刻の形式宣言の矛盾を選択しない",()=>{
  expect(selectDocumentVersions([a,b],cutoff).decisions[0]).toMatchObject({status:"unresolved",reason:"conflicting-observations"});
  b.document.xbrlFlag=0;expect(selectDocumentVersions([a,b],cutoff).decisions[0].status).toBe("selected");
 });
+
+describe('日次更新で種類や属性が消えた観測',()=>{
+ const missing=(before:DocumentVersionObservation,withdrawalStatus='0'):DocumentVersionObservation=>({observationId:before.document.docID+'-removed',observedAt:cutoff,document:{docID:before.document.docID,parentDocID:null,docTypeCode:null,edinetCode:null,secCode:null,submitDateTime:null,periodStart:null,periodEnd:null,withdrawalStatus,docInfoEditStatus:'0',disclosureStatus:'0'}});
+ it('種類の消えた取下観測を捨てて以前の元書類を復活させない',()=>{
+  const before=observation('A'),after=missing(before,'2');const result=selectDocumentVersions([before,after],cutoff);
+  expect(result.selected).toEqual([]);expect(result.decisions).toEqual([expect.objectContaining({rootDocID:'A',status:'unavailable',reason:'withdrawn',observationIds:expect.arrayContaining(['A','A-removed'])})]);expect(result.ignored).toEqual([]);
+ });
+ it.each([null,undefined,'999'])('最新の書類種別%sを解釈できなければ、過去の分類で採用しない',type=>{
+  const before=observation('A'),after=missing(before);after.document.docTypeCode=type;
+  expect(selectDocumentVersions([before,after],cutoff)).toMatchObject({selected:[],decisions:[{status:'unresolved',reason:'document-type-unavailable'}]});
+ });
+ it('訂正の親も消えたときは、過去の参照根拠を残して元書類へのfallbackを止める',()=>{
+  const root=observation('A'),correction=observation('B','A','2025-06-25 11:00'),after=missing(correction);
+  const result=selectDocumentVersions([root,correction,after],cutoff);expect(result.selected).toEqual([]);
+  expect(result.decisions.find(d=>d.rootDocID==='A')).toMatchObject({reason:'unresolved-correction',observationIds:expect.arrayContaining(['B','B-removed'])});
+ });
+ it('属性が消えた訂正の取下げは、有効な元書類の採用を妨げない',()=>{
+  const root=observation('A'),correction=observation('B','A','2025-06-25 11:00');
+  const result=selectDocumentVersions([root,correction,missing(correction,'2')],cutoff);expect(result.selected[0].rootDocID).toBe('A');expect(result.selected[0].observedAt).toBe(new Date(cutoff).toISOString());expect(result.decisions.find(d=>d.rootDocID==='A')?.observationIds).toContain('B-removed');expect(selectDocumentVersions([root,correction,missing(correction,'2')],'2025-06-25T12:30:00+09:00').selected[0].observation.document.docID).toBe('B');
+ });
+ it('種類の消えた将来観測をcutoff以前へ持ち込まず、未知のdocIDを財務と推定しない',()=>{
+  const root=observation('A'),after=missing(root);after.observedAt='2025-06-26T00:00:00Z';
+  expect(selectDocumentVersions([root,after],cutoff).selected[0].rootDocID).toBe('A');
+  expect(selectDocumentVersions([missing(observation('UNKNOWN'))],cutoff)).toMatchObject({selected:[],decisions:[],ignored:[{reason:'unsupported-document-type'}]});
+ });
+ it('同時刻に種類のある観測とない観測が衝突したら、入力順に関係なく採用を止める',()=>{
+  const root=observation('A');root.observedAt=cutoff;const after=missing(root);
+  const a=selectDocumentVersions([root,after],cutoff),b=selectDocumentVersions([after,root],cutoff);expect(a).toEqual(b);expect(a).toMatchObject({selected:[],decisions:[{reason:'conflicting-observations'}]});
+ });
+});
+
+it('多数の旧訂正参照による失効根拠の出力膨張を上限で止める',()=>{
+ const roots=Array.from({length:20},(_,i)=>observation('ROOT'+i));
+ const history=Array.from({length:5000},(_,i)=>{const o=observation('B','ROOT'+i%20,'2025-06-25 11:00');o.observationId='history-'+i;return o});
+ const removed:DocumentVersionObservation={observationId:'removed',observedAt:cutoff,document:{docID:'B',docTypeCode:null,withdrawalStatus:'0',docInfoEditStatus:'0',disclosureStatus:'0'}};
+ expect(()=>selectDocumentVersions([...roots,...history,removed],cutoff)).toThrow('100000');
+});

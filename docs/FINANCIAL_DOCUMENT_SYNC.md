@@ -123,4 +123,4 @@ edinet-ts backfill-financial-document-lists --metadata data/daily.sqlite \
 
 configはversion1で、絶対pathのmetadataPath/checkpointPath/envPath/guardSummaryPath/seedPath、guardUnit、guardPlanSha256、guardWorkerSha256、seedSha256、安定したsourceIdを指定します。checkpointのenvelopeはversion1・metadataPath・seedSha256・sourceId・checkpointを持ち、内部checkpointは `{version:1, throughDate, budget:{date, requests:0}}` から始めます。throughDateはseedで取得済みの閉じた最終日です。コピー先・namespaceを別用途のforkと共有しないでください。
 
-通常はoneshot user serviceをtimerで繰り返し起動します。取得待機は正常終了、排他中はexit75、一覧取得失敗はexit1です。プロセス終了後の新規財務取得計画/アーカイブ作成・解析・品質検査・公開は別工程です。直近7日より古い既取得日の修正を全件検知した保証はなく、訂正通知に基づく対象日更新や全期間再巡回も別途必要です。機械の実再起動試験もこの補助の単体試験には含みません。
+通常はoneshot user serviceをJST09〜23時台に5分間隔のtimerで起動します（boot時の確認を除く）。当日一覧がまだ更新されない早朝に予算を使い切らないための運用設定です。取得待機は正常終了、排他中はexit75、一覧取得失敗はexit1です。プロセス終了後の新規財務取得計画/アーカイブ作成・解析・品質検査・公開は別工程です。直近7日より古い既取得日の修正を全件検知した保証はなく、訂正通知に基づく対象日更新や全期間再巡回も別途必要です。機械の実再起動試験もこの補助の単体試験には含みません。

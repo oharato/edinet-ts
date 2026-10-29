@@ -67,3 +67,21 @@ describe('大量保有の観測版選択',()=>{
   for(const run of [()=>select([],cutoff.slice(0,-1)),()=>select([obs('A',undefined,{parentDocID:{} as never})],cutoff),()=>select([obs(),obs()],cutoff),()=>select([obs('A',undefined,{},'2024-01-01T00:00:00Z')],cutoff),()=>select(Array(10001).fill(obs()),cutoff)])expect(run).toThrow();
  });
 });
+
+describe('大量保有の項目削除を伴う日次再観測',()=>{
+ const removed=(id='A',withdrawalStatus='0')=>obs(id,undefined,{docTypeCode:null,formCode:null,edinetCode:null,issuerEdinetCode:null,submitDateTime:null,parentDocID:null,withdrawalStatus},'2025-07-01T00:00:00Z');
+ it('種類の消えた元書類を取下げとして記録する',()=>{
+  const result=select([obs(),removed('A','2')],cutoff);expect(result.selected).toEqual([]);expect(result.decisions[0]).toMatchObject({status:'unavailable',reason:'withdrawn',observationIds:expect.arrayContaining([obs().observationId,removed().observationId])});
+ });
+ it('訂正の親まで消えたときも、以前の参照根拠で古い元書類へのfallbackを止める',()=>{
+  const root=obs(),correction=obs('B','A'),after=removed('B');const result=select([root,correction,after],cutoff);
+  expect(result.selected).toEqual([]);expect(result.decisions.find(d=>d.rootDocID==='A')).toMatchObject({reason:'unresolved-correction',observationIds:expect.arrayContaining([correction.observationId,after.observationId])});expect(result.decisions.find(d=>d.rootDocID==='B')?.reason).toBe('document-type-unavailable');
+ });
+ it('取下げられた訂正は元を残し、350の旧parent参照では別系列を阻止しない',()=>{
+  const restored=select([obs(),obs('B','A'),removed('B','2')],cutoff);expect(restored.selected[0].rootDocID).toBe('A');expect(restored.selected[0].observedAt).toBe('2025-07-01T00:00:00.000Z');expect(restored.decisions.find(d=>d.rootDocID==='A')?.observationIds).toContain(removed('B').observationId);expect(select([obs(),obs('B','A'),removed('B','2')],'2025-06-30T00:00:00Z').selected[0].observation.document.docID).toBe('B');
+  const result=select([obs(),obs('X',undefined,{parentDocID:'A'}),removed('X')],cutoff);expect(result.selected.map(s=>s.rootDocID)).toEqual(['A']);
+ });
+ it('将来の項目削除は以前のcutoffに持ち込まない',()=>{
+  const after=removed();after.observedAt='2026-10-29T00:00:00Z';expect(select([obs(),after],cutoff).selected[0].rootDocID).toBe('A');
+ });
+});

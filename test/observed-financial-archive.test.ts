@@ -94,3 +94,15 @@ it('保存済み原本の破損を追記中に検知したら新規観測・原�
  let db=new ObservedFinancialArchive(path);db.append([observation()],[source()]);db.close();let raw=new Database(path);raw.exec("UPDATE archive_contents SET xml=X'00'");raw.close();db=new ObservedFinancialArchive(path);try{expect(()=>db.append([observation('B')],[source('B',reportingInstance({standard:'IFRS'})),source()])).toThrow('不整合');}finally{db.close();}
  raw=new Database(path,{readOnly:true});for(const table of ['archive_observations','archive_sources','archive_contents']){const s=raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`);try{expect(s.get()!.n).toBe(1);}finally{s.close();}}raw.close();
 }));
+
+it('会社コードも消えた新観測を会社指定でも読み、旧原本を再採用/再取得しない',()=>withFile(path=>{
+ for(const status of ['0','2']){
+  const db=new ObservedFinancialArchive(path+status);try{
+   const before=observation(),s=source(),after:DocumentVersionObservation={observationId:'A-removed',observedAt:'2026-07-01T00:00:00Z',document:{docID:'A',docTypeCode:null,edinetCode:null,secCode:null,parentDocID:null,submitDateTime:null,periodStart:null,periodEnd:null,withdrawalStatus:status,disclosureStatus:'0',docInfoEditStatus:'0'}};
+   db.append([before],[s]);db.append([after]);
+   expect(db.createSnapshots({...query,cutoff:'2026-06-30T00:00:00Z',edinetCodes:['E12345']}).records).toHaveLength(1);
+   const snapshots=db.createSnapshots({...query,edinetCodes:['E12345']});expect(snapshots.records).toEqual([]);expect(snapshots.selection.decisions[0].reason).toBe(status==='2'?'withdrawn':'document-type-unavailable');
+   expect(db.planSourceAcquisition({cutoff:query.cutoff,edinetCodes:['E12345']}).items).toEqual([]);expect(db.append([],[s])).toEqual({insertedObservations:0,insertedSources:0,insertedContents:0});
+  }finally{db.close()}
+ }
+}));

@@ -77,3 +77,5 @@ SDK source4a47cd9・運用補助84dc837を別runtime `edinet-roadmap-runtime-dai
 `edinet-roadmap-daily-metadata.timer` をenableして稼働確認しました。boot後2分と5分ごとのoneshot `edinet-roadmap-daily-metadata.service` で、取得計画4d95e35の全件完了・取得unit停止まで正常待機します。元seedの365閉日/83,828観測を複製した専用 `data/roadmap/daily-metadata-20261030.sqlite` と専用checkpoint/configを使います。namespaceはdaily-metadata-20261030-v1です。`daily-metadata-service.log` が実行結果、`daily-deployment-proof.json` が配置/指紋/待機/予算0件の証跡です。
 
 元seed・日次DBの初期物理SHA一致、checkpoint不変・排他exit75、期待cwd以外の起動拒否、timer symlink/FragmentPath/内容hash、元stock-dataの6ユーザー変更ファイル不変を確認しました。Lingerは既存yesのままです。当日probeや実日次API収集は年次完了待ちのため未実行で、新規財務計画/解析/品質/公開は後続工程です。実機再bootは未試験です。停止する場合はtimerと実行中のoneshotの両方を停止し、再開はtimerを起動します。
+
+通常の定期確認はJST 09〜23時台の5分ごと（`*-*-* 09..23:00/5:00`）へ調整しました。boot後2分とPersistentの取り逃し確認は残します。当日一覧がまだ更新されない早朝の失敗probeだけで32要求を使い切ることを避ける運用時刻であり、提供元の更新完了時刻を保証するものではありません。変更後のtimer構文・実NextElapse・unit hashと予算0件を `data/roadmap/daily-provider-window-proof.json` に保存しました。SDK/運用補助/runtime/configの指紋は変更していません。
