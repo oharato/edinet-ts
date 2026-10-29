@@ -189,3 +189,6 @@ EDINETから法人番号原記録への接続: `linkCompanyMasterCorporateRecord
 
 
 XML検証の重複後方走査を除去: 参照検査を各tag/text区間内へ限定し、安全条件は維持。実2.46MB XMLは約18.17秒→0.25秒、784境界の旧/source新/built新の判定が一致。固定アーカイブの全1,268原本/約5.19GBの内容hash・UTF-8往復・XML検証と元ファイル不変を確認。全137ファイル/3,692テスト・型・build・実法人番号照合のsource/built/CJS・公開型が成功。取得/構築プロセスへ同じcheckpointから検証済みSDKを引き継ぎ、定期運用・全市場品質/他段階の残工程を継続します。
+
+
+検証済みXML検証器への実行引継ぎ: 旧取得workerと構築待機workerをSIGTERMでcheckpoint停止し、両processの終了を確認。完了828件と固定計画指紋を保持したまま6dd33c4で再開し、追加20件の完了まで確認しました。停止中の受信1件はinterrupted履歴/再試行待ちとして残し、通信・取得失敗の履歴は0件。取得計画の元source commitと各実行SDK/script hashを分離して保存し、入力・未処理数・履歴を初期化していません。未開始の構築待機configだけは旧版を保存して新版へ更新。構築は全件取得・完了指紋検証後に開始し、公開catalog/元stock-dataサービスは未切替です。
