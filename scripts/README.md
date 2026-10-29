@@ -55,3 +55,7 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 固定runtimeへのコピー、全ファイルmanifest、実行scriptの指紋とunitの引継ぎは [専用サービス](../docs/ROADMAP_RUNTIME.md)を参照してください。稼働runtime内のファイルを直接更新する運用は行いません。
 
 `isSourceReady` は構築待機側が使う検査です。現在のsystemd unit PID・期待する取得scriptのSHA-256・固定計画・正確なscript argvが一致した場合だけ、新workerの初期summaryと認めます。古いsummaryや同名に似たパスを起動完了の証拠として使いません。
+
+## 日次metadata収集
+
+`roadmap/daily-metadata-control.mjs` と `roadmap/run-daily-metadata.mjs` は別metadata forkの観測を追記する運用補助です。固定年次計画が完了して取得unitが停止するまでAPI通信せず、当日probe・JST日次32要求・再開checkpoint・flock・34GiB容量余裕を使います。秘密値を出力せず、既存年次アーカイブや公開SDKは変更しません。固定runtime/configと定期起動の条件は [書類同期](../docs/FINANCIAL_DOCUMENT_SYNC.md#専用日次収集の運用補助)を参照してください。

@@ -111,3 +111,16 @@ edinet-ts backfill-financial-document-lists --metadata data/daily.sqlite \
 ```
 
 公式仕様では過去日の情報も日次更新され、当日分ファイルが取得可能になれば前日までの更新完了を判断できます。日次運用ではこの確認と対象日/再観測範囲を別途固定し、`refreshAfter` だけで提供元の更新完了を宣言しません。[EDINET API仕様書3-1-3](https://disclosure2dl.edinet-fsa.go.jp/guide/static/disclosure/download/ESE140206.pdf)を参照してください。既存の年次取得計画へ新しい一覧を途中追加しない制約は変わりません。
+
+## 専用日次収集の運用補助
+
+`scripts/roadmap/run-daily-metadata.mjs <private-config.json>` は、固定年次取得が完了してunitも停止した後にだけ、別metadata DBを更新する運用scriptです。公開CLI/APIではありません。SDKのbuild済みdistと併せて固定runtimeへ配置し、元metadataのコピー・専用checkpointを事前作成します。原本/状態DBや公開catalogへ自動追記しません。
+
+- Linuxの`flock`でcheckpointごとに排他し、checkpointは一時fileのfsync・atomic rename・親directoryのfsyncで保存します。API要求前に通信枠を保存し、停止で枠を消費しても過剰再試行しません。SDKの自動再試行は0、上限32要求/JST日（当日probeも含む）、timeout60秒です。
+- 当日一覧の取得成功を確認してから直近7日と前回の完了日以降の空白期間を再観測します。当日一覧自体を閉じた日のmetadataへ保存しません。probeの取得時刻・件数・解析済み一覧配列のSHA-256をcheckpointへ保存します。
+- 対象日とrefreshAfterは実行を跨いで固定します。各日のDB commitが再開位置となるためcursor保存前の停止でも同じ日を重複取得しません。失敗時は次の定期起動で再開し、JST日が変われば予算を更新して当日probeを取り直します。同日の完了後は追加通信しません。
+- 取得前に元seedの物理SHAと全観測prefixが残っていることを照合し、各要求前に34GiBの空き容量を要求します。`.env`は通信開始条件成立後にdotenvで読み、値・通信URL・例外本文を出力しません。
+
+configはversion1で、絶対pathのmetadataPath/checkpointPath/envPath/guardSummaryPath/seedPath、guardUnit、guardPlanSha256、guardWorkerSha256、seedSha256、安定したsourceIdを指定します。checkpointのenvelopeはversion1・metadataPath・seedSha256・sourceId・checkpointを持ち、内部checkpointは `{version:1, throughDate, budget:{date, requests:0}}` から始めます。throughDateはseedで取得済みの閉じた最終日です。コピー先・namespaceを別用途のforkと共有しないでください。
+
+通常はoneshot user serviceをtimerで繰り返し起動します。取得待機は正常終了、排他中はexit75、一覧取得失敗はexit1です。プロセス終了後の新規財務取得計画/アーカイブ作成・解析・品質検査・公開は別工程です。直近7日より古い既取得日の修正を全件検知した保証はなく、訂正通知に基づく対象日更新や全期間再巡回も別途必要です。機械の実再起動試験もこの補助の単体試験には含みません。
