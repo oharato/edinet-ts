@@ -2,7 +2,7 @@
 
 開始日: 2026-10-28。利用者の「全体ロードマップの残工程まで」の指示により、[全体計画](EDINET_TS_ROADMAP.md)の全段階を対象に継続します。外部データは無償・既存データを優先します。下表の保留は対象外への変更を意味しません。実装・原本照合・運用/利用先反映の完了は別に確認します。
 
-直近確認（2026-10-30）: 全155ファイル/3,962テストが成功（SDK本体のbuild/公開型検査は09152b9時点で成功、今回は運用JSを変更）。有限年次取得は7,307完了・20待ち・中断task1・XBRL未提供9（計7,337書類）で継続中、通信失敗試行0です。日次財務の再開可能な準備を追加し、保存済み83,828観測・3,813社で計画/監査・再投入を検証しました。日次metadataは別DB/固定runtimeで年次完了待機中。全体ロードマップは未完了です。
+直近確認（2026-10-30）: 全155ファイル/3,962テストが成功（SDK本体のbuild/公開型検査は09152b9時点、今回は運用JSを変更）。有限年次計画はXBRL提供分7,328件の保存が完了し、pending/failed/runningは0、未提供9件を別計上して最終監査中です。完了receiptとunit停止はまだ未確認です。日次はmetadata→候補準備→不足原本取得/完了監査→別候補再構築まで固定runtimeへ接続しました。年次2原本の宣言した小規模集合で4行/10値を生成・原XMLと独立照合し、半期2原本のperiod-mismatchは調査対象に残しています。解析/品質/公開の自動反復や全体ロードマップは未完了です。
 
 | 段階 | 残る成果物 | 状態・次の検証 |
 |---|---|---|
@@ -290,3 +290,7 @@ SDK09152b9/運用41a1b16と全2,498ファイル/リンクを別runtimeへ固定�
 実年次2原本（JMホールディングス/VALUENEX）と原観測prefix332件の宣言した2社集合で、既存原本102件の宣言/内容を保持した再構築、元取得履歴の再監査、既存FinancialIndexBuildでの2社/4行/10値の生成が成功しました。Python/sqlite3/hashlib/xml.etreeで全観測/原本/世代/行/metricと再構築証跡のhashを照合し、10値を原XMLのnamespace/context/期間/単位/entity・数値と独立突合しました。元metadata/pool/作業原本/取得状態が不変、追加通信0・公開なしです。全市場やPDFを検証した意味ではありません。証跡はdata/roadmap/financial-reconstruction-{annual,independent}-proof.json。
 
 別の実半期2原本（コニカミノルタ/中部電力）・prefix4,070件では、再構築と構築自体は完了しましたがperiod-mismatchで0財務行となりました（financial-reconstruction-real-proof.json）。この保留を成功値に読み替えず、一覧期間とDEI期間の対応を次の調査対象として残します。日次の解析/品質/公開自動接続・保存寿命管理・hot journal自動復旧を含む全体残工程は継続します。
+
+2026-10-30 再構築対応runtimeへ配置: SDK09152b9/運用e2ad2b5と全2,499ファイル/リンクを固定し、日次財務serviceを切り替えました。再構築モジュール改変の起動拒否、新→旧→新の待機復帰が成功。元metadata/seed/checkpoint/config・既存metadata unit/timer・財務timerのSHAと元stock-dataの6ユーザー変更が不変、年次取得へのstop/restartなし・追加通信/候補作成0です。財務timerはenabled/active、次回09:02JST。証跡はdata/roadmap/daily-financial-reconstruction-{runtime,deployment}-proof.json、コード/試験/実原本/独立処理の連結は同validation-receipt.json。切戻し試験はhandoff作成前の待機状態のみです。実日次からの再構築、解析/品質/公開自動接続・hot journal自動復旧・pool/候補の保存寿命・実再bootを含む全体残工程を継続します。
+
+年次取得の直近進展: 2026-10-30 06:53JSTの保存summaryでcompleted7,328・pending/failed/running0・未提供9・通信失敗試行0を確認しました。現在unitは最終監査のため稼働中で、完了receipt/停止を確認するまでは日次metadataの年次完了guardを解除しません。歴史上の中断試行1件は残し、現在の失敗taskとは区別します。
