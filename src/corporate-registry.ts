@@ -2,6 +2,8 @@ import {createHash} from 'node:crypto';
 import {XMLParser} from 'fast-xml-parser';
 import {assertXmlInput} from './xml-input';
 import {parseDocumentTimestamp} from './document-timestamp';
+import {queryCompanyMaster,type CompanyMasterSnapshot,type CompanyMasterQuery,type CompanyMasterRecord} from './company-master';
+export interface CorporateRegistryXmlInput {xml:string;source:CorporateRegistrySource;}
 export const CORPORATE_REGISTRY_FIELDS = Object.freeze(['sequenceNumber','corporateNumber','process','correct','updateDate','changeDate','name','nameImageId','kind','prefectureName','cityName','streetNumber','addressImageId','prefectureCode','cityCode','postCode','addressOutside','addressOutsideImageId','closeDate','closeCause','successorCorporateNumber','changeCause','assignmentDate','latest','enName','enPrefectureName','enCityName','enAddressOutside','furigana','hihyoji'] as const);
 export type CorporateRegistryField = typeof CORPORATE_REGISTRY_FIELDS[number];
 export interface CorporateRegistrySource {sourceUrl:string; observedAt:string; dataDate:string; kind:'full'|'diff'; purpose:'sample'|'download';}
@@ -39,14 +41,56 @@ export function parseCorporateRegistryDownloadXml(xml:string,input:CorporateRegi
     });
     return{source:{...source,inputXmlSha256:createHash('sha256').update(xml).digest('hex'),attribution:'国税庁法人番号公表サイト（国税庁）を加工して作成'},records};
 }
+function captureRegistryInputs(inputs:readonly CorporateRegistryXmlInput[]) {
+    if(!Array.isArray(inputs))fail();const length=inputs.length;
+    if(!Number.isSafeInteger(length)||length<0||length>100)fail();
+    const captured=Array.from({length},(_,i)=>{if(!Object.hasOwn(inputs,i))fail();const d=inputs[i];if(!object(d)||Object.keys(d).some(k=>!['xml','source'].includes(k)))fail();const {xml,source}=d;if(typeof xml!=='string')fail();return{xml,source:structuredClone(source) as CorporateRegistrySource};});
+    if(captured.reduce((n,d)=>n+Buffer.byteLength(d.xml),0)>256*1024*1024)fail();
+    return captured;
+}
 /** 法人番号の完全一致で観測済み原記録を返します。diffを最新状態へ合成しません。 */
 export function queryCorporateRegistryDownloads(inputs:readonly {xml:string;source:CorporateRegistrySource}[],query:{corporateNumber:string;knownAt:string}) {
     if(!object(query)||Object.keys(query).some(k=>!['corporateNumber','knownAt'].includes(k)))fail();
     const corporateNumber=query.corporateNumber,knownAt=query.knownAt,cutoff=parseDocumentTimestamp(knownAt,true);
-    if(!/^\d{13}$/.test(corporateNumber)||cutoff===undefined||!Array.isArray(inputs)||inputs.length>100)fail();
-    const captured=Array.from({length:inputs.length},(_,i)=>{if(!Object.hasOwn(inputs,i))fail();const d=inputs[i];if(!object(d)||Object.keys(d).some(k=>!['xml','source'].includes(k)))fail();const {xml,source}=d;if(typeof xml!=='string')fail();return{xml,source:structuredClone(source) as CorporateRegistrySource};});
-    if(captured.reduce((n,d)=>n+Buffer.byteLength(d.xml),0)>256*1024*1024)fail();
+    if(!/^\d{13}$/.test(corporateNumber)||cutoff===undefined)fail();
+    const captured=captureRegistryInputs(inputs);
     const rows:{sourceIndex:number;record:CorporateRegistryRecord}[]=[],sources:CorporateRegistryDownload['source'][]=[],excludedSources:{sourceIndex:number;reason:'source-after-cutoff'}[]=[];
     for(const d of captured){const parsed=parseCorporateRegistryDownloadXml(d.xml,d.source),sourceIndex=sources.length;sources.push(parsed.source);if(parseDocumentTimestamp(parsed.source.observedAt,true)!>cutoff){excludedSources.push({sourceIndex,reason:'source-after-cutoff'});continue;}for(const record of parsed.records)if(record.values.corporateNumber===corporateNumber)rows.push({sourceIndex,record});}
     return{corporateNumber,knownAt,sources,rows,excludedSources,total:rows.length};
+}
+export type CorporateRegistryLinkReason='exact-corporate-number'|'corporate-number-missing'|'not-in-supplied-records'|'shared-corporate-number'|'multiple-registry-records'|'deletion-record'|'unknown-process'|'history-or-correction-record';
+export interface CorporateRegistryCompanyLink {
+    company:CompanyMasterRecord;status:'number-matched'|'unavailable'|'unresolved';reason:CorporateRegistryLinkReason;
+    candidates:{sourceIndex:number;record:CorporateRegistryRecord}[];
+}
+/** 会社IDを維持した原記録への参照。法人の合併・承継や最新状態を認定しません。 */
+export function linkCompanyMasterCorporateRecords(snapshots:readonly CompanyMasterSnapshot[],inputs:readonly CorporateRegistryXmlInput[],query:CompanyMasterQuery & {registryPurpose:CorporateRegistrySource['purpose']}) {
+    if(!object(query))fail();
+    const {registryPurpose,...settings}=structuredClone(query);
+    if(!['sample','download'].includes(registryPurpose))fail();
+    const captured=structuredClone(snapshots),master=queryCompanyMaster(captured,settings),all=queryCompanyMaster(captured,{asOf:settings.asOf,knownAt:settings.knownAt});
+    const cutoff=parseDocumentTimestamp(settings.knownAt,true);if(cutoff===undefined)fail();
+    const sources:CorporateRegistryDownload['source'] []=[],excludedSources:{sourceIndex:number;reason:'purpose-mismatch'|'source-after-cutoff'|'data-after-as-of'}[]=[];
+    const records=new Map<string,CorporateRegistryCompanyLink['candidates']>();
+    for(const input of captureRegistryInputs(inputs)){
+        const d=parseCorporateRegistryDownloadXml(input.xml,input.source),sourceIndex=sources.length;sources.push(d.source);
+        const reason=d.source.purpose!==registryPurpose?'purpose-mismatch':parseDocumentTimestamp(d.source.observedAt,true)!>cutoff?'source-after-cutoff':d.source.dataDate>settings.asOf?'data-after-as-of':undefined;
+        if(reason){excludedSources.push({sourceIndex,reason});continue;}
+        for(const record of d.records){const number=record.values.corporateNumber,group=records.get(number)??[];group.push({sourceIndex,record});records.set(number,group);}
+    }
+    const owners=new Map<string,number>();for(const company of all.rows)if(company.corporateNumber)owners.set(company.corporateNumber,(owners.get(company.corporateNumber)??0)+1);
+    const rows:CorporateRegistryCompanyLink[]=master.rows.map(company=>{
+        const number=company.corporateNumber,candidates=number?records.get(number)??[]:[];
+        let status:CorporateRegistryCompanyLink['status']='unresolved',reason:CorporateRegistryLinkReason;
+        if(!number){status='unavailable';reason='corporate-number-missing';}
+        else if(!candidates.length){status='unavailable';reason='not-in-supplied-records';}
+        else if((owners.get(number)??0)>1)reason='shared-corporate-number';
+        else if(candidates.length>1)reason='multiple-registry-records';
+        else if(candidates[0].record.values.process==='99')reason='deletion-record';
+        else if(!candidates[0].record.processKnown)reason='unknown-process';
+        else if(candidates[0].record.values.latest!=='1'||candidates[0].record.values.correct==='1')reason='history-or-correction-record';
+        else{status='number-matched';reason='exact-corporate-number';}
+        return{company,status,reason,candidates};
+    });
+    return{query:{...settings,registryPurpose},master,sources,excludedSources,registryPurpose,semantics:'raw-record-number-link' as const,rows,total:rows.length};
 }
