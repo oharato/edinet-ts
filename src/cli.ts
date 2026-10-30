@@ -9,6 +9,8 @@ import {FinancialSourceJob,normalizeFinancialSourceJobInput} from "./db/financia
 import { searchOfficerRemuneration } from "./officer-remuneration";
 import { searchOfficerDetails } from "./officer-details";
 import { searchPolicyShareholdings } from "./policy-shareholdings";
+import { reconstructCorporateRegistryStreamStates } from "./corporate-registry-stream-state";
+import { readCorporateRegistryFileChunks } from "./corporate-registry-stream";
 import { linkCompanyMasterCorporateStates } from "./company-corporate-state";
 import { FacilityDetailStore } from "./db/facility-detail-store";
 import { LargeHoldingStore } from "./db/large-holding-store";
@@ -810,6 +812,24 @@ program.command("plan-corporate-registry-differences")
             const query=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.query),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
             console.log(JSON.stringify(planCorporateRegistryDifferences(readRegistryCalendar(options.calendar)!,query),null,options.pretty?2:undefined));
         }catch{console.error("取得期間・観測cutoff・保存カレンダーの範囲と出典を確認してください（入力内容は非表示）");process.exitCode=1;}
+    });
+
+program.command("reconstruct-corporate-registry-streams")
+    .description("全原本を検査し、対象法人の状態だけをメモリへ保持して再構成します")
+    .requiredOption("--manifest <path>", "scope/expectedParts/parts（file/source/sha256）の全国配布JSON配列")
+    .requiredOption("--query <path>", "corporateNumbers/asOf/knownAt/registryPurposeのJSON")
+    .option("--calendar <path>", "保存した未作成日カレンダーのJSON")
+    .option("--pretty", "JSONを整形")
+    .action(async options=>{
+        try{
+            const manifestPath=path.resolve(options.manifest),read=(file:string)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            const entries=read(manifestPath);if(!Array.isArray(entries)||entries.length>100)throw Error();
+            const deliveries=entries.map(d=>{
+                if(!d||typeof d!=="object"||Array.isArray(d)||Object.keys(d).some(k=>!["scope","expectedParts","parts"].includes(k))||!Array.isArray(d.parts)||d.parts.length>100)throw Error();
+                return {...d,parts:d.parts.map((p:any)=>{if(!p||typeof p!=="object"||Array.isArray(p)||Object.keys(p).some(k=>!["file","source","sha256"].includes(k))||typeof p.file!=="string"||!p.file.trim())throw Error();return {source:p.source,sha256:p.sha256,chunks:readCorporateRegistryFileChunks(path.resolve(path.dirname(manifestPath),p.file))};})};
+            });
+            console.log(JSON.stringify(await reconstructCorporateRegistryStreamStates(deliveries,read(options.query),readRegistryCalendar(options.calendar)),null,options.pretty?2:undefined));
+        }catch{console.error("全国全パートの通常ファイル・hash・対象法人/対象日/cutoffを確認してください（入力内容は非表示）");process.exitCode=1;}
     });
 
 program.command("link-company-corporate-states")

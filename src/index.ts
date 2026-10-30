@@ -169,3 +169,6 @@ export type {CorporateRegistryStoredFile,CorporateRegistryFileImport,CorporateRe
 
 export {linkCompanyMasterCorporateStates} from "./company-corporate-state";
 export type {CompanyCorporateStateQuery,CompanyCorporateStateLinkReason,CompanyCorporateStateLink,CompanyCorporateStateResult} from "./company-corporate-state";
+
+export {reconstructCorporateRegistryStreamStates} from "./corporate-registry-stream-state";
+export type {CorporateRegistryStreamPart,CorporateRegistryStreamDelivery,CorporateRegistryStreamStateQuery,CorporateRegistryStreamStateResult} from "./corporate-registry-stream-state";

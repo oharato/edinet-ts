@@ -608,3 +608,64 @@ masterは `CompanyMasterSnapshot` のJSON配列（最大64 MiB）、manifestは�
 実EDINETマスター11,432行と、署名確認済みの日次差分に候補がある9提出者を照合しました。保存DBに実全国全件の起点がないため、9件すべてを `registry-state-unavailable` / `no-baseline` とし、差分だけから一致へ昇格させないことを独立SQLで確認しました。CLI/APIの結果も一致し、元DBは不変です。肯定結果は公式の架空サンプルと明示した合成企業マスターでの限定検証です。
 
 全国全件DBの容量確保・取込、実全国状態に対する肯定的な企業照合、法人同一性の確認、署名監査から利用先までの接続・全市場運用は残ります。証跡は `data/roadmap/company-corporate-state-real-20261031/` です。
+
+
+## 原本streamから対象法人の状態を再構成する
+
+`reconstructCorporateRegistryStreamStates` は、全国配布の全パートを先頭から末尾まで検査し、指定した法人番号の記録だけを保持します。全件をDBへ保存する容量がない場合にも、元の全国原本を省略せずに状態を調べる入口です。全国全件DBの構築・保存とは別です。
+
+```mermaid
+flowchart LR
+  A[全国の全パート] --> B[順に読み形式と重複を検査]
+  B --> C[対象番号の記録だけ保持]
+  B --> D[全パートの末尾とSHAを確認]
+  C --> E[共通ルールで状態を再構成]
+  D --> E
+```
+
+```ts
+import { createReadStream } from "node:fs";
+import { reconstructCorporateRegistryStreamStates } from "edinet-ts";
+const result = await reconstructCorporateRegistryStreamStates([{
+  scope: "national", expectedParts: reviewedParts.length,
+  parts: reviewedParts.map(p => ({
+    source: p.source, sha256: p.sha256,
+    chunks: createReadStream(p.file, { highWaterMark: 65536, signal })
+  }))
+}], {
+  corporateNumbers: ["1010001001202"], asOf: "2026-10-30",
+  knownAt: "2026-10-31T00:00:00Z", registryPurpose: "download"
+}, savedCalendar, { signal });
+```
+
+`chunks` は1チャンク1 MiB以下の `Uint8Array` を返すAsyncIterableです。SDKは全byteのSHA-256、UTF-8/XMLの末尾、全記録の30項目の形式、各ファイルの一連番号重複を確認します。全件では全パートを通じた法人番号重複、差分では全パートを通じた一連番号重複も拒否します。未知処理区分や削除の追加項目は集計へ残し、対象法人の状態を再構成できるかは既存入口と同じ規則で判定します。
+
+対象を発見しても読み取りを打ち切りません。cutoffや目的で適用対象外となるパートも原本検査に通します。後続パートのhash不一致・破損・読取失敗・中断では、途中の状態結果を返しません。`scan.allPartsCompleted` は宣言した全パートの検査完了を表し、公式配布の網羅性やPGPの信頼を認証するフラグではありません。`expectedParts` と入力一覧は、取得・署名監査で確認したものを渡してください。
+
+状態は `states`、全ファイルの元SHA・記録数・byte数と検査集計は `scan` へ返します。既知時刻・対象日・目的による除外、差分の欠落、削除や訂正、未作成日カレンダーは既存の状態再構成と共通です。新しい全件原本を、それ以前の日付の状態へ読み替えません。
+
+一回の入力は合計100パート・8 GiB、対象法人番号は1〜1万件です。保持する対象記録は合計1万件・値のJSON本文16 MiB以下。重複検査と配布比較の一時SQLite索引はメモリ上に置き、DBページは1 GiB以下に制限します。応答する状態のJSON本文も合計256 MiB以下に制限します。これはプロセス全体のRSS上限ではありません。結果は全原本の検査後に返し、全件原本や全記録DBを保存しません。中断には、生成側streamにも同じsignalを渡してください。再実行時は全量を検査し直します。
+
+固定30項目の単純なXMLは直接検査し、文字参照・補助文字・異なる配置などは従来の厳密XML入口へ戻します。文字列の意味や受理/拒否を変える最適化ではありません。公式55サンプルと実日次差分の計56ファイル・7,389記録で、全30項目・診断・原SHAが既存入口と一致しました。
+
+### CLIと保存ZIP
+
+```sh
+edinet-ts reconstruct-corporate-registry-streams \
+  --manifest national-files.json --query corporate-numbers.json \
+  --calendar calendar.json --pretty
+```
+
+manifestは `[{scope:"national",expectedParts:6,parts:[{file,source,sha256},...]}]` のJSONです。fileはmanifestからの相対パスまたは絶対パス。CLIは単一リンクの通常ファイルを固定FDで読み、読取前後のパス・サイズ・mtime/ctimeも確認します。manifest/queryは各2 MiB以下です。
+
+ZIPを使う場合は、リポジトリの `scripts/roadmap/stream-corporate-registry-member.py --receipt archive-verification.json --entry PART.xml` が、既存の全パート署名検証receiptに結び付いたXMLをstdoutへ送れます。ZIPとXMLのhash・CRC・不変性を再確認し、展開ファイルを作りません。この補助スクリプト自体がPGPの信頼を再認証するものではなく、SDKのPython依存でもありません。SDKへ接続する生成側では、stdoutの終了だけでなく子プロセスの正常終了も確認してください。後検査の失敗を無視してはいけません。
+
+### 全国実原本の確認結果
+
+2026-10-30全国全件の署名検証済みZIPから、6 XML・6,511,947,094 bytes・5,850,621記録を走査しました。独立Python/XML/SQLite処理でも全パートのhash・byte数・記録数、法人番号の全体重複と一連番号のファイル内重複を確認。対象9番号は全270原値・元パート・記録位置が一致しました。
+
+対象日は10月30日、cutoffは全国原本の実観測後です。以前の10月29日・全件起点不足の結果を書き換えたものではありません。10月29日観測のEDINETマスターと比較した9提出者は、番号/原名称一致かつ閉鎖記載なし4件、名称不一致4件、閉鎖記録1件でした。名称変更や承継の原因を推測して企業情報を上書きせず、後者5件は追加確認が必要です。番号/名称一致も法人同一性の認証ではありません。
+
+全国全件DBや完全な展開XMLは作成せず、元ZIPの不変を確認しました。比較用に先頭2,000記録だけから作った約2.25 MBの派生入力は別に保持しています。SDK走査は固定runtimeで約538秒、独立走査は約1,307秒。共有ホスト上の一回の測定であり、他環境の性能保証ではありません。先頭2,000記録の派生入力を使った旧/新デコードの3回交互比較では、出力全byte一致で中央値約1,135→220ms、CPU約1,372→247msでした。この小標本の値を全国運用の性能保証には使いません。証跡は `data/roadmap/corporate-registry-stream-state-national-20261031/`。
+
+全国DBの保存、連続する実差分の反復・復旧運用、全EDINET法人への拡大、法人同一性の確認、利用先への反映は引き続き残工程です。

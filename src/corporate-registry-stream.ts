@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {open,lstat} from 'node:fs/promises';
 import {constants,type BigIntStats} from 'node:fs';
-import {parseCorporateRegistryDownloadXml,type CorporateRegistrySource,type CorporateRegistryRecord,type CorporateRegistryDownload} from './corporate-registry';
+import {parseCorporateRegistryDownloadXml,parseCorporateRegistryStreamRecord,type CorporateRegistrySource,type CorporateRegistryRecord,type CorporateRegistryDownload} from './corporate-registry';
 export const CORPORATE_REGISTRY_STREAM_MAX_BYTES=8*1024**3;
 export const CORPORATE_REGISTRY_RECORD_MAX_BYTES=64*1024;
 export interface CorporateRegistryStreamReceipt {parserVersion:'nta-download-stream-1';source:CorporateRegistryDownload['source'];bytes:number;records:number;}
@@ -34,7 +34,7 @@ export async function* streamCorporateRegistryRecords(chunks:AsyncIterable<Uint8
    const openEnd=buffer.indexOf('>');if(openEnd<0)return;if(!/^<corporation[ \t\r\n]*>$/.test(buffer.slice(0,openEnd+1)))invalid();
    const close=/<\/corporation[ \t\r\n]*>/.exec(buffer);if(!close)return;const end=close.index+close[0].length,xml=buffer.slice(0,end);
    if(Buffer.byteLength(xml)>CORPORATE_REGISTRY_RECORD_MAX_BYTES||xml.includes('<!')||xml.includes('<?'))invalid();
-   const record=parseCorporateRegistryDownloadXml('<corporations>'+xml+'</corporations>',source).records[0];
+   const record=parseCorporateRegistryStreamRecord(xml,source);
    if(!record)invalid();buffer=buffer.slice(end);yield {...record,recordNumber:++records};
   }
  };
@@ -46,14 +46,20 @@ export async function* streamCorporateRegistryRecords(chunks:AsyncIterable<Uint8
  return {parserVersion:'nta-download-stream-1',source:{...source,inputXmlSha256:hash.digest('hex'),attribution:'国税庁法人番号公表サイト（国税庁）を加工して作成'},bytes,records};
 }
 const identity=(s:BigIntStats)=>[s.dev,s.ino,s.size,s.mtimeNs,s.ctimeNs,s.nlink].join(':');
-/** 内部用。単一リンクの通常ファイルを固定FDで読み、完了前に原本指紋と不変性を確認します。 */
-export async function* readCorporateRegistryFile(file:string,source:CorporateRegistrySource,sha256:string,options:CorporateRegistryStreamOptions={}):AsyncGenerator<CorporateRegistryRecord,CorporateRegistryStreamReceipt>{
- const config=settings(options);if(typeof file!=='string'||!file.trim()||typeof sha256!=='string'||!/^[a-f0-9]{64}$/.test(sha256))invalid();
+/** 内部用。通常ファイルのFDとパスを固定し、最後までのサイズ・不変性を確認します。 */
+export async function* readCorporateRegistryFileChunks(file:string,options:CorporateRegistryStreamOptions={}):AsyncGenerator<Uint8Array>{
+ const config=settings(options);if(typeof file!=='string'||!file.trim())invalid();
  const handle=await open(file,constants.O_RDONLY|constants.O_NONBLOCK|constants.O_NOFOLLOW);
  try{
   const before=await handle.stat({bigint:true});if(!before.isFile()||before.nlink!==1n||before.size>BigInt(config.maxBytes)||identity(await lstat(file,{bigint:true}))!==identity(before))invalid();
-  async function* chunks(){const buffer=Buffer.allocUnsafe(64*1024);let position=0;for(;;){config.signal?.throwIfAborted();const {bytesRead}=await handle.read(buffer,0,buffer.length,position);if(!bytesRead)break;position+=bytesRead;yield buffer.subarray(0,bytesRead);}}
-  const receipt=yield* streamCorporateRegistryRecords(chunks(),source,config);
-  if(receipt.source.inputXmlSha256!==sha256||BigInt(receipt.bytes)!==before.size||identity(await handle.stat({bigint:true}))!==identity(before)||identity(await lstat(file,{bigint:true}))!==identity(before))invalid();config.signal?.throwIfAborted();return receipt;
+  const buffer=Buffer.allocUnsafe(64*1024);let position=0;
+  for(;;){config.signal?.throwIfAborted();const {bytesRead}=await handle.read(buffer,0,buffer.length,position);if(!bytesRead)break;position+=bytesRead;if(position>config.maxBytes)invalid();yield buffer.subarray(0,bytesRead);}
+  if(BigInt(position)!==before.size||identity(await handle.stat({bigint:true}))!==identity(before)||identity(await lstat(file,{bigint:true}))!==identity(before))invalid();config.signal?.throwIfAborted();
  }finally{await handle.close();}
+}
+/** 内部用。全体hashと固定FDの末尾検査を完了してからreceiptを返します。 */
+export async function* readCorporateRegistryFile(file:string,source:CorporateRegistrySource,sha256:string,options:CorporateRegistryStreamOptions={}):AsyncGenerator<CorporateRegistryRecord,CorporateRegistryStreamReceipt>{
+ const config=settings(options);if(typeof sha256!=='string'||!/^[a-f0-9]{64}$/.test(sha256))invalid();
+ const receipt=yield* streamCorporateRegistryRecords(readCorporateRegistryFileChunks(file,config),source,config);
+ if(receipt.source.inputXmlSha256!==sha256)invalid();config.signal?.throwIfAborted();return receipt;
 }

@@ -11,7 +11,12 @@ export type CorporateRegistryField = typeof CORPORATE_REGISTRY_FIELDS[number];
 export interface CorporateRegistrySource {sourceUrl:string; observedAt:string; dataDate:string; kind:'full'|'diff'; purpose:'sample'|'download';}
 export interface CorporateRegistryRecord {recordNumber:number; values:Record<CorporateRegistryField,string>; processKnown:boolean; deletionExtraFields:CorporateRegistryField[];}
 export interface CorporateRegistryDownload {source:CorporateRegistrySource & {inputXmlSha256:string; attribution:string}; records:CorporateRegistryRecord[];}
-const date=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&parseDocumentTimestamp(s+'T00:00:00Z',true)!==undefined;
+const validDates=new Set<string>();
+const date=(s:string)=>{
+    if(validDates.has(s))return true;
+    const valid=/^\d{4}-\d{2}-\d{2}$/.test(s)&&parseDocumentTimestamp(s+'T00:00:00Z',true)!==undefined;
+    if(valid&&validDates.size<8192)validDates.add(s);return valid;
+};
 const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 function fail():never{throw new Error('法人番号ダウンロードXML/出典が不正です');}
 /** 30列の現行ダウンロードXML。訂正/削除/最新履歴フラグを解釈で消さず原値のまま保持します。 */
@@ -31,7 +36,13 @@ export function parseCorporateRegistryDownloadXml(xml:string,input:CorporateRegi
         if(!object(element)||Object.keys(element).some(k=>!CORPORATE_REGISTRY_FIELDS.includes(k as CorporateRegistryField)&&!(k==='#text'&&typeof element[k]==='string'&&!element[k].trim())))fail();
         const values={}as Record<CorporateRegistryField,string>;
         for(const key of CORPORATE_REGISTRY_FIELDS){if(typeof element[key]!=='string')fail();values[key]=element[key];}
-        if(!/^[1-9]\d{0,7}$/.test(values.sequenceNumber)||seen.has(values.sequenceNumber)||!/^\d{13}$/.test(values.corporateNumber)||!/^\d{2}$/.test(values.process)||!date(values.updateDate)||values.updateDate>source.dataDate)fail();seen.add(values.sequenceNumber);
+        if(seen.has(values.sequenceNumber))fail();seen.add(values.sequenceNumber);
+        return registryRecord(values,i+1,source.dataDate);
+    });
+    return{source:{...source,inputXmlSha256:createHash('sha256').update(xml).digest('hex'),attribution:'国税庁法人番号公表サイト（国税庁）を加工して作成'},records};
+}
+function registryRecord(values:Record<CorporateRegistryField,string>,recordNumber:number,dataDate:string):CorporateRegistryRecord {
+        if(!/^[1-9]\d{0,7}$/.test(values.sequenceNumber)||!/^\d{13}$/.test(values.corporateNumber)||!/^\d{2}$/.test(values.process)||!date(values.updateDate)||values.updateDate>dataDate)fail();
         const deletionExtraFields=values.process==='99'?CORPORATE_REGISTRY_FIELDS.filter(k=>!['sequenceNumber','corporateNumber','process','updateDate'].includes(k)&&values[k]!==''):[];
         for(const k of ['changeDate','assignmentDate','closeDate']as const)if(values[k]&&!date(values[k]))fail();
         if(values.process!=='99'){
@@ -39,10 +50,18 @@ export function parseCorporateRegistryDownloadXml(xml:string,input:CorporateRegi
             for(const k of ['changeDate','assignmentDate']as const)if(!date(values[k]))fail();
             if(values.closeDate&&!date(values.closeDate)||values.successorCorporateNumber&&!/^\d{13}$/.test(values.successorCorporateNumber))fail();
         }
-        return{recordNumber:i+1,values,processKnown:['01','11','12','13','21','22','71','72','81','99'].includes(values.process),deletionExtraFields};
-    });
-    return{source:{...source,inputXmlSha256:createHash('sha256').update(xml).digest('hex'),attribution:'国税庁法人番号公表サイト（国税庁）を加工して作成'},records};
+        return{recordNumber,values,processKnown:['01','11','12','13','21','22','71','72','81','99'].includes(values.process),deletionExtraFields};
 }
+const scalarRecord = new RegExp('^<corporation[ \t\r\n]*>[ \t\r\n]*'+CORPORATE_REGISTRY_FIELDS.map(k=>'(?:<'+k+'[ \t\r\n]*/>|<'+k+'[ \t\r\n]*>([^<]*)</'+k+'[ \t\r\n]*>)[ \t\r\n]*').join('')+'</corporation[ \t\r\n]*>$');
+/** 内部用: source検査済みのUTF-8 streamだけ。複雑な文字/形式は既存の厳密XML入口へ戻します。 */
+export function parseCorporateRegistryStreamRecord(xml:string,source:CorporateRegistrySource):CorporateRegistryRecord {
+    const match = /[&\r\u0000-\u0008\u000b\u000c\u000e-\u001f\ud800-\udfff\ufffe\uffff]/.test(xml)||xml.includes(']]>')?null:scalarRecord.exec(xml);
+    if(!match)return parseCorporateRegistryDownloadXml('<corporations>'+xml+'</corporations>',source).records[0];
+    const values={} as Record<CorporateRegistryField,string>;
+    for(let i=0;i<CORPORATE_REGISTRY_FIELDS.length;i++)values[CORPORATE_REGISTRY_FIELDS[i]]=match[i+1]??'';
+    return registryRecord(values,1,source.dataDate);
+}
+
 function captureRegistryInputs(inputs:readonly CorporateRegistryXmlInput[]) {
     if(!Array.isArray(inputs))fail();const length=inputs.length;
     if(!Number.isSafeInteger(length)||length<0||length>100)fail();
