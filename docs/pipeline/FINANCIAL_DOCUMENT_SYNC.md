@@ -185,7 +185,7 @@ checkpoint本体の現行版3には、原観測のafterSequence、通知identity
 
 通知の判定基準は `notices.rulesVersion = 2` で管理します。これはcheckpoint本体の `version = 3` とは別です。判定版のない旧noticesは、処理済みの通知も含めて原観測を最初から再評価します。元データと既存の再取得待ちは維持し、再評価のcursorをpageごとに保存するため、中断後はその位置から再開できます。
 
-旧ルールの `completedDay` と `lastCompletedRun` は完了証跡として再利用せず、取得予算・処理中の範囲を引き継いで当日probeと日次取得の完了を確認し直します。予算切れでも古い完了証跡に戻しません。新しいnoticesを未対応の旧runtimeへ渡さず、対応コードとcheckpointを組にして保持してください。
+旧ルールの `completedDay` と `lastCompletedRun` は完了証跡として再利用せず、取得予算・処理中の範囲を引き継いで当日probeと日次取得の完了を確認し直します。予算切れでも古い完了証跡に戻しません。財務候補の新規作成側でも現行の `rulesVersion` を必須とし、旧ルールの完了状態ではファイルを作らず日次metadataを待ちます。既に凍結した候補の再開には、その候補自身の保存済み入力を使います。新しいnoticesを未対応の旧runtimeへ渡さず、対応コードとcheckpointを組にして保持してください。
 
 通知を新しく保存した直後・cursor保存前に停止しても、原観測の再読込で対象日を復元します。通知の原本文/過去のobservedAtを書き換えません。
 

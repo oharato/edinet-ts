@@ -16,7 +16,7 @@ async function fixture(fn:(s:any)=>Promise<void>,count=1){
  atomicJSON(populationPath,{asOf:'2026-10-29',observedAt:'2026-10-29T01:00:00Z',sourceUrl:'https://example.test/master.csv',sourceSha256:'d'.repeat(64),records:[{entityId:'edinet:E12345',edinetCode:'E12345',name:'fixture',filerType:'内国法人',listingStatus:'listed',securityCode:'10010'},{entityId:'edinet:E54321',edinetCode:'E54321',name:'unlisted',filerType:'内国法人',listingStatus:'unlisted'}]},{createOnly:true});
  const summary={archivePath:sourceArchivePath,planSha256:'a'.repeat(64),executionScriptSha256:'b'.repeat(64),finished:true,pending:0,failed:0,running:0,completed:1,unavailable:0,documents:1};atomicJSON(guardSummaryPath,summary,{createOnly:true});
  const daily={version:1,metadataPath,checkpointPath,guardSummaryPath,guardUnit:'edinet-roadmap-fixture.service',guardPlanSha256:summary.planSha256,guardWorkerSha256:summary.executionScriptSha256,sourceId:'daily-fixture',seedSha256:'c'.repeat(64)};atomicJSON(metadataConfigPath,daily,{createOnly:true});
- vi.setSystemTime(new Date('2026-10-30T01:00:00Z'));const envelope={version:1,metadataPath,sourceId:daily.sourceId,seedSha256:daily.seedSha256,checkpoint:{version:3,throughDate:'2026-10-29',completedDay:'2026-10-30',budget:{date:'2026-10-30',requests:8},notices:{afterSequence:count,seen:[],pending:[],unresolved:[]},lastCompletedRun:{startDate:'2026-10-23',endDate:'2026-10-29',refreshAfter:'2026-10-30T01:00:00.000Z',probe:{date:'2026-10-30',observedAt:'2026-10-30T01:00:00.000Z',documents:0,sha256:'e'.repeat(64)},throughSequence:count,closedThrough:'2026-10-29',completedAt:'2026-10-30T01:00:00.000Z',unresolvedNotices:0}}};atomicJSON(checkpointPath,envelope,{createOnly:true});
+ vi.setSystemTime(new Date('2026-10-30T01:00:00Z'));const envelope={version:1,metadataPath,sourceId:daily.sourceId,seedSha256:daily.seedSha256,checkpoint:{version:3,throughDate:'2026-10-29',completedDay:'2026-10-30',budget:{date:'2026-10-30',requests:8},notices:{rulesVersion:2,afterSequence:count,seen:[],pending:[],unresolved:[]},lastCompletedRun:{startDate:'2026-10-23',endDate:'2026-10-29',refreshAfter:'2026-10-30T01:00:00.000Z',probe:{date:'2026-10-30',observedAt:'2026-10-30T01:00:00.000Z',documents:0,sha256:'e'.repeat(64)},throughSequence:count,closedThrough:'2026-10-29',completedAt:'2026-10-30T01:00:00.000Z',unresolvedNotices:0}}};atomicJSON(checkpointPath,envelope,{createOnly:true});
  const config={version:1,metadataConfigPath,sourceArchivePath,populationPath,populationSha256:sha256(readFileSync(populationPath)),outputDirectory:join(dir,'handoff')};await fn({dir,repo,config,daily,envelope,summary});
  }finally{repo.close();rmSync(dir,{recursive:true,force:true});vi.useRealTimers()}
 }
@@ -26,6 +26,13 @@ it('固定取得が完了・停止する前はファイルを作らず待機す�
 }));
 it('未完了・旧版・前日の日次metadataでは候補を作らない',()=>fixture(async s=>{
  for(const change of [{version:2},{active:{}},{completedDay:'2026-10-29'}]){atomicJSON(s.daily.checkpointPath,{...s.envelope,checkpoint:{...s.envelope.checkpoint,...change}});expect(await runDailyFinancialPreparation(s.config,inactive)).toEqual({status:'waiting-for-daily-metadata'})}expect(existsSync(s.config.outputDirectory)).toBe(false);
+}));
+it.each([1,2])('版%sは旧通知ルールの完了証跡から新しい候補を作らず、新ルールでの完了を待つ',version=>fixture(async s=>{
+ const legacy=structuredClone(s.envelope);delete legacy.checkpoint.notices.rulesVersion;
+ atomicJSON(s.daily.checkpointPath,legacy);const before=readFileSync(s.daily.checkpointPath),config={...s.config,version};
+ expect(await runDailyFinancialPreparation(config,inactive)).toEqual({status:'waiting-for-daily-metadata'});
+ expect(existsSync(config.outputDirectory)).toBe(false);expect(readFileSync(s.daily.checkpointPath).equals(before)).toBe(true);
+ atomicJSON(s.daily.checkpointPath,s.envelope);expect((await runDailyFinancialPreparation(config,inactive)).status).toBe('prepared');
 }));
 it('完了した日次入力から上場母集団と保存原本を使う計画を準備する',()=>fixture(async s=>{
  const before=readFileSync(s.daily.metadataPath),result=await runDailyFinancialPreparation(s.config,inactive);expect(result).toMatchObject({status:'prepared',day:'2026-10-30',population:1,reusedSources:1,pendingSources:0,nextStage:'source-acquisition',financialValuesValidated:false});

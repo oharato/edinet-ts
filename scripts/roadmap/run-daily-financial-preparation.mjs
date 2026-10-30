@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {EdinetRepository,queryCompanyMaster,EdinetXbrlDownloader} from '../../dist/index.js';
 import {canStartDailyMetadata,assertCompletedMetadataRun} from './daily-metadata-control.mjs';
-import {assertDailyNoticeState} from './daily-metadata-notices.mjs';
+import {assertDailyNoticeState,DAILY_NOTICE_RULES_VERSION} from './daily-metadata-notices.mjs';
 import {config as loadEnv} from 'dotenv';
 import {buildReconstructedFinancialCycle} from './build-financial-cycle.mjs';
 import {acquirePreparedFinancialCycle} from './acquire-financial-cycle.mjs';
@@ -66,7 +66,7 @@ export async function runDailyFinancialPreparation(input,{signal,readUnitState=u
             }
         }
         const day=pending??today;
-        if(!pending){const checkpoint=readJSONSnapshot(daily.checkpointPath).value?.checkpoint;if(checkpoint?.completedDay!==today||checkpoint.active!==undefined)return {status:'waiting-for-daily-metadata'}}
+        if(!pending){const checkpoint=readJSONSnapshot(daily.checkpointPath).value?.checkpoint;if(checkpoint?.completedDay!==today||checkpoint.active!==undefined||checkpoint.notices?.rulesVersion!==DAILY_NOTICE_RULES_VERSION)return {status:'waiting-for-daily-metadata'}}
         if(!existsSync(s.outputDirectory))mkdirSync(s.outputDirectory,{mode:0o700});
         return runDailyFinancialPreparation({...s,version:1,outputDirectory:join(s.outputDirectory,day)},{signal,readUnitState,prepareOptions});
     }
@@ -79,7 +79,7 @@ export async function runDailyFinancialPreparation(input,{signal,readUnitState=u
     }else{
         if(existsSync(s.outputDirectory)&&readdirSync(s.outputDirectory).some(name=>!/^handoff\.json\.[a-f0-9-]{36}\.tmp$/.test(name)))throw Error('Unowned financial preparation directory');
         const observed=readJSONSnapshot(daily.checkpointPath),envelope=observed.value,state=envelope?.checkpoint,today=jstDate(Date.now());
-        if(state?.version!==3||state.active!==undefined||state.completedDay!==today)return {status:'waiting-for-daily-metadata'};
+        if(state?.version!==3||state.active!==undefined||state.completedDay!==today||state.notices?.rulesVersion!==DAILY_NOTICE_RULES_VERSION)return {status:'waiting-for-daily-metadata'};
         if(envelope.version!==1||envelope.metadataPath!==daily.metadataPath||envelope.sourceId!==daily.sourceId||envelope.seedSha256!==daily.seedSha256
             ||state.throughDate!==new Date(Date.parse(today)-86400000).toISOString().slice(0,10))throw Error('Completed daily metadata differs');
         const repository=new EdinetRepository(daily.metadataPath,{readOnly:true});
