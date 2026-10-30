@@ -1,3 +1,5 @@
+import {syncBuiltinESMExports} from 'node:module';
+import fs from 'node:fs';
 import {it,expect,vi} from 'vitest';
 import {mkdtempSync,rmSync,readFileSync,existsSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -54,3 +56,24 @@ it('CLIで準備し、誤った入力を秘匿して拒否する',()=>fixture(as
  const configPath=join(s.dir,'config.json');atomicJSON(configPath,config,{createOnly:true});const run=(args:string[])=>spawnSync(process.execPath,[resolve('scripts/roadmap/prepare-financial-cycle.mjs'),...args],{encoding:'utf8'});
  const result=run([configPath]);expect(result.status,result.stderr).toBe(0);expect(JSON.parse(result.stdout).status).toBe('prepared');const bad=run([configPath,'--max-source-pages','SECRET']);expect(bad.status).toBe(1);expect(bad.stderr).not.toContain('SECRET');
 }));
+
+it('容量不足なら固定入力や進捗を作る前に停止する',()=>fixture(async s=>{
+ const spy=vi.spyOn(fs,'statfsSync').mockReturnValue({bavail:0n,bsize:4096n} as any);syncBuiltinESMExports();
+ try{await expect(prepareFinancialCycle(s.config)).rejects.toThrow('disk reserve');expect(existsSync(s.config.outputDirectory)).toBe(false)}finally{spy.mockRestore();syncBuiltinESMExports()}
+}));
+
+it('一覧転送が途中なら大きな原本poolのコピーと指紋検査を開始しない',()=>fixture(async s=>{
+ const spy=vi.spyOn(ObservedFinancialArchive.prototype,'snapshotSha256');
+ try{expect(await prepareFinancialCycle(s.config,{maxObservationPages:1})).toMatchObject({status:'partial',metadataCursor:1000,sourcesComplete:false});expect(spy).not.toHaveBeenCalled()}finally{spy.mockRestore()}
+},1001));
+
+it('原本コピー分が不足していても一覧をcheckpointし、容量回復後に続行できる',()=>fixture(async s=>{
+ const free=34n*1024n**3n+2n*BigInt(fs.statSync(s.config.metadataPath).size);
+ const spy=vi.spyOn(fs,'statfsSync').mockReturnValue({bavail:free,bsize:1n} as any);syncBuiltinESMExports();
+ try{
+  expect(await prepareFinancialCycle(s.config,{maxObservationPages:1})).toMatchObject({status:'partial',metadataCursor:1000});
+  await expect(prepareFinancialCycle(s.config)).rejects.toThrow('disk reserve');
+  expect(readJSONSnapshot(join(s.config.outputDirectory,'preparation.json')).value.body).toMatchObject({metadataCursor:1001,sourceCount:0,sourcesComplete:false});
+ }finally{spy.mockRestore();syncBuiltinESMExports()}
+ expect((await prepareFinancialCycle(s.config)).status).toBe('prepared');
+},1001));

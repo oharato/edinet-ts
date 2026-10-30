@@ -18,16 +18,17 @@ it('保存済み/未提供原本を通信せず、不足原本だけ取得して
  const fetch=vi.fn(async()=>'<downloaded/>');const result=await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch});expect(result).toMatchObject({status:'acquired',completed:2,unavailable:1,attempts:1,nextStage:'financial-reconstruction',financialValuesValidated:false,sourceAudit:{completed:2,unavailable:1,pending:0,finished:true}});expect(fetch.mock.calls.map((a:any)=>a[0])).toEqual(['A0001']);
  const before=readFileSync(s.prepared.archivePath);expect((await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).reused).toBe(true);expect(fetch).toHaveBeenCalledTimes(1);expect(readFileSync(s.prepared.archivePath).equals(before)).toBe(true);
 }));
+// 102原本の実SQLite commitを伴う統合確認に、単体テストの既定5秒は使いません。
 it('100件の境界で再開して、残りだけ取得する',()=>fixture(async s=>{
  const fetch=vi.fn(async()=>'<downloaded/>');expect(await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).toMatchObject({status:'acquiring',completed:100,pending:2});expect(await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).toMatchObject({status:'acquired',completed:102});expect(fetch).toHaveBeenCalledTimes(102);
-},102,0,0));
+},102,0,0),30_000);
 it('再起動しても各書類3試行の上限を超えない',()=>fixture(async s=>{
  const fetch=vi.fn(async()=>{throw Error('SECRET')});for(let i=0;i<2;i++)expect((await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).status).toBe('acquiring');
  expect(await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).toMatchObject({status:'acquisition-paused',reason:'three-attempts-per-remaining-document',attempts:3});expect((await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).status).toBe('acquisition-paused');expect(fetch).toHaveBeenCalledTimes(3);expect(progress(s).history.every((a:any)=>a.errorCode==='source-acquisition-failed')).toBe(true);
 },1,0,0));
 it('連続5単位の停止判定を永続化し、再起動で追加通信しない',()=>fixture(async s=>{
  const fetch=vi.fn(async()=>{throw Error('provider')});expect(await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).toMatchObject({status:'acquisition-paused',reason:'five-batches-without-progress',failed:100,pending:1,stalledBatches:5});expect((await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).stalledBatches).toBe(5);expect(fetch).toHaveBeenCalledTimes(100);
-},101,0,0));
+},101,0,0),30_000);
 it('DBのbatch commit後に停止しても、完了済み原本を再取得しない',()=>fixture(async s=>{
  const fetch=vi.fn(async()=>'<downloaded/>'),original=FinancialSourceJob.prototype.runNext,spy=vi.spyOn(FinancialSourceJob.prototype,'runNext').mockImplementation(async function(this:any,...args:any[]){await original.apply(this,args as any);throw Error('after db commit')});
  try{await expect(acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).rejects.toThrow('after db commit')}finally{spy.mockRestore()}
@@ -37,7 +38,7 @@ it('未保存の停止判定もDB履歴から復元し、通信を続けない',
  const fetch=vi.fn(async()=>{throw Error('provider')}),original=FinancialSourceJob.prototype.runNext,spy=vi.spyOn(FinancialSourceJob.prototype,'runNext').mockImplementation(async function(this:any,...args:any[]){await original.apply(this,args as any);throw Error('after failure commits')});
  try{await expect(acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).rejects.toThrow('after failure commits')}finally{spy.mockRestore()}
  expect(await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).toMatchObject({status:'acquisition-paused',stalledBatches:5});expect(fetch).toHaveBeenCalledTimes(100);
-},101,0,0));
+},101,0,0),30_000);
 it('原本commit後にtaskが失敗しても、保存原本を使って再開する',()=>fixture(async s=>{
  const fetch=vi.fn(async()=>'<downloaded/>'),original=ObservedFinancialArchive.prototype.appendAcquiredSource,spy=vi.spyOn(ObservedFinancialArchive.prototype,'appendAcquiredSource').mockImplementation(function(this:any,...args:any[]){original.apply(this,args as any);throw Error('after source commit')});
  try{expect((await acquirePreparedFinancialCycle(s.config,{fetchXbrl:fetch})).status).toBe('acquiring')}finally{spy.mockRestore()}

@@ -4,7 +4,7 @@ import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {spawnSync} from 'node:child_process';
 import {EdinetRepository,ObservedFinancialArchive} from '../dist/index.js';
-import {runDailyFinancialPreparation} from '../scripts/roadmap/run-daily-financial-preparation.mjs';
+import {dailyFinancialFailureMessage,runDailyFinancialPreparation} from '../scripts/roadmap/run-daily-financial-preparation.mjs';
 import {atomicJSON,sha256,readJSONSnapshot} from '../scripts/roadmap/operational-files.mjs';
 async function fixture(fn:(s:any)=>Promise<void>,count=1){
  vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-30T00:30:00Z'));const dir=mkdtempSync(join(tmpdir(),'daily-financial-')),metadataPath=join(dir,'metadata.sqlite'),sourceArchivePath=join(dir,'sources.sqlite'),populationPath=join(dir,'population.json'),metadataConfigPath=join(dir,'daily-config.json'),checkpointPath=join(dir,'daily-checkpoint.json'),guardSummaryPath=join(dir,'summary.json');
@@ -48,3 +48,8 @@ it('保存したhandoffの改変と設定差分を拒否する',()=>fixture(asyn
 it('CLIは不正設定の内容を表示しない',()=>fixture(async s=>{
  const p=join(s.dir,'bad-config.json');atomicJSON(p,{...s.config,populationSha256:'SECRET'},{createOnly:true});const r=spawnSync(process.execPath,[resolve('scripts/roadmap/run-daily-financial-preparation.mjs'),p],{encoding:'utf8'});expect(r.status).toBe(1);expect(r.stderr).not.toContain('SECRET');
 }));
+
+it('容量不足だけを安全な固定メッセージで説明し、未知の例外本文を隠す',()=>{
+ for(const message of ['Financial cycle preparation disk reserve','Daily preparation disk reserve'])expect(dailyFinancialFailureMessage(new Error(message))).toContain('insufficient disk space');
+ for(const error of [new Error('SECRET /private/file'),{message:'SECRET'},null]){expect(dailyFinancialFailureMessage(error)).not.toContain('SECRET');expect(dailyFinancialFailureMessage(error)).toContain('details hidden')}
+});

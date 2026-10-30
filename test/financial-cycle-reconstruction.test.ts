@@ -1,16 +1,18 @@
+import {reportingInstance} from './fixtures/financial-reporting-basis';
+import {activateBuiltFinancialCycle,buildReconstructedFinancialCycle} from '../scripts/roadmap/build-financial-cycle.mjs';
 import {it,expect,vi} from 'vitest';
 import {mkdtempSync,rmSync,readFileSync,writeFileSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {EdinetRepository,ObservedFinancialArchive} from '../dist/index.js';
+import {EdinetRepository,ObservedFinancialArchive,FinancialIndexPublication,PublishedFinancialIndex} from '../dist/index.js';
 import {prepareFinancialCycle} from '../scripts/roadmap/prepare-financial-cycle.mjs';
 import {acquirePreparedFinancialCycle} from '../scripts/roadmap/acquire-financial-cycle.mjs';
 import {reconstructAcquiredFinancialCycle} from '../scripts/roadmap/reconstruct-financial-cycle.mjs';
 import {sha256,readJSONSnapshot,atomicJSON} from '../scripts/roadmap/operational-files.mjs';
-async function fixture(fn:(s:any)=>Promise<void>,rows=3,withOrigin=false,acquireAt='2026-10-30T03:00:00Z'){
+async function fixture(fn:(s:any)=>Promise<void>,rows=3,withOrigin=false,acquireAt='2026-10-30T03:00:00Z',edinetCodes=['E12345'],storedXml='<stored/>'){
  vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-30T01:00:00Z'));const dir=mkdtempSync(join(tmpdir(),'cycle-reconstruct-')),metadataPath=join(dir,'metadata.sqlite'),sourceArchivePath=join(dir,'pool.sqlite'),repo=new EdinetRepository(metadataPath),pool=new ObservedFinancialArchive(sourceArchivePath);
- try{repo.saveDocumentList(Array.from({length:rows},(_,i)=>({docID:'A'+i,edinetCode:'E12345',secCode:'10010',docTypeCode:'120',submitDateTime:'2026-09-01 09:00',periodStart:'2025-04-01',periodEnd:'2026-03-31',withdrawalStatus:'0',docInfoEditStatus:'0',disclosureStatus:'0',xbrlFlag:rows>3&&i>0||i===2?'0':'1'})),'2026-09-01');pool.append([],[{docID:'A0',availableAt:'2026-10-01T00:00:00Z',sourceSha256:sha256('<stored/>'),xml:'<stored/>'}]);pool.close();const ro=new ObservedFinancialArchive(sourceArchivePath,{readOnly:true});const sourceArchiveSha256=ro.snapshotSha256();ro.close();
- const config:any={version:1,metadataPath,sourceArchivePath,sourceArchiveSha256,sourceId:'reconstruction-fixture',throughSequence:rows,availableBy:'2026-10-30T02:00:00Z',outputDirectory:join(dir,'candidate'),input:{id:'reconstruction-fixture',cutoff:'2026-10-30T02:00:00Z',population:{asOf:'2026-10-29',observedAt:'2026-10-29T01:00:00Z',source:'https://example.test/master.csv',sourceSha256:'a'.repeat(64),edinetCodes:['E12345']}}};if(withOrigin){config.metadataCheckpointPath=join(dir,'daily-completion.json');atomicJSON(config.metadataCheckpointPath,{version:1,metadataPath,sourceId:config.sourceId,seedSha256:'b'.repeat(64),checkpoint:{version:3,throughDate:'2026-10-29',completedDay:'2026-10-30',budget:{date:'2026-10-30',requests:8},notices:{afterSequence:rows,seen:[],pending:[],unresolved:[]},lastCompletedRun:{startDate:'2026-10-23',endDate:'2026-10-29',refreshAfter:'2026-10-30T01:00:00.000Z',probe:{date:'2026-10-30',observedAt:'2026-10-30T01:00:00.000Z',documents:0,sha256:'c'.repeat(64)},throughSequence:rows,closedThrough:'2026-10-29',completedAt:'2026-10-30T01:00:00.000Z',unresolvedNotices:0}}},{createOnly:true})}
+ try{repo.saveDocumentList(Array.from({length:rows},(_,i)=>({docID:'A'+i,edinetCode:'E12345',secCode:'10010',docTypeCode:'120',submitDateTime:'2026-09-01 09:00',periodStart:'2025-04-01',periodEnd:'2026-03-31',withdrawalStatus:'0',docInfoEditStatus:'0',disclosureStatus:'0',xbrlFlag:rows>3&&i>0||i===2?'0':'1'})),'2026-09-01');pool.append([],[{docID:'A0',availableAt:'2026-10-01T00:00:00Z',sourceSha256:sha256(storedXml),xml:storedXml}]);pool.close();const ro=new ObservedFinancialArchive(sourceArchivePath,{readOnly:true});const sourceArchiveSha256=ro.snapshotSha256();ro.close();
+ const config:any={version:1,metadataPath,sourceArchivePath,sourceArchiveSha256,sourceId:'reconstruction-fixture',throughSequence:rows,availableBy:'2026-10-30T02:00:00Z',outputDirectory:join(dir,'candidate'),input:{id:'reconstruction-fixture',cutoff:'2026-10-30T02:00:00Z',population:{asOf:'2026-10-29',observedAt:'2026-10-29T01:00:00Z',source:'https://example.test/master.csv',sourceSha256:'a'.repeat(64),edinetCodes}}};if(withOrigin){config.metadataCheckpointPath=join(dir,'daily-completion.json');atomicJSON(config.metadataCheckpointPath,{version:1,metadataPath,sourceId:config.sourceId,seedSha256:'b'.repeat(64),checkpoint:{version:3,throughDate:'2026-10-29',completedDay:'2026-10-30',budget:{date:'2026-10-30',requests:8},notices:{afterSequence:rows,seen:[],pending:[],unresolved:[]},lastCompletedRun:{startDate:'2026-10-23',endDate:'2026-10-29',refreshAfter:'2026-10-30T01:00:00.000Z',probe:{date:'2026-10-30',observedAt:'2026-10-30T01:00:00.000Z',documents:0,sha256:'c'.repeat(64)},throughSequence:rows,closedThrough:'2026-10-29',completedAt:'2026-10-30T01:00:00.000Z',unresolvedNotices:0}}},{createOnly:true})}
  vi.setSystemTime(new Date('2026-10-30T03:00:00Z'));const prepared=await prepareFinancialCycle(config);vi.setSystemTime(new Date(acquireAt));const acquired=await acquirePreparedFinancialCycle(config,{fetchXbrl:async()=>'<downloaded/>'});expect(acquired.status).toBe('acquired');await fn({dir,config,repo,prepared,acquired});
  }finally{repo.close();pool.close();rmSync(dir,{recursive:true,force:true});vi.useRealTimers()}
 }
@@ -50,3 +52,55 @@ it('日次完了証跡を保持し、取得完了cutoffに対して閉日の鮮�
 it('取得が翌日に跨いだ場合は閉じた日が最新とは記録しない',()=>fixture(async s=>{
  const result=await reconstructAcquiredFinancialCycle(s.config);expect(result).toMatchObject({metadataThroughDate:'2026-10-29',metadataCurrentForCutoff:false,cutoff:'2026-10-31T03:00:00.000Z'});
 },3,true,'2026-10-31T03:00:00Z'));
+
+it('再構築から会社別索引と品質集計へ接続し、再実行でも同じ世代を返す',()=>fixture(async s=>{
+ const before=readFileSync(s.prepared.archivePath);const result=await buildReconstructedFinancialCycle(s.config,{maxCompanies:1});
+ expect(result.status).toBe('built');expect(result.nextStage).toBe('financial-quality');expect(result.financialValuesValidated).toBe(false);
+ expect((await buildReconstructedFinancialCycle(s.config)).quality).toEqual(result.quality);expect(readFileSync(s.prepared.archivePath).equals(before)).toBe(true);
+}));
+
+it('構築完了記録の破損を上書きして成功扱いにしない',()=>fixture(async s=>{
+ await buildReconstructedFinancialCycle(s.config);const path=join(s.config.outputDirectory,'reconstructed','build.json');const saved=readJSONSnapshot(path).value;saved.body.generation='CORRUPTED';writeFileSync(path,JSON.stringify(saved));const before=readFileSync(path);
+ await expect(buildReconstructedFinancialCycle(s.config)).rejects.toThrow('receipt');expect(readFileSync(path).equals(before)).toBe(true);
+}));
+it('構築の処理件数と中断signalを入口で検査する',async()=>{
+ for(const maxCompanies of [0,101,1.5])await expect(buildReconstructedFinancialCycle({}, {maxCompanies})).rejects.toThrow('options');
+ await expect(buildReconstructedFinancialCycle({}, {signal:{} as any})).rejects.toThrow('options');
+});
+
+it('欠損のある候補は厳格な公開条件で不適格となり公開先を切り替えない',()=>fixture(async s=>{
+ const result=await buildReconstructedFinancialCycle(s.config);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['quality-conditions','metadata-not-current']);expect(result.publicationCandidate.eligible).toBe(false);expect(result.publicationCandidate.violations.length).toBeGreaterThan(0);
+ const catalog=new FinancialIndexPublication(join(s.config.outputDirectory,'reconstructed','publication.sqlite'),{readOnly:true});
+ try{expect(catalog.current()).toBeUndefined();expect(catalog.candidate(result.generation)).toEqual(result.publicationCandidate)}finally{catalog.close()}
+}));
+
+it('会社別の途中構築を完了扱いせず、次の呼出しで同じ計画を完了する',()=>fixture(async s=>{
+ const partial=await buildReconstructedFinancialCycle(s.config,{maxCompanies:1});expect(partial).toMatchObject({status:'partial',phase:'financial-build',completed:1,pending:1});
+ expect(existsSync(join(s.config.outputDirectory,'reconstructed','build.json'))).toBe(false);
+ const complete=await buildReconstructedFinancialCycle(s.config,{maxCompanies:1});expect(complete.status).toBe('built');expect(complete.quality.populationCompanies).toBe(2);
+},3,false,'2026-10-30T03:00:00Z',['E12345','E99999']));
+
+it('閉日の鮮度が確認できても品質違反の候補は不適格のままにする',()=>fixture(async s=>{
+ const result=await buildReconstructedFinancialCycle(s.config);expect(result.metadataCurrentForCutoff).toBe(true);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['quality-conditions']);
+},3,true));
+
+it('有効な原本と最新の閉日証跡から品質条件に適合した候補を作る',()=>fixture(async s=>{
+ const result=await buildReconstructedFinancialCycle(s.config);expect(result.publicationEligible).toBe(true);expect(result.publicationBlockers).toEqual([]);expect(result.publicationCandidate.violations).toEqual([]);expect(result.quality.values.available).toBe(5);
+ const catalog=new FinancialIndexPublication(join(s.config.outputDirectory,'reconstructed','publication.sqlite'),{readOnly:true});try{expect(catalog.current()).toBeUndefined()}finally{catalog.close()}
+},1,true,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));
+it('品質条件に適合しても閉日証跡がなければ公開可能としない',()=>fixture(async s=>{
+ const result=await buildReconstructedFinancialCycle(s.config);expect(result.publicationCandidate.eligible).toBe(true);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['metadata-not-current']);
+},1,false,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));
+
+it('適格候補を期待する公開先から切り替え、不正なCASでは履歴を増やさない',()=>fixture(async s=>{
+ const catalogPath=join(s.dir,'active.sqlite');const result=await activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null});expect(result.status).toBe('published');const reader=new PublishedFinancialIndex(catalogPath,result.indexPath);try{expect(reader.snapshot().generation).toBe(result.generation);expect(reader.quality()).toEqual(result.quality)}finally{reader.close()}
+ await expect(activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null})).rejects.toThrow('切り替わりました');
+ const catalog=new FinancialIndexPublication(catalogPath,{readOnly:true});try{expect(catalog.current()!.id).toBe(result.generation);expect(catalog.history()).toHaveLength(1)}finally{catalog.close()}
+},1,true,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));
+it('品質不適格の候補は公開catalogを作らず理由付きで返す',()=>fixture(async s=>{
+ const catalogPath=join(s.dir,'active.sqlite');expect((await activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null})).status).toBe('publication-blocked');expect(existsSync(catalogPath)).toBe(false);
+}));
+
+it('公開先とCAS入力が不正なら候補を構築する前に拒否する',async()=>{
+ for(const target of [{catalogPath:'relative.sqlite',expectedActive:null},{catalogPath:'/tmp/catalog.sqlite',expectedActive:'bad/id'},{catalogPath:'/tmp/catalog.sqlite'}])await expect(activateBuiltFinancialCycle({},target)).rejects.toThrow('target');
+});

@@ -84,6 +84,8 @@ export async function prepareFinancialCycle(settings,{signal,maxObservationPages
         if(prior&&(prior.version!==1||sha256(canonical(prior.recipe))!==prior.inputSha256))throw Error('Financial cycle recipe integrity failed');
         const metadataOrigin=prior?.recipe?.origin??origin(config,repository,input),metadata=await prefix(repository,config.throughSequence,cutoff,signal);if(!metadata)return {status:'aborted'};
         const pinnedSoftware=financialCycleSoftware(),recipe={...config,input,metadataPrefix:metadata,software:pinnedSoftware,...(metadataOrigin?{origin:metadataOrigin}:{})},inputSha256=sha256(canonical(recipe));
+        // 容量不足で固定入力だけが残り、次の実行条件を拘束することを避けます。
+        if(!prior)ensureSpace(existsSync(directory)?directory:dirname(directory),2n*BigInt(statSync(config.metadataPath).size));
         if(!existsSync(directory))mkdirSync(directory,{mode:0o700});
         const directoryStat=lstatSync(directory);if(!directoryStat.isDirectory()||directoryStat.isSymbolicLink()||realpathSync(directory)!==directory)throw Error('Cycle output must be a normal directory');
         if(!existsSync(inputPath)){
@@ -96,13 +98,13 @@ export async function prepareFinancialCycle(settings,{signal,maxObservationPages
         if(progress.metadataCursor>config.throughSequence||progress.sourcesComplete&&progress.metadataCursor!==config.throughSequence)throw Error('Financial cycle cursor is invalid');
         if(progress.receipt){if(!progress.sourcesComplete||progress.receipt.status!=='prepared'||progress.receipt.inputSha256!==inputSha256||progress.receipt.archivePath!==archivePath||progress.receipt.statePath!==statePath)throw Error('Preparation receipt is invalid');normalFile(archivePath);normalFile(statePath);const job=new FinancialSourceJob(statePath,{readOnly:true});try{const current=job.progress(input.id);if(current.planSha256!==progress.receipt.planSha256||current.plan.archiveSha256!==progress.receipt.preparationArchiveSha256)throw Error('Prepared source plan changed')}finally{job.close()}return {...progress.receipt,reused:true}}
         const save=async()=>{atomicJSON(progressPath,{version:1,inputSha256,body:progress,sha256:sha256(canonical([inputSha256,progress]))});await onCheckpoint(structuredClone(progress));await yieldTurn()};
-        const remaining=2n*BigInt(statSync(config.sourceArchivePath).size)+2n*BigInt(statSync(config.metadataPath).size);
+        const remaining=2n*BigInt(statSync(config.metadataPath).size);
         ensureSpace(directory,remaining);
-        if(!progress.sourcesComplete){pool=new ObservedFinancialArchive(config.sourceArchivePath,{readOnly:true});if(pool.snapshotSha256()!==config.sourceArchiveSha256)throw Error('Source pool snapshot differs')}
         target=new ObservedFinancialArchive(archivePath);
         for(let page=0;progress.metadataCursor<config.throughSequence&&page<maxObservationPages&&!signal?.aborted;page++){
             ensureSpace(directory);const transferred=archiveFinancialDocumentObservations(repository,target,{sourceId:config.sourceId,throughSequence:config.throughSequence,afterSequence:progress.metadataCursor,pageSize:1000,maxPages:1});progress.metadataCursor=transferred.nextAfterSequence;await save();
         }
+        if(progress.metadataCursor===config.throughSequence&&!progress.sourcesComplete){ensureSpace(directory,remaining+2n*BigInt(statSync(config.sourceArchivePath).size));pool=new ObservedFinancialArchive(config.sourceArchivePath,{readOnly:true});if(pool.snapshotSha256()!==config.sourceArchiveSha256)throw Error('Source pool snapshot differs')}
         for(let page=0;progress.metadataCursor===config.throughSequence&&!progress.sourcesComplete&&page<maxSourcePages&&!signal?.aborted;page++){
             ensureSpace(directory);const transferred=pool.transferSourcesTo(target,{sourceArchiveSha256:config.sourceArchiveSha256,availableBy:config.availableBy,afterId:progress.afterSourceId,limit:100});
             for(const id of transferred.transferredIds){progress.sourceChain=chain(progress.sourceChain,id);progress.sourceCount++}
