@@ -10,12 +10,12 @@
 | 年次取得・索引 | 原本7,328件、未提供9件で取得監査済み。旧SDKで3,813社を処理し、3,759社・7,720行・19,175利用可能値を生成 | 修正版での再構築、全件の品質・独立照合 |
 | 半期の修正 | 日本基準/IFRSの実2原本で期間不一致を解消。4行・11値が独立XML処理とSQL索引で一致、欠損2件も区別 | PDF再照合、他の半期・業種への検証拡大 |
 | 日次候補 | 139,758観測の転送を独立照合。7,449対象は取得済み7,440件・未提供9件で完了receiptあり | 容量不足で止まった再構築・索引・品質判定・公開の完走 |
-| 容量対策 | 未使用の検証コピーを復元情報付きで圧縮保管。停止後の私有コピー2件も保持原本と照合して整理。83,828観測・7,328原本の別DBへの圧縮転送が完了 | 新しい圧縮原本poolの独立監査・運用採用 |
-| 次の運用環境 | 2,502ファイルの固定runtime候補を準備。前候補の117原本をcache化し、固定SDKで全件の指紋一致・HTTP要求0件を確認 | launcher/config固定、切替、日次反復・停止/復旧検証 |
+| 容量対策 | 未使用の検証コピーを復元情報付きで圧縮保管。停止後の私有コピー2件も保持原本と照合して整理。83,828観測・7,328原本の圧縮転送と全宣言/展開byte列の独立照合が完了。DBは約17.48 GB→1.35 GB | 日次以降の保存整理・復旧運用 |
+| 次の運用環境 | 2,502ファイルの固定runtimeへ切替。起動前10検査、新候補の準備と117原本cacheの投入・再検証が成功。新unitの起動とtimerのactiveを確認 | 追加原本の完了監査、再構築・索引・品質判定、日次反復・停止/復旧検証 |
 
-日次財務unit/timerは移行保守のため一時停止しています。圧縮監査と新固定runtimeへの切替確認後にtimerを復帰します。監査直後に旧runtimeが再開しないよう、保守を継続しています。この文書の記載は日時付きの確認結果であり、稼働状態は実unitとreceiptで確認します。
+圧縮入力を使う固定runtime（コードf1d39b6）へ日次財務unitを切り替え、timerを復帰しました。新候補は139,758観測・7,328原本を転送し、7,449対象（再利用7,323・追加117・未提供9）の取得計画を準備済みです。追加117件とcacheの書類IDを照合し、固定SDKで全件のbyte指紋一致・通信なしの読込を再確認して投入しました。取得・構築はまだ実行中です。この文書の記載は日時付きの確認結果であり、稼働状態は実unitとreceiptで確認します。
 
-圧縮保存は既存の非圧縮DBを上書きせず、新規候補へ転送します。新しい日別設定・キャッシュ参照先も作業コードへ実装済みです。現時点で実運用の公開世代を切り替えた意味ではありません。
+圧縮保存は既存の非圧縮DBを上書きせず、新規候補へ転送します。新しい日別設定・キャッシュ参照先も作業コードへ実装済みです。公開世代は未切替です。日次母集団は最新の公式CSV観測のlisted全3,812社に一致します。旧年次の固定母集団3,813社との差1社は、最新観測でのunlistedへの変化を反映したものです。
 
 ## 段階ごとの残工程
 
@@ -36,8 +36,8 @@
 
 ## 次に進める順序
 
-1. 転送済みの圧縮原本poolについて、全観測・原本宣言・展開byte列の独立照合を完了する。
-2. 新しい設定と固定runtimeを検査し、日次候補へ投入する。取得済み117原本のcacheを使い、取得時刻を過去へ戻さず再利用する。
+1. 稼働中の新日次候補で、117原本のcache再利用と取得完了監査を確認する。
+2. 未解決通知126件の分類と、対象会社・訂正/取下げへの影響を確認する。原観測と未解決状態を保持し、未確認のものを解決済みと扱わない。
 3. 修正版で再構築・索引・品質判定を完走する。公開条件を満たす場合だけ切り替え、readerの再読込と切戻しを確認する。
 4. 翌日の反復、原本poolの引継ぎ、保存整理、障害復旧・実再起動、固定配布物とstock-dataへの反映を確認する。
 
@@ -52,6 +52,6 @@
 | 年次取得・構築 | `year-source-completion-independent-proof.json`、`year-financial-source-completion.json`、`year-financial-build-summary.json`、`year-financial-build-quality.json` |
 | 半期の期間・金額 | `half-year-period-real-proof.json`、同候補内の `independent-value-proof.json` |
 | 日次観測・実2社の索引 | `daily-index-live-metadata-audit.json`、`daily-build-real-latest-proof.json`、同候補内の `independent-value-proof.json` |
-| 容量・固定runtime・cache | `cold-copy-retention-ledger.json`、`stopped-daily-probe-cleanup.json`、`daily-compressed-runtime-candidate.json`、`daily-source-cache-read-proof.json` |
+| 容量・固定runtime・cache | `cold-copy-retention-ledger.json`、`stopped-daily-probe-cleanup.json`、`compressed-seed-20261030/independent-audit.json`、`daily-compressed-runtime-candidate.json`、`daily-compressed-preflight-proof.json`、`daily-compressed-deployment-proof.json`、`daily-source-cache-read-proof.json`、`daily-compressed-cache-placement-proof.json`、`daily-compressed-population-independent-proof.json` |
 
 [実装・検証の履歴](../history/IMPLEMENTATION_LOG_2026-10-30.md)には、途中の失敗・再実行・当時のテスト件数を保持しています。過去の「未確認」「完了待ち」を最新状態へ読み替えないでください。検証手順は[全体テスト](../../scripts/README.md#全体テスト)、残る項目の詳細は[全体計画](EDINET_TS_ROADMAP.md)を参照してください。
