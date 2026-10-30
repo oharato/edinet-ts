@@ -155,8 +155,8 @@ export type {CompanyFinancialScreeningOptions,CompanyFinancialScreeningRow,Compa
 export {compareCompanyFinancialsByIndustry} from "./company-industry-comparison";
 export type {CompanyIndustryComparisonOptions,CompanyIndustryComparisonResult,CompanyIndustryGroup,IndustryMetricStatistics,IndustryExactValue} from "./company-industry-comparison";
 
-export {parseCorporateRegistryPublicationCalendar} from "./corporate-registry-calendar";
-export type {CorporateRegistryPublicationCalendarInput,CorporateRegistryPublicationCalendar,CorporateRegistryCalendarSource} from "./corporate-registry-calendar";
+export {parseCorporateRegistryPublicationCalendar,planCorporateRegistryDifferences} from "./corporate-registry-calendar";
+export type {CorporateRegistryPublicationCalendarInput,CorporateRegistryPublicationCalendar,CorporateRegistryCalendarSource,CorporateRegistryNonPublicationDay,CorporateRegistryDifferencePlanQuery,CorporateRegistryDifferencePlan} from "./corporate-registry-calendar";
 
 export {streamCorporateRegistryRecords,CORPORATE_REGISTRY_STREAM_MAX_BYTES,CORPORATE_REGISTRY_RECORD_MAX_BYTES} from "./corporate-registry-stream";
 export type {CorporateRegistryStreamReceipt,CorporateRegistryStreamOptions} from "./corporate-registry-stream";

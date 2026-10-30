@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {planCorporateRegistryDifferences} from './corporate-registry-calendar';
 import { parseDocumentTimestamp } from "./document-timestamp";
 import {recoverDedicatedSqliteSnapshot,type DedicatedSqliteRecoveryKind} from "./db/sqlite-recovery";
 import {PublishedFinancialIndex} from "./published-financial-index";
@@ -696,6 +697,18 @@ function readRegistryCalendar(inputPath:string|undefined) {
     const policy=load("policy","utf-8"),holidays=load("holidays","shift_jis");
     return {policy:{html:policy.text,sourceUrl:policy.sourceUrl,observedAt:policy.observedAt},holidays:{csv:holidays.text,sourceUrl:holidays.sourceUrl,observedAt:holidays.observedAt}};
 }
+
+program.command("plan-corporate-registry-differences")
+    .description("保存した公式カレンダーで取得予定日と未作成日を分けます（通信なし）")
+    .requiredOption("--calendar <path>", "保存した方針HTML・祝日CSVのmanifest")
+    .requiredOption("--query <path>", "from/through/knownAtのJSON。最大100日")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        try{
+            const query=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.query),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            console.log(JSON.stringify(planCorporateRegistryDifferences(readRegistryCalendar(options.calendar)!,query),null,options.pretty?2:undefined));
+        }catch{console.error("取得期間・観測cutoff・保存カレンダーの範囲と出典を確認してください（入力内容は非表示）");process.exitCode=1;}
+    });
 
 program.command("reconstruct-corporate-registry-store")
     .description("検査した保存DBの全分割から、原本来歴を保持して法人番号状態を再構成します")

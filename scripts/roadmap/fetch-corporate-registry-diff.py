@@ -138,7 +138,7 @@ def validate_complete(root,receipt,plan):
     return receipt
 
 
-def fetch(date,key,fingerprint,output,opener=None):
+def fetch(date,key,fingerprint,output,opener=None,on_request=None):
     if dt.date.fromisoformat(date).isoformat()!=date or dt.date.fromisoformat(date)>dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).date():raise ValueError('invalid or future date')
     if not re.fullmatch('[A-Fa-f0-9]{40}|[A-Fa-f0-9]{64}',fingerprint):raise ValueError('full trusted fingerprint required')
     key=Path(key).absolute();root=Path(output).absolute()
@@ -162,13 +162,18 @@ def fetch(date,key,fingerprint,output,opener=None):
         if number>9999:raise ValueError("attempt limit exceeded")
         attempt=root/f"attempt-{number:04d}"
         attempt.mkdir(mode=0o700)
+        requests=0
         try:
             if shutil.disk_usage(root).free<zip_audit.RESERVE+MAX_ZIP:raise ValueError('free space reserve')
             opener=opener or urllib.request.build_opener(NoRedirect(),urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+            requests+=1
+            if on_request:on_request()
             listing=download(opener,urllib.request.Request(BASE),attempt/'listing.html',2*1024**2)
             parser=Listing();parser.feed(small_bytes(attempt/'listing.html').decode('utf-8'));selected=parser.select(date)
             fields={**parser.fields,'selDlFileNo':selected['fileId']}
             request=urllib.request.Request(BASE+'index.html',data=urllib.parse.urlencode(fields).encode(),headers={'Referer':BASE})
+            requests+=1
+            if on_request:on_request()
             downloaded=download(opener,request,attempt/'delivery.zip',MAX_ZIP)
             acquisition={'listing':listing,'download':downloaded,'selected':selected};atomic_json(attempt/'acquisition.json',acquisition)
             source={'sourceUrl':BASE,'observedAt':downloaded['observedAt'],'dataDate':date,'kind':'diff','purpose':'download'}
@@ -176,9 +181,9 @@ def fetch(date,key,fingerprint,output,opener=None):
             atomic_json(attempt/'zip-input.json',manifest);zip_audit.verify(attempt/'zip-input.json',attempt/'verified')
             receipt={'format':'edinet-ts-corporate-registry-acquisition-v1','plan':plan,'attempt':attempt.name,'acquisition':acquisition,'verifiedReceipt':str(attempt/'verified/receipt.json'),'importManifest':str(attempt/'verified/part-000-import.json')}
             validate_complete(root,receipt,plan);atomic_json(attempt/'complete.json',receipt);atomic_json(root/'complete.json',receipt)
-            return {'status':'downloaded','networkRequested':True,'requestCount':2,**receipt}
+            return {'status':'downloaded','networkRequested':True,'requestCount':requests,**receipt}
         except BaseException as error:
-            atomic_json(attempt/'failure.json',{'errorType':type(error).__name__,'failedAt':dt.datetime.now(dt.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00','Z')})
+            atomic_json(attempt/'failure.json',{'errorType':type(error).__name__,'requestCount':requests,'failedAt':dt.datetime.now(dt.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00','Z')})
             raise
 
 

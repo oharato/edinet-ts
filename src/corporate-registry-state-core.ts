@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {parseDocumentTimestamp} from './document-timestamp';
 import type {CorporateRegistryStateQuery,CorporateRegistryStateResult,CorporateRegistryDownload,CorporateRegistryRecord,CorporateRegistrySource,CorporateRegistryStateSelection,CorporateRegistryField,CorporateRegistryRecordReference} from './corporate-registry';
-import type {CorporateRegistryPublicationCalendar} from './corporate-registry-calendar';
+import {registryNonPublicationDay,type CorporateRegistryPublicationCalendar} from './corporate-registry-calendar';
 export interface CorporateRegistryCandidate {
  deliveryIndex:number;sourceIndices:number[];dataDate:string;observedAt:string;kind:CorporateRegistrySource['kind'];records:CorporateRegistryStateResult['history'];observed:number;signature:string;excluded:boolean;
 }
@@ -23,13 +23,7 @@ export function reconstructRegistryCandidates(q:CorporateRegistryStateQuery,sour
     const result:CorporateRegistryStateResult={query:q,sources,deliveries:candidates.map(({observed,signature,excluded,...d})=>d),excludedDeliveries,appliedDeliveries:[],history:[],selection:{status:'unavailable',reason:'no-baseline'}};
     const holidays=new Map(calendar?.holidays.map(h=>[h.date,h.name]));
     if(calendar){const {holidays:_,...metadata}=calendar;result.calendar={...metadata,status:parseDocumentTimestamp(calendar.observedAt,true)!>cutoff?'after-cutoff':'available'};result.nonPublicationDays=[];}
-    const nonPublication=(day:string):NonNullable<CorporateRegistryStateResult['nonPublicationDays']>[number]|undefined=>{
-        if(!calendar)return undefined;
-        const monthDay=day.slice(5),weekday=new Date(day+'T00:00:00Z').getUTCDay();
-        if(monthDay>='12-29'||monthDay<='01-03')return {date:day,reason:'year-end'};
-        if(weekday===0||weekday===6)return {date:day,reason:'weekend'};
-        const name=holidays.get(day);return name?{date:day,reason:'holiday',holidayName:name}:undefined;
-    };
+    const nonPublication=(day:string)=>calendar?registryNonPublicationDay(day,holidays):undefined;
     const eligible=candidates.filter(d=>!d.excluded),baselines=eligible.filter(d=>d.kind==='full').sort((a,b)=>b.dataDate.localeCompare(a.dataDate)||b.observed-a.observed);
     const base=baselines[0];if(!base)return result;
     const chosen=new Map<string,typeof base>();

@@ -10,3 +10,9 @@ declare const calendar:CorporateRegistryPublicationCalendarInput;
 const parsed=parseCorporateRegistryPublicationCalendar(calendar);const first:number=parsed.firstYear;
 const withCalendar=reconstructCorporateRegistryState(deliveries,result.query,calendar);
 const reason:'year-end'|'weekend'|'holiday'|undefined=withCalendar.nonPublicationDays?.[0]?.reason;void [first,reason];
+
+import {planCorporateRegistryDifferences,type CorporateRegistryDifferencePlan,type CorporateRegistryDifferencePlanQuery,type CorporateRegistryNonPublicationDay} from '../../dist/index.js';
+const differenceQuery:CorporateRegistryDifferencePlanQuery={from:'2026-10-26',through:'2026-10-30',knownAt:'2026-10-31T00:00:00Z'};
+const differencePlan:CorporateRegistryDifferencePlan=planCorporateRegistryDifferences({policy:{html:'',sourceUrl:'',observedAt:''},holidays:{csv:'',sourceUrl:'',observedAt:''}},differenceQuery);
+const closedDates:CorporateRegistryNonPublicationDay[]=differencePlan.nonPublicationDays;
+void closedDates;
