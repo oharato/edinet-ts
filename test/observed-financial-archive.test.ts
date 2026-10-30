@@ -10,6 +10,15 @@ const query={cutoff:'2026-10-28T00:00:00Z',extractorVersion:'test-1'};
 function observation(id='A',parent?:string,extra:Record<string,unknown>={}):DocumentVersionObservation{return {observationId:id,observedAt:'2026-06-26T00:00:00Z',document:{docID:id,parentDocID:parent??null,docTypeCode:parent?'130':'120',edinetCode:'E12345',secCode:'10010',periodStart:'2025-04-01',periodEnd:'2026-03-31',submitDateTime:parent?'2026-06-25 10:00':'2026-06-24 10:00',withdrawalStatus:'0',disclosureStatus:'0',docInfoEditStatus:'0',...extra}};}
 function source(docID='A',xml=reportingInstance(),availableAt='2026-06-27T00:00:00Z'){return {docID,xml,availableAt,sourceSha256:createHash('sha256').update(xml).digest('hex')};}
 const normalized=(v:unknown)=>JSON.parse(JSON.stringify(v));
+it('単四半期の照合結果と累計値を解析キャッシュからも同じまま返す',()=>{
+ const db=new ObservedFinancialArchive(':memory:');
+ try{
+  const o=observation('A',undefined,{docTypeCode:'140',periodStart:'2025-07-01',periodEnd:'2025-09-30'}),s=source('A',reportingInstance({periodCode:'Q2',currentEnd:'2025-09-30',quarterStart:'2025-07-01'}));
+  db.append([o],[s]);const first=db.createSnapshots(query),second=db.createSnapshots(query);
+  expect(first.records).toHaveLength(1);expect(first.records).toEqual(normalized(createObservedFinancialSnapshots([o],[s],{cutoff:query.cutoff}).records));
+  expect(second.records).toEqual(first.records);expect(second.cache).toEqual({hits:1,extracted:0});
+ }finally{db.close();}
+});
 function withFile(fn:(path:string,dir:string)=>void){const dir=mkdtempSync(join(tmpdir(),'observed-archive-'));try{fn(join(dir,'archive.sqlite'),dir);}finally{rmSync(dir,{recursive:true,force:true});}}
 it('観測・BOM付き原本・直接結果を保存し、再openで再解析せず同じ値を返す',()=>withFile(path=>{
  const o=observation(),s=source('A','\ufeff'+reportingInstance());let db=new ObservedFinancialArchive(path);

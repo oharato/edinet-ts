@@ -49,7 +49,7 @@ it('DEI不明と証券コード不在を解析失敗にしない',()=>{
  expect(run([observation('A',undefined,{secCode:null})],[source('A',xml({security:null}))],{cutoff}).records[0].result).toMatchObject({status:'unresolved',reason:'security-code-unavailable'});
 });
 it('半期のHYと実在するQ2累計を期間と書類種別で照合する',()=>{
- for(const periodCode of ['HY','Q2'])expect(run([observation('A',undefined,{docTypeCode:'160',periodEnd:'2025-09-30'})],[source('A',xml({periodCode,currentEnd:'2025-09-30'}))],{cutoff}).records).toHaveLength(1);
+ for(const periodCode of ['HY','Q2'])expect(run([observation('A',undefined,{docTypeCode:'160'})],[source('A',xml({periodCode,currentEnd:'2025-09-30'}))],{cutoff}).records).toHaveLength(1);
  expect(run([observation('A',undefined,{docTypeCode:'140',periodEnd:'2025-09-30'})],[source('A',xml({periodCode:'HY',currentEnd:'2025-09-30'}))],{cutoff}).unavailableSources[0].reason).toBe('report-type-mismatch');
 });
 it('原本がなくても不正項目・未知options・疎配列を拒否する',()=>{
@@ -73,4 +73,44 @@ it('観測・原本のlengthを一回だけ固定して上限を検証する',()
  const observations=new Proxy([observation()],{get:(o,k,r)=>k==='length'?(++observationReads===1?1:10001):Reflect.get(o,k,r)});
  const sources=new Proxy([source()],{get:(o,k,r)=>k==='length'?(++sourceReads===1?1:101):Reflect.get(o,k,r)});
  expect(run(observations,sources,{cutoff}).records).toHaveLength(1);expect(observationReads).toBe(1);expect(sourceReads).toBe(1);
+});
+
+it('半期の一覧は事業年度を照合し、抽出した残高/累計は半期末を保つ',()=>{
+ const r=run([observation('A',undefined,{docTypeCode:'160'})],[source('A',xml({periodCode:'HY',currentEnd:'2025-09-30'}))],{cutoff});
+ expect(r.unavailableSources).toEqual([]);expect(r.records[0].result.basis).toMatchObject({status:'selected',metadata:{fiscalYear:{startDate:'2025-04-01',endDate:'2026-03-31'},period:{startDate:'2025-04-01',endDate:'2025-09-30'}}});
+ expect(r.records[0].result.balanceSheet).toMatchObject({status:'created',snapshot:{instant:'2025-09-30'}});expect(r.records[0].result.details).toMatchObject({status:'created',snapshot:{metadata:{period:{startDate:'2025-04-01',endDate:'2025-09-30'},periodType:'ytd'}}});
+});
+it.each([{periodStart:'2025-04-02'},{periodEnd:'2026-03-30'},{periodEnd:'2025-09-30'}])('半期の事業年度不一致を半期期間との一致で救済しない: %j',changed=>{
+ const r=run([observation('A',undefined,{docTypeCode:'160',...changed})],[source('A',xml({periodCode:'HY',currentEnd:'2025-09-30'}))],{cutoff});expect(r.records).toEqual([]);expect(r.unavailableSources[0].reason).toBe('period-mismatch');
+});
+it('訂正半期の期間未記録時も親の事業年度を照合して訂正版だけを採用する',()=>{
+ const r=run([observation('A',undefined,{docTypeCode:'160'}),observation('B','A',{docTypeCode:'170',periodStart:null,periodEnd:null})],[source('B',xml({periodCode:'HY',currentEnd:'2025-09-30'}))],{cutoff});expect(r.records).toHaveLength(1);expect(r.records[0].docID).toBe('B');expect(r.selection.selected[0].targetPeriod.sourceDocID).toBe('A');expect(r.selection.financialValuesMerged).toBe(false);
+});
+it('四半期の照合を事業年度へ切り替えず、既存の対象期間の一致を要求する',()=>{
+ const s=source('A',xml({periodCode:'Q1',currentEnd:'2025-06-30'}));expect(run([observation('A',undefined,{docTypeCode:'140',periodEnd:'2025-06-30'})],[s],{cutoff}).records).toHaveLength(1);
+ expect(run([observation('A',undefined,{docTypeCode:'140'})],[s],{cutoff}).unavailableSources[0].reason).toBe('period-mismatch');
+});
+it.each([
+ ['Q2','2025-07-01','2025-09-30'],
+ ['Q3','2025-10-01','2025-12-31'],
+])('%sは一覧の単四半期を原本contextと照合し、累計の抽出期間を保つ',(periodCode,quarterStart,currentEnd)=>{
+ const input=xml({periodCode,quarterStart,currentEnd});
+ const base=observation('A',undefined,{docTypeCode:'140',periodStart:quarterStart,periodEnd:currentEnd});
+ const r=run([base],[source('A',input)],{cutoff});
+ expect(r.unavailableSources).toEqual([]);expect(r.records).toHaveLength(1);
+ expect(r.records[0].result).toMatchObject({basis:{metadata:{quarterPeriod:{startDate:quarterStart,endDate:currentEnd}}},balanceSheet:{snapshot:{instant:currentEnd}},details:{snapshot:{metadata:{period:{startDate:'2025-04-01',endDate:currentEnd},periodType:'ytd'}}}});
+ for(const periodStart of ['2025-04-01',quarterStart.slice(0,-2)+'02']){
+  expect(run([{...base,document:{...base.document,periodStart}}],[source('A',input)],{cutoff}).unavailableSources[0].reason).toBe('period-mismatch');
+ }
+ const corrected=observation('B','A',{docTypeCode:'150',periodStart:null,periodEnd:null});
+ expect(run([base,corrected],[source('B',input)],{cutoff}).records.map(r=>r.docID)).toEqual(['B']);
+});
+it.each(['missing','duplicate','wrong-scope','wrong-date'])('単四半期contextが%sなら累計contextで代用しない',kind=>{
+ let input=xml({periodCode:'Q2',currentEnd:'2025-09-30',...(kind==='missing'?{}:{quarterStart:'2025-07-01'})});
+ const quarter=input.match(/<xbrli:context id="arbitrary-quarter">[\s\S]*?<\/xbrli:context>/)?.[0];
+ if(kind==='duplicate')input=input.replace('</xbrli:xbrl>',quarter!+'</xbrli:xbrl>');
+ if(kind==='wrong-scope')input=input.replace(quarter!,quarter!.replace('</xbrli:context>','<xbrli:scenario><xbrldi:explicitMember dimension="jppfs_cor:ConsolidatedOrNonConsolidatedAxis">jppfs_cor:NonConsolidatedMember</xbrldi:explicitMember></xbrli:scenario></xbrli:context>'));
+ if(kind==='wrong-date')input=input.replace('2025-07-01','2025-07-02');
+ const r=run([observation('A',undefined,{docTypeCode:'140',periodStart:'2025-07-01',periodEnd:'2025-09-30'})],[source('A',input)],{cutoff});
+ expect(r.records).toEqual([]);expect(r.unavailableSources[0].reason).toBe('period-mismatch');
 });

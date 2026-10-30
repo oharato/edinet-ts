@@ -114,7 +114,7 @@ export type {FinancialReportingBasis,FinancialReportingBasisField,ReportingBasis
 export {createAutomaticFinancialSnapshots} from "./automatic-financial-snapshots";
 export type {AutomaticFinancialSnapshotOptions,AutomaticFinancialSnapshots} from "./automatic-financial-snapshots";
 
-export {createObservedFinancialSnapshots} from "./observed-financial-snapshots";
+export {OBSERVED_FINANCIAL_SNAPSHOT_VERSION,createObservedFinancialSnapshots} from "./observed-financial-snapshots";
 export type {ObservedFinancialSource,ObservedFinancialSnapshotOptions,ObservedFinancialSnapshotRecord,ObservedFinancialSourceReason} from "./observed-financial-snapshots";
 
 export {ObservedFinancialArchive,OBSERVED_FINANCIAL_ARCHIVE_VERSION} from "./db/observed-financial-archive";

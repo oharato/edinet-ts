@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import { captureDocumentVersionObservations, selectDocumentVersions, type DocumentVersionObservation, type SelectedDocumentVersion } from "../document-version-selection";
-import { captureObservedFinancialSources, createObservedFinancialSnapshotsUsing, ObservedFinancialResolutionFatalError, type ObservedFinancialSource, type ObservedFinancialSnapshotOptions, type ObservedFinancialSnapshotRecord, type ObservedFinancialSourceReason } from "../observed-financial-snapshots";
+import { OBSERVED_FINANCIAL_SNAPSHOT_VERSION, captureObservedFinancialSources, createObservedFinancialSnapshotsUsing, ObservedFinancialResolutionFatalError, type ObservedFinancialSource, type ObservedFinancialSnapshotOptions, type ObservedFinancialSnapshotRecord, type ObservedFinancialSourceReason } from "../observed-financial-snapshots";
 import { createAutomaticFinancialSnapshots, normalizeAutomaticFinancialDetailMetricIds, AutomaticFinancialProjectionError, type AutomaticFinancialSnapshotOptions } from "../automatic-financial-snapshots";
 import { parseDocumentTimestamp as timestamp } from "../document-timestamp";
 import { FINANCIAL_REPORTING_BASIS_VERSION } from "../financial-reporting-basis";
@@ -71,7 +71,7 @@ export interface ArchivedFinancialSnapshotOptions extends ObservedFinancialSnaps
     sourceCommit?: string;
     edinetCodes?: readonly string[];
 }
-const mappingVersions = { basis: FINANCIAL_REPORTING_BASIS_VERSION, balanceSheet: BALANCE_SHEET_REGISTRY_VERSION, details: FINANCIAL_DETAIL_REGISTRY_VERSION, ifrsBalanceSheet: IFRS_BALANCE_SHEET_REGISTRY_VERSION, ifrsDetails: IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION };
+const mappingVersions = { observed: OBSERVED_FINANCIAL_SNAPSHOT_VERSION, basis: FINANCIAL_REPORTING_BASIS_VERSION, balanceSheet: BALANCE_SHEET_REGISTRY_VERSION, details: FINANCIAL_DETAIL_REGISTRY_VERSION, ifrsBalanceSheet: IFRS_BALANCE_SHEET_REGISTRY_VERSION, ifrsDetails: IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION };
 export interface ArchivedFinancialSnapshots {
     selection: ReturnType<typeof selectDocumentVersions>;
     records: ObservedFinancialSnapshotRecord[];

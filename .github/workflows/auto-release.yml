@@ -13,4 +13,4 @@ jobs:
       - name: Explain local distribution
         run: |
           echo 'Distribution builds and package storage now belong on nuc7.'
-          echo 'See docs/nuc7-local-artifacts.md; no tag, release, npm or Packages publication is performed.'
+          echo 'See docs/development/nuc7-local-artifacts.md; no tag, release, npm or Packages publication is performed.'

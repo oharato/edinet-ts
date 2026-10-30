@@ -1,148 +1,175 @@
-# 技術仕様書 (SPECIFICATIONS.md)
+# 技術仕様
 
-本ドキュメントでは、`edinet-ts` の内部アーキテクチャ、クラス設計、および主要なアルゴリズムについて記述します。開発者がライブラリの拡張やデバッグを行う際の参照資料とすることを目的とします。
+取得・解析・保存・検索がどうつながるかを説明します。APIの利用例は[README](../README.md)、対応範囲は[提供機能と制約](REQUIREMENTS.md)を参照してください。
 
-## 1. ソフトウェア・アーキテクチャ
+このページでは共通の処理と、既存の主要指標APIの選択規則を扱います。財務明細・開示表・保存APIごとの契約は、各節のリンク先を参照してください。
 
-本ライブラリは、大きく分けて「ダウンロード層」と「解析層」の2層で構成されています。
+## 処理の全体像
 
 ```mermaid
-graph TD
-    User[利用者] --> Facade[Edinet]
-    Facade --> Repo[EdinetRepository]
+flowchart TD
+    Client["利用者 / CLI"] --> Facade["Edinet: 検索と取得の窓口"]
+    Facade --> Repo["EdinetRepository: 書類一覧DB"]
     Facade --> Downloader[EdinetXbrlDownloader]
-    Facade --> Parser[EdinetXbrlParser]
-    
-    Repo -->|Metadata Cache| DB[(SQLite)]
-    Downloader -->|Rate Limited| API[EDINET API]
-    Downloader -->|XBRL File| FS[FileSystem]
-    FS --> Parser
-    Parser -->|Returns| Object[EdinetXbrlObject]
-    Object -->|"getKeyMetrics()"| Metrics[KeyMetrics]
+    Downloader <-->|一覧・書類を取得| API[EDINET API]
+    Downloader --> Files[保存済みXBRL]
+    Files --> Parser[EdinetXbrlParser]
+    Parser --> Object[EdinetXbrlObject]
+    Object --> Legacy["主要指標の一括取得"]
+    Object --> Strict["条件を指定した選択・出典"]
+    Strict --> Archive["原観測・原本・解析結果の保存"]
+    Archive --> Index["検索索引の構築・品質確認・公開"]
 ```
 
-## 2. クラス設計
+原本の解析は、通信やDBから独立して呼び出せます。複数社の検索では、どの原本・期間・基準を対象にするかを固定して保存します。
 
+## 各クラスの役割
 
-### 2.0 `Edinet` (Facade)
-ライブラリのエントリーポイントです。
+| クラス・機能 | 責務 | 主な入出力 |
+|---|---|---|
+| `Edinet` | 一覧DB・取得・解析を組み合わせる | 証券コードや書類種別 → 書類・主要指標 |
+| `EdinetXbrlDownloader` | API通信、ZIP検査、原本の保存・再利用 | 書類IDなど → XBRLファイル |
+| `EdinetRepository` | 書類一覧と取得時点の観測を保存する | 一覧応答 → SQLiteの書類・観測・完了記録 |
+| `EdinetXbrlParser` | XMLを検査し、context・値・単位を読み取る | XML文字列 → `EdinetXbrlObject` |
+| `ContextParser` | 対象企業・期間・連結区分・次元を読み取る | `xbrli:context` → `EdinetContext` |
+| `EdinetXbrlObject` | 候補値を保持し、各APIの規則で選ぶ | タグ・条件 → 値、出典、採否理由 |
+| `EdinetDataUtil` | XMLノードの値・属性を取り出す | ノード → 文字列や属性値 |
 
-*   **役割**: ユーザーに対する高レベルなAPIを提供し、`Downloader`、`Parser`、`Repository` を透過的に組み合わせます。
-*   **検索と取得**: `findDocumentsByType` / `findDocumentsByFiler` はローカルDBを検索します。検索の前に、対象期間（`findDocumentsByFiler` は直近30日が既定）のうちDBに無い日だけ書類一覧APIから補い、結果をDBへ保存します。補完取得に失敗した日は警告だけを出し、DBにある範囲で検索します。提出が0件の日は取得済みを記録できないため、次回も再取得します。`getFinancialHistory` はローカルDBで書類を選び、各XBRLをdownloaderのキャッシュまたはAPIから取得します。
+`dataMap` は `ReadonlyMap<string, readonly EdinetData[]>` です。同じタグが複数の期間・範囲に現れるため、1タグに複数の値を保持します。内部の `contextMap` はcontext IDと対象企業・期間・範囲を対応させます。
 
-### 2.1 `EdinetXbrlDownloader`
-EDINET API v2 との通信を担当します。
+## 取得とローカル一覧DB
 
-*   **役割**: 書類一覧API (`/api/v2/documents.json`) から特定企業の書類を3桁の`docTypeCode`（例: 有報120、届出書030）で検索し、書類取得API (`/api/v2/documents/{docID}`) からZIPを取得します。
-*   **書類の分類**: `docTypeCode`と6桁の`formCode`は別です。[010通知書/030届出書と互換名](DOCUMENT_LIST_VALIDATION.md#通知書010と有価証券届出書030の指定)を確認してください。最新書類の選択は別処理で、種類のコードだけでは決まりません。
-*   **ZIP処理**: classic ZIPの名前・形式・件数・宣言サイズを展開前に検査し、`jszip`で上限付きに展開します。新規保存は一時フォルダで完了させ、既存書類フォルダを置換しません。詳しい制約は[ZIP取得と保存時の保護](DOWNLOAD_SAFETY.md)を参照してください。
-    *   **優先順位**: `PublicDoc` ディレクトリ内のXBRLを最優先とし、次にルートディレクトリ、サブディレクトリの順で探索します。これにより、監査報告書 (`AuditDoc`) などのノイズを除去します。
-*   **認証**: APIキーを `Subscription-Key` ヘッダーまたはクエリパラメータとして付与します。
-*   **レート制限**: `RateLimiter` により、APIへのリクエストを（デフォルトで）1秒間に1回以下に制限します。 本文受信完了まで並列数1の枠を保持し、末尾optional`signal`で中断できます。`requestTimeoutMs`は明示時だけ通信1回の本文受信まで有効です（省略時は無制限）。[期限と中断の使い方](DOWNLOAD_SAFETY.md#本文受信までの時間制限と中断)も参照してください。
+### API通信と原本の保存
 
-### 2.2 `EdinetXbrlParser`
-XBRLファイルの構文解析を担当します。
+書類一覧は `/api/v2/documents.json`、原本は `/api/v2/documents/{docID}` から取得します。書類を分類する `docTypeCode` と、提出様式の `formCode` は別の値です。[書類一覧の応答仕様](pipeline/DOCUMENT_LIST_VALIDATION.md)を参照してください。
 
-*   **依存ライブラリ**: `fast-xml-parser`
-*   **入力の検査**: 公開`parse()`で、解析前にXML文字列のUTF-8換算サイズ（64MiB=67,108,864byte以下）と構造・文字を検査し、DOCTYPE宣言を拒否します。DOCTYPEは文書の外部定義や独自の文字参照などを宣言する記述で、このライブラリでは使用しません。通常の`&amp;`・数値文字参照・BOM、コメントやCDATA内の宣言に似た文字列は扱えます。会社情報・財務・人的資本・前年比・BS取込も同じparser検査を通ります。
-*   **互換性と限界**: 以前は解析できた入力でも、構造・文字の検査で不正と判断したXML、DOCTYPE付きXML、64MiBを超える文字列は明示的エラーになります。入力サイズの制限だけで、解析時間・入れ子の深さ・ZIP展開やダウンロード量まで制限するわけではありません。`fast-xml-parser`の構造検査に、複数ルート・未宣言文字参照・XML 1.0の不正な文字などの明示的な補助検査を加えます。すべてのXML仕様への完全準拠や、XBRLのタクソノミーに照らした完全な妥当性検証を保証するものではありません。
-*   **Context解析**: データ読み込みの前に、まず `<xbrli:context>` 要素を走査し、`ContextParser` を用いてコンテキストIDと論理的意味（期間・範囲）のマッピングを作成します。
-*   **データ解析**: XMLツリーを再帰的にトラバースし、数値データやテキストデータを抽出して `EdinetXbrlObject` に格納します。
+取得処理には次の保護があります。
 
-### 2.3 `EdinetXbrlObject`
-解析されたXBRLデータを保持するデータコンテナです。
+| 対象 | 動作 |
+|---|---|
+| 通信頻度 | レート制限が有効な場合、既定では1秒間に1回以下。本文受信完了まで並列数1の枠を保持 |
+| 時間制限 | `requestTimeoutMs` を指定した場合、1回の通信の本文受信までを制限。省略時は無制限 |
+| 中断 | `AbortSignal` で待ち行列・再試行待ち・受信を中断 |
+| ZIP | 名前・形式・件数・宣言サイズを確認し、上限付きで展開 |
+| 保存 | 一時フォルダで完了させてから公開。既存の書類フォルダは置換しない |
 
-*   **データ構造**:
-    *   `dataMap`: `Map<Key, EdinetData[]>` - タグ名をキーとしたデータのリスト（同名タグが複数コンテキストで存在するため）。
-    *   `contextMap`: `Map<ID, EdinetContext>` - コンテキストIDから定義情報（期間、連結/単体区分）へのマップ。
-*   **検索ロジック (`findContext`)**:
-    *   指定された条件（Type: `Duration`/`Instant`, Scope: `Consolidated`/`NonConsolidated`）に合致するコンテキストIDを `contextMap` から検索します。
-    *   複数の候補がある場合、日付が最も新しいものを「当期」とみなして返します。
+XBRLの探索は `PublicDoc` 内、ルート直下、サブディレクトリの順です。監査書類などを優先して読まないための規則であり、書類内容そのものの完全な妥当性検証ではありません。詳細は[取得・展開・保存の保護](pipeline/DOWNLOAD_SAFETY.md)を参照してください。
 
-### 2.4 `EdinetDataUtil`
-XMLノードから属性や値を安全に取り出すためのユーティリティです。
+### 一覧の保存と取得完了の判定
 
-*   **役割**: `unknown` 型のノードに対して Type Guard を適用し、安全に `.text` や属性値 (`@_contextRef`) を取得します。
-*   **名前空間**: タグ名に含まれる名前空間プレフィックス（`jppfs_cor:` 等）はそのまま保持しますが、値の取得時には構造の違いを吸収します。
+`saveDocumentList(docs, date)` は、1日分の一覧・取得日時・件数・各書類の原観測JSONを同じトランザクションで保存します。途中で失敗した場合はまとめて取り消します。
 
-### 2.5 `EdinetRepository` (SQLite)
-メタデータ管理を担当します。
+```mermaid
+flowchart LR
+    Fetch[1日分の一覧を取得] --> Save["書類・原観測・取得記録を一括保存"]
+    Save --> Closed{"日本時間で対象日が終了した後の取得か"}
+    Closed -->|はい| Complete[取得完了として扱う]
+    Closed -->|いいえ| Refresh[後で再取得する]
+```
 
-*   **技術スタック**: Node標準 `node:sqlite` の同期Databaseを使用。[runtime/DB互換](RUNTIME_AND_SQLITE.md) を参照。
-*   **スキーマ (edinet.db)**:
-    *   `documents`: 書類管理ID、提出者名、書類種別、提出日、決算期末などを格納。
-*   **役割**: 過去の日付指定検索を高速化し、APIの負荷を軽減します。
-    *   **導入の経緯**: EDINET API v2 は「日付指定」の検索には適していますが、「特定企業の過去5年分」といった**ティッカーベースの時系列検索**を直接行うAPIが存在しません。
-    *   そのため、過去の提出書類リスト（メタデータ）をローカルDBに蓄積し、インデックスを貼ることで、`get -t 7203` のようなティッカー検索を数ミリ秒で実行可能にしました。また、都度APIを全走査する必要がなくなるため、APIサーバーへの負荷（レート制限）も大幅に削減されます。
+- 0件の日も記録します。日本時間で対象日が終了した後に取得した一覧は `hasCompleteListForDate()` で完了と判定します。
+- `insertDocument()` / `insertBatch()` は個別の保存です。その日全体の取得完了とは扱いません。`hasMetadataForDate()` は書類の存在確認です。
+- 旧DBには完了記録がないため、一覧を一度取り直す必要があります。既存の書類行は従来どおり上書きしません。
+- 原観測は取得時点ごとのJSONとして保持します。`getDocumentObservations()` の `afterSequence` を再開位置に使えます。`knownAt` はタイムゾーン付き日時、`limit` は1〜10,000です。
+- 読取専用ではテーブルを追加しません。旧DBに観測表がなければ空を返し、過去の観測を復元したことにはしません。
 
-## 3. 主要アルゴリズム
+### 高水準APIでの検索範囲
 
-### 3.1 コンテキスト判定ロジック
-XBRLの `xbrli:context` 要素を以下のように解析します。
+| API | 一覧の補完 | 検索する範囲 |
+|---|---|---|
+| `getFinancialHistory()` | 一覧DBは事前に準備する | DBで対象書類を選び、原本はキャッシュまたはAPIから取得。`years` 引数は書類件数の上限 |
+| `findDocumentsByType()` | 指定期間の未完了日を補う | 指定書類種別・開始日以降 |
+| `findDocumentsByFiler()` | 直近 `days` 日の未完了日を補う（既定30日） | 保存済みDBの全期間から提出者名を検索 |
 
-1.  **期間 (`xbrli:period`)**:
-    *   `startDate` / `endDate` があれば `Duration` (フロー項目用)
-    *   `instant` があれば `Instant` (ストック項目用)
-2.  **範囲 (`xbrli:scenario` / `xbrli:segment`)**:
-    *   `xbrldi:explicitMember` に `NonConsolidatedMember` が含まれていれば `NonConsolidated` (単体)。
-    *   それ以外はデフォルトで `Consolidated` (連結) とみなします（※EDINETの慣習に基づく）。
+補完の通信失敗は警告にして保存済みの範囲で続行する場合があります。中断などのエラーは呼び出し元へ返します。一覧に記録があることと、検索対象をすべて取得できたことは区別してください。
 
-### 3.2 主要指標抽出ロジック (`getKeyMetrics`)
+## XML解析とcontextの扱い
 
-#### 金額・キャッシュフロー: 探索範囲を固定する
+公開 `parse()` はUTF-8換算64MiB（67,108,864byte）以下の文字列を受け付けます。解析前に構造・文字を検査し、DOCTYPE宣言を拒否します。通常の文字参照、BOM、コメント、CDATAは扱います。
+
+解析には `fast-xml-parser` を使い、複数ルート・未宣言文字参照・XML 1.0の不正文字などを補助検査します。この検査は、すべてのXML仕様への完全準拠や、タクソノミに照らしたXBRLの完全な妥当性検証ではありません。入力サイズ上限だけで解析時間や入れ子の深さまで制限するものでもありません。
+
+contextを値より先に読み、次を区別します。
+
+| 記載 | 意味 | 例 |
+|---|---|---|
+| `startDate` と `endDate` | 期間（Duration） | 1年間の売上 |
+| `instant` | 時点（Instant） | 期末の総資産 |
+| `NonConsolidatedMember` | 単体の範囲 | 提出会社のみ |
+| 部門などの追加次元 | 特定の内訳 | 全社合計とは別の値 |
+
+基本の分類では単体指定がなければ連結と扱います。厳密選択では、それに加えて名前空間・対象企業・期間・次元・単位などを検査します。context IDの名前だけで意味を確定しません。
+
+<a id="32-主要指標抽出ロジック-getkeymetrics"></a>
+## 主要指標の選択規則（getKeyMetrics）
+
+`getKeyMetrics()` は既存の探索規則で主要18指標を返します。`getKeyMetricsWithSources()` も同じ規則を使い、採用元を付けます。条件を固定する `selectMetric()` とは選択方法が異なります。
+
+### 金額・キャッシュフローの探索範囲
 
 対象は `netSales`、`operatingIncome`、`ordinaryIncome`、`netIncome`、`netAssets`、`totalAssets`、`operatingCashFlow`、`investingCashFlow`、`financingCashFlow`、`cashAndEquivalents` です。
 
-1. `Duration`（期間）と `Instant`（時点）を独立に処理します。`findContexts` の既存条件に従い、連結は次元なし、単体は `NonConsolidatedMember` のみのコンテキストを対象にします。セグメント等の追加次元は対象外です。
-2. `FilingDateInstant` は提出日メタデータなので、この探索範囲の判定・期間の基準から除外します。単体財務諸表と提出日コンテキストだけの書類で、提出日を理由に単体値を取りこぼさないためです。`findContexts` 自体の動作は変更しません。
-3. 連結の対象コンテキストがあれば連結グループ内に固定し、なければ単体グループを使います。選んだグループの最新日から **180日未満** の候補を新しい順に探索し、各コンテキストで既存のタグ候補を順に試します。連結の対象タグが欠落・空・数値変換不能であっても、単体に移りません。値 `0` は有効です。
-4. 選択した範囲の候補を使い切ったら `undefined` を返します。日付フィルタで候補が空になった場合も、単体や固定IDで探索し直しません。
-5. どちらの対象コンテキストも見つからない場合は、定義を追加せず `put()` していた利用方法の互換性のため、`CurrentYearDuration` / `CurrentYearInstant` とその `_NonConsolidatedMember` を順に調べます。**定義がなく、何らかの実データが参照する最初のID** に範囲を固定します。連結IDに対象外のタグしかなくても単体へ落としません。既知の定義が次元・期間条件で除外された場合、固定IDを使ってその定義を復活させません。
+次の順で候補を絞ります。
 
-目的は、連結値を取得できないときに単体値を混ぜて返すことを防ぐことです。対象タグを増やしたり、未知のタグを推測して値を埋めたりする変更ではありません。
+| 順序 | 処理 |
+|---|---|
+| 1. 期間と時点を分ける | `Duration` と `Instant` を独立に探索する |
+| 2. 全社の値に絞る | 連結は次元なし、単体は `NonConsolidatedMember` のみ。部門などの追加次元は除く |
+| 3. 提出日を除く | `FilingDateInstant` を財務値の期間・範囲の判定に使わない |
+| 4. 連結・単体の範囲を固定する | 対象の連結contextがあればその中だけを使い、なければ単体を使う |
+| 5. 日付とタグの順に探す | 選んだ範囲の最新日から180日未満の候補を、新しい順・既定のタグ順で調べる |
+| 6. 結果を返す | 0は有効な値。対象タグがない・空・変換不能などで候補を使い切ったら `undefined` |
 
-#### 互換性を維持する指標
+連結の探索で値が見つからなくても、単体へ切り替えません。日付の絞り込みで候補がなくなった場合も、別の範囲へ戻って探し直しません。
 
-`earningsPerShare`、`bookValuePerShare`、`equityToTotalAssetsRatio`、`rateOfReturnOnEquity`、`priceEarningsRatio`、`payoutRatio`、`numberOfIssuedShares`、`dividendPaidPerShare` は、従来どおり連結→単体→固定IDのフラット探索を維持します。特に発行済株式数や配当など、既存fixtureでは単体コンテキストから取得する項目があるためです。これらすべてが会計上単体へのフォールバックで適切であると一般化するものではなく、今回の修正範囲を金額・CFに絞るための互換性判断です。
+**context定義がない入力との互換性:** 対象となる期間・時点のcontextがどちらの範囲にもない場合だけ、`CurrentYearDuration` / `CurrentYearInstant` と各 `_NonConsolidatedMember` を順に調べます。定義がなく、実データが参照している最初のIDに範囲を固定します。そのIDに対象外のタグしかなくても次の範囲へ移りません。定義が存在して期間・次元条件で除外されたIDを、この処理で復活させることもありません。
+
+### 1株指標などの代替探索
+
+`earningsPerShare`、`bookValuePerShare`、`equityToTotalAssetsRatio`、`rateOfReturnOnEquity`、`priceEarningsRatio`、`payoutRatio`、`numberOfIssuedShares`、`dividendPaidPerShare` は、連結、単体、固定IDの順に候補を探します。特に発行済株式数や配当など、同梱テストデータでは単体コンテキストから取得する項目があるためです。この代替探索は既存APIとの互換性のための規則です。会計上、すべての項目で単体値への代替が適切だと保証するものではありません。
 
 このため、`KeyMetrics` 全項目が同じ連結区分・期間にそろう保証はありません。同じ区分・期間の厳密な比較には、`getDataByContextRef()` 等で明示的に指定してください。
 
-#### 検証根拠と制限
+### 制限と検証例
 
-- 参考: 未マージで閉じられた [PR #14](https://github.com/oharato/edinet-ts/pull/14) の問題報告。今回の変更に同PRのワークフロー・バージョン・ダウンローダー変更は含めません。
-- 同梱の `test/test_data/CI_4689_yahoo.xbrl` を確認すると、`185012000000` は `CurrentYearDuration_NonConsolidatedMember` の `jppfs_cor:OperatingIncome` です。一方、`CurrentYearDuration` の `OperatingIncomeIFRSSummaryOfBusinessResults` は企業拡張名前空間で、値は `192049000000` です。既存の標準タグ候補には一致しないため、`getKeyMetrics().operatingIncome` は `undefined` とします。fixtureの生データ確認を回帰テストに含めます。
-- 同梱12 XBRL（監査書類含む）の修正前後比較では、変更はYahooの営業利益・経常利益と、SoftBank Groupの営業利益・経常利益の4項目でした。Yahooの経常利益 `187449000000`、SoftBank Groupの営業利益 `-42808000000`・経常利益 `-1161224000000` も `CurrentYearDuration_NonConsolidatedMember` の値であり、これらを `undefined` にします。他の指標は比較時に不変でした。
-- 上記はリポジトリ内fixtureの検証です。提出書類原本との独立照合やトヨタ等の追加実データの検証を実施したことを意味しません。
-- 連結判定は既存の次元・期間情報に依存します。次元なしを連結とみなす慣習、明示次元以外の分類、任意の名前のメタデータコンテキスト、過去連結／現在単体への移行、年度／四半期／累計の厳密な対応は再設計していません。`FilingDateInstant` 以外のメタデータ識別や、未知の企業拡張タグの会計上の意味の判定は対象外です。
-- コンテキストとタグの優先順位、数値変換、各指標のタグ候補、`getData()` やタクソノミのプロキシは今回変更しません。
-- `test/key-metrics-scope.test.ts` では期間／時点、単体のみ、ゼロ、代替タグ、複数候補、180日の境界、無効値・日付、追加次元、提出日メタデータ、固定ID、互換指標を検証します。既存のYahoo・Raccoon・Kakaku.comのfixtureテストも併せて実行します。
+たとえば同梱のYahoo原本では、単体の `OperatingIncome` はあっても、連結の営業利益は標準候補にない企業拡張タグにあります。この場合、`getKeyMetrics().operatingIncome` は `undefined` です。単体値を連結値として返すことはしません。
 
-### 3.3 ファイル探索ロジック (`findXbrlFileInDir`)
-ダウンロードしたZIPには複数のXBRLが含まれる場合があります（例：監査報告書）。
-財務データを正しく抽出するため、以下の優先順位で解析対象ファイルを決定します。
+期間・時点、ゼロ、複数候補、180日の境界、追加次元、固定IDなどは `test/key-metrics-scope.test.ts` で検証します。これらは同梱データでの確認であり、提出原本との独立照合や全市場の保証ではありません。
 
-1.  ファイル名が `.xbrl` で終わり、かつパスに `PublicDoc` を含むものを最優先。
-2.  カレントディレクトリにある `.xbrl`。
-3.  サブディレクトリを再帰的に探索（ここでも `PublicDoc` ディレクトリを優先的に探索）。
+年度・四半期・累計の対応、過去連結から現在単体への移行、任意のメタデータcontext、未知の企業拡張タグの会計上の意味は、この既定探索では一般解決しません。
 
+## 条件を指定するAPIと自動判定
 
-## 4. 来歴とオフライン財務検索
+| 入口 | 条件の決め方 | 返値の読み方 |
+|---|---|---|
+| `selectMetric()` | 呼出元が会計基準・期間・範囲を指定 | `selected / missing / unsupported / ambiguous` と理由・出典 |
+| `resolveFinancialReportingBasis()` | 原本のDEIと実contextを検査 | 基準・主な連結範囲・事業年度・当期を確定、または未確定 |
+| `createAutomaticFinancialSnapshots()` | 自動判定した条件をBS・明細抽出へ渡す | 期間中の値と期末残高を区別し、抽出できない理由を保持 |
+| `createObservedFinancialSnapshots()` | 一覧観測、原本hash、取得時点、DEIを照合 | 選択原本の直接値。訂正差分と親の値は合成しない |
 
-`getKeyMetricsWithSources()` は既存と同じ選択規則で値と来歴を返します。parserはISO 4217名前空間URIから単純通貨単位を解決し、unitRefの名前から通貨を推測しません。
+単純通貨単位はISO 4217の名前空間URIから解決し、`unitRef` の文字列だけでは推測しません。原値と安全に変換できた数値を分けて保持します。
 
-`screenFinancialSnapshots()` は、書類種別/cutoffで対象を限定して銘柄ごとの最新書類を選び、その後AND条件、ソート、offset/limitを適用します。派生値は同一context・期間・scope・通貨を検証できる場合だけ計算します。全市場の保存索引ではありません。詳細は [入力・指標辞書・欠損/比較の制約](EDINET_DB_COMPARISON.md) を参照してください。
+半期一覧は事業年度と照合します。Q2/Q3の四半期一覧は確認できた単四半期contextと照合し、財務値の抽出は年度初めからの累計を保ちます。確認できない期間を推測で通しません。
 
-### XMLを読むCLIの上限
+詳細は[指標選択](financial/METRIC_SELECTION.md)、[自動判定](financial/FINANCIAL_REPORTING_BASIS.md)、[一覧と原本の接続](pipeline/DOCUMENT_PIPELINE.md)を参照してください。
 
-`screen-bs`も他のローカル原本コマンドと同じ有限の読み取りを使います。manifestは2MiB以下のJSON配列・100件以下、各原本は64MiB以下、原本の合計は256MiB以下です。UTF-8として不正なbyte列を置換して解析せず、エラーとして止めます。通常ファイルを読み、読取中の変更を検査します。symlinkを一律禁止する仕組みではありません。元ファイルへ書き込みません。
+## 保存済みデータの検索と公開
 
-この制約は手元で指定する入力の保護です。ネット取得・全キャッシュ走査・本番DB更新は行いません。
+`screenFinancialSnapshots()` は、書類種別・cutoffで対象を限定し、銘柄ごとの最新書類を選びます。その後にAND条件、並べ替え、`offset` / `limit` を適用します。計算指標はcontext・期間・範囲・通貨が揃う場合だけ作ります。[入力形式と制約](financial/EDINET_DB_COMPARISON.md)を参照してください。
 
+多数の原本を継続的に扱う場合は、[アーカイブ](pipeline/OBSERVED_FINANCIAL_ARCHIVE.md)から[検索索引](pipeline/FINANCIAL_SEARCH_INDEX.md)を構築し、[品質確認](pipeline/FINANCIAL_INDEX_QUALITY.md)を経て[公開世代](pipeline/FINANCIAL_INDEX_PUBLICATION.md)を切り替えます。解析中のデータと利用者へ公開するデータを分けます。
 
-## 書類一覧の完了証跡と原観測（2026-10-28、未リリース）
+### ローカル原本を読むCLIの上限
 
-`EdinetRepository.saveDocumentList(docs, date)`は1日分の一覧と取得日時/件数、各書類の原観測JSONを同一transactionに保存します。途中失敗では一覧・観測・完了証跡をまとめてrollbackします。0件の日も記録し、日本時間でその日が閉じた後の取得だけを`hasCompleteListForDate()`で完了と扱います。単独の`insertDocument()`/`insertBatch()`は完全な一覧と断定しません。従来の`hasMetadataForDate()`は書類の存在検査のままです。
+`screen-bs` などのローカル原本コマンドでは、入力を有限の範囲で読み取ります。
 
-facadeの横断検索とseederのskipExistingは、完了証跡を使うよう更新しました。当日は再取得し、過去日の0件一覧は省略できます。旧DBは完了証跡がないため一度再取得が必要です。既存の書類行は従来どおり上書きしません。
+| 入力 | 上限・検査 |
+|---|---|
+| 原本一覧（manifest） | 2MiB以下のJSON配列、100件以下 |
+| 個々の原本 | 64MiB以下 |
+| 原本の合計 | 256MiB以下 |
+| ファイル内容 | 不正UTF-8を置換して続行しない。通常ファイルを読み、読取中の変更を検査 |
 
-`getDocumentObservations({docID?,knownAt?,afterSequence?,limit?})`は取得時点ごとのJSONを上書きせず返します。knownAtはtimezone付き日時、limitは1〜10,000。sequenceを再開位置に使えます。旧DBに保存されていない過去観測は空であり、復元したことにはしません。この段階では訂正原本の財務値の自動置換や訂正全履歴の解決は未実装です。readOnlyはschemaを追加せず、古いDBに観測表がなければ空を返します。
+元ファイルへ書き込みません。symlinkを一律禁止する仕組みではなく、ネットワーク取得や全キャッシュ走査の上限を示すものでもありません。
+
+[ドキュメント案内へ戻る](README.md)

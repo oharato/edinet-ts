@@ -1,13 +1,21 @@
-# 過去資料と移動記録
+# 過去の計画・調査・検証記録
 
-これらは現行仕様や実行手順ではない。現在の入口は [文書索引](../README.md)。整理日: 2026-10-22。
+ここには、過去の計画・調査結果・実装経過を残しています。以前の判断や検証の根拠を追うときに使ってください。本文の「現在」「未実装」「確認待ち」は、記録した時点の状態です。
 
-| 旧パス | 移動先 | 理由 |
-|---|---|---|
-| docs/REQUESTS_01.md〜REQUESTS_06.md | requests/の同名6ファイル | 過去の依頼・実装提案。現在の実装と区別する |
-| docs/NPM_PUBLISH.md | [NPM_PUBLISH.md](NPM_PUBLISH.md) | ローカル保持方針により失効。誤実行防止の注意を追加 |
-| docs/SHIKIHO_SCREENING_MAP.md | [comparisons/SHIKIHO_SCREENING_MAP.md](comparisons/SHIKIHO_SCREENING_MAP.md) | 大株主API・scope等に古い記述。現行の指標辞書へ案内 |
-| docs/EDINET_TS_ROADMAP.md | [plans/EDINET_TS_ROADMAP.md](../plans/EDINET_TS_ROADMAP.md) | 現行計画も計画専用の場所に配置し、状態・更新日を明示 |
-| docs/nuc7-local-artifacts.mdの過去検証節 | [2026-10-10-fixed-artifact-validation.md](2026-10-10-fixed-artifact-validation.md) | 現行手順と、固定sourceの当時の検証結果を分離 |
+使い方を調べる場合は[文書索引](../README.md)、残作業を確認する場合は[全体計画](../plans/EDINET_TS_ROADMAP.md)と[実装状況](../plans/IMPLEMENTATION_STATUS.md)へ進んでください。
 
-ファイルの内容は失効状態を示して保持し、根拠なく削除していない。現行仕様内の誤った記述（HTML出力、未実装filers表、自動DB補完等）はコードに合わせ訂正した。生成文書は出力先を維持した。Git履歴で元の文書も参照できる。
+## 調べたい記録を選ぶ
+
+| 記録 | 用途 |
+|---|---|
+| [2026-10-28までの全体計画](ROADMAP_2026-10-28.md) | 元の全段階・詳細受入条件・提案順 |
+| [2026-10-28〜30の実装経過](IMPLEMENTATION_LOG_2026-10-30.md) | 機能追加順、当時のテスト件数・原本照合・配布状況 |
+| [解消済みのPR取り込み順](PENDING_BRANCHES.md) | #24〜#28の提案・検証・統合経緯 |
+| [依存の選定判断](DEPENDENCY_DECISIONS.md) | 2026-10-22の候補比較。採用版はpackage.jsonと実行環境資料を参照 |
+| [他EDINETライブラリの調査](EDINET_LIBRARY_RESEARCH.md) | 2026-10-22の設計調査。現在の機能保証ではない |
+| [固定配布物の検証](2026-10-10-fixed-artifact-validation.md) | 2026-10-10の固定sourceに対する確認 |
+| [失効したnpm公開手順](NPM_PUBLISH.md) | 実行しない。現在はローカル配布方針 |
+| [過去の四季報比較](comparisons/SHIKIHO_SCREENING_MAP.md) | 当時の比較。現行APIの一覧ではない |
+| 過去の依頼 [1](requests/REQUESTS_01.md)・[2](requests/REQUESTS_02.md)・[3](requests/REQUESTS_03.md)・[4](requests/REQUESTS_04.md)・[5](requests/REQUESTS_05.md)・[6](requests/REQUESTS_06.md) | 当時の要望・設計案 |
+
+2026-10-30の整理では、現行の使い方を財務・会社・開示表・パイプライン・開発の各ディレクトリへ移し、関連APIを一つの資料へ統合しました。参照リンクと生成スクリプト・CIのパスも更新しています。旧パスと元の本文はGit履歴で確認できます。

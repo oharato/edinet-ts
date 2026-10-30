@@ -109,3 +109,11 @@ it('複数entityの文書を主提出者の推測で通さない',()=>{
  const extra='<xbrli:context id="another-entity"><xbrli:entity><xbrli:identifier scheme="http://disclosure.edinet-fsa.go.jp">E99999-000</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period></xbrli:context>';
  expect(resolve(xml({extra}),'A')).toMatchObject({status:'unresolved',fields:{edinetCode:{status:'unsupported',reason:'unsupported-entity'}}});
 });
+it.each(['Japan GAAP','IFRS'])('年をまたぐ%sの単四半期も実contextから確認する',standard=>{
+ const r=resolve(xml({standard,consolidated:'false',periodCode:'Q3',start:'2024-08-01',end:'2025-07-31',currentEnd:'2025-04-30',quarterStart:'2025-02-01'}),'A');
+ expect(r).toMatchObject({status:'selected',metadata:{quarterPeriod:{startDate:'2025-02-01',endDate:'2025-04-30'},period:{startDate:'2024-08-01',endDate:'2025-04-30'},contexts:{duration:['arbitrary-duration']}}});
+});
+it('暦月計算で日付が繰り上がる変則開始日を単四半期として推測しない',()=>{
+ const r=resolve(xml({periodCode:'Q2',start:'2025-01-31',end:'2026-01-30',currentEnd:'2025-07-30',quarterStart:'2025-05-01'}),'A');
+ expect(r.status).toBe('selected');expect(r.status==='selected'&&r.metadata.quarterPeriod).toBeUndefined();
+});

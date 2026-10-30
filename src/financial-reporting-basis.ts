@@ -3,7 +3,7 @@ import type {EdinetData} from "./edinet-xbrl-object";
 import type {EdinetContext} from "./edinet-context";
 import type {CompanyProfileEvidence,CompanyProfileReason} from "./company-profile";
 import {EdinetXbrlParser} from "./edinet-xbrl-parser";
-export const FINANCIAL_REPORTING_BASIS_VERSION="1";
+export const FINANCIAL_REPORTING_BASIS_VERSION="2";
 const tags={
  edinetCode:"EDINETCodeDEI",securityCode:"SecurityCodeDEI",documentType:"DocumentTypeDEI",accountingStandard:"AccountingStandardsDEI",consolidated:"WhetherConsolidatedFinancialStatementsArePreparedDEI",
  fiscalYearStart:"CurrentFiscalYearStartDateDEI",fiscalYearEnd:"CurrentFiscalYearEndDateDEI",currentPeriodEnd:"CurrentPeriodEndDateDEI",currentPeriodType:"TypeOfCurrentPeriodDEI",
@@ -17,6 +17,8 @@ export interface ResolvedFinancialReportingMetadata {
  accountingStandard:"J-GAAP"|"IFRS";scope:"Consolidated"|"NonConsolidated";edinetCode:string;securityCode?:string;
  documentType:string;reportingPeriodCode:"FY"|"HY"|"Q1"|"Q2"|"Q3";periodType:"annual"|"ytd";deiContextInstant:string;
  fiscalYear:{startDate:string;endDate:string};period:{startDate:string;endDate:string};instant:string;
+ /** 通常の3暦月区切りと実contextの両方で確認できた単四半期。累計抽出には使いません。 */
+ quarterPeriod?:{startDate:string;endDate:string};
  entity:{scheme:string;identifier:string};industryCode?:string;
  /** ID名から期間を推定せず、実際のperiod/entity/scopeで一致したcontextだけ。 */
  contexts:{duration:string[];instant:string[];blockedDuplicateContexts:{contextRef:string;periodKind:"duration"|"instant"}[]};
@@ -81,8 +83,22 @@ export function selectFinancialReportingBasis(docID:string,facts:ReadonlyMap<str
  const base={docID,version:FINANCIAL_REPORTING_BASIS_VERSION,fields,issues} satisfies Pick<FinancialReportingBasis,"docID"|"version"|"fields"|"issues">;
  if(issues.length)return structuredClone({...base,status:"unresolved"});
  const scope=flag==="true"||flag==="1"?"Consolidated":"NonConsolidated",duration:string[]=[],instant:string[]=[],blockedDuplicateContexts:{contextRef:string;periodKind:"duration"|"instant"}[]=[];
+ let quarterStart:string|undefined,quarterFound=false,quarterBlocked=false;
+ if(periodCode==="Q2"||periodCode==="Q3"){
+  const first=new Date(start!+"T00:00:00Z"),boundary=new Date(first);
+  boundary.setUTCMonth(boundary.getUTCMonth()+3*(Number(periodCode[1])-1));
+  // 決算期変更等の変則期間を日付の丸めで推測しません。
+  if(boundary.getUTCDate()===first.getUTCDate()){
+   const candidate=boundary.toISOString().slice(0,10);
+   boundary.setUTCMonth(boundary.getUTCMonth()+3);
+   if(candidate<=currentEnd!&&currentEnd!<boundary.toISOString().slice(0,10))quarterStart=candidate;
+  }
+ }
  for(const [id,c]of contexts){
   if(!c.namespaceVerified||!c.periodValid||c.unsupportedDimensions||c.scope!==scope||(c.entity?.scheme!==entity?.scheme||c.entity?.identifier!==entity?.identifier)||scope==="Consolidated"&&c.dimensions.length!==0||scope==="NonConsolidated"&&(c.dimensions.length!==1||c.dimensions[0]!=="NonConsolidatedMember"))continue;
+  if(quarterStart&&c.period.startDate===quarterStart&&c.period.endDate===currentEnd&&c.period.instant===undefined){
+   if(duplicates.has(id))quarterBlocked=true;else quarterFound=true;
+  }
   const durationMatch=c.period.startDate===start&&c.period.endDate===currentEnd&&c.period.instant===undefined,instantMatch=c.period.instant===currentEnd&&c.period.startDate===undefined&&c.period.endDate===undefined;
   if(!durationMatch&&!instantMatch)continue;
   if(duplicates.has(id)){blockedDuplicateContexts.push({contextRef:id,periodKind:durationMatch?"duration":"instant"});continue;}
@@ -95,6 +111,7 @@ export function selectFinancialReportingBasis(docID:string,facts:ReadonlyMap<str
   reportingPeriodCode:periodCode as ResolvedFinancialReportingMetadata["reportingPeriodCode"],
   periodType:periodCode==="FY"?"annual":"ytd",deiContextInstant:filing!,
   fiscalYear:{startDate:start!,endDate:end!},period:{startDate:start!,endDate:currentEnd!},
+  ...(quarterFound&&!quarterBlocked?{quarterPeriod:{startDate:quarterStart!,endDate:currentEnd!}}:{}),
   instant:currentEnd!,entity:entity!,...(industryCode!==undefined?{industryCode}:{}),
   contexts:{
    duration:duration.sort(compare),instant:instant.sort(compare),

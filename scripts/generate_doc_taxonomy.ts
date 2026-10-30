@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 const EXCEL_PATH = path.resolve(__dirname, "../taxonomy/AccountList.xlsx");
-const OUTPUT_PATH = path.resolve(__dirname, "../docs/TAXONOMY_JPPFS_COR.md");
+const OUTPUT_PATH = path.resolve(__dirname, "../docs/generated/TAXONOMY_JPPFS_COR.md");
 
 // 列インデックス（0始まり） scripts/generate_types.ts での確認に基づく
 const COL_LABEL_JP = 1;      // B列: 標準ラベル（日本語）
@@ -28,11 +28,26 @@ function main() {
 
     const data: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-    let content = "# EDINET タクソノミ (jppfs_cor) 項目一覧\n\n";
-    content += "2024年版 EDINETタクソノミ「財務諸表本表 (jppfs_cor) - 一般商工業」に含まれる項目の一覧です。\n";
-    content += "`getJppfsCor()` メソッド経由でアクセス可能なプロパティ名として使用できます。\n\n";
-    content += `生成日時: ${new Date().toISOString().split('T')[0]}\n\n`;
-    content += "| 要素名 (Property Name) | 標準ラベル (Japanese) | 英語ラベル (English) | データ型 |\n";
+    let content = `# 財務諸表本表のタグ一覧（jppfs_cor）
+
+2024年版EDINETタクソノミの「一般商工業」シートから生成した項目一覧です。財務諸表の日本語名からタグ名を探すときに使います。
+
+## 一覧の読み方
+
+- **要素名**: \`getJppfsCor()\` で参照するプロパティ名です。
+- **日本語ラベル・英語ラベル**: 元資料に記載された項目名です。
+- **データ型**: 生成したTypeScript型での表現です。
+
+一覧にあることは、すべての原本に値が存在することや、指標APIで採用できることを意味しません。値の期間・単位・連結区分などは[指標の選択条件](../financial/METRIC_SELECTION.md)で確認してください。
+
+更新方法は[タクソノミの更新手順](../development/TAXONOMY_UPDATE.md)を参照してください。表は生成スクリプトで更新します。
+
+生成日: ${new Date().toISOString().split('T')[0]}
+
+## 項目一覧
+
+| 要素名 | 日本語ラベル | 英語ラベル | データ型 |
+`;
     content += "| :--- | :--- | :--- | :--- |\n";
 
     let count = 0;

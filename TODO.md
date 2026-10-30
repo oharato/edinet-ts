@@ -16,7 +16,7 @@
     *   APIから直接横断検索する形: **実装済み**（DBキャッシュ補完つき）。検索前に対象期間のうちDBに無い日だけ書類一覧APIから補い、結果をDBへ保存します。書類一覧APIは1日分を1リクエストで返すため、コストは銘柄数ではなく日数に比例します。DBへ保存しない純粋な直接検索は未実装です。0件の過去日も取得済みとして保存し、日本時間の当日は完了扱いせず後日取り直す処理を作業ツリーで追加しました。
 *   横断検索は2つのレベルに分けて考えます。
     *   **メタデータレベルの横断検索**: 書類一覧の属性（提出者・種別・提出日）だけでの検索。上の `findDocumentsByFiler()` / `findDocumentsByType()` がこのレベルで、安価に広い範囲を探せます。APIから直接行う形もこのレベルです。
-    *   **本体レベルの横断検索**: XBRL本体の値（財務指標・人的資本など）での検索。書類ごとに取得と解析が要るため重く、現在の実装は「明示した原本の集合」に対するスクリーニング（[BS横断検索](docs/BALANCE_SHEET_SCREENING.md)等）がこのレベルです。市場全体を対象にする場合は、まずメタデータレベルで候補を絞ってから本体を取得する二段構えを前提にします。
+    *   **本体レベルの横断検索**: XBRL本体の値（財務指標・人的資本など）での検索。書類ごとに取得と解析が要るため重く、現在の実装は「明示した原本の集合」に対するスクリーニング（[BS横断検索](docs/financial/BALANCE_SHEET.md#screening)等）がこのレベルです。市場全体を対象にする場合は、まずメタデータレベルで候補を絞ってから本体を取得する二段構えを前提にします。
 
 ## 2. CLIツール (Command Line Interface) - [x] Implemented
 *   `edinet-ts download`: 書類のダウンロード
@@ -26,4 +26,4 @@
 ## 3. npmへの公開 - [x] 公開済み（現行の配布方針はローカル配布）
 *   CI/CDパイプラインの構築 (GitHub Actions): source checks等は **構築済み**。
 *   npm registry へのパブリッシュ: `edinet-ts` 1.1.17 が公開されていることを確認しました（2026-10-26）。
-*   現在の配布方針は [ADR 0001](docs/adr/0001-local-distribution.md) のローカル配布です（[手順](docs/nuc7-local-artifacts.md)）。手動workflowもtag・release・npm/GitHub Packagesへの新規公開は行いません。
+*   現在の配布方針は [ADR 0001](docs/adr/0001-local-distribution.md) のローカル配布です（[手順](docs/development/nuc7-local-artifacts.md)）。手動workflowもtag・release・npm/GitHub Packagesへの新規公開は行いません。

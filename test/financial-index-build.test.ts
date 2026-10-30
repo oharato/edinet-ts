@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {it,expect} from 'vitest';
 import {ObservedFinancialArchive,FinancialSearchIndex,FinancialIndexBuild,type FinancialIndexBuildInput,type FinancialIndexPopulation} from '../src/index';
 import {Database} from '../src/db/node-sqlite';
+import {financialIndexBuildPartId} from '../src/db/financial-search-index';
 import {reportingInstance} from './fixtures/financial-reporting-basis';
 const options={cutoff:'2026-10-28T00:00:00Z',extractorVersion:'build-test-1'};
 const population=(codes=['E12001','E12002','E12003']):FinancialIndexPopulation=>({asOf:'2026-10-27',observedAt:'2026-10-27T15:30:00Z',source:'reviewed fixture population',sourceSha256:'a'.repeat(64),edinetCodes:codes});
@@ -73,4 +74,18 @@ it('他社を名乗る訂正の共有診断を重複集計せず、元の財務�
 }));
 it('原観測が一回の上限を超えていても会社別集合で全母集団を完了できる',()=>withBuild(s=>{
  const writer=new ObservedFinancialArchive(s.sourcePath);writer.append(Array.from({length:10000},(_,i)=>({observationId:'extra-'+i,observedAt:'2026-06-26T00:00:00Z',document:{docID:'OTHER',parentDocID:null,edinetCode:'E99999',docTypeCode:'180'}})));writer.close();const source=new ObservedFinancialArchive(s.sourcePath,{readOnly:true});try{expect(()=>source.createSnapshots(options)).toThrow('10,000');s.state.begin({...s.input,archiveSha256:source.snapshotSha256(),population:population(['E12001','E12002','E12003','E99999'])});expect(s.state.runNext('build',source,s.index).completed).toBe(4);const r=s.state.finish('build',s.index);expect(r.rows).toHaveLength(4);expect(r.selection.ignored).toHaveLength(10000);}finally{source.close();}
+}));
+
+it.each([undefined,'2'])('一覧とDEIの照合契約が異なる未完了計画へ新しい結果を混ぜない: %s',version=>withBuild(s=>{
+ const p=s.state.begin(s.input);expect(p.plan.provenance.mappingVersions.observed).toBe('3');
+ const old=structuredClone(p.plan) as any;if(version===undefined)delete old.provenance.mappingVersions.observed;else old.provenance.mappingVersions.observed=version;
+ const canonical=(v:unknown)=>JSON.stringify(v,(_key,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(k=>[k,x[k]])):x),body=canonical(old);
+ const digest=(text:string)=>createHash('sha256').update(text).digest('hex'),planSha256=digest(body);
+ const unsafe=s.state as unknown as {run:(sql:string,args:unknown[])=>void};unsafe.run('UPDATE financial_build_plans SET body=?,sha256=? WHERE id=?',[body,planSha256,s.input.id]);
+ // 旧計画に対応するcheckpointも揃え、破損ではなく抽出版の違いを検証します。
+ for(const task of p.tasks){
+  const oldTask={...task,partID:financialIndexBuildPartId(planSha256,task.edinetCode)},taskBody=canonical(oldTask);
+  unsafe.run('UPDATE financial_build_tasks SET body=?,sha256=? WHERE build=? AND edinet_code=?',[taskBody,digest(canonical([s.input.id,task.edinetCode,task.status,taskBody])),s.input.id,task.edinetCode]);
+ }
+ expect(()=>s.state.runNext(s.input.id,s.source,s.index)).toThrow('版');expect(s.state.progress(s.input.id).completed).toBe(0);
 }));

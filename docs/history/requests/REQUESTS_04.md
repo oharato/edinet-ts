@@ -1,4 +1,6 @@
-> 状態: 過去の依頼・提案を保存した履歴。現行仕様ではありません。[文書索引](../../README.md) と [現行計画](../../plans/EDINET_TS_ROADMAP.md) を参照してください。
+# 過去の依頼・提案 4
+
+> 以下は当時の原文です。現在の仕様とは区別してください。対応状況は[実装状況](../../plans/IMPLEMENTATION_STATUS.md)、使い方は[文書索引](../../README.md)、残作業は[全体計画](../../plans/EDINET_TS_ROADMAP.md)を参照してください。
 
 SQLite（`better-sqlite3`）を軸にした、TypeScript製EDINETライブラリ（仮称: `edinet-ts`）の堅実な実装計画を提案します。
 
