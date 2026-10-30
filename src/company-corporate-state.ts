@@ -29,7 +29,7 @@ export interface CompanyCorporateStateResult<State=CorporateRegistryStoredStateR
 }
 /** 原記録の候補参照と異なり、全件/連続差分から再構成できた状態だけへ結合します。 */
 export function linkCompanyMasterCorporateStates(
- snapshots:readonly CompanyMasterSnapshot[],registry:CorporateRegistryStore,
+ snapshots:readonly CompanyMasterSnapshot[],registry:Pick<CorporateRegistryStore,'reconstruct'>,
  deliveries:readonly CorporateRegistryStoredDelivery[],query:CompanyCorporateStateQuery,
  calendar?:CorporateRegistryPublicationCalendarInput,
 ):CompanyCorporateStateResult {

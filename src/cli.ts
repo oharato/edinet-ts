@@ -40,6 +40,7 @@ import {screenCompanyFinancials} from "./company-financial-screening";
 import {compareCompanyFinancialsByIndustry} from "./company-industry-comparison";
 import {reconstructCorporateRegistryState} from "./corporate-registry";
 import {CorporateRegistryStore} from "./db/corporate-registry-store";
+import {CorporateRegistryBlockStore} from "./db/corporate-registry-block-store";
 import {FinancialIndexBuild,normalizeFinancialIndexBuildInput} from "./db/financial-index-build";
 import { screenIfrsFinancialDetailDocuments } from "./ifrs-financial-detail-screening";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
@@ -765,14 +766,15 @@ program.command("import-corporate-registry-file")
     .description("固定SHAの法人番号UTF-8 XMLを一記録ずつ専用DBへ原子的に保存します")
     .requiredOption("--db <path>", "法人番号専用DB")
     .requiredOption("--manifest <path>", "file/source/part/sha256のJSON。fileはmanifest基準")
+    .option("--compressed", "圧縮専用形式のDBを指定（旧形式の変換はしない）")
     .option("--pretty", "JSONを整形")
     .action(async options=>{
-        let store:CorporateRegistryStore|undefined;const controller=new AbortController(),stop=()=>controller.abort();
+        let store:CorporateRegistryStore|CorporateRegistryBlockStore|undefined;const controller=new AbortController(),stop=()=>controller.abort();
         process.once("SIGINT",stop);process.once("SIGTERM",stop);
         try{
             const manifestPath=path.resolve(options.manifest),input=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(manifestPath,LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
             if(!input||typeof input!=="object"||Array.isArray(input)||typeof input.file!=="string")throw Error();
-            store=new CorporateRegistryStore(path.resolve(options.db));
+            store=options.compressed?new CorporateRegistryBlockStore(path.resolve(options.db)):new CorporateRegistryStore(path.resolve(options.db));
             console.log(JSON.stringify(await store.importFile({...input,file:path.resolve(path.dirname(manifestPath),input.file)},{signal:controller.signal}),null,options.pretty?2:undefined));
         }catch{console.error("法人番号取込の原XML・期待SHA・part・出典と保存DBを確認してください（入力内容は非表示）");process.exitCode=1;}
         finally{process.removeListener("SIGINT",stop);process.removeListener("SIGTERM",stop);store?.close();}
@@ -782,10 +784,11 @@ program.command("query-corporate-registry-store")
     .description("保存した法人番号原記録を観測cutoff・目的付きで読取専用検索します")
     .requiredOption("--db <path>", "停止した法人番号専用DB")
     .requiredOption("--query <path>", "corporateNumber/knownAt/registryPurposeと任意offset/limitのJSON")
+    .option("--compressed", "圧縮専用形式のDBを指定（旧形式の変換はしない）")
     .option("--pretty", "JSONを整形")
     .action(options=>{
-        let store:CorporateRegistryStore|undefined;
-        try{const query=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.query),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));store=new CorporateRegistryStore(path.resolve(options.db),{readOnly:true});console.log(JSON.stringify(store.query(query),null,options.pretty?2:undefined));}
+        let store:CorporateRegistryStore|CorporateRegistryBlockStore|undefined;
+        try{const query=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.query),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));store=options.compressed?new CorporateRegistryBlockStore(path.resolve(options.db),{readOnly:true}):new CorporateRegistryStore(path.resolve(options.db),{readOnly:true});console.log(JSON.stringify(store.query(query),null,options.pretty?2:undefined));}
         catch{console.error("法人番号保存DB・番号・観測cutoff・目的・ページを確認してください（入力内容は非表示）");process.exitCode=1;}
         finally{store?.close();}
     });
@@ -859,13 +862,14 @@ program.command("link-company-corporate-states")
     .requiredOption("--manifest <path>", "scope/expectedParts/fileIdsを持つ全国配布の配列JSON")
     .requiredOption("--query <path>", "edinetCodes/asOf/knownAt/registryPurposeと任意のマスター条件")
     .option("--calendar <path>", "保存した未作成日カレンダーのJSON")
+    .option("--compressed", "圧縮専用形式のDBを指定（旧形式の変換はしない）")
     .option("--pretty", "JSONを整形")
     .action(options=>{
-        let store:CorporateRegistryStore|undefined;
+        let store:CorporateRegistryStore|CorporateRegistryBlockStore|undefined;
         try{
             const read=(file:string,bytes=LOCAL_IMPORT_LIMITS.manifestBytes)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),bytes).bytes));
             const master=read(options.master,LOCAL_IMPORT_LIMITS.sourceBytes),manifest=read(options.manifest),query=read(options.query),calendar=readRegistryCalendar(options.calendar);
-            store=new CorporateRegistryStore(path.resolve(options.db),{readOnly:true});
+            store=options.compressed?new CorporateRegistryBlockStore(path.resolve(options.db),{readOnly:true}):new CorporateRegistryStore(path.resolve(options.db),{readOnly:true});
             console.log(JSON.stringify(linkCompanyMasterCorporateStates(master,store,manifest,query,calendar),null,options.pretty?2:undefined));
         }catch{console.error("企業マスター・法人番号保存DB・全国配布・対象企業/対象日/cutoffを確認してください（入力内容は非表示）");process.exitCode=1;}
         finally{store?.close();}
@@ -877,13 +881,14 @@ program.command("reconstruct-corporate-registry-store")
     .requiredOption("--manifest <path>", "scope/expectedParts/fileIdsを持つ全国配布の配列JSON")
     .requiredOption("--query <path>", "corporateNumber/asOf/knownAt/registryPurposeのJSON")
     .option("--calendar <path>", "保存した未作成日カレンダーのJSON")
+    .option("--compressed", "圧縮専用形式のDBを指定（旧形式の変換はしない）")
     .option("--pretty", "JSONを整形")
     .action(options=>{
-        let store:CorporateRegistryStore|undefined;
+        let store:CorporateRegistryStore|CorporateRegistryBlockStore|undefined;
         try{
             const read=(file:string)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
             const manifest=read(options.manifest),query=read(options.query),calendar=readRegistryCalendar(options.calendar);
-            store=new CorporateRegistryStore(path.resolve(options.db),{readOnly:true});console.log(JSON.stringify(store.reconstruct(manifest,query,calendar),null,options.pretty?2:undefined));
+            store=options.compressed?new CorporateRegistryBlockStore(path.resolve(options.db),{readOnly:true}):new CorporateRegistryStore(path.resolve(options.db),{readOnly:true});console.log(JSON.stringify(store.reconstruct(manifest,query,calendar),null,options.pretty?2:undefined));
         }catch{console.error("法人番号保存DB・全国配布の全file ID・対象日/cutoff・カレンダーを確認してください（入力内容は非表示）");process.exitCode=1;}
         finally{store?.close();}
     });

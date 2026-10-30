@@ -43,7 +43,7 @@ try {
 } finally { state.close(); }
 ```
 
-対応する `kind` は次の6種類です。既存の専用クラスと同じ固定schema/kindを検査します。
+対象は `DedicatedSqliteRecoveryKind` に含まれる専用形式です。各クラスの固定schema/kindを検査します。主な対応は次のとおりです。
 
 | kind | クラス |
 |---|---|
@@ -53,10 +53,16 @@ try {
 | `financial-search-index` | `FinancialSearchIndex` |
 | `financial-index-publication` | `FinancialIndexPublication` |
 | `company-master-store` | `CompanyMasterStore` |
+| `corporate-registry-store` | `CorporateRegistryStore` |
+| `corporate-registry-block-store` | `CorporateRegistryBlockStore` |
+| `large-holding-store` | `LargeHoldingStore` |
+| `facility-detail-store` | `FacilityDetailStore` |
 
 ## 検査と保存する証跡
 
 入力は単一リンクの通常ファイルに限り、symlink/hardlink、WAL/SHM付き、DBとjournalの合計32GiB超を拒否します。両ファイルを開いたまま、inode・サイズ・mtime/ctimeとパスを照合し、コピー時と復旧後の再読で指定SHA-256との一致を検査します。
+
+圧縮法人番号の `corporate-registry-block-store` はDB本体640 MiB超をコピー前に拒否します。復旧後は `CorporateRegistryBlockStore.audit(fileId)` 等で全原記録を検査してください。復旧receiptの `applicationRecordsValidated` は引き続き `false` で、SQLite/schema検査だけを原値の照合済みへ読み替えません。
 
 全writerの停止は呼出元の前提です。稼働DBのオンラインbackupや、ロック解除を行うAPIではありません。
 
@@ -102,9 +108,9 @@ edinet-ts recover-sqlite-snapshot \
 
 合成DBへ同期ありの書込みを行い、cacheからspillした後の子processをSIGKILLしました。複数journal区画から復旧したDBはtransaction開始前の全byteと一致し、元のクラッシュ状態のDB/journalも全byte不変です。
 
-取得状態DBでは完了・失敗・未処理のcheckpoint/全履歴を復元し、残件からの再開と最終原本照合まで検証しています。6形式・checksum/欠損/ページ異常・指紋違い・super-journal・WAL/SHM・リンク・既存出力先も試験対象です。
+取得状態DBでは完了・失敗・未処理のcheckpoint/全履歴を復元し、残件からの再開と最終原本照合まで検証しています。初期の6形式でchecksum/欠損/ページ異常・指紋違い・super-journal・WAL/SHM・リンク・既存出力先を試験し、その後に法人番号・大量保有・設備・圧縮法人番号の固定形式も追加しました。圧縮法人番号では復旧後の原本監査と追加入力まで確認しています。
 
-この検証は電源断や全てのディスク故障の再現ではありません。WAL、ATTACHでの複数DB transaction、破損したDB header、既に欠けた元ページ、同期済みrecordが壊れたjournalを修復したとは扱いません。元のメタデータDBや旧BS/明細Storeは、上記6形式の復旧対象ではありません。
+この検証は電源断や全てのディスク故障の再現ではありません。WAL、ATTACHでの複数DB transaction、破損したDB header、既に欠けた元ページ、同期済みrecordが壊れたjournalを修復したとは扱いません。元のメタデータDBや旧BS/明細Storeは、このAPIの復旧対象ではありません。
 
 実状態の私有コピーでの追加検証: 停止済み旧取得状態（7,337 task・2,939試行履歴、完了2,931）を別ファイルへコピーし、16 taskの未commit更新をspillしてSIGKILLしました。復旧後の物理SHA-256は元状態の `65409dfc7d39949d6a79585c829e0e911b396edf03a3a4dfc9db1e637f2193b6` と一致し、`FinancialSourceJob.progress` による全計画/task/履歴も完全一致しました。
 

@@ -164,6 +164,8 @@ export type {CorporateRegistryPublicationCalendarInput,CorporateRegistryPublicat
 
 export {streamCorporateRegistryRecords,CORPORATE_REGISTRY_STREAM_MAX_BYTES,CORPORATE_REGISTRY_RECORD_MAX_BYTES} from "./corporate-registry-stream";
 export type {CorporateRegistryStreamReceipt,CorporateRegistryStreamOptions} from "./corporate-registry-stream";
+export {CorporateRegistryBlockStore,CORPORATE_REGISTRY_BLOCK_MAX_DB_BYTES} from "./db/corporate-registry-block-store";
+export type {CorporateRegistryChunkImport} from "./db/corporate-registry-block-store";
 export {CorporateRegistryStore} from "./db/corporate-registry-store";
 export type {CorporateRegistryStoredFile,CorporateRegistryFileImport,CorporateRegistryStoredQuery,CorporateRegistryStoredDelivery,CorporateRegistryStoredStateResult} from "./db/corporate-registry-store";
 

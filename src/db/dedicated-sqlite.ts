@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import type { SQLInputValue } from "node:sqlite";
 import { Database, type NativeDatabase } from "./node-sqlite";
 interface DedicatedSqliteFormat {
+    maxBytes?: number;
+    rollbackOnly?: boolean;
     table: string;
     kind: string;
     compatibleKinds?: readonly string[];
@@ -79,6 +81,13 @@ export class DedicatedSqliteDatabase {
                 const before = fs.fstatSync(input, { bigint: true });
                 if (!before.isFile() || before.nlink !== 1n)
                     throw new Error("通常ファイルが必要です");
+                if (this.format.maxBytes !== undefined && before.size > BigInt(this.format.maxBytes))
+                    throw new Error("専用DBの容量上限を超えています");
+                if (this.format.rollbackOnly) {
+                    const header = Buffer.alloc(20);
+                    if (fs.readSync(input, header, 0, header.length, 0) !== header.length || !header.subarray(0, 16).equals(Buffer.from("SQLite format 3\0")) || header[18] !== 1 || header[19] !== 1)
+                        throw new Error("専用DBにはrollback journal形式が必要です");
+                }
                 originalIdentity = identity(before);
                 const chunk = Buffer.alloc(1024 * 1024);
                 let total = 0;

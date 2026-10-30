@@ -33,6 +33,7 @@
         "large-holding-store.ts",
         "facility-detail-store.ts",
         "company-corporate-state.ts",
-        "corporate-registry-stream-state.ts"
+        "corporate-registry-stream-state.ts",
+        "corporate-registry-block-store.ts"
     ]
 }

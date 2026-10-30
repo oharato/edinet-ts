@@ -11,6 +11,7 @@ import { FinancialSearchIndex } from "./financial-search-index";
 import { FinancialIndexPublication } from "./financial-index-publication";
 import { CompanyMasterStore } from "./company-master-store";
 import { CorporateRegistryStore } from "./corporate-registry-store";
+import {CorporateRegistryBlockStore,CORPORATE_REGISTRY_BLOCK_MAX_DB_BYTES} from "./corporate-registry-block-store";
 
 const formats = {
     "observed-financial-archive": ObservedFinancialArchive,
@@ -20,6 +21,7 @@ const formats = {
     "financial-index-publication": FinancialIndexPublication,
     "company-master-store": CompanyMasterStore,
     "corporate-registry-store": CorporateRegistryStore,
+    "corporate-registry-block-store": CorporateRegistryBlockStore,
     "large-holding-store": LargeHoldingStore,
     "facility-detail-store": FacilityDetailStore,
 } as const;
@@ -131,6 +133,7 @@ export function recoverDedicatedSqliteSnapshot(options: DedicatedSqliteRecoveryO
             if (!stat.isFile() || stat.nlink !== 1n || stat.size <= 0n || stat.size > BigInt(SQLITE_RECOVERY_MAX_BYTES)) throw new Error("復旧元には上限内の単一リンク通常ファイルが必要です");
         }
         const [database, journalFile] = opened;
+        if (kind === "corporate-registry-block-store" && database.stat.size > BigInt(CORPORATE_REGISTRY_BLOCK_MAX_DB_BYTES)) throw new Error("圧縮法人番号DBの容量上限を超えています");
         if (database.stat.size + journalFile.stat.size > BigInt(SQLITE_RECOVERY_MAX_BYTES)) throw new Error("復旧入力の合計は32GiB以下です");
         const header = readAt(database.fd, 0, 100);
         if (!header.subarray(0, 16).equals(Buffer.from("SQLite format 3\0")) || header[18] !== 1 || header[19] !== 1) throw new Error("rollback journal形式のSQLite DBが必要です");

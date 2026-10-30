@@ -8,6 +8,7 @@
 | 目的 | 入口 |
 |---|---|
 | 原記録を探す | この節のXML検索、または[保存DB](#大容量xmlのストリーミング保存) |
+| 保存容量を抑えて繰り返し検索する | [圧縮形式のStore](#原値を圧縮して保存する)（旧DBとは別形式） |
 | 全件・差分から対象法人の状態を求める | [小容量XML](#全件と日次差分からの状態再構成) / [保存DB](#保存した記録から状態を再構成する) / [DBを作らないstream](#原本streamから対象法人の状態を再構成する) |
 | EDINET企業と番号・原名称を照合する | [保存DBを使う](#企業マスターと再構成した法人状態を結び付ける) / [全国原本を一度読む](#全国原本から企業マスター全体を照合する) |
 | 原本を検証する | [XML署名](#保存済みxmlの署名を確認して取り込む) / [ZIP全entry](#保存zipの全エントリを検査する) |
@@ -755,3 +756,76 @@ queryは上のAPIの第3引数と同じJSON、manifestは前節の `parts(file/s
 圧縮側も空欄・先頭0・元の文字列を保持し、全60,000項目の復元と2,000番号の検索が元値に一致しました。Deflate/Brotli/Zstdと256/1,024記録単位の計6配置で復元を確認し、上表はこの標本で最小だった配置です。
 
 これは保存方法の試作で、SDKのDB形式ではありません。原本メタデータ、全件・差分の監査、原子的な取込、再開、既存APIへの接続は未実装です。先頭2,000記録は全国を代表する標本でもないため、容量を比例計算して全国分を確保できたとは扱いません。全国DB保存は引き続き残件です。証跡は `data/roadmap/corporate-registry-storage-probe-20261031/proof.json` と同じフォルダの再実行用スクリプトにあります。
+
+
+## 原値を圧縮して保存する
+
+`CorporateRegistryBlockStore` は、30項目の原値をDeflate圧縮したブロックと、法人番号の位置索引へ保存します。旧 `CorporateRegistryStore` のDBは変更せず、新しいパスを指定します。形式を自動変換する機能はありません。
+
+```ts
+import { CorporateRegistryBlockStore } from "edinet-ts";
+
+const writer = new CorporateRegistryBlockStore("registry-blocks.sqlite");
+try {
+  const receipt = await writer.importFile({
+    file: "full-01.xml", source: savedSource,
+    part: "full-01.xml", sha256: expectedXmlSha256
+  });
+  console.log(receipt.file.id);
+} finally {
+  writer.close();
+}
+
+const reader = new CorporateRegistryBlockStore("registry-blocks.sqlite", { readOnly: true });
+try {
+  console.log(reader.query({
+    corporateNumber: "1010001001202", knownAt: savedCutoff,
+    registryPurpose: "download"
+  }));
+  console.log(reader.reconstruct(savedDeliveries, {
+    corporateNumber: "1010001001202", asOf: "2026-10-30",
+    knownAt: savedCutoff, registryPurpose: "download"
+  }, savedCalendar));
+} finally {
+  reader.close();
+}
+```
+
+`file()`・`audit()`・`query()`・`reconstruct()` は旧Storeと同じ結果形式を返します。`savedDeliveries` も `scope/expectedParts/fileIds` の配列で、全パートを宣言します。`linkCompanyMasterCorporateStates` へこのreaderを渡すこともできます。名称の補正や承継先の追跡、企業IDの統合は行いません。
+
+展開XMLを保存しない場合は `importChunks({ source, part, sha256, chunks }, { signal })` を使います。`chunks` はUTF-8 byte列の `AsyncIterable<Uint8Array>` です。前述のZIP補助スクリプトを接続する際は、生成側で最後の検査と正常終了まで確認してください。圧縮Store自身がPGPの信頼を認証するものではありません。
+
+### 容量と失敗時の扱い
+
+- DB本体は640 MiB以下で、SQLiteのページサイズに合わせて上限を設定します。UTF-8・rollback journal形式を使い、WAL形式は副ファイルがなくても接続前に拒否します。既存DBを開く際の検査コピーも、この上限を確認してから作ります。一時領域の容量も別に留保してください。
+- 1ブロックは最大1,024記録・展開後1 MiB。展開量を制限してから30項目の形式・値・hashを検査します。
+- 1原本は従来のstreamと同じ8 GiB以下、観測ファイルはDB全体で1万件以下です。
+- 取込は1原本ごとのtransactionです。末尾破損・期待hash不一致・上流の検査失敗・中断・容量不足では、その取込を戻して既存原本を保ちます。
+
+空欄・先頭0・元の文字列・訂正/最新フラグ・未知処理区分・削除追加列の診断を保持します。同じbyte列の別観測は内容を共有し、出典と観測時刻は分けます。読取りではSQLite全体の整合性、全記録と位置索引を監査し、その後に対象番号を返します。`readOnly` の固定コピーでは監査結果を同じreader内で再利用するため、大きなDBはreaderを開いたまままとめて検索してください。最初の全記録監査にかかる時間は省略できません。
+
+### CLI
+
+既存の4コマンドで `--compressed` を明示します。
+
+```sh
+edinet-ts import-corporate-registry-file --compressed \
+  --db registry-blocks.sqlite --manifest input.json
+edinet-ts query-corporate-registry-store --compressed \
+  --db registry-blocks.sqlite --query query.json
+edinet-ts reconstruct-corporate-registry-store --compressed \
+  --db registry-blocks.sqlite --manifest deliveries.json --query state-query.json
+edinet-ts link-company-corporate-states --compressed \
+  --db registry-blocks.sqlite --manifest deliveries.json \
+  --master saved-masters.json --query company-query.json
+```
+
+`--compressed` を省くと旧形式を使います。形式が違うDBを指定した場合は拒否し、元DBを書き換えません。
+
+SIGKILLでhot journalが残った場合は、[専用DBの復旧](../pipeline/SQLITE_RECOVERY.md)へ `kind: "corporate-registry-block-store"` を渡し、別候補へ戻します。復旧後にこのStoreで原本を監査し、取込を再開してください。元DB/journalは変更しません。
+
+### 確認した範囲
+
+Node 26.12.1で関連10ファイル/95テスト、本体・配布公開型・build（226ファイル）が成功しました。ブロック境界、1 MiBでの分割、履歴のページング、全件/差分・改称/削除、上流失敗・中断、圧縮本文/索引/件数/孤立ブロック/意味の改変、容量不足時のrollbackを確認しています。
+
+公式サンプル55 XMLと保存済み実差分の計56入力・7,389記録では、旧Storeと取込receipt・原値・診断・出典・検索が一致しました。保存量は9,744,384→679,936 bytes、readonly監査後も元DBは不変です。これは限定入力の結果です。全国6パートの5,850,621記録を478,253,056 bytesのDBへ取込み、初回監査・11,432行の企業結合が先行する独立照合結果と一致しました。最終の検査強化版での再読取と、全175,518,630原値を原XMLへ突き合わせる独立処理は実行中です。全国全原値の検証・性能/運用・新形式追加後の全体回帰はまだ完了扱いにしません。証跡は `data/roadmap/corporate-registry-block-store-real-20261031/` と `corporate-registry-block-national-20261031/` です。
