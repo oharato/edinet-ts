@@ -27,6 +27,7 @@
         "subsidiary-human-capital-labels.ts",
         "document-type-registration.ts",
         "document-pipeline.ts",
-        "company-financial.ts"
+        "company-financial.ts",
+        "corporate-registry-state.ts"
     ]
 }

@@ -32,6 +32,7 @@ import {ObservedFinancialArchive,normalizeArchivedFinancialSnapshotOptions} from
 import {FinancialSearchIndex,normalizeFinancialIndexSearch,isFinancialIndexGenerationId} from "./db/financial-search-index";
 import {screenCompanyFinancials} from "./company-financial-screening";
 import {compareCompanyFinancialsByIndustry} from "./company-industry-comparison";
+import {reconstructCorporateRegistryState} from "./corporate-registry";
 import {FinancialIndexBuild,normalizeFinancialIndexBuildInput} from "./db/financial-index-build";
 import { screenIfrsFinancialDetailDocuments } from "./ifrs-financial-detail-screening";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
@@ -652,6 +653,28 @@ program.command("compare-financial-industries")
                 cohort:read(options.cohort,LOCAL_IMPORT_LIMITS.manifestBytes),company:read(options.companyQuery,LOCAL_IMPORT_LIMITS.manifestBytes),metricIds:options.metrics.split(",").map((m:string)=>m.trim())});
             console.log(JSON.stringify(result,null,options.pretty?2:undefined));
         }catch{console.error("同一財務集合・保存指標・企業マスターの観測条件を確認してください（入力内容は非表示）");process.exitCode=1;}
+    });
+
+program.command("reconstruct-corporate-registry")
+    .description("全国全件と連続する日次差分から法人番号の状態を再構成します")
+    .requiredOption("--manifest <path>", "scope/expectedParts/parts(file/source)を持つ配布単位の配列JSON")
+    .requiredOption("--query <path>", "corporateNumber/asOf/knownAt/registryPurposeのJSON")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        try{
+            const read=(file:string)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(file,LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            const manifestPath=path.resolve(options.manifest),entries=read(manifestPath),query=read(path.resolve(options.query));
+            if(!Array.isArray(entries)||entries.length>100)throw Error();let bytes=0,files=0;
+            const deliveries=entries.map(entry=>{
+                if(!entry||typeof entry!=="object"||Array.isArray(entry)||Object.keys(entry).some(k=>!["scope","expectedParts","parts"].includes(k))||entry.scope!=="national"||!Number.isSafeInteger(entry.expectedParts)||entry.expectedParts<1||!Array.isArray(entry.parts)||entry.parts.length!==entry.expectedParts||(files+=entry.parts.length)>100)throw Error();
+                return {...entry,parts:entry.parts.map((part:any)=>{
+                    if(!part||typeof part!=="object"||Array.isArray(part)||Object.keys(part).some(k=>!["file","source"].includes(k))||typeof part.file!=="string"||!part.file.trim())throw Error();
+                    const input=readRegularFile(path.resolve(path.dirname(manifestPath),part.file),Math.min(LOCAL_IMPORT_LIMITS.sourceBytes,LOCAL_IMPORT_LIMITS.totalBytes-bytes));bytes+=input.bytes.byteLength;
+                    return {xml:new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(input.bytes),source:part.source};
+                })};
+            });
+            console.log(JSON.stringify(reconstructCorporateRegistryState(deliveries,query),null,options.pretty?2:undefined));
+        }catch{console.error("法人番号・日付/cutoff・全国全件と差分の全分割・XML出典を確認してください（入力内容は非表示）");process.exitCode=1;}
     });
 
 program.command("screen-published-financial-index")

@@ -52,7 +52,7 @@ function captureRegistryInputs(inputs:readonly CorporateRegistryXmlInput[]) {
 export function queryCorporateRegistryDownloads(inputs:readonly {xml:string;source:CorporateRegistrySource}[],query:{corporateNumber:string;knownAt:string}) {
     if(!object(query)||Object.keys(query).some(k=>!['corporateNumber','knownAt'].includes(k)))fail();
     const corporateNumber=query.corporateNumber,knownAt=query.knownAt,cutoff=parseDocumentTimestamp(knownAt,true);
-    if(!/^\d{13}$/.test(corporateNumber)||cutoff===undefined)fail();
+    if(typeof corporateNumber!=='string'||!/^\d{13}$/.test(corporateNumber)||cutoff===undefined)fail();
     const captured=captureRegistryInputs(inputs);
     const rows:{sourceIndex:number;record:CorporateRegistryRecord}[]=[],sources:CorporateRegistryDownload['source'][]=[],excludedSources:{sourceIndex:number;reason:'source-after-cutoff'}[]=[];
     for(const d of captured){const parsed=parseCorporateRegistryDownloadXml(d.xml,d.source),sourceIndex=sources.length;sources.push(parsed.source);if(parseDocumentTimestamp(parsed.source.observedAt,true)!>cutoff){excludedSources.push({sourceIndex,reason:'source-after-cutoff'});continue;}for(const record of parsed.records)if(record.values.corporateNumber===corporateNumber)rows.push({sourceIndex,record});}
@@ -93,4 +93,92 @@ export function linkCompanyMasterCorporateRecords(snapshots:readonly CompanyMast
         return{company,status,reason,candidates};
     });
     return{query:{...settings,registryPurpose},master,sources,excludedSources,registryPurpose,semantics:'raw-record-number-link' as const,rows,total:rows.length};
+}
+
+/** 呼出元が全国・全分割を確認した一日分。ファイル数の宣言だけで真正性を認証しません。 */
+export interface CorporateRegistryDelivery {
+    scope:'national';expectedParts:number;parts:readonly CorporateRegistryXmlInput[];
+}
+export interface CorporateRegistryStateQuery {corporateNumber:string;asOf:string;knownAt:string;registryPurpose:CorporateRegistrySource['purpose'];}
+export interface CorporateRegistryRecordReference {sourceIndex:number;record:CorporateRegistryRecord;}
+export type CorporateRegistryStateSelection =
+    {status:'available'|'deleted';record:CorporateRegistryRecordReference} |
+    {status:'unavailable';reason:'no-baseline'|'not-in-baseline'} |
+    {status:'unresolved';reason:'coverage-gap'|'conflicting-deliveries'|'invalid-baseline-record'|'unknown-process'|'record-after-data-date'|'invalid-latest-flags'|'mixed-deletion-records'|'deletion-extra-fields'|'change-without-base-record'|'duplicate-assignment';deliveryIndex?:number;gap?:{from:string;to:string}};
+export interface CorporateRegistryStateResult {
+    query:CorporateRegistryStateQuery;sources:CorporateRegistryDownload['source'][];
+    deliveries:{deliveryIndex:number;sourceIndices:number[];dataDate:string;observedAt:string;kind:CorporateRegistrySource['kind'];records:CorporateRegistryRecordReference[]}[];
+    excludedDeliveries:{deliveryIndex:number;reason:'purpose-mismatch'|'source-after-cutoff'|'data-after-as-of'}[];
+    appliedDeliveries:number[];history:CorporateRegistryRecordReference[];
+    coverage?:{from:string;through:string};selection:CorporateRegistryStateSelection;
+}
+const nextRegistryDate=(value:string,days=1)=>new Date(Date.parse(value+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
+/** 全国全件を起点に連続日次差分を適用。訂正は法人の全履歴を置換し、承継先は統合しません。 */
+export function reconstructCorporateRegistryState(inputs:readonly CorporateRegistryDelivery[],query:CorporateRegistryStateQuery):CorporateRegistryStateResult {
+    const q=structuredClone(query);
+    if(!object(q)||Object.keys(q).some(k=>!['corporateNumber','asOf','knownAt','registryPurpose'].includes(k))||typeof q.corporateNumber!=='string'||!/^\d{13}$/.test(q.corporateNumber)||typeof q.asOf!=='string'||!date(q.asOf)||!['sample','download'].includes(q.registryPurpose)||parseDocumentTimestamp(q.knownAt,true)===undefined||!Array.isArray(inputs))fail();
+    const length=inputs.length;if(!Number.isSafeInteger(length)||length<0||length>100)fail();let bytes=0,files=0;
+    const captured=Array.from({length},(_,i)=>{
+        if(!Object.hasOwn(inputs,i))fail();const d=inputs[i];if(!object(d)||Object.keys(d).some(k=>!['scope','expectedParts','parts'].includes(k)))fail();
+        const {scope,expectedParts,parts}=d;
+        if(scope!=='national'||typeof expectedParts!=='number'||!Number.isSafeInteger(expectedParts)||expectedParts<1||expectedParts>100||!Array.isArray(parts))fail();
+        const captured=captureRegistryInputs(parts);
+        if(captured.length!==expectedParts)fail();files+=captured.length;bytes+=captured.reduce((n,p)=>n+Buffer.byteLength(p.xml),0);
+        if(files>100||bytes>256*1024*1024)fail();return captured;
+    });
+    const sources:CorporateRegistryDownload['source'] []=[],excludedDeliveries:CorporateRegistryStateResult['excludedDeliveries']=[],cutoff=parseDocumentTimestamp(q.knownAt,true)!;
+    const candidates=captured.map((parts,deliveryIndex)=>{
+        const parsed=parts.map(p=>parseCorporateRegistryDownloadXml(p.xml,p.source)),sourceIndices=parsed.map(p=>{sources.push(p.source);return sources.length-1}),first=parsed[0].source;
+        if(parsed.some(p=>p.source.dataDate!==first.dataDate||p.source.kind!==first.kind||p.source.purpose!==first.purpose))fail();
+        const observed=Math.max(...parsed.map(p=>parseDocumentTimestamp(p.source.observedAt,true)!)),all=parsed.flatMap((p,i)=>p.records.map(record=>({sourceIndex:sourceIndices[i],record})));
+        const keys=all.map(r=>first.kind==='full'?r.record.values.corporateNumber:r.record.values.sequenceNumber);
+        if(new Set(keys).size!==keys.length)fail();
+        const reason=first.purpose!==q.registryPurpose?'purpose-mismatch':observed>cutoff?'source-after-cutoff':first.dataDate>q.asOf?'data-after-as-of':undefined;
+        if(reason)excludedDeliveries.push({deliveryIndex,reason});
+        const records=all.filter(r=>r.record.values.corporateNumber===q.corporateNumber).sort((a,b)=>Number(a.record.values.sequenceNumber)-Number(b.record.values.sequenceNumber));
+        const signature=JSON.stringify(all.map(r=>r.record.values).sort((a,b)=>a.corporateNumber.localeCompare(b.corporateNumber)||Number(a.sequenceNumber)-Number(b.sequenceNumber)));
+        return {deliveryIndex,sourceIndices,dataDate:first.dataDate,observedAt:new Date(observed).toISOString(),kind:first.kind,records,observed,signature,excluded:!!reason};
+    });
+    const result:CorporateRegistryStateResult={query:q,sources,deliveries:candidates.map(({observed,signature,excluded,...d})=>d),excludedDeliveries,appliedDeliveries:[],history:[],selection:{status:'unavailable',reason:'no-baseline'}};
+    const eligible=candidates.filter(d=>!d.excluded),baselines=eligible.filter(d=>d.kind==='full').sort((a,b)=>b.dataDate.localeCompare(a.dataDate)||b.observed-a.observed);
+    const base=baselines[0];if(!base)return result;
+    const chosen=new Map<string,typeof base>();
+    for(const d of eligible.filter(d=>d.dataDate>=base.dataDate).sort((a,b)=>b.observed-a.observed)){
+        const key=d.kind+':'+d.dataDate,prior=chosen.get(key);
+        if(prior&&prior.observed===d.observed&&prior.signature!==d.signature){result.selection={status:'unresolved',reason:'conflicting-deliveries',deliveryIndex:d.deliveryIndex};return result;}
+        if(!prior)chosen.set(key,d);
+    }
+    result.coverage={from:base.dataDate,through:base.dataDate};
+    const reject=(reason:Extract<CorporateRegistryStateSelection,{status:'unresolved'}>['reason'],deliveryIndex:number)=>{result.selection={status:'unresolved',reason,deliveryIndex};return result;};
+    let current:CorporateRegistryRecordReference|undefined=base.records[0],deleted=false;
+    if(current&&(current.record.values.latest!=='1'||current.record.values.process==='99'))return reject('invalid-baseline-record',base.deliveryIndex);
+    const check=(records:CorporateRegistryRecordReference[],day:string)=>records.some(r=>!r.record.processKnown)?'unknown-process' as const:records.some(r=>['changeDate','closeDate','assignmentDate'].some(k=>r.record.values[k as CorporateRegistryField]>day))?'record-after-data-date' as const:undefined;
+    const baseProblem=check(base.records,base.dataDate);if(baseProblem)return reject(baseProblem,base.deliveryIndex);
+    result.history=[...base.records];result.appliedDeliveries.push(base.deliveryIndex);
+    const diffs=[...chosen.values()].filter(d=>d.kind==='diff'&&d.dataDate>base.dataDate).sort((a,b)=>a.dataDate.localeCompare(b.dataDate));
+    for(const d of diffs){
+        const next=nextRegistryDate(result.coverage.through);
+        if(d.dataDate!==next){result.selection={status:'unresolved',reason:'coverage-gap',gap:{from:next,to:nextRegistryDate(d.dataDate,-1)}};return result;}
+        const records=d.records,problem=check(records,d.dataDate);if(problem)return reject(problem,d.deliveryIndex);
+        if(records.length){
+            const deletions=records.filter(r=>r.record.values.process==='99');
+            if(deletions.length){
+                if(records.length!==1)return reject('mixed-deletion-records',d.deliveryIndex);
+                if(deletions[0].record.deletionExtraFields.length)return reject('deletion-extra-fields',d.deliveryIndex);
+                current=deletions[0];deleted=true;result.history=[];
+            }else{
+                if(records.filter(r=>r.record.values.latest==='1').length!==1||records.at(-1)!.record.values.latest!=='1')return reject('invalid-latest-flags',d.deliveryIndex);
+                const corrected=records.some(r=>r.record.values.correct==='1');
+                if(!corrected){
+                    if((!current||deleted)&&records[0].record.values.process!=='01')return reject('change-without-base-record',d.deliveryIndex);
+                    if(records.some((r,i)=>r.record.values.process==='01'&&(i!==0||current&&!deleted)))return reject('duplicate-assignment',d.deliveryIndex);
+                }
+                result.history=corrected?[...records]:[...result.history,...records];current=records.at(-1)!;deleted=false;
+            }
+        }
+        result.appliedDeliveries.push(d.deliveryIndex);result.coverage.through=d.dataDate;
+    }
+    if(result.coverage.through<q.asOf){result.selection={status:'unresolved',reason:'coverage-gap',gap:{from:nextRegistryDate(result.coverage.through),to:q.asOf}};return result;}
+    result.selection=current?{status:deleted?'deleted':'available',record:current}:{status:'unavailable',reason:'not-in-baseline'};
+    return result;
 }
