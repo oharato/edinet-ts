@@ -400,3 +400,44 @@ edinet-ts import-corporate-registry-file \
 署名が保証するのはXMLと署名鍵の対応です。`source` の取得時刻・対象日・URL、ZIPの網羅性、全国配布の全パート取得は別の取得監査で確認します。Storeへ直接渡す未検証入力が、この手順を経たものとして扱われることはありません。原ZIP・原XML・署名・公開鍵・取得記録・検証receiptを別途保持してください。
 
 保存済みの公式実差分で、署名検証→取込manifest→CLI取込の経路を確認しました。独立Pythonで2,181記録・65,430項目と出典/hashの一致を確認しています。証跡は `data/roadmap/corporate-registry-signature-store-20261031/` です。自動取得・ZIP全パートの監査・全国実状態・稼働環境への反映は引き続き残ります。
+
+
+## 保存ZIPの全エントリを検査する
+
+`verify-corporate-registry-zip.py` は、保存した一つの配布ZIPを対象に、取得時hash・全エントリ・各XMLの署名を検査します。前節と同じLinux/Python 3/GnuPG 2環境を使い、通信は行いません。
+
+入力manifestには `archive`、取得時の `sha256`、`publicKey`、信頼する `fingerprint`、`source`、`expectedXmlParts` を指定します。パスはmanifest基準です。次は保存実差分の検証に使った例で、取得日時とhashは自分の取得記録に置き換えてください。
+
+```json
+{
+  "archive": "current-diff.zip",
+  "sha256": "b7d78d4418bd6ff3b22319db46f2218be7448ae28feb286cb9df153de3d95d96",
+  "publicKey": "nta-public-key.asc",
+  "fingerprint": "F4109E821F0DE67C4BA1947C4BCD87A24D615230",
+  "source": {
+    "sourceUrl": "https://www.houjin-bangou.nta.go.jp/download/sabun/",
+    "observedAt": "2026-10-29T12:58:31.721Z",
+    "dataDate": "2026-10-28",
+    "kind": "diff",
+    "purpose": "download"
+  },
+  "expectedXmlParts": ["diff_20261028.xml"]
+}
+```
+
+```sh
+python3 scripts/roadmap/verify-corporate-registry-zip.py \
+  --manifest zip-input.json --out verified-zip
+edinet-ts import-corporate-registry-file \
+  --db corporate-registry.sqlite --manifest verified-zip/part-000-import.json
+```
+
+ZIPの全エントリが、宣言したXML名と各 `名前.xml.asc` の組に完全一致する必要があります。不足・重複・余分なファイル、ディレクトリ・symlink・暗号化entry、危険なパスは拒否します。ZIP内のパスへ直接展開せず、新規ディレクトリの連番ファイルへ書き出し、元entry名は取込manifestの `part` に保持します。CSV・入れ子ZIP・説明書入りのサンプル配布ZIPは、この入口の対象外です。
+
+`receipt.json` には原ZIPのhash、全entryの名前/サイズ/CRC/hash、全パートの署名検証結果、取込manifest一覧を保存します。XML・署名・パート別receiptも残します。全署名と原ZIPの不変を確認してから取込manifestを出力し、途中失敗時は今回作った出力を除去します。既存ディレクトリは上書きしません。DB取込自体は既存CLIが各ファイルを原子的に実行し、複数ファイルをまとめたDB transactionではありません。
+
+上限はZIP 2GiB・XML最大100パート・全entry最大200件・中央ディレクトリ4MiBです。中央ディレクトリの大きさは展開処理を開く前に検査し、ZIP64終端レコードは受け付けません。各XMLは8GiB、署名は1MiB以下です。展開予定量に加えて34GiBの空き容量を要求し、展開中も留保容量を確認します。
+
+実ZIPの全2エントリと署名を検査し、CLI取込後の2,181記録/65,430項目を独立Pythonで原ZIP・展開原本・SQLiteと照合しました。境界テスト11件では、後続パートの署名失敗による全出力の除去と、展開途中の容量不足も確認しました。証跡は `data/roadmap/corporate-registry-zip-store-20261031/` です。
+
+この検査の範囲は一つのZIP内です。全国配布を構成する複数ZIPの一覧、取得時刻/対象日、取得漏れ、取得の自動化・再開は別途確認が必要です。原ZIPと取得記録は引き続き保持してください。
