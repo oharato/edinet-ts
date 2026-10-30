@@ -34,6 +34,8 @@ const result = screenFacilityDetails([document], {
 
 `organizationVerification`は`declared-source-reference-matched`です。宣言のない表は`not-reviewed`として残します。
 
+表宣言は1〜200件、検索原本と検索条件は各100件以下です。配列index上の全要素を検査し、空要素や不正なlengthを拒否します。独自iteratorで検査対象を置き換えません。
+
 会計基準も呼出元の確認済み宣言です。`declaredAccountingStandard`へ残し、IFRS/US-GAAPや未確認基準を混ぜません。原本の会計方針の意味を自動検証したことにはしません。
 
 ## 値と出典

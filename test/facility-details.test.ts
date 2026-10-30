@@ -95,3 +95,32 @@ describe('原表直前の基準日との一致',()=>{
   d.declarations=[{...d.declarations[0],asOfDate:'2025-12-31'}];expect(extractFacilityDetails(d).rows[0].asOfDate).toBe('2025-12-31');
  });
 });
+describe('配列indexにある入力を検査する',()=>{
+ it('宣言の独自iteratorで不正indexを隠せない',()=>{
+  const d=document(),good=d.declarations[0],declarations=[{...good,asOfDate:'invalid'}];
+  declarations[Symbol.iterator]=function*(){yield good};
+  expect(()=>extractFacilityDetails({...d,declarations})).toThrow();
+ });
+ it('原本の独自iteratorで不正indexを隠せない',()=>{
+  const documents=[null as never];documents[Symbol.iterator]=function*(){yield document()};
+  expect(()=>screenFacilityDetails(documents,{asOfDate:'2026-03-31'})).toThrow();
+ });
+ it('疎な条件を空条件として扱わない',()=>{
+  expect(()=>screenFacilityDetails([document()],{asOfDate:'2026-03-31',conditions:new Array(1)})).toThrow();
+ });
+});
+it('検索条件の独自iteratorで不正indexを隠せない',()=>{
+ const conditions=[{field:F.LandAreaM2,operator:'invalid' as never,value:0}];conditions[Symbol.iterator]=function*(){};
+ expect(()=>screenFacilityDetails([document()],{asOfDate:'2026-03-31',conditions})).toThrow();
+});
+it('宣言のlengthと各indexを一度だけ読み、iteratorを呼ばない',()=>{
+ const d=document();let lengths=0,indices=0;const declarations=new Proxy([...d.declarations],{get(target,key,receiver){if(key==='length')lengths++;if(key==='0')indices++;if(key===Symbol.iterator)throw Error('iterator must not be read');return Reflect.get(target,key,receiver)}});
+ expect(extractFacilityDetails({...d,declarations}).rows).toHaveLength(1);expect(lengths).toBe(1);expect(indices).toBe(1);
+});
+it.each([NaN,Infinity,-1,0.5,201])('不正な宣言length %sを拒否する',count=>{
+ const d=document(),declarations=new Proxy([...d.declarations],{get(target,key,receiver){return key==='length'?count:Reflect.get(target,key,receiver)}});
+ expect(()=>extractFacilityDetails({...d,declarations})).toThrow();
+});
+it('200表宣言を受け付け、201表は拒否する',()=>{
+ const raw=Array.from({length:200},()=>table()).join(''),d=document('A',raw);d.declarations=Array.from({length:200},(_,tableIndex)=>({...d.declarations[0],tableIndex}));expect(extractFacilityDetails(d).rows).toHaveLength(200);expect(()=>extractFacilityDetails({...d,declarations:[...d.declarations,{...d.declarations[0],tableIndex:200}]})).toThrow();
+});

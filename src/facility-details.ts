@@ -26,6 +26,15 @@ const organizations: readonly FacilityOrganization[] = ["reporting-company", "do
 const fields = Object.values(FacilityField);
 const canonicalHeader = (s: string) => s.normalize("NFKC").replace(/\s/g, "");
 const validDate = (s: unknown): s is string => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && Number.isFinite(Date.parse(s)) && new Date(s).toISOString().slice(0, 10) === s;
+function captureArray<T>(input: readonly T[], maximum: number): T[] {
+    if (!Array.isArray(input)) throw new Error("設備入力には配列が必要です");
+    const count = input.length;
+    if (!Number.isSafeInteger(count) || count < 0 || count > maximum) throw new Error("設備入力の配列上限を確認してください");
+    return Array.from({ length: count }, (_, index) => {
+        if (!Object.hasOwn(input, index)) throw new Error("設備入力の配列要素が欠落しています");
+        return input[index];
+    });
+}
 function layout(table: DisclosureTable): { site: number; segment: number; company?: number; columns: Record<FacilityField, number> } | undefined {
     const width = table.grid[0]?.length;
     if (![9, 11, 12].includes(width) || table.grid.length < 4) return;
@@ -52,8 +61,10 @@ export function extractFacilityDetails(input: FacilityDetailDocument): FacilityD
     if (accountingStandard !== AccountingStandard.JGAAP) throw new Error("設備明細は確認済みのJ-GAAPだけを指定してください");
     if (!selection) throw new Error("設備本文の指定が必要です");
     const { docID, contextRef, kind } = selection;
-    if (kind !== DisclosureTableKind.Facilities || !Array.isArray(declared) || !declared.length || declared.length > 200) throw new Error("設備本文と1〜200件の確認済み表宣言が必要です");
-    const declarations = Array.from(declared as readonly FacilityTableDeclaration[], d => { if (!d || Object.keys(d).some(k => !["tableIndex", "asOfDate", "organization", "rawSha256"].includes(k))) throw new Error("設備表宣言が不正です");
+    if (kind !== DisclosureTableKind.Facilities) throw new Error("設備本文と1〜200件の確認済み表宣言が必要です");
+    const captured = captureArray(declared, 200);
+    if (!captured.length) throw new Error("1〜200件の確認済み表宣言が必要です");
+    const declarations = captured.map(d => { if (!d || Object.keys(d).some(k => !["tableIndex", "asOfDate", "organization", "rawSha256"].includes(k))) throw new Error("設備表宣言が不正です");
         const { tableIndex, asOfDate, organization, rawSha256 } = d;
         if (!Number.isSafeInteger(tableIndex) || tableIndex < 0 || !validDate(asOfDate) || !organizations.includes(organization) || typeof rawSha256 !== "string" || !/^[a-f0-9]{64}$/.test(rawSha256)) throw new Error("設備表の位置/日付/対象組織/hashが不正です");
         return { tableIndex, asOfDate, organization, rawSha256 }; });
@@ -100,11 +111,11 @@ export function screenFacilityDetails(documents: readonly FacilityDetailDocument
     extractions: FacilityDetailsExtraction[]; rows: { sourceIndex: number; row: FacilityDetailRow }[]; matched: number; filtered: number;
     excluded: { sourceIndex: number; rowKey: string; fields: FacilityField[] }[];
 } {
-    if (!Array.isArray(documents) || documents.length > 100 || !options) throw new Error("設備検索は100原本以下です");
+    if (!options) throw new Error("設備検索は100原本以下です");
     const query = normalizeFacilityOptions(options), { asOfDate } = query;
-    const inputs = Array.from(documents as readonly FacilityDetailDocument[], d => { if (!d) throw new Error("設備原本が不正です");
+    const inputs = captureArray(documents, 100).map(d => { if (!d) throw new Error("設備原本が不正です");
         const { xml, declarations, selection, accountingStandard } = d; if (!selection || !Array.isArray(declarations)) throw new Error("設備原本が不正です");
-        const { docID, contextRef, kind } = selection; return { xml, accountingStandard, selection: { docID, contextRef, kind }, declarations: Array.from(declarations as readonly FacilityTableDeclaration[], item => ({ ...item })) }; });
+        const { docID, contextRef, kind } = selection; return { xml, accountingStandard, selection: { docID, contextRef, kind }, declarations: captureArray(declarations, 200).map(item => ({ ...item })) }; });
     if (inputs.some(d => typeof d.xml !== "string") || inputs.reduce((n, d) => n + Buffer.byteLength(d.xml), 0) > 256 * 1024 * 1024 ||
         new Set(inputs.map(d => JSON.stringify([d.selection.docID, d.selection.contextRef]))).size !== inputs.length || inputs.some(d => d.declarations.some(p => p.asOfDate !== asOfDate))) throw new Error("設備検索の原本重複/混在/上限を確認してください");
     inputs.sort((a, b) => a.selection.docID < b.selection.docID ? -1 : a.selection.docID > b.selection.docID ? 1 : a.selection.contextRef < b.selection.contextRef ? -1 : a.selection.contextRef > b.selection.contextRef ? 1 : 0);
@@ -114,8 +125,8 @@ function normalizeFacilityOptions(options: FacilityScreeningOptions) {
     if (!options) throw new Error("設備検索の条件が必要です");
     const { asOfDate, contains, organization, sort, offset = 0, limit = 100, conditions: requested = [] } = options;
     if (!validDate(asOfDate) || contains !== undefined && (typeof contains !== "string" || !contains.trim() || contains.length > 1000) || organization !== undefined && !organizations.includes(organization) ||
-        !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000 || !Array.isArray(requested) || requested.length > 100) throw new Error("設備検索の条件が不正です");
-    const conditions = Array.from(requested as NonNullable<FacilityScreeningOptions["conditions"]>, c => { if (!c) throw new Error("設備条件が不正です"); const { field, operator, value } = c;
+        !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error("設備検索の条件が不正です");
+    const conditions = captureArray(requested, 100).map(c => { if (!c) throw new Error("設備条件が不正です"); const { field, operator, value } = c;
         if (!fields.includes(field) || !["gt", "gte", "lt", "lte", "eq"].includes(operator) || !Number.isFinite(value)) throw new Error("設備条件が不正です"); return { field, operator, value }; });
     const sorting = sort ? { field: sort.field, order: sort.order } : undefined;
     if (sorting && (!fields.includes(sorting.field) || !["asc", "desc"].includes(sorting.order))) throw new Error("設備順序が不正です");
