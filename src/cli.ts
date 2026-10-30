@@ -659,6 +659,7 @@ program.command("reconstruct-corporate-registry")
     .description("全国全件と連続する日次差分から法人番号の状態を再構成します")
     .requiredOption("--manifest <path>", "scope/expectedParts/parts(file/source)を持つ配布単位の配列JSON")
     .requiredOption("--query <path>", "corporateNumber/asOf/knownAt/registryPurposeのJSON")
+    .option("--calendar <path>", "保存した国税庁方針HTML・内閣府祝日CSVのfile/sourceUrl/observedAt JSON")
     .option("--pretty", "JSONを整形")
     .action(options=>{
         try{
@@ -673,8 +674,19 @@ program.command("reconstruct-corporate-registry")
                     return {xml:new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(input.bytes),source:part.source};
                 })};
             });
-            console.log(JSON.stringify(reconstructCorporateRegistryState(deliveries,query),null,options.pretty?2:undefined));
-        }catch{console.error("法人番号・日付/cutoff・全国全件と差分の全分割・XML出典を確認してください（入力内容は非表示）");process.exitCode=1;}
+            let calendar;
+            if(options.calendar!==undefined){
+                const file=path.resolve(options.calendar),input=read(file);
+                if(!input||typeof input!=="object"||Array.isArray(input)||Object.keys(input).some(k=>!["policy","holidays"].includes(k)))throw Error();
+                const load=(key:"policy"|"holidays",encoding:string)=>{
+                    const source=input[key];if(!source||typeof source!=="object"||Array.isArray(source)||Object.keys(source).some(k=>!["file","sourceUrl","observedAt"].includes(k))||typeof source.file!=="string"||!source.file.trim())throw Error();
+                    return {text:new TextDecoder(encoding,{fatal:true,ignoreBOM:true}).decode(readRegularFile(path.resolve(path.dirname(file),source.file),1024*1024).bytes),sourceUrl:source.sourceUrl,observedAt:source.observedAt};
+                };
+                const policy=load("policy","utf-8"),holidays=load("holidays","shift_jis");
+                calendar={policy:{html:policy.text,sourceUrl:policy.sourceUrl,observedAt:policy.observedAt},holidays:{csv:holidays.text,sourceUrl:holidays.sourceUrl,observedAt:holidays.observedAt}};
+            }
+            console.log(JSON.stringify(reconstructCorporateRegistryState(deliveries,query,calendar),null,options.pretty?2:undefined));
+        }catch{console.error("法人番号・日付/cutoff・全国全件と差分の全分割・XML出典・未作成日カレンダーを確認してください（入力内容は非表示）");process.exitCode=1;}
     });
 
 program.command("screen-published-financial-index")

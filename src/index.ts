@@ -154,3 +154,6 @@ export type {CompanyFinancialScreeningOptions,CompanyFinancialScreeningRow,Compa
 
 export {compareCompanyFinancialsByIndustry} from "./company-industry-comparison";
 export type {CompanyIndustryComparisonOptions,CompanyIndustryComparisonResult,CompanyIndustryGroup,IndustryMetricStatistics,IndustryExactValue} from "./company-industry-comparison";
+
+export {parseCorporateRegistryPublicationCalendar} from "./corporate-registry-calendar";
+export type {CorporateRegistryPublicationCalendarInput,CorporateRegistryPublicationCalendar,CorporateRegistryCalendarSource} from "./corporate-registry-calendar";

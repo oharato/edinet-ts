@@ -10,7 +10,7 @@
 const source = {
   sourceUrl: 'https://www.houjin-bangou.nta.go.jp/download/',
   observedAt: '2026-10-29T12:00:00Z', // 実際にこのデータを得た時刻
-  dataDate: '2026-10-28',           // 取得ファイルの基準日/差分対象日を確認して宣言
+  dataDate: '2026-10-28',           // 全件の基準日。diffではファイル作成日を確認して宣言
   kind: 'diff' as const,
   purpose: 'download' as const     // 公式の架空サンプルは必ず sample
 };
@@ -113,9 +113,9 @@ const result = reconstructCorporateRegistryState([
 
 `asOf` はデータ対象日の上限、`knownAt` は実際に得た時刻の上限です。変更年月日を使って、後日知った訂正を過去へ遡及させる入口ではありません。分割の一つでもcutoff後なら、その配布単位全体を除外します。目的違い・対象日超過も `excludedDeliveries` に分けます。
 
-適格な全件のうち最も新しい基準日を起点にし、その翌日からasOfまで**連続する日別配布**を必要とします。全件はその基準日の更新を含むものとし、同日以前の差分を重ねて適用しません。更新のない日も、正しく取得・確認した空XMLを入力します。休日だからという理由で欠落日を推測で埋めません。
+適格な全件のうち最も新しい基準日を起点にし、その翌日からasOfまでの各日を確認します。配布日はXML、未作成日は保存した公式カレンダーを使います。全件はその基準日の更新を含むものとし、同日以前の差分を重ねて適用しません。カレンダーを省略した場合は、従来どおり一日の欠落でも停止します。実際の空XMLは入力できますが、未取得日を架空の空XMLで補いません。
 
-国税庁は[差分データの案内](https://www.houjin-bangou.nta.go.jp/download/sabun/)で、休日・祝日および12月29日〜1月3日はファイルを作成しないと説明しています。**現入口は未作成日のカレンダー証跡に未対応**のため、それらの日をまたぐ場合も不足日として停止します。架空の空XMLで回避しないでください。公式の配布カレンダー・未作成日確認を取得監査と接続することは、ストリーミング保存とともに次の工程です。
+国税庁は[差分データの案内](https://www.houjin-bangou.nta.go.jp/download/sabun/)で、休日・祝日および12月29日〜1月3日はファイルを作成しないと説明しています。[未作成日カレンダー](#未作成日カレンダーを付ける)を明示すると、保存した方針と祝日CSVでこの空白を確認できます。取得監査・大容量全件のストリーミング保存への接続は残工程です。
 
 同じ対象日・full/diffで複数の観測があれば、cutoff内の最新観測を使います。同じ観測瞬間に内容が異なる配布がある場合は、入力順で決めず未解決にします。
 
@@ -158,3 +158,63 @@ API・CLIとも最大100配布・合計100ファイル/256MiB、各XML64MiB/10�
 保存済みの実日次差分2,181記録については、XML hashを元の取得記録と照合し、全件起点がないため状態を返さないことを確認しました。この実データに架空の起点や空の日を補っていません。訂正・削除の適用そのものは合成境界テストでの確認であり、全国の実全件・連続日次差分による本番再構成、ストリーミング保存、取得監査との接続、EDINET法人同一性の確認は残工程です。証跡は `data/roadmap/corporate-registry-state-real-20261030/` に保存しています。
 
 隔離コピーでNode 26.12.1の全165ファイル・4,337テスト、build・本体/公開型・ESM/CJSが成功しました。並行作業の分割換算とdataflow変更はこの検証の対象外です。
+
+## 未作成日カレンダーを付ける
+
+第3引数に、保存した国税庁の差分案内HTMLと内閣府の祝日CSVを渡します。APIはネットワーク取得せず、CSVは呼出元でShift_JISから復号します。
+
+```ts
+import {reconstructCorporateRegistryState} from 'edinet-ts';
+
+const calendar = {
+  policy: {
+    html: savedNtaHtml,
+    sourceUrl: 'https://www.houjin-bangou.nta.go.jp/download/sabun/',
+    observedAt: policyReceipt.observedAt,
+  },
+  holidays: {
+    csv: decodedCabinetCsv,
+    sourceUrl: 'https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv',
+    observedAt: holidayReceipt.observedAt,
+  },
+};
+const result = reconstructCorporateRegistryState(deliveries, query, calendar);
+```
+
+`parseCorporateRegistryPublicationCalendar(calendar)` で入力だけを検査することもできます。保存したHTMLが対応中の未作成日方針を含み、CSVが所定の2列・有効日付・昇順・重複なしであることを確認します。列や方針が変われば、推測で読み続けず拒否します。年の途中を現在の暦から自動計算することもせず、CSVの年範囲だけを使います。
+
+### 未作成日の扱い
+
+| 条件 | 処理 |
+|---|---|
+| 12月29日〜1月3日 | 年末年始の未作成日として確認 |
+| 土曜・日曜 | 週末の未作成日として確認 |
+| 内閣府CSVに記載された祝日・休日 | 記載名を保持して確認。振替休日・国民の休日・特例移動もCSVを使う |
+| それ以外でXMLがない | 取得漏れの可能性を残し、`coverage-gap` |
+| 未作成日なのにdiff XMLがある | `delivery-on-non-publication-day`。配布日・対象日の指定や例外の確認が必要 |
+
+未作成日は会社の変更や削除として数えず、`nonPublicationDays` に日付・理由・必要なら祝日名を残します。これは停止前までに確認した日で、未処理範囲全体の休日一覧ではありません。元の記録と履歴は維持し、`coverage.through` だけを進めます。
+
+`calendar` には対応ルール版・年範囲・両出典URL・観測時刻・復号後テキストのhashを返します。HTML/CSVの元byte列は別途保持してください。hashは内部整合の指紋であり、国税庁・内閣府による提供者認証ではありません。全国全分割の宣言や取得監査を置き換える機能でもありません。
+
+どちらかの実観測がknownAt後なら `calendar-after-cutoff`、対象期間がCSVの年範囲外なら `calendar-outside-coverage` で未解決にします。日本時間でknownAtより後の日をasOfに指定した場合も `as-of-after-cutoff` とし、予定上の休業日で未来状態を確定しません。後日取得したカレンダーで過去に知っていたことにはできません。
+
+### CLIのカレンダー指定
+
+```sh
+edinet-ts reconstruct-corporate-registry \
+  --manifest deliveries.json --query registry-query.json \
+  --calendar calendar.json --pretty
+```
+
+`calendar.json` は `policy` と `holidays` を持つJSONで、両方に `{file, sourceUrl, observedAt}` を指定します。相対パスはcalendar.jsonの場所を基準にします。policyのfileは原UTF-8 HTML、holidaysのfileは原Shift_JIS CSVです。各ファイルは1MiB以下で、不正な文字コードも拒否します。この2ファイルはXMLの合計256MiB上限とは別に制限します。
+
+### 公式入力との照合
+
+2026-10-30に取得した公式方針と祝日CSV（1955〜2027年・1,067日）を独立Python/CP932/CSV処理で照合しました。国税庁の実配布日一覧の40日と、間にある未作成日20日も一致しました。この日程のAPI/CLI検証は**合成の空XML・sample目的**で行っており、実全国の会社状態を再構成した結果ではありません。
+
+別に、公式の全件サンプル48ファイルをそのまま使い、従来は日付欠落としていた2017-04-29〜30の週末を確認して、元の原30項目・出典hash・履歴を維持できることを独立XML処理で照合しました。平日2017-05-01等の取得漏れは解消した扱いにせず、後日観測のカレンダーも過去cutoffから除外しました。記録は `data/roadmap/corporate-registry-calendar-source-20261030/` と `corporate-registry-calendar-real-20261030/` です。
+
+実全国全件・連続差分での運用照合、署名・取得監査との統合、ストリーミング保存とEDINET法人同一性の確認は残っています。
+
+カレンダー追加の隔離検証: Node 26.12.1で全167ファイル・4,356テスト、関連73テスト、build・本体/公開型・ESM/CJSが成功しました。並行中の分割換算・dataflow変更はこの結果に含めません。
