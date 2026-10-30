@@ -30,6 +30,7 @@ import {captureDocumentVersionObservations} from "./document-version-selection";
 import {createHash} from "node:crypto";
 import {ObservedFinancialArchive,normalizeArchivedFinancialSnapshotOptions} from "./db/observed-financial-archive";
 import {FinancialSearchIndex,normalizeFinancialIndexSearch,isFinancialIndexGenerationId} from "./db/financial-search-index";
+import {screenCompanyFinancials} from "./company-financial-screening";
 import {FinancialIndexBuild,normalizeFinancialIndexBuildInput} from "./db/financial-index-build";
 import { screenIfrsFinancialDetailDocuments } from "./ifrs-financial-detail-screening";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
@@ -612,6 +613,8 @@ program.command("screen-financial-index")
     .option("--order <order>", "ascまたはdesc")
     .option("--offset <number>", "開始位置", "0")
     .option("--limit <number>", "最大件数")
+    .option("--company-master <path>", "企業マスター完全観測の配列JSON（64MiB以下）")
+    .option("--company-query <path>", "asOf/業種等の属性条件JSON。knownAtは財務世代へ固定")
     .option("--pretty", "JSONを整形")
     .action(options => {
         let index:FinancialSearchIndex|undefined;
@@ -620,9 +623,16 @@ program.command("screen-financial-index")
             const cohort=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.cohort),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
             const query={metricIds:options.metrics.split(",").map((s:string)=>s.trim()),conditions:JSON.parse(options.conditions),sortBy:options.sortBy,order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)};
             normalizeFinancialIndexSearch(cohort,query);
-            index=new FinancialSearchIndex(path.resolve(options.db),{readOnly:true});
-            console.log(JSON.stringify(index.screen(cohort,query),null,options.pretty?2:undefined));
-        } catch { console.error("財務索引の世代・同一比較集合・保存済み項目・数値条件を確認してください（入力内容は非表示）"); process.exitCode=1; }
+            if((options.companyMaster===undefined)!==(options.companyQuery===undefined))throw new Error();
+            if(options.companyMaster!==undefined){
+                const readJSON=(file:string,limit:number)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),limit).bytes));
+                const snapshots=readJSON(options.companyMaster,64*1024*1024),company=readJSON(options.companyQuery,LOCAL_IMPORT_LIMITS.manifestBytes);
+                console.log(JSON.stringify(screenCompanyFinancials(path.resolve(options.db),snapshots,{cohort,company,search:query}),null,options.pretty?2:undefined));
+            }else{
+                index=new FinancialSearchIndex(path.resolve(options.db),{readOnly:true});
+                console.log(JSON.stringify(index.screen(cohort,query),null,options.pretty?2:undefined));
+            }
+        } catch { console.error("財務索引・比較集合・保存項目・数値条件・企業マスターの観測/業種を確認してください（入力内容は非表示）"); process.exitCode=1; }
         finally { index?.close(); }
     });
 

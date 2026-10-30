@@ -254,6 +254,8 @@ export class FinancialSearchIndex extends DedicatedSqliteDatabase {
     constructor(file: string, options: {
         readOnly?: boolean;
     } = {}) { super(file, options, { table: "financial_index_format", kind: "edinet-ts-financial-search-index-v1", schema }); }
+    /** readOnly私有コピーの指紋。書込可能DBとclose後は受け付けません。 */
+    snapshotSha256(): string { return this.readOnlySnapshotSha256(); }
     materialize(generation: string, archive: ObservedFinancialArchive, options: ArchivedFinancialSnapshotOptions): FinancialIndexGeneration {
         if (this.closed || this.readOnly)
             throw new Error("close済み/readOnlyの財務索引です");

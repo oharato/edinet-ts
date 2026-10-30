@@ -148,3 +148,6 @@ export * from "./document-formats";
 
 export {recoverDedicatedSqliteSnapshot,SQLITE_RECOVERY_MAX_BYTES} from "./db/sqlite-recovery";
 export type {DedicatedSqliteRecoveryKind,DedicatedSqliteRecoveryOptions,DedicatedSqliteRecoveryResult} from "./db/sqlite-recovery";
+
+export {screenCompanyFinancials} from './company-financial-screening';
+export type {CompanyFinancialScreeningOptions,CompanyFinancialScreeningRow,CompanyFinancialScreeningResult} from './company-financial-screening';

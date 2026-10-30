@@ -26,6 +26,7 @@
         "context-dimension-traces.ts",
         "subsidiary-human-capital-labels.ts",
         "document-type-registration.ts",
-        "document-pipeline.ts"
+        "document-pipeline.ts",
+        "company-financial.ts"
     ]
 }

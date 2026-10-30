@@ -14,6 +14,7 @@ flowchart LR
 
 - [企業マスター観測の永続保存](#store)
 - [企業マスター間の観測差分](#changes)
+- [業種・企業属性による財務検索](#financial-screening)
 
 各節のAPI・入力条件は区別します。検証件数と配布物の記録は実施当時のもので、現在の全体検証や稼働状態を示しません。
 
@@ -90,3 +91,75 @@ try {
 この追加は53eb2adより後に実装し、現在の固定配布物3cc4618へ反映済みです。
 
 完全な観測の永続保存・再読込検索・観測ID指定の差分は[企業マスター観測Store](COMPANY_MASTER.md#store)を利用できます。法的イベントの日付確定は引き続き対象外です。
+
+<a id="financial-screening"></a>
+
+## 業種・企業属性による財務検索
+
+`screenCompanyFinancials()` は、保存済み財務索引を業種や上場区分で絞り込みます。企業マスターと財務行をEDINETコードで結合し、企業条件に合う行を選んでからページを切ります。
+
+```mermaid
+flowchart LR
+    G[固定した財務世代] --> C[財務世代のcutoff]
+    C --> M[基準日・cutoffを満たす完全マスター]
+    G --> F[同一基準・期間の財務検索]
+    M --> J[EDINETコードで結合]
+    F --> J
+    J --> A[企業条件で絞る]
+    A --> P[件数集計・ページ指定]
+```
+
+```ts
+import {screenCompanyFinancials} from 'edinet-ts';
+
+const result = screenCompanyFinancials('financial-index.sqlite', snapshots, {
+  cohort, // generation/group/standard/scope/currency/period/periodType
+  company: {
+    sourceUrl: snapshots[0].sourceUrl,
+    asOf: '2026-10-29',
+    listingStatus: 'listed',
+    industry: '建設業',
+  },
+  search: {
+    metricIds: ['costOfSales'],
+    conditions: [{metric: 'costOfSales', operator: 'gte', value: 0}],
+    sortBy: 'costOfSales', order: 'desc', offset: 0, limit: 20,
+  },
+});
+```
+
+`snapshots` は `CompanyMasterSnapshot` の配列です。`cohort` と保存済み指標の指定方法は[財務検索索引](../pipeline/FINANCIAL_INDEX_BUILD.md)を参照してください。
+
+### 時点と件数の読み方
+
+- `company.knownAt` は指定できません。財務世代の `selection.cutoff` を使い、それより後に取得した企業情報を過去へ遡及しません。`asOf` はマスターの基準日の上限です。
+- 業種は公式CSVの原表記で完全一致します。証券コードが同じでもEDINETコードが異なる会社とは結合しません。
+- `rows` は企業条件・財務条件を満たすページです。各行の `company` と `financial` に、企業属性と保存財務行を分けて返します。`total` はページ指定前の一致行数です。
+- `master.total` は企業条件に合うマスター行数です。対象期間の財務提出義務や収録状況を表す分母ではありません。
+- `diagnostics` は対象企業の財務診断、`excludedRows` は必須項目の診断がある書類の重複なし件数です。欠損を0へ置き換えません。
+- 適格なマスター観測がなければ `master.status: "unavailable"` と空の結果を返します。適格なマスターがあるものの条件一致が0社の場合とは区別できます。
+- `indexSha256`・`generationSha256` とマスターの出典・hash・観測時刻を返します。readOnly私有コピーを検査して読み、元索引を書き換えません。
+
+同一時点の異なるマスター内容や、同じ出典CSV hashを別の基準日・会社集合へ付け替えた入力は拒否します。行順だけの差や同じCSVの後日の再観測は受け入れます。この検査は宣言間の整合確認であり、原CSVの真正性の認証ではありません。
+
+### CLIで使う
+
+既存の `screen-financial-index` に、次の二つを両方指定します。
+
+```sh
+edinet-ts screen-financial-index \
+  --db financial-index.sqlite --cohort cohort.json \
+  --metrics costOfSales --sort-by costOfSales --order desc \
+  --company-master snapshots.json --company-query company-query.json \
+  --offset 0 --limit 20 --pretty
+```
+
+`snapshots.json` は完全観測の配列JSON（64MiB以下）、`company-query.json` は上の `company` オブジェクトです。片方だけの指定は拒否します。両方を省略すると従来の財務検索です。
+
+### 確認した範囲と残り
+
+Node 26.12.1の隔離コピーで全161ファイル・4,303テスト、build・公開型を検証しました。同一時点の競合、入力の途中変化、将来観測、コード再利用、企業絞込後のページ指定、欠損診断、J-GAAP/IFRSのBSとCLIを含みます。
+
+保存済み実データでは、2026-10-29基準の上場・建設業150社から、J-GAAP連結・2025-04-01〜2026-03-31の売上原価76行を検索しました。全76値を別のPython/SQLite/XML処理で原本のhash・context・単位・原値と照合し、必須項目非採用16書類とページ指定も一致しました。後から取得した2026-10-30基準の公式マスターを追加しても、以前の財務cutoffでの選択と結果は不変でした。
+
+これは一業種・一期間・一指標の検証です。全市場の充足率保証やPDF金額照合ではありません。市場区分・法的イベント履歴・業種統計・通貨換算は残工程で、保存財務値の再抽出や未検証値の公開昇格は行いません。

@@ -104,22 +104,24 @@ export function parseEdinetCodeList(csv: string, provenance: { observedAt: strin
 export interface CompanyMasterQuery { asOf: string; knownAt: string; industry?: string; listingStatus?: CompanyMasterRecord["listingStatus"]; fiscalYearEndMonth?: number; nameContains?: string; securityCode?: string; }
 /** 保存済みスナップショットのas-of観測。正確な改称/合併/廃止日を推測しません。 */
 export function queryCompanyMaster(snapshots: readonly CompanyMasterSnapshot[], query: CompanyMasterQuery) {
-    if (!Array.isArray(snapshots) || !query || !validDate(query.asOf) || !validObservationTime(query.knownAt) ||
+    query = structuredClone(query);
+    if (!Array.isArray(snapshots) || !query || typeof query !== "object" || Array.isArray(query) || !validDate(query.asOf) || !validObservationTime(query.knownAt) ||
         query.fiscalYearEndMonth !== undefined && (!Number.isInteger(query.fiscalYearEndMonth) || query.fiscalYearEndMonth < 1 || query.fiscalYearEndMonth > 12) ||
-        query.listingStatus !== undefined && !["listed", "unlisted", "unknown"].includes(query.listingStatus) || query.securityCode !== undefined && !/^[0-9A-Z]{4,5}$/.test(query.securityCode) ||
+        query.listingStatus !== undefined && !["listed", "unlisted", "unknown"].includes(query.listingStatus) || query.securityCode !== undefined && (typeof query.securityCode !== "string" || !/^[0-9A-Z]{4,5}$/.test(query.securityCode)) ||
         [query.industry, query.nameContains].some(value => value !== undefined && typeof value !== "string") ||
         Object.keys(query).some(key => !["asOf", "knownAt", "industry", "listingStatus", "fiscalYearEndMonth", "nameContains", "securityCode"].includes(key))) throw new Error("不正な企業マスター検索条件です");
-    const inputs: readonly CompanyMasterSnapshot[] = Array.from(snapshots);
+    const inputs: readonly CompanyMasterSnapshot[] = structuredClone(Array.from({length: snapshots.length}, (_, i) => snapshots[i]));
     const eligible = inputs.filter(snapshot => {
-        if (!validDate(snapshot.asOf) || !validObservationTime(snapshot.observedAt) ||
-            Date.parse(snapshot.asOf + "T00:00:00+09:00") > Date.parse(snapshot.observedAt) || !/^[a-f0-9]{64}$/.test(snapshot.sourceSha256) || !Array.isArray(snapshot.records)) throw new Error("不正な保存マスターです");
+        if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot) || !validDate(snapshot.asOf) || !validObservationTime(snapshot.observedAt) ||
+            Date.parse(snapshot.asOf + "T00:00:00+09:00") > Date.parse(snapshot.observedAt) || typeof snapshot.sourceSha256 !== "string" || !/^[a-f0-9]{64}$/.test(snapshot.sourceSha256) || !Array.isArray(snapshot.records)) throw new Error("不正な保存マスターです");
+        if (typeof snapshot.sourceUrl !== "string") throw new Error("保存マスターの出典が不正です");
         const source = new URL(snapshot.sourceUrl), seen = new Set<string>();
         if (source.protocol !== "https:" || source.username || source.password || source.search || source.hash) throw new Error("保存マスターの出典が不正です");
         for (const row of snapshot.records) {
-            if (!row || !/^E\d{5}$/.test(row.edinetCode) || seen.has(row.edinetCode) || row.entityId !== `edinet:${row.edinetCode}` ||
+            if (!row || typeof row.edinetCode !== "string" || !/^E\d{5}$/.test(row.edinetCode) || seen.has(row.edinetCode) || row.entityId !== `edinet:${row.edinetCode}` ||
                 typeof row.name !== "string" || !row.name.trim() || typeof row.filerType !== "string" ||
-                !["listed", "unlisted", "unknown"].includes(row.listingStatus) || row.securityCode !== undefined && !/^[0-9A-Z]{5}$/.test(row.securityCode) ||
-                row.corporateNumber !== undefined && !/^\d{13}$/.test(row.corporateNumber) ||
+                !["listed", "unlisted", "unknown"].includes(row.listingStatus) || row.securityCode !== undefined && (typeof row.securityCode !== "string" || !/^[0-9A-Z]{5}$/.test(row.securityCode)) ||
+                row.corporateNumber !== undefined && (typeof row.corporateNumber !== "string" || !/^\d{13}$/.test(row.corporateNumber)) ||
                 row.industry !== undefined && typeof row.industry !== "string" || row.fiscalYearEndRaw !== undefined && typeof row.fiscalYearEndRaw !== "string" ||
                 row.fiscalYearEndMonth !== undefined && (!Number.isInteger(row.fiscalYearEndMonth) || row.fiscalYearEndMonth < 1 || row.fiscalYearEndMonth > 12)) throw new Error("保存マスターの企業情報が不正です");
             seen.add(row.edinetCode);
@@ -128,7 +130,15 @@ export function queryCompanyMaster(snapshots: readonly CompanyMasterSnapshot[], 
     }).sort((a, b) => b.asOf.localeCompare(a.asOf) || Date.parse(b.observedAt) - Date.parse(a.observedAt));
     const snapshot = eligible[0];
     if (!snapshot) return { status: "unavailable" as const, reason: "no-observation" as const, rows: [], total: 0 };
-    if (eligible.some(s => s.asOf === snapshot.asOf && Date.parse(s.observedAt) === Date.parse(snapshot.observedAt) && s.sourceSha256 !== snapshot.sourceSha256)) throw new Error("同時点のマスターが競合しています");
+    const contents = (s: CompanyMasterSnapshot) => JSON.stringify([...s.records].sort((a,b) => a.edinetCode.localeCompare(b.edinetCode)).map(r =>
+        [r.entityId,r.edinetCode,r.securityCode,r.corporateNumber,r.name,r.filerType,r.listingStatus,r.industry,r.fiscalYearEndRaw,r.fiscalYearEndMonth]));
+    if (eligible.some(s => {
+        if (s === snapshot) return false;
+        const sameTime = s.asOf === snapshot.asOf && Date.parse(s.observedAt) === Date.parse(snapshot.observedAt);
+        const sameSource = s.sourceUrl === snapshot.sourceUrl && s.sourceSha256 === snapshot.sourceSha256;
+        return sameTime && (s.sourceUrl !== snapshot.sourceUrl || s.sourceSha256 !== snapshot.sourceSha256) ||
+            (sameTime || sameSource) && (s.asOf !== snapshot.asOf || contents(s) !== contents(snapshot));
+    })) throw new Error("同時点または同じ原CSVのマスターが競合しています");
     const code = query.securityCode?.length === 4 ? query.securityCode + "0" : query.securityCode;
     const rows = snapshot.records.filter(row => (query.industry === undefined || row.industry === query.industry) &&
         (query.listingStatus === undefined || row.listingStatus === query.listingStatus) && (query.fiscalYearEndMonth === undefined || row.fiscalYearEndMonth === query.fiscalYearEndMonth) &&
