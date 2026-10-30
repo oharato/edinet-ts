@@ -840,3 +840,16 @@ Node 26で関連3ファイル65テスト、財務準備・再構築の境界2フ
 両日次unitをこの固定runtimeへ切り替えた。metadataを100社構築の自然な処理間隙で起動し、already-complete・追加要求0で終了0を確認。checkpointのSHAと取得予算200要求は不変だった。現在構築中の候補はSDK F1の専用サービスを継続し、1,540社完了・残り2,272社・失敗0件。通常財務timerは一時停止を維持し、この構築完了後に復帰する。新SDKによる次の日次構築・全社品質検証と公開catalog/stock-dataの切替は未完了。SDKと対応世代を組にして配布・切戻しする条件も維持する。
 
 証拠は `data/roadmap/sdk-ifrs-v2-runtime-candidate.json`、`sdk-ifrs-v2-preflight-proof.json`、`sdk-ifrs-v2-smoke-proof.json`、`sdk-ifrs-v2-deployment-proof.json`、`sdk-ifrs-v2-gap-start-proof.json`、`sdk-ifrs-v2-live-metadata-proof.json`。初回stagingでは必要のない開発scriptも含んでいたため、unitを切り替える前に除外し、最終manifestとlauncherの指紋を作り直して検査した。稼働中のruntimeは書き換えていない。
+
+
+## 通常日次の100社構築と117原本のpool継承（2026-10-30）
+
+通常の日次CLIも取得完了後に最大100社を構築するよう変更した（7e8e5b4）。ライブラリの既定20社は変更していない。101社の合成母集団を使い、実際の出力/metadataの二重flock下で、CLIが100社・残り1社で部分終了し、次の呼出しで同じ入力指紋と構築recipeのbyte列のまま完了することを確認した。systemctlのfixture状態だけを置き換え、通信は禁止した。Node 26で日次/再構築の2ファイル43テストが成功。新しい100社runtimeは22検査と現行metadata/旧索引の不変確認後に日次unitへ設定した。構築中の旧候補はF1の専用サービスを継続する。
+
+次の日次入力が年次の7,328原本だけを参照していたため、追加取得済み117原本を含む別poolを作った。元の圧縮seedをコピーし、取得完了候補の全宣言と差分117件を照合して、実availableAtと原本hashを保持してSDKから追記。元入力は変更していない。独立監査では、元の非圧縮archive全体のSHAを再確認し、83,828観測の全行一致、取得完了候補との全7,445宣言一致、元7,328内容の圧縮byte列保持、追加117内容の独立展開・SHA・取得完了候補/cacheとのbyte列一致、SQLite整合・派生cacheなしを確認した。poolは1,356,206,080 byte、rawは17,475,948,060 byte。原本保持の証拠であり、財務値の照合完了ではない。
+
+再利用のSDK検証では、実348観測・127関係書類を使う小さなprobeへ原本を転送し、追加117件すべてが保存済み・cutoff以前として取得計画に現れ、取得関数0回で完了した。別途、実metadataの指紋一致コピーと日次checkpointコピーで、3,812社・165,557観測を対象とする日次準備の先頭1,000観測までを実行。実際の二重flock下で新しい独立監査証跡とpoolのSHAが受け入れられることを確認した。本番のmetadata/checkpointは変更していない。
+
+新しいpoolと証跡を参照する日次設定 `daily-financial-promoted-config.json` を作り、同じcode manifestを持つ別固定runtimeから参照するよう両日次unitを設定した。起動前22検査とSDK/metadata/旧索引の不変確認が成功し、通常財務timerは構築完了まで一時停止を維持する。元pool、取得完了候補、構築入力、公開catalog・stock-dataは維持。構築は2,440社完了・残り1,372社・失敗0件で進行中。次候補の全取得計画と構築、pool継承・保存整理の毎日の自動化は残工程。
+
+証拠は `data/roadmap/daily100-preflight-proof.json`、`daily100-deployment-proof.json`、`promoted-source-pool-20261030/independent-audit.json`、同 `reuse-proof.json`、同 `controller-preflight-proof.json`、`promoted-pool-preflight-proof.json`、`promoted-pool-deployment-proof.json` に保持した。

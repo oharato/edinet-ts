@@ -233,3 +233,14 @@ edinet-ts archive-financial-document-observations --metadata data/daily.sqlite \
 候補の再作成には、少なくともsourceId・throughSequence・原本availableBy・書類選択cutoff・母集団・SDK/Node/SQLiteの固定版・観測pageSize・期待する観測指紋/候補指紋を保持します。原観測転送、原本転送、FinancialSourceJob.beginを順に実行して入力を封じ、取得後の別cutoff/候補から構築へ進みます。
 
 これらの境界を使う日次財務runnerは実装済みです。raw pool/候補の保存寿命管理と、品質を満たした公開までの反復運用は引き続き残ります。稼働版と検証範囲は[実装状況](../plans/IMPLEMENTATION_STATUS.md)で確認してください。
+
+
+## 日次の原本poolを引き継ぐ
+
+日次設定の `sourceArchivePath` は、その候補へコピーする原本poolです。取得済み原本を新しいpoolへ引き継ぐ場合は、新しいパスへ作成し、元poolと取得完了候補を保持します。取得時刻・原本hash・宣言をそのままコピーし、派生した解析cacheは引き継ぎません。
+
+固定取得の元archiveと異なるpoolを使う場合は、`sourceArchiveMigrationPath` と証跡ファイルの `sourceArchiveMigrationSha256` も指定します。監査は別に実行し、SDKは証跡のSHA、完了済み元archiveとの対応、poolの実SHAを検査します。証跡の `input` は固定取得の元archive、`output` は新しいpoolです。元の観測・宣言・内容を保持する圧縮移行だけでなく、別の取得完了候補から検証済み原本を追記したpoolも、この入出力を独立照合してから固定します。
+
+今回の継承では、元の83,828観測・7,328原本を保持したまま117原本を追記し、7,445宣言・7,445内容を持つ別poolを作りました。元の非圧縮archiveの全SHA、元観測、全宣言、既存の圧縮内容の保持を確認し、追加117原本は独立した展開処理で取得完了候補・cacheのbyte列と照合しました。117件のSDK取得計画も保存済みとなり、取得関数を呼ばず再利用できています。これは原本の保持・再利用の検証で、財務値の照合完了を意味しません。
+
+新poolと証跡を参照する日次設定は、次の候補から使います。構築中の候補へ新しい入力を差し込まず、その候補に固定したruntimeで完了させます。追加した過去一覧によって次候補の対象書類が増えるため、準備時に取得計画・原本不足・容量を改めて確認します。原本poolの継承を毎日自動実行する処理と、保持世代の自動整理は残工程です。

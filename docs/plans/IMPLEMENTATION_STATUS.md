@@ -6,14 +6,14 @@
 
 | 対象 | 確認できた状態 | 残ること |
 |---|---|---|
-| コード検証 | Node 26.12.1のbuild・本体/公開型・ESM/CJS export・Python保存保護5件が成功。IFRSのBS追加とテスト対象修正後、現行全158ファイル/4,218テストが成功。その後の通知ルール3は関連65件・財務引継ぎ境界35件が成功 | 新SDKでの次の日次構築・全社検証と利用先回帰 |
+| コード検証 | Node 26.12.1のbuild・本体/公開型・ESM/CJS export・Python保存保護5件が成功。IFRSのBS追加とテスト対象修正後、現行全158ファイル/4,218テストが成功。その後の通知ルール3は関連65件・財務引継ぎ境界35件、日次100社処理は関連43件が成功 | 新SDKでの次の日次構築・全社検証と利用先回帰 |
 | 年次取得・索引 | 原本7,328件、未提供9件で取得監査済み。旧SDKで3,813社を処理し、3,759社・7,720行・19,175利用可能値を生成 | 修正版での再構築、全件の品質・独立照合 |
 | 半期の修正 | 日本基準/IFRSの実2原本で期間不一致を解消。4行・11値が独立XML処理とSQL索引で一致、欠損2件も区別 | PDF再照合、他の半期・業種への検証拡大 |
-| 日次候補 | 139,758観測の転送を照合。圧縮版も取得済み7,440件・未提供9件で完了receiptと再構築receiptを保存。会社別索引1,540社まで完了・失敗0件 | 残り2,272社の索引・品質判定・公開の完走 |
+| 日次候補 | 139,758観測の転送を照合。圧縮版も取得済み7,440件・未提供9件で完了receiptと再構築receiptを保存。会社別索引2,440社まで完了・失敗0件 | 残り1,372社の索引・品質判定・公開の完走 |
 | 容量対策 | 未使用の検証コピーを復元情報付きで圧縮保管。停止後の私有コピー2件も保持原本と照合して整理。83,828観測・7,328原本の圧縮転送と全宣言/展開byte列の独立照合が完了。DBは約17.48 GB→1.35 GB | 日次以降の保存整理・復旧運用 |
-| 次の運用環境 | 索引用の固定SDKで100社ずつ処理中。日次metadata/財務へIFRS BS辞書2・通知ルール3の固定runtimeを設定。22検査・旧索引/現行checkpointの不変確認に成功。実metadata起動も追加要求なしで完了 | 索引・品質判定、日次反復・停止/復旧検証 |
+| 次の運用環境 | 索引用の固定SDKで100社ずつ処理中。日次metadata/財務へIFRS BS辞書2・通知ルール3・100社処理の固定runtimeを設定。次の日次原本poolは7,445原本へ継承し、22検査・隔離コピーでの準備が成功 | 索引・品質判定、日次反復・停止/復旧検証 |
 
-圧縮入力を使う候補は、固定SDK（コードf1d39b6）を維持した専用サービスで100社ずつ索引を構築しています。通常の財務timerは一時停止し、構築完了後に自動復帰する設定です。日次metadata/財務unitは、IFRS BS辞書2・通知ルール3を含む2,503ファイルの固定runtimeへ設定を切り替えました。次の日次候補からこのSDKを使い、構築中の旧候補は、その入力に固定したSDKで完了させます。metadata timerは稼働中です。新SDKでの実起動はalready-completeで終了し、checkpointと取得予算200要求は不変でした。索引構築の自然な処理間隙でmetadataを起動し、実checkpointをルール3へ移行して当日の日次完了を確認しました（165,557観測・未解決72件・予算159→200要求）。以前の未解決89件のうち27件を確認し、新たな未解決10件も保持しています。構築中の凍結metadataと入力指紋は不変です。新候補は139,758観測・7,328原本を転送し、7,449対象（再利用7,323・追加117・未提供9）の取得計画を準備済みです。追加117件とcacheの書類IDを照合し、固定SDKで全件のbyte指紋一致・通信なしの読込を再確認して投入しました。追加117件は全件保存され、失敗0・未提供9件で取得完了監査を通過しました。別候補の再構築も完了し、会社別索引の構築を実行中です。この文書の記載は日時付きの確認結果であり、稼働状態は実unitとreceiptで確認します。
+圧縮入力を使う候補は、固定SDK（コードf1d39b6）を維持した専用サービスで100社ずつ索引を構築しています。通常の財務timerは一時停止し、構築完了後に自動復帰する設定です。日次metadata/財務unitは、IFRS BS辞書2・通知ルール3を含む2,503ファイルの固定runtimeへ設定を切り替えました。次の日次候補からこのSDKで100社ずつ構築し、構築中の旧候補は、その入力に固定したSDKで完了させます。次の原本poolも元の83,828観測・7,328原本を保持して117件を追加した別ファイルへ設定済みです。全宣言と既存内容・追加byte列を独立照合し、追加117件をSDKで再取得なしに再利用できることを確認しました。metadata timerは稼働中です。新SDKでの実起動はalready-completeで終了し、checkpointと取得予算200要求は不変でした。索引構築の自然な処理間隙でmetadataを起動し、実checkpointをルール3へ移行して当日の日次完了を確認しました（165,557観測・未解決72件・予算159→200要求）。以前の未解決89件のうち27件を確認し、新たな未解決10件も保持しています。構築中の凍結metadataと入力指紋は不変です。新候補は139,758観測・7,328原本を転送し、7,449対象（再利用7,323・追加117・未提供9）の取得計画を準備済みです。追加117件とcacheの書類IDを照合し、固定SDKで全件のbyte指紋一致・通信なしの読込を再確認して投入しました。追加117件は全件保存され、失敗0・未提供9件で取得完了監査を通過しました。別候補の再構築も完了し、会社別索引の構築を実行中です。この文書の記載は日時付きの確認結果であり、稼働状態は実unitとreceiptで確認します。
 
 圧縮保存は既存の非圧縮DBを上書きせず、新規候補へ転送します。新しい日別設定・キャッシュ参照先も作業コードへ実装済みです。公開世代は未切替です。日次母集団は最新の公式CSV観測のlisted全3,812社に一致します。旧年次の固定母集団3,813社との差1社は、最新観測でのunlistedへの変化を反映したものです。
 
@@ -39,7 +39,7 @@
 1. 稼働中の会社別索引を最後まで構築し、処理時間・容量・再開状態を確認する。
 2. 通知ルール3で残る未解決72件の参照先を追加照合する。自身の提出日時から13日分の確認候補を復元し、20書類を元一覧の実取得で確認した。以前の89件から27件が解決し、旧未解決の残り62件と新しく見つかった10件を保持している。日時だけで元一覧を確認したことにせず、親の日時も子から推定しない。新しい日次完了は165,557観測・取得予算200/256要求で監査済み。構築中の候補に凍結した旧metadata（未解決126件）と入力指紋は変更していない。追加観測を次の候補へ使う際は、対象書類・原本不足・容量を再計画する。
 3. 修正版で再構築・索引・品質判定を完走する。公開条件を満たす場合だけ切り替え、readerの再読込と切戻しを確認する。
-4. 翌日の反復、原本poolの引継ぎ、保存整理、障害復旧・実再起動、固定配布物とstock-dataへの反映を確認する。
+4. 翌日の反復、原本pool継承の自動化、保存整理、障害復旧・実再起動、固定配布物とstock-dataへの反映を確認する。
 
 これらと並行して、上表の財務追加項目・各明細・外部補完など、全段階の残工程を継続します。保存運用だけへ対象を縮小しません。
 
@@ -50,9 +50,10 @@
 | 確認内容 | 主な記録 |
 |---|---|
 | 通知ルールの全量再生 | `daily-notice-rule-replay-proof.json`（オフライン再生時の原DB/checkpoint不変、通信なし）、`notice-v3-fixed-runtime-replay-proof.json`（ルール2から3・140,884観測の再生）、`notice-v3-live-migration-proof.json`（元一覧の実取得・当日再完了、構築入力不変）、`notice-v3-unresolved-inventory.json`（残る72件） |
-| 固定runtimeの切替・一括索引 | `sdk-ifrs-v2-runtime-candidate.json`、`sdk-ifrs-v2-preflight-proof.json`（22検査）、`sdk-ifrs-v2-smoke-proof.json`、`sdk-ifrs-v2-deployment-proof.json`、`sdk-ifrs-v2-live-metadata-proof.json`、`bulk-build-pilot-proof.json`（100社追加・入力不変）、`bulk-build-preflight-proof.json`、`bulk-build-deployment-proof.json` |
+| 固定runtimeの切替・一括索引 | `promoted-pool-runtime-candidate.json`、`promoted-pool-preflight-proof.json`（22検査）、`promoted-pool-smoke-proof.json`、`promoted-pool-deployment-proof.json`（100社処理・継承pool設定）、`bulk-build-pilot-proof.json`（100社追加・入力不変）、`bulk-build-preflight-proof.json`、`bulk-build-deployment-proof.json` |
 | 年次取得・構築 | `year-source-completion-independent-proof.json`、`year-financial-source-completion.json`、`year-financial-build-summary.json`、`year-financial-build-quality.json` |
 | IFRSのBS追加5項目 | `ifrs-instant-candidate-proof.json`、`ifrs-instant-real-latest.json` の候補内 `sdk-results.json`、`independent-proof.json`、`pdf-visual-proof.json`、`legacy-compatibility-proof.json`、`cli-proof.json`（検証用観測宣言。公開未切替）、`ifrs-instant-verification-summary.json`（全体テスト等） |
+| 日次100社処理・原本pool継承 | `promoted-source-pool-20261030/independent-audit.json`、同 `reuse-proof.json`（117件・取得関数0回）、同 `controller-preflight-proof.json`（隔離metadata・3,812社・先頭1,000観測の準備） |
 | 半期の期間・金額 | `half-year-period-real-proof.json`、同候補内の `independent-value-proof.json` |
 | 日次観測・実2社の索引 | `daily-index-live-metadata-audit.json`、`daily-build-real-latest-proof.json`、同候補内の `independent-value-proof.json` |
 | 容量・固定runtime・cache | `cold-copy-retention-ledger.json`、`stopped-daily-probe-cleanup.json`、`compressed-seed-20261030/independent-audit.json`、`daily-compressed-runtime-candidate.json`、`daily-compressed-preflight-proof.json`、`daily-compressed-deployment-proof.json`、`daily-source-cache-read-proof.json`、`daily-compressed-cache-placement-proof.json`、`daily-compressed-population-independent-proof.json` |
