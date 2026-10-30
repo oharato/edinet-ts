@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {selectDocumentVersions,type DocumentVersionObservation} from "./document-version-selection";
 import {createAutomaticFinancialSnapshots,normalizeAutomaticFinancialDetailMetricIds,AutomaticFinancialProjectionError,type AutomaticFinancialSnapshotOptions,type AutomaticFinancialSnapshots} from "./automatic-financial-snapshots";
 import {parseDocumentTimestamp as timestamp} from "./document-timestamp";
-export const OBSERVED_FINANCIAL_SNAPSHOT_VERSION="3";
+export const OBSERVED_FINANCIAL_SNAPSHOT_VERSION="4";
 export interface ObservedFinancialSource {docID:string;availableAt:string;sourceSha256:string;xml?:string;}
 export interface ObservedFinancialSnapshotOptions extends Pick<AutomaticFinancialSnapshotOptions,"detailMetricIds"> {cutoff:string;}
 export interface ObservedFinancialSnapshotRecord {
@@ -58,10 +58,10 @@ export function createObservedFinancialSnapshotsUsing(observations:readonly Docu
    if(m.edinetCode!==d.edinetCode){fail("issuer-mismatch");continue;}
    if(d.secCode&&m.securityCode!==d.secCode){fail("security-code-mismatch");continue;}
    const code=m.reportingPeriodCode,type=d.docTypeCode;
-   // 一覧は半期なら事業年度、四半期なら単四半期。抽出する累計期間は変更しません。
-   const listedPeriod=["160","170"].includes(type!)?m.fiscalYear:
-    ["140","150"].includes(type!)&&(code==="Q2"||code==="Q3")?m.quarterPeriod:m.period;
-   if(!listedPeriod||listedPeriod.startDate!==p.startDate||listedPeriod.endDate!==p.endDate){fail("period-mismatch");continue;}
+   // 半期一覧の実例には事業年度/半期累計の両方がある。原本の宣言期間と完全一致させる。
+   const listedPeriods=["160","170"].includes(type!)?[m.fiscalYear,m.period]:
+    [["140","150"].includes(type!)&&(code==="Q2"||code==="Q3")?m.quarterPeriod:m.period];
+   if(!listedPeriods.some(period=>period&&period.startDate===p.startDate&&period.endDate===p.endDate)){fail("period-mismatch");continue;}
    if(!(["120","130"].includes(type!)?code==="FY":["140","150"].includes(type!)?["Q1","Q2","Q3"].includes(code):["HY","Q2"].includes(code))){fail("report-type-mismatch");continue;}
   }
   records.push({rootDocID:selected.rootDocID,docID,chainDocIDs:[...selected.chainDocIDs],observationIds:[...selected.observationIds],knownAt:new Date(Math.max(available,timestamp(selected.observedAt,true)!)).toISOString(),sourceSha256:s.sourceSha256,result});

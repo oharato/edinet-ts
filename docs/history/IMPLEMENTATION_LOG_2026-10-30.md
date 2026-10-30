@@ -862,3 +862,18 @@ readOnly私有コピーでは、初回検査の前後と再利用の都度にフ
 実139,758観測の同一DB/指紋で6回検査を比較し、旧14,694.7 ms、新4,245.2 ms。ファイル全体hashとコピー作成は計測外で、処理全体の速度保証ではない。稼働中の固定runtimeは変更していない。
 
 旧SDK固定の会社別索引は3,812社すべてcomplete、専用サービスは停止、通常財務timerはactive/waitingへ復帰した。14,436行・利用可能36,026値、利用可能値のある会社3,732社。構築receiptのpublicationEligibleとfinancialValuesValidatedはいずれもfalse。期間不一致198書類等の品質問題を残し、公開catalogは切り替えていない。
+
+
+## 半期一覧期間の実例に基づく照合修正
+
+完成候補でperiod-mismatchだった198原本を調査した。独立Python/SQLite/gzip/hashlib/ElementTree処理により、191原本の一覧期間はDEIの半期累計の開始日・終了日に完全一致すると確認。残り7原本は事業年度・半期累計のどちらとも一致せず、各書類の保存済み全観測でも別の期間は見つからなかった。公式API仕様の事業年度という記述と保存済み実例の差を文書に明示した。
+
+半期160/170では、事業年度または半期累計の両端の完全一致を要求する。四半期・有報の照合は維持し、一覧や抽出期間を書き換えない。観測抽出版を4へ更新し、版3を含む旧版の未完了計画へ混在させないテストを追加。訂正半期の新テストは当初、親のない170書類を使ったため選択段階で不成立となり、実際の親子系列を持つfixtureへ修正した。
+
+同じ保存原本・選択系列の観測を使った限定再生は191件採用・7件拒否となり、独立した期間照合と一致した。原本の全体SHA-256は45c3ede8b0ca770239b6b1c140691a2e041654415981b2519635b835c0b91d4eのまま。これは全社再構築や金額監査の完了ではない。私有記録はhalfyear-list-period-independent-proof.json、halfyear-dual-period-comparison-proof.json、halfyear-unmatched-period-inventory.json。
+
+完成済みの旧候補についても独立Python処理で14,436行の保存hashとJSON/SQLの全選択値の転記を比較し、利用可能36,026・欠損1,426・曖昧323・未対応12、integrity_check=okを確認した。原XMLの金額との照合とは区別する。記録はcompleted-build-independent-sql-projection-proof.json。
+
+固定した修正SDK（私有runtimeの2,491ファイルをmanifest検査）で、同じ凍結原本・母集団・cutoffを入力とする別世代halfyear-v4-rebuild-20261030の構築を開始。旧候補、日次runtime、公開catalogは変更していない。
+
+半期期間照合の修正後、Node 26.12.1でbuild・本体型・公開NodeNext型・ESM/CJSの抽出版4が成功。全158ファイル/4,238テストが成功（420.79秒）、文書リンク540件も問題なし。全社再構築は別途継続中。

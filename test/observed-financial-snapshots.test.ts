@@ -80,7 +80,7 @@ it('半期の一覧は事業年度を照合し、抽出した残高/累計は半
  expect(r.unavailableSources).toEqual([]);expect(r.records[0].result.basis).toMatchObject({status:'selected',metadata:{fiscalYear:{startDate:'2025-04-01',endDate:'2026-03-31'},period:{startDate:'2025-04-01',endDate:'2025-09-30'}}});
  expect(r.records[0].result.balanceSheet).toMatchObject({status:'created',snapshot:{instant:'2025-09-30'}});expect(r.records[0].result.details).toMatchObject({status:'created',snapshot:{metadata:{period:{startDate:'2025-04-01',endDate:'2025-09-30'},periodType:'ytd'}}});
 });
-it.each([{periodStart:'2025-04-02'},{periodEnd:'2026-03-30'},{periodEnd:'2025-09-30'}])('半期の事業年度不一致を半期期間との一致で救済しない: %j',changed=>{
+it.each([{periodStart:'2025-04-02'},{periodEnd:'2026-03-30'},{periodEnd:'2025-12-31'}])('半期の一覧が事業年度/半期のどちらとも一致しない場合は拒否する: %j',changed=>{
  const r=run([observation('A',undefined,{docTypeCode:'160',...changed})],[source('A',xml({periodCode:'HY',currentEnd:'2025-09-30'}))],{cutoff});expect(r.records).toEqual([]);expect(r.unavailableSources[0].reason).toBe('period-mismatch');
 });
 it('訂正半期の期間未記録時も親の事業年度を照合して訂正版だけを採用する',()=>{
@@ -112,5 +112,18 @@ it.each(['missing','duplicate','wrong-scope','wrong-date'])('単四半期context
  if(kind==='wrong-scope')input=input.replace(quarter!,quarter!.replace('</xbrli:context>','<xbrli:scenario><xbrldi:explicitMember dimension="jppfs_cor:ConsolidatedOrNonConsolidatedAxis">jppfs_cor:NonConsolidatedMember</xbrldi:explicitMember></xbrli:scenario></xbrli:context>'));
  if(kind==='wrong-date')input=input.replace('2025-07-01','2025-07-02');
  const r=run([observation('A',undefined,{docTypeCode:'140',periodStart:'2025-07-01',periodEnd:'2025-09-30'})],[source('A',input)],{cutoff});
+ expect(r.records).toEqual([]);expect(r.unavailableSources[0].reason).toBe('period-mismatch');
+});
+
+it.each(['160','170'])('半期%sの一覧が原本の半期累計と完全一致する場合も採用する',docTypeCode=>{
+ for(const periodCode of ['HY','Q2']){
+  const observations=docTypeCode==='170'?[observation('P',undefined,{docTypeCode:'160',periodEnd:'2025-09-30'}),observation('A','P',{docTypeCode,periodEnd:'2025-09-30'})]:[observation('A',undefined,{docTypeCode,periodEnd:'2025-09-30'})];
+  const r=run(observations,[source('A',xml({periodCode,currentEnd:'2025-09-30'}))],{cutoff});
+  expect(r.unavailableSources).toEqual([]);expect(r.records).toHaveLength(1);
+  expect(r.records[0].result.details).toMatchObject({status:'created',snapshot:{metadata:{period:{startDate:'2025-04-01',endDate:'2025-09-30'},periodType:'ytd'}}});
+ }
+});
+it('半期累計と開始日が違う一覧を終期だけで採用しない',()=>{
+ const r=run([observation('A',undefined,{docTypeCode:'160',periodStart:'2025-04-02',periodEnd:'2025-09-30'})],[source('A',xml({periodCode:'HY',currentEnd:'2025-09-30'}))],{cutoff});
  expect(r.records).toEqual([]);expect(r.unavailableSources[0].reason).toBe('period-mismatch');
 });

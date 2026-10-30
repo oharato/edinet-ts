@@ -6,9 +6,9 @@
 
 | 対象 | 確認できた状態 | 残ること |
 |---|---|---|
-| コード検証 | Node 26.12.1のbuild・本体/公開型・ESM/CJS export・Python保存保護5件が成功。readOnly指紋検査の改善後、現行全158ファイル/4,234テストが成功。その後の通知ルール3は関連65件・財務引継ぎ境界35件、日次100社処理は関連43件が成功 | 新SDKでの次の日次構築・全社検証と利用先回帰 |
+| コード検証 | Node 26.12.1のbuild・本体/公開型・ESM/CJS export・Python保存保護5件が成功。半期期間照合とreadOnly指紋検査の改善後、現行全158ファイル/4,238テストが成功。その後の通知ルール3は関連65件・財務引継ぎ境界35件、日次100社処理は関連43件が成功 | 新SDKでの次の日次構築・全社検証と利用先回帰 |
 | 年次取得・索引 | 原本7,328件、未提供9件で取得監査済み。旧SDKで3,813社を処理し、3,759社・7,720行・19,175利用可能値を生成 | 修正版での再構築、全件の品質・独立照合 |
-| 半期の修正 | 日本基準/IFRSの実2原本で期間不一致を解消。4行・11値が独立XML処理とSQL索引で一致、欠損2件も区別 | PDF再照合、他の半期・業種への検証拡大 |
+| 半期の修正 | 日本基準/IFRSの実2原本で期間不一致を解消。追加調査では一覧と原本198組のうち191組で半期累計期間が完全一致し、照合処理を修正。限定再生で191件採用・不一致7件保留、独立XML照合も一致。4行・11値が独立XML処理とSQL索引で一致、欠損2件も区別 | PDF再照合、他の半期・業種への検証拡大 |
 | 日次候補 | 139,758観測の転送を照合。圧縮版も取得済み7,440件・未提供9件で完了receiptと再構築receiptを保存。3,812社の会社別索引構築が完了。利用可能値あり3,732社・14,436行・36,026値。品質条件は未達 | 期間不一致198書類・選択未解決587件等の調査、修正版再構築・独立照合・公開判定 |
 | 容量対策 | 未使用の検証コピーを復元情報付きで圧縮保管。停止後の私有コピー2件も保持原本と照合して整理。83,828観測・7,328原本の圧縮転送と全宣言/展開byte列の独立照合が完了。DBは約17.48 GB→1.35 GB | 日次以降の保存整理・復旧運用 |
 | 次の運用環境 | 索引用の固定SDKで全社構築が完了。日次metadata/財務へIFRS BS辞書2・通知ルール3・100社処理の固定runtimeを設定。次の日次原本poolは7,445原本へ継承し、22検査・隔離コピーでの準備が成功 | 索引・品質判定、日次反復・停止/復旧検証 |
@@ -36,7 +36,7 @@
 
 ## 次に進める順序
 
-1. 完了した会社別索引の品質問題を調査する。母集団3,812社のうち利用可能値あり3,732社。期間不一致198書類、原本未提供9書類、選択未解決587件、選択不可109件、未解決原本22件、値の欠損1,426件・未対応12件・曖昧323件を区別して確認する。構築receiptは `status: built`、`publicationEligible: false`、`financialValuesValidated: false`。専用構築サービスは停止し、通常の財務timerはactive/waitingへ復帰した。
+1. 完了した会社別索引の品質問題を調査し、修正版で別世代を再構築する。半期期間の照合は、事業年度または半期累計との開始日・終了日の完全一致に修正し、実191件を限定再生で採用できた。不一致7件は保留。以下は旧SDKによる完成候補の集計であり、修正後の全社集計ではない。母集団3,812社のうち利用可能値あり3,732社。期間不一致198書類、原本未提供9書類、選択未解決587件、選択不可109件、未解決原本22件、値の欠損1,426件・未対応12件・曖昧323件を区別して確認する。構築receiptは `status: built`、`publicationEligible: false`、`financialValuesValidated: false`。専用構築サービスは停止し、通常の財務timerはactive/waitingへ復帰した。
 2. 通知ルール3で残る未解決72件の参照先を追加照合する。自身の提出日時から13日分の確認候補を復元し、20書類を元一覧の実取得で確認した。以前の89件から27件が解決し、旧未解決の残り62件と新しく見つかった10件を保持している。日時だけで元一覧を確認したことにせず、親の日時も子から推定しない。新しい日次完了は165,557観測・取得予算200/256要求で監査済み。構築中の候補に凍結した旧metadata（未解決126件）と入力指紋は変更していない。追加観測を次の候補へ使う際は、対象書類・原本不足・容量を再計画する。
 3. 修正版で再構築・索引・品質判定を完走する。公開条件を満たす場合だけ切り替え、readerの再読込と切戻しを確認する。
 4. 翌日の反復、原本pool継承の自動化、保存整理、障害復旧・実再起動、固定配布物とstock-dataへの反映を確認する。
@@ -54,6 +54,8 @@
 | 年次取得・構築 | `year-source-completion-independent-proof.json`、`year-financial-source-completion.json`、`year-financial-build-summary.json`、`year-financial-build-quality.json` |
 | IFRSのBS追加5項目 | `ifrs-instant-candidate-proof.json`、`ifrs-instant-real-latest.json` の候補内 `sdk-results.json`、`independent-proof.json`、`pdf-visual-proof.json`、`legacy-compatibility-proof.json`、`cli-proof.json`（検証用観測宣言。公開未切替）、`ifrs-instant-verification-summary.json`（全体テスト等） |
 | 日次100社処理・原本pool継承 | `promoted-source-pool-20261030/independent-audit.json`、同 `reuse-proof.json`（117件・取得関数0回）、同 `controller-preflight-proof.json`（隔離metadata・3,812社・先頭1,000観測の準備） |
+| 半期の期間照合 | `halfyear-list-period-independent-proof.json`（独立XMLで191一致/7不一致）、`halfyear-dual-period-comparison-proof.json`（同じ原本・観測で修正前後を比較）、`halfyear-unmatched-period-inventory.json`（不一致7件の全保存観測） |
+| 完成候補の保存整合 | `completed-build-independent-sql-projection-proof.json`（14,436行hash・JSON/SQL値の転記整合。原本の金額照合とは別） |
 | 半期の期間・金額 | `half-year-period-real-proof.json`、同候補内の `independent-value-proof.json` |
 | 日次観測・実2社の索引 | `daily-index-live-metadata-audit.json`、`daily-build-real-latest-proof.json`、同候補内の `independent-value-proof.json` |
 | 容量・固定runtime・cache | `cold-copy-retention-ledger.json`、`stopped-daily-probe-cleanup.json`、`compressed-seed-20261030/independent-audit.json`、`daily-compressed-runtime-candidate.json`、`daily-compressed-preflight-proof.json`、`daily-compressed-deployment-proof.json`、`daily-source-cache-read-proof.json`、`daily-compressed-cache-placement-proof.json`、`daily-compressed-population-independent-proof.json` |
