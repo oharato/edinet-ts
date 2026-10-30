@@ -1,9 +1,10 @@
 import {reportingInstance} from './fixtures/financial-reporting-basis';
 import {activateBuiltFinancialCycle,buildReconstructedFinancialCycle} from '../scripts/roadmap/build-financial-cycle.mjs';
 import {it,expect,vi} from 'vitest';
+import {spawnSync} from 'node:child_process';
 import {mkdtempSync,rmSync,readFileSync,writeFileSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
 import {EdinetRepository,ObservedFinancialArchive,FinancialIndexPublication,PublishedFinancialIndex} from '../dist/index.js';
 import {prepareFinancialCycle} from '../scripts/roadmap/prepare-financial-cycle.mjs';
 import {acquirePreparedFinancialCycle} from '../scripts/roadmap/acquire-financial-cycle.mjs';
@@ -104,3 +105,16 @@ it('品質不適格の候補は公開catalogを作らず理由付きで返す',(
 it('公開先とCAS入力が不正なら候補を構築する前に拒否する',async()=>{
  for(const target of [{catalogPath:'relative.sqlite',expectedActive:null},{catalogPath:'/tmp/catalog.sqlite',expectedActive:'bad/id'},{catalogPath:'/tmp/catalog.sqlite'}])await expect(activateBuiltFinancialCycle({},target)).rejects.toThrow('target');
 });
+
+it('構築専用CLIは件数上限を増やしても同じ入力指紋とcheckpointを引き継ぐ',()=>fixture(async s=>{
+ const partial=await buildReconstructedFinancialCycle(s.config,{maxCompanies:1});expect(partial).toMatchObject({status:'partial',completed:1,pending:1});
+ const directory=join(s.config.outputDirectory,'reconstructed'),before=readFileSync(join(directory,'build-input.json')),configPath=join(s.dir,'prepared-config.json');writeFileSync(configPath,JSON.stringify(s.config));
+ const result=spawnSync(process.execPath,[resolve('scripts/roadmap/build-prepared-financial-cycle.mjs'),'--config',configPath,'--max-companies','100','--locked'],{encoding:'utf8'});
+ expect(result.status,result.stderr).toBe(0);const built=JSON.parse(result.stdout);expect(built.status).toBe('built');expect(built.inputSha256).toBe(partial.inputSha256);expect(built.quality.populationCompanies).toBe(2);expect(readFileSync(join(directory,'build-input.json'))).toEqual(before);
+},1,false,'2026-10-30T03:00:00Z',['E12345','E54321'],reportingInstance()));
+it('構築専用CLIは排他宣言・上限・再構築receiptがない場合に新候補を作らない',()=>fixture(async s=>{
+ const configPath=join(s.dir,'prepared-config.json');writeFileSync(configPath,JSON.stringify(s.config));const worker=resolve('scripts/roadmap/build-prepared-financial-cycle.mjs');
+ for(const args of [[],['--locked','--max-companies','0'],['--locked','--max-companies','101'],['--locked']]){
+  const result=spawnSync(process.execPath,[worker,'--config',configPath,...args],{encoding:'utf8'});expect(result.status).toBe(1);expect(result.stderr).toContain('Prepared financial build stopped');expect(result.stdout).toBe('');expect(existsSync(join(s.config.outputDirectory,'reconstructed'))).toBe(false);
+ }
+}));

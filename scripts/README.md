@@ -60,6 +60,10 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 
 `roadmap/daily-metadata-control.mjs` と `roadmap/run-daily-metadata.mjs` は別metadata forkの観測を追記する運用補助です。`roadmap/daily-metadata-notices.mjs` は保存通知から既知の過去一覧日を追加し、通知cursor/identity/対象日と不明通知を保持します。固定年次計画が完了して取得unitが停止するまでAPI通信せず、当日probe・JST日次256要求・再開checkpoint・flock・34GiB容量余裕を使います。秘密値を出力せず、既存年次アーカイブや公開SDKは変更しません。固定runtime/configと定期起動の条件は [書類同期](../docs/pipeline/FINANCIAL_DOCUMENT_SYNC.md#専用日次収集の運用補助)を参照してください。
 
+## 再構築済みの日次財務索引
+
+`roadmap/build-prepared-financial-cycle.mjs` は、固定済みの再構築候補を1〜100社ずつ構築する入口です。同じ入力指紋と会社別checkpointを使います。呼出元で排他を保持し、`--locked` を指定します。[構築手順](../docs/pipeline/FINANCIAL_INDEX_BUILD.md#再構築済みの日次候補をまとめて構築する)のロック順序・完了判定を確認してください。
+
 ## 全体テスト
 
 `.node-version` の Node 26.12.1 と `package.json` の npm 12.2.1 を使用し、リポジトリ直下で実行します。バージョン管理ツールの設定だけでなく、`node --version` と `npm --version` の出力も確認してください。

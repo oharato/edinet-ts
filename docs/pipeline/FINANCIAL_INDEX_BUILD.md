@@ -129,6 +129,21 @@ finishはpending/failedが一つでもあれば拒否します。条件/DB/指�
 
 進捗CLIは状態DBの私有コピーをreadOnlyで読みます。
 
+## 再構築済みの日次候補をまとめて構築する
+
+`scripts/roadmap/build-prepared-financial-cycle.mjs` は、再構築receiptがある固定候補の索引を進めます。一回の上限は既定100社、指定可能な範囲は1〜100社です。同じSDK・構築script・固定configを使い、処理社数だけを引数で変えるため、既存の入力指紋と会社別checkpointを引き継げます。品質集計は公開承認とは別です。
+
+呼出元が既存runnerと同じ順序で、候補ルートとmetadata checkpointの排他を保持します。`--locked` 自体はロックを取得しません。
+
+```sh
+flock -n -E 75 --close "$CYCLE_ROOT.lock" \
+  flock -n -E 75 --close "$METADATA_CHECKPOINT.lock" \
+  node scripts/roadmap/build-prepared-financial-cycle.mjs \
+    --config "$PREPARED_CYCLE_CONFIG" --max-companies 100 --locked
+```
+
+再構築前の候補や上限外の指定は拒否します。途中結果は `partial`、全社集約後は `built` を返します。終了コード0だけで全社完了とは判断せず、`status` と残件数を確認してください。公開catalogの切替は行いません。
+
 ## 実母集団での確認と残工程
 
 既存の公式コードリストsnapshot（asOf 2026-10-27）の上場3,813社と、原観測5,911件/保存原本4件を持つ固定アーカイブで確認しました。13社で状態/索引を閉じた後に再開し、100社ずつで全3,813社を完了、会社別3,813世代から一世代へ集約しました。
