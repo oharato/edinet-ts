@@ -166,3 +166,6 @@ export {streamCorporateRegistryRecords,CORPORATE_REGISTRY_STREAM_MAX_BYTES,CORPO
 export type {CorporateRegistryStreamReceipt,CorporateRegistryStreamOptions} from "./corporate-registry-stream";
 export {CorporateRegistryStore} from "./db/corporate-registry-store";
 export type {CorporateRegistryStoredFile,CorporateRegistryFileImport,CorporateRegistryStoredQuery,CorporateRegistryStoredDelivery,CorporateRegistryStoredStateResult} from "./db/corporate-registry-store";
+
+export {linkCompanyMasterCorporateStates} from "./company-corporate-state";
+export type {CompanyCorporateStateQuery,CompanyCorporateStateLinkReason,CompanyCorporateStateLink,CompanyCorporateStateResult} from "./company-corporate-state";

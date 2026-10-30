@@ -9,6 +9,7 @@ import {FinancialSourceJob,normalizeFinancialSourceJobInput} from "./db/financia
 import { searchOfficerRemuneration } from "./officer-remuneration";
 import { searchOfficerDetails } from "./officer-details";
 import { searchPolicyShareholdings } from "./policy-shareholdings";
+import { linkCompanyMasterCorporateStates } from "./company-corporate-state";
 import { FacilityDetailStore } from "./db/facility-detail-store";
 import { LargeHoldingStore } from "./db/large-holding-store";
 import { searchObservedLargeHoldingReports } from "./observed-large-holding";
@@ -809,6 +810,25 @@ program.command("plan-corporate-registry-differences")
             const query=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(options.query),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
             console.log(JSON.stringify(planCorporateRegistryDifferences(readRegistryCalendar(options.calendar)!,query),null,options.pretty?2:undefined));
         }catch{console.error("取得期間・観測cutoff・保存カレンダーの範囲と出典を確認してください（入力内容は非表示）");process.exitCode=1;}
+    });
+
+program.command("link-company-corporate-states")
+    .description("企業マスターと再構成した法人状態の番号・原名称を完全一致で照合します")
+    .requiredOption("--master <path>", "保存したCompanyMasterSnapshotのJSON配列")
+    .requiredOption("--db <path>", "停止した法人番号専用DB")
+    .requiredOption("--manifest <path>", "scope/expectedParts/fileIdsを持つ全国配布の配列JSON")
+    .requiredOption("--query <path>", "edinetCodes/asOf/knownAt/registryPurposeと任意のマスター条件")
+    .option("--calendar <path>", "保存した未作成日カレンダーのJSON")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let store:CorporateRegistryStore|undefined;
+        try{
+            const read=(file:string,bytes=LOCAL_IMPORT_LIMITS.manifestBytes)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),bytes).bytes));
+            const master=read(options.master,LOCAL_IMPORT_LIMITS.sourceBytes),manifest=read(options.manifest),query=read(options.query),calendar=readRegistryCalendar(options.calendar);
+            store=new CorporateRegistryStore(path.resolve(options.db),{readOnly:true});
+            console.log(JSON.stringify(linkCompanyMasterCorporateStates(master,store,manifest,query,calendar),null,options.pretty?2:undefined));
+        }catch{console.error("企業マスター・法人番号保存DB・全国配布・対象企業/対象日/cutoffを確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{store?.close();}
     });
 
 program.command("reconstruct-corporate-registry-store")

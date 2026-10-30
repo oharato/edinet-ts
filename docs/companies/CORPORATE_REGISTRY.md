@@ -567,3 +567,44 @@ python3 scripts/roadmap/fetch-corporate-registry-full.py \
 今回は全展開物を同時保持する容量が不足したため、一分割ずつ検証する経路で `verified-archive` まで進めました。観測した一時XMLの最大サイズは1,537,332,505 bytes、最小空きは38,530,617,344 bytesで、34GiBの留保を維持しています。全件DBの構築・全国状態の認定は行っていません。DB本体と検査用コピーまで含む容量の確保、全件取込・連続差分との照合が残工程です。
 
 関連5テストファイル（Python境界48件）がNode 26.12.1で成功。全国欄の選択、分割順、取得予算、改変拒否、容量不足、逐次署名検証、後続署名失敗時の一時コピー除去を確認しました。証跡は `data/roadmap/corporate-registry-full-20261031/` です。
+
+
+## 企業マスターと再構成した法人状態を結び付ける
+
+`linkCompanyMasterCorporateStates` は保存済みの全国全件・連続差分から法人状態を再構成し、選択した企業の法人番号と原名称を完全一致で照合します。単一の差分原記録を参照する `linkCompanyMasterCorporateRecords` とは別の入口です。
+
+```ts
+import { CorporateRegistryStore, linkCompanyMasterCorporateStates } from "edinet-ts";
+const registry = new CorporateRegistryStore("registry.sqlite", { readOnly: true });
+try {
+  const result = linkCompanyMasterCorporateStates(savedMasters, registry, savedDeliveries, {
+    asOf: "2026-10-29", knownAt: "2026-10-30T00:00:00Z",
+    registryPurpose: "download", edinetCodes: ["E00001"]
+  }, savedCalendar);
+  console.log(result.rows);
+} finally {
+  registry.close();
+}
+```
+
+`edinetCodes` は100件以下の明示集合です。企業マスターは既存のas-of/knownAt選択を使い、新しい観測の名称が異なる場合に古い観測へ戻りません。任意の業種・上場区分・証券コード等のマスターフィルタも使えます。要求したIDが検索結果に含まれない場合は `absentEdinetCodes` へ記録します。これは未登録・フィルタ除外・観測不足の内訳を自動認定したものではありません。
+
+同じ法人番号を複数のEDINET IDが宣言していれば、フィルタや要求IDで別企業を隠しても `shared-corporate-number` として保留します。差分欠落や全件起点の不足、削除、閉鎖、名称欠損・不一致でも一致扱いにしません。名称は空白・文字幅も含む文字列の完全一致で、類似名や承継先番号で企業を統合しません。
+
+`number-and-name-matched` は、指定した時点の再構成可能な記録へ番号と原名称が一致したという結果です。`entityIdentity: not-established`、`mergedEntities: false`、`followedSuccessor: false` を返します。同一法人の認証、合併・承継の認定、上場継続の保証ではありません。元の `edinet:` ID・会社情報を維持し、照合した `state` に再構成履歴・coverage・原本hash・file ID・元記録位置を残します。
+
+### CLI
+
+```sh
+edinet-ts link-company-corporate-states --master saved-masters.json \
+  --db registry.sqlite --manifest stored-deliveries.json --query link-query.json \
+  --calendar calendar.json --pretty
+```
+
+masterは `CompanyMasterSnapshot` のJSON配列（最大64 MiB）、manifestは保存済み再構成と同じ `scope/expectedParts/fileIds` の配列です。queryは上のAPI例と同じ項目です。manifest/queryは各2 MiB以下です。結合結果全体の原記録は1万件、状態のJSON本文は合計256 MiB以下とし、超える場合は企業集合を分けます。
+
+### 確認範囲
+
+実EDINETマスター11,432行と、署名確認済みの日次差分に候補がある9提出者を照合しました。保存DBに実全国全件の起点がないため、9件すべてを `registry-state-unavailable` / `no-baseline` とし、差分だけから一致へ昇格させないことを独立SQLで確認しました。CLI/APIの結果も一致し、元DBは不変です。肯定結果は公式の架空サンプルと明示した合成企業マスターでの限定検証です。
+
+全国全件DBの容量確保・取込、実全国状態に対する肯定的な企業照合、法人同一性の確認、署名監査から利用先までの接続・全市場運用は残ります。証跡は `data/roadmap/company-corporate-state-real-20261031/` です。

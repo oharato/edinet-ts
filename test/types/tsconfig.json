@@ -31,6 +31,7 @@
         "corporate-registry-state.ts",
         "corporate-registry-store.ts",
         "large-holding-store.ts",
-        "facility-detail-store.ts"
+        "facility-detail-store.ts",
+        "company-corporate-state.ts"
     ]
 }
