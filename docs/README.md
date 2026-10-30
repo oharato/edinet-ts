@@ -75,7 +75,7 @@ flowchart LR
 
 - [企業マスターの観測保存と差分](companies/COMPANY_MASTER.md)
 - [原本に書かれた会社情報を確認する](companies/COMPANY_PROFILE.md)
-- [法人番号の原記録・番号参照・状態再構成](companies/CORPORATE_REGISTRY.md)
+- [法人番号の原記録・保存・番号参照・状態再構成](companies/CORPORATE_REGISTRY.md)
 
 ## 開示表・人的資本・株主
 

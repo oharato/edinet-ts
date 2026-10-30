@@ -28,6 +28,7 @@
         "document-type-registration.ts",
         "document-pipeline.ts",
         "company-financial.ts",
-        "corporate-registry-state.ts"
+        "corporate-registry-state.ts",
+        "corporate-registry-store.ts"
     ]
 }

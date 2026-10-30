@@ -21,7 +21,7 @@ export function parseCorporateRegistryDownloadXml(xml:string,input:CorporateRegi
     if(observed===undefined||typeof source.sourceUrl!=='string'||typeof source.dataDate!=='string'||!date(source.dataDate)||!['full','diff'].includes(source.kind)||!['sample','download'].includes(source.purpose)||source.dataDate>new Date(observed+9*3600000).toISOString().slice(0,10))fail();
     try{const url=new URL(source.sourceUrl);if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash)fail();}catch{fail();}
     assertXmlInput(xml);
-    const parsed=new XMLParser({ignoreAttributes:false,parseTagValue:false,parseAttributeValue:false,trimValues:false}).parse(xml);
+    const parsed=new XMLParser({ignoreAttributes:false,parseTagValue:false,parseAttributeValue:false,trimValues:false}).parse(xml.replace(/^\uFEFF/,''));
     if(!object(parsed)||Object.keys(parsed).some(k=>!['?xml','corporations'].includes(k)) )fail();
     const root=typeof parsed.corporations==='string'&&!parsed.corporations.trim()?{}:parsed.corporations;if(!object(root))fail();if(Object.keys(root).some(k=>k!=='corporation'&&!(k==='#text'&&typeof root[k]==='string'&&!root[k].trim())))fail();
     const elements=root.corporation===undefined?[]:Array.isArray(root.corporation)?root.corporation:[root.corporation];

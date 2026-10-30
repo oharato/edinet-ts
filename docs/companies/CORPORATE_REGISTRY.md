@@ -4,7 +4,7 @@
 
 `parseCorporateRegistryDownloadXml(xml, source)` と `queryCorporateRegistryDownloads(inputs, query)` は、国税庁の30項目のダウンロードXMLを読みます。既存のXML安全検査を共有し、外部参照/DTDを拒否、1 XMLは64MiB以下・10万記録以下、検索は100入力/合計256MiB以下です。
 
-全国全件XMLのストリーミング読取・CSV・Web-API応答は後続です。
+大容量UTF-8 XMLは[ストリーミング保存](#大容量xmlのストリーミング保存)を使います。この文字列APIの上限は維持しています。CSV・Web-API応答の取込は後続です。
 
 ```ts
 const source = {
@@ -218,3 +218,92 @@ edinet-ts reconstruct-corporate-registry \
 実全国全件・連続差分での運用照合、署名・取得監査との統合、ストリーミング保存とEDINET法人同一性の確認は残っています。
 
 カレンダー追加の隔離検証: Node 26.12.1で全167ファイル・4,356テスト、関連73テスト、build・本体/公開型・ESM/CJSが成功しました。並行中の分割換算・dataflow変更はこの結果に含めません。
+
+## 大容量XMLのストリーミング保存
+
+`CorporateRegistryStore` は、XMLを一記録ずつ読んで専用SQLiteへ保存します。全文を文字列や配列にしてから渡す必要はありません。既存の財務DB・企業マスターDBとは別形式で、原記録の保存・検索を担います。
+
+```mermaid
+flowchart LR
+    File[保存した原XMLと期待SHA] --> Stream[UTF-8を逐次復号・一記録ずつ検査]
+    Stream --> Pending[専用DBの未確定transaction]
+    Pending --> EOF[末尾・全体SHA・原本不変を確認]
+    EOF --> Commit[原記録と観測をまとめて確定]
+    Pending --> Failure[途中エラー・中断はrollback]
+    Commit --> Query[再open・cutoff付き番号検索]
+```
+
+```ts
+import {CorporateRegistryStore} from 'edinet-ts';
+
+const store = new CorporateRegistryStore('corporate-registry.sqlite');
+try {
+  const imported = await store.importFile({
+    file: 'diff_20261028.xml',
+    source,                 // 実際の取得時刻・対象日・full/diff・sample/download
+    part: 'diff_20261028.xml', // ZIP内の元entry等、同じ出典内のファイル識別子
+    sha256: expectedXmlSha256,
+  });
+  const receipt = store.file(imported.file.id);
+  const audit = store.audit(receipt.id);
+} finally { store.close(); }
+```
+
+期待SHAは取得監査の原XML byte列のSHA-256です。取込完了時に全byteを照合し、読取中の書換え・パス置換・リンク・ディレクトリ等を拒否します。XMLの末尾が切れていた場合や、一連番号が重複した場合も、そのファイルの途中記録を確定しません。既に完了した別ファイルの観測は保持します。
+
+同じ出典URL・part・データ対象日・kind・purpose・観測瞬間への再投入は、原本を再検査して `unchanged` になります。同じ観測点で異なるSHAは競合です。同じbyte列を別の観測で保存する場合は、記録本文を共有し、出典と観測時刻だけを別に残します。UTC正規化は観測時刻に行い、XML内の原日付・名称・住所等は上書きしません。
+
+原ZIP・原XMLのbyte列はDB外へ別途保持してください。DBには原本SHA、版、元part、観測、原30項目と記録位置、保存本文/索引の指紋を保存します。SHAは提供者の署名認証ではありません。
+
+### 保存後の番号検索
+
+```ts
+const reader = new CorporateRegistryStore('corporate-registry.sqlite', {readOnly: true});
+try {
+  const result = reader.query({
+    corporateNumber: '1010001001202',
+    knownAt: analysisCutoff,
+    registryPurpose: 'download',
+    offset: 0, limit: 100,
+  });
+} finally { reader.close(); }
+```
+
+結果の各行は `file` に観測・原本SHA・part等、`record` に元の30項目と位置を持ちます。`total` はページ指定前の原記録数です。同じ内容を複数回観測していれば、それぞれの観測に属する行として数えます。企業数や最新状態の数ではありません。sample/downloadと実観測cutoffは必須で、既定100行・最大1,000行を返します。
+
+検索前に、保存本文・索引・件数・集約指紋を一記録ずつ全体検査します。索引の改変を「番号が見つからない」という空結果へ隠しません。readOnlyでは固定私有コピーの不変を確認し、検査済み状態を同じ接続内で再利用します。書込接続では検索ごとに検査します。大容量では最初のコピー・検査に時間がかかるため、検索用接続を使い回してください。
+
+`verification: "all-records"` は保存整合の検査です。元の全国データの網羅性や法的状態を認証する意味ではありません。訂正・削除の行も検索対象として保持し、この検索だけで現在状態へ合成しません。大容量保存から再構成器へ原本来歴を維持して接続する工程は残っています。
+
+### 上限と中断・復旧
+
+| 対象 | 上限・扱い |
+|---|---|
+| 元XML | 1ファイル8GiBまで。文字列APIの64MiB/10万記録上限とは別 |
+| 一記録 | UTF-8換算64KiBまで。30項目の既存パーサーで検査 |
+| 低水準の入力chunk | 最大1MiB。ファイル取込は64KiBずつ読む |
+| XML形式 | UTF-8、任意のBOM/XML宣言、属性なしのcorporations/corporationと原30項目。DTD・CDATA・コメント・追加処理命令等は非対応として拒否 |
+| 取込中の接続 | 同じ接続の検索・再取込・closeを拒否。完了・失敗後に再利用可 |
+
+APIのAbortSignalとCLIのSIGINT/SIGTERMはrollbackへ渡します。強制終了でhot journalが残った場合は、元DB・journalを消さず、`recoverDedicatedSqliteSnapshot` の `kind: "corporate-registry-store"` で別候補へ復旧できます。汎用復旧のschema検査だけで利用せず、復旧後にStoreで本文/索引を検査してください。DB・journal・検査用私有コピーの容量計画も必要です。
+
+低水準の `streamCorporateRegistryRecords(chunks, source, options)` はAsyncGeneratorです。自然なiterator完了時に、全体SHA・byte数・記録数のreceiptを返します。途中でyieldした行は未確定で、一連番号の全体重複検査も保存側の責任です。完了前に公開せず、通常は上の `importFile()` を使用してください。
+
+### CLI
+
+```sh
+edinet-ts import-corporate-registry-file --db corporate-registry.sqlite --manifest file.json --pretty
+edinet-ts query-corporate-registry-store --db corporate-registry.sqlite --query query.json --pretty
+```
+
+file.jsonはAPI例の `{file, source, part, sha256}`、query.jsonは検索例のJSONです。fileの相対パスはmanifestの場所を基準にします。入力JSONは2MiB以下、元XMLは一括読込せず逐次処理します。
+
+### 確認した範囲
+
+公式サンプル55ファイルと保存済み実差分の計56ファイル・7,389記録を保存・再openし、全221,670項目、原XML SHA、保存本文/索引/集約指紋、25検索、CLIの結果が独立Python/SQLite/XML処理と一致しました。原XML・元DBの読取による変更はなく、再投入で本文も重複していません。実差分の署名確認は以前の取得監査で行ったもので、Store自身がPGP署名を検証する機能ではありません。
+
+別の合成負荷試験では、113.7MB・100,001記録をNode 26.12.1のJavaScriptヒープ128MiB上限で取り込み、再open後の末尾ページを検索しました。プロセス最大RSSは約198MiBで、ヒープ上限と全メモリ量は別です。取込129.4秒・初回検査付き検索87.5秒・同じ接続の次回検索0.73秒でした。一回・共有hostの測定で、実全国データの速度保証や状態再構成ではありません。34GiBの空き容量留保も維持しました。
+
+証跡は `data/roadmap/corporate-registry-store-real-20261031/` と `corporate-registry-store-stress-20261031/` に保存しています。状態再構成との接続、全国全件・連続差分での運用照合、取得/署名監査、配布と稼働環境への反映は残工程です。
+
+保存追加の隔離検証: Node 26.12.1で全170ファイル・4,389テスト、build・本体/公開型・ESM/CJSが成功しました。日次CLI試験の子時計固定後の再実行で、並行作業の分割換算・dataflow・busy timeout変更は含めません。

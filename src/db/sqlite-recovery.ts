@@ -8,6 +8,7 @@ import { FinancialIndexBuild } from "./financial-index-build";
 import { FinancialSearchIndex } from "./financial-search-index";
 import { FinancialIndexPublication } from "./financial-index-publication";
 import { CompanyMasterStore } from "./company-master-store";
+import { CorporateRegistryStore } from "./corporate-registry-store";
 
 const formats = {
     "observed-financial-archive": ObservedFinancialArchive,
@@ -16,6 +17,7 @@ const formats = {
     "financial-search-index": FinancialSearchIndex,
     "financial-index-publication": FinancialIndexPublication,
     "company-master-store": CompanyMasterStore,
+    "corporate-registry-store": CorporateRegistryStore,
 } as const;
 export type DedicatedSqliteRecoveryKind = keyof typeof formats;
 export interface DedicatedSqliteRecoveryOptions {

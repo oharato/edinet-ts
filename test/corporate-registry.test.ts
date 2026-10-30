@@ -17,3 +17,7 @@ it('入力XML getterは一回だけ読み、独自iteratorを辿らない',()=>{
 it('件数と合計XML容量の境界を解析前に検査する',()=>{expect(()=>query(Array(101).fill({xml:xml(),source}),{corporateNumber:values.corporateNumber,knownAt:source.observedAt})).toThrow();const large='x'.repeat(64*1024*1024);expect(()=>query(Array(5).fill({xml:large,source}),{corporateNumber:values.corporateNumber,knownAt:source.observedAt})).toThrow();});
 
 it('Proxyのlengthも一度固定し、再読で件数上限を変えない',()=>{let reads=0;const inputs=new Proxy([{xml:xml(),source}],{get(t,p,r){if(p==='length')return++reads===1?1:10000;return Reflect.get(t,p,r);}});expect(query(inputs,{corporateNumber:values.corporateNumber,knownAt:source.observedAt}).total).toBe(1);expect(reads).toBe(1);});
+
+it('先頭のUTF-8 BOMを項目として誤認せず、元の文字列hashは保持する',()=>{
+ const withBom=parse('\uFEFF'+xml(),source),without=parse(xml(),source);expect(withBom.records).toEqual(without.records);expect(withBom.source.inputXmlSha256).not.toBe(without.source.inputXmlSha256);
+});

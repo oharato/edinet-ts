@@ -4,9 +4,9 @@ import {join} from 'node:path';
 import {crashDatabase} from './fixtures/sqlite-crash';
 import {createHash} from 'node:crypto';
 import {beforeAll,afterAll,it,expect} from 'vitest';
-import {ObservedFinancialArchive,FinancialSourceJob,FinancialIndexBuild,FinancialSearchIndex,FinancialIndexPublication,CompanyMasterStore,recoverDedicatedSqliteSnapshot,type DedicatedSqliteRecoveryKind} from '../src/index';
+import {ObservedFinancialArchive,FinancialSourceJob,FinancialIndexBuild,FinancialSearchIndex,FinancialIndexPublication,CompanyMasterStore,CorporateRegistryStore,recoverDedicatedSqliteSnapshot,type DedicatedSqliteRecoveryKind} from '../src/index';
 const hash=(b:Uint8Array)=>createHash('sha256').update(b).digest('hex');
-const formats=[['observed-financial-archive',ObservedFinancialArchive,'archive_format'],['financial-source-job',FinancialSourceJob,'source_job_format'],['financial-index-build',FinancialIndexBuild,'financial_build_format'],['financial-search-index',FinancialSearchIndex,'financial_index_format'],['financial-index-publication',FinancialIndexPublication,'publication_format'],['company-master-store',CompanyMasterStore,'master_format']] as const;
+const formats=[['observed-financial-archive',ObservedFinancialArchive,'archive_format'],['financial-source-job',FinancialSourceJob,'source_job_format'],['financial-index-build',FinancialIndexBuild,'financial_build_format'],['financial-search-index',FinancialSearchIndex,'financial_index_format'],['financial-index-publication',FinancialIndexPublication,'publication_format'],['company-master-store',CompanyMasterStore,'master_format'],['corporate-registry-store',CorporateRegistryStore,'registry_format']] as const;
 function openSource(dir:string){const source=join(dir,'source.sqlite'),outputDirectory=join(dir,'candidate');return{source,outputDirectory,kind:'observed-financial-archive' as const,databaseSha256:hash(readFileSync(source)),journalSha256:hash(readFileSync(source+'-journal'))};}
 let fixtureDir:string,main:Buffer,journal:Buffer,original:Buffer;
 beforeAll(async()=>{

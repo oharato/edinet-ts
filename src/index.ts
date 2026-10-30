@@ -157,3 +157,8 @@ export type {CompanyIndustryComparisonOptions,CompanyIndustryComparisonResult,Co
 
 export {parseCorporateRegistryPublicationCalendar} from "./corporate-registry-calendar";
 export type {CorporateRegistryPublicationCalendarInput,CorporateRegistryPublicationCalendar,CorporateRegistryCalendarSource} from "./corporate-registry-calendar";
+
+export {streamCorporateRegistryRecords,CORPORATE_REGISTRY_STREAM_MAX_BYTES,CORPORATE_REGISTRY_RECORD_MAX_BYTES} from "./corporate-registry-stream";
+export type {CorporateRegistryStreamReceipt,CorporateRegistryStreamOptions} from "./corporate-registry-stream";
+export {CorporateRegistryStore} from "./db/corporate-registry-store";
+export type {CorporateRegistryStoredFile,CorporateRegistryFileImport,CorporateRegistryStoredQuery} from "./db/corporate-registry-store";
