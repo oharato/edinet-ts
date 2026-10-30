@@ -36,3 +36,15 @@ it('整合hashを作り直しても原表セルと異なる保存値は拒否す
  }finally{db.close()}
  const reader=new FacilityDetailStore(file,{readOnly:true});try{expect(()=>reader.audit()).toThrow()}finally{reader.close()}
 }));
+it('一原本内の国内/海外の異なる基準日を別snapshotに分けて混在させない',()=>fixture(file=>{
+ const d=document('A',table()+'<p>2025年12月31日現在</p>'+table());d.declarations=[d.declarations[0],{...d.declarations[0],tableIndex:1,asOfDate:'2025-12-31'}];const store=new FacilityDetailStore(file);
+ try{expect(store.append([d]).inserted).toBe(2);expect(store.search(query).rows.map(r=>r.row.tableIndex)).toEqual([0]);expect(store.search({asOfDate:'2025-12-31'}).rows.map(r=>r.row.tableIndex)).toEqual([1]);expect(store.append([d]).inserted).toBe(0)}finally{store.close()}
+}));
+it('旧版の設備Storeを上書きせず、新しいDBの作成を要求する',()=>fixture(file=>{
+ const store=new FacilityDetailStore(file);store.close();const db=new Database(file);db.exec("UPDATE facility_format SET kind='edinet-ts-facility-1-v1'");db.close();const before=hash(readFileSync(file));expect(()=>new FacilityDetailStore(file)).toThrow();expect(hash(readFileSync(file))).toBe(before);
+}));
+
+it('日付分割で100snapshotを超える投入は全体を保存しない',()=>fixture(file=>{
+ const documents=Array.from({length:51},(_,i)=>{const d=document('LIMIT'+i,table()+'<p>2025年12月31日現在</p>'+table());d.declarations=[d.declarations[0],{...d.declarations[0],tableIndex:1,asOfDate:'2025-12-31'}];return d});
+ const store=new FacilityDetailStore(file);try{expect(()=>store.append(documents)).toThrow('100snapshot');expect(store.audit().snapshots).toBe(0)}finally{store.close()}
+}));

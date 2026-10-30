@@ -81,3 +81,17 @@ describe("設備明細の同一時点の検索",()=>{
     });
     it("空の母集団は0件",()=>{expect(screenFacilityDetails([],query)).toMatchObject({matched:0,filtered:0,excluded:[],rows:[]});});
 });
+describe('原表直前の基準日との一致',()=>{
+ it('別表の日付が本文にあっても海外表の誤った基準日を認めない',()=>{
+  const d=document('A',table()+'<p>2025年12月31日現在</p>'+table());
+  d.declarations=[d.declarations[0],{...d.declarations[0],tableIndex:1}];
+  expect(()=>extractFacilityDetails(d)).toThrow('直前の日付');
+  d.declarations=[d.declarations[0],{...d.declarations[0],tableIndex:1,asOfDate:'2025-12-31'}];
+  expect(extractFacilityDetails(d).rows.map(r=>r.asOfDate)).toEqual(['2026-03-31','2025-12-31']);
+ });
+ it('直前の一セル表の日付を確認し、他の本文日付で代用しない',()=>{
+  const d=document('A','<table><tr><td>2025年12月31日現在</td></tr></table>'+table());
+  d.declarations=[{...d.declarations[0],tableIndex:1}];expect(()=>extractFacilityDetails(d)).toThrow('直前の日付');
+  d.declarations=[{...d.declarations[0],asOfDate:'2025-12-31'}];expect(extractFacilityDetails(d).rows[0].asOfDate).toBe('2025-12-31');
+ });
+});

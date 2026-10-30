@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {DedicatedSqliteDatabase} from './dedicated-sqlite';
-import {FACILITY_DETAILS_VERSION,projectFacilityDetails,screenFacilityDetails,screenParsedFacilityDetails,type FacilityDetailDocument,type FacilityDetailsExtraction,type FacilityScreeningOptions} from '../facility-details';
+import {FACILITY_DETAILS_VERSION,extractFacilityDetails,projectFacilityDetails,screenParsedFacilityDetails,type FacilityDetailDocument,type FacilityDetailsExtraction,type FacilityScreeningOptions} from '../facility-details';
 import {parseDisclosureTableFragment,DisclosureTableKind} from '../disclosure-tables';
 
 export const FACILITY_DETAIL_STORE_VERSION='1';
@@ -52,15 +52,21 @@ export class FacilityDetailStore extends DedicatedSqliteDatabase {
  }
  append(documents:readonly FacilityDetailDocument[]):FacilityDetailStoreAppendResult{
   const captured=structuredClone(documents);if(!Array.isArray(captured)||captured.length>100||captured.some(d=>!d||typeof d.xml!=='string'||Buffer.from(d.xml).toString('utf8')!==d.xml||Buffer.byteLength(d.xml)>64*1024**2)||captured.reduce((n,d)=>n+Buffer.byteLength(d.xml),0)>256*1024**2)fail();
-  const records=(captured as readonly FacilityDetailDocument[]).map(document=>{
-   const asOfDate=document.declarations?.[0]?.asOfDate;if(!asOfDate)fail();
-   const extraction=screenFacilityDetails([document],{asOfDate}).extractions[0];
-   const {selection,accountingStandard,declarations}=document;
-   const record:RecordBody={version:FACILITY_DETAILS_VERSION,input:{selection:{docID:selection.docID,contextRef:selection.contextRef,kind:selection.kind},accountingStandard,declarations:declarations.map(d=>({...d}))},extraction};
-   const id=identity(record),body=canonical(record);if(Buffer.byteLength(body)>maximumBody)fail();
-   const values=[id,selection.docID,selection.contextRef,asOfDate,extraction.source.inputXmlSha256!,body];
-   return {id,body,values};
-  });
+  const records:{id:string;body:string;values:string[]}[]=[];let storedBytes=0;
+  for(const document of captured as readonly FacilityDetailDocument[]){
+   const original=extractFacilityDetails(document),{selection,accountingStandard}=document;
+   for(const asOfDate of new Set(document.declarations.map(d=>d.asOfDate))){
+    if(records.length>=100)throw Error('設備Storeの一投入は100snapshot以下です。対象を分けてください');
+    const declarations=document.declarations.filter(d=>d.asOfDate===asOfDate).map(d=>({...d}));
+    const input={selection:{docID:selection.docID,contextRef:selection.contextRef,kind:selection.kind},accountingStandard,declarations};
+    const extraction=projectFacilityDetails(original.source,input);screenParsedFacilityDetails([extraction],{asOfDate});
+    const record:RecordBody={version:FACILITY_DETAILS_VERSION,input,extraction};
+    const id=identity(record),body=canonical(record);if(Buffer.byteLength(body)>maximumBody)fail();
+    const values=[id,selection.docID,selection.contextRef,asOfDate,extraction.source.inputXmlSha256!,body];
+    if((storedBytes+=Buffer.byteLength(body))>256*1024**2)throw Error('設備Storeの一投入の保存本文は256MiB以下です。対象を分けてください');
+    records.push({id,body,values});
+   }
+  }
   return this.transaction(()=>{
    this.verifyAll();let inserted=0;
    for(const record of records){const existing=this.rows('SELECT '+columns+' FROM facility_snapshots WHERE id=?',[record.id])[0];

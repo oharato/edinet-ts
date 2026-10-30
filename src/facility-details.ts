@@ -7,7 +7,7 @@ import type { ComparisonOperator } from "./financial-options";
 export type FacilityOrganization = "reporting-company" | "domestic-subsidiaries" | "overseas-subsidiaries";
 /** 表と日付/対象組織の対応は元書類を確認した宣言。hashの照合は意味の自動判定ではありません。 */
 export interface FacilityTableDeclaration { tableIndex: number; asOfDate: string; organization: FacilityOrganization; rawSha256: string; }
-export const FACILITY_DETAILS_VERSION = "1";
+export const FACILITY_DETAILS_VERSION = "2";
 export const FacilityField = Object.freeze({ TotalBookValueJPY: "totalBookValueJPY", LandBookValueJPY: "landBookValueJPY", BuildingsBookValueJPY: "buildingsBookValueJPY", LandAreaM2: "landAreaM2" } as const);
 export type FacilityField = typeof FacilityField[keyof typeof FacilityField];
 export type FacilityValue = { cellIndex: number; raw: string; unit: "JPY" | "m2"; multiplier: 1 | 1000000 } & (
@@ -69,6 +69,10 @@ export function projectFacilityDetails(source: DisclosureTableExtraction, input:
     const plain = canonicalHeader(source.parsedText);
     for (const d of declarations) {
         const [year, month, day] = d.asOfDate.split("-").map(Number);
+        const table = source.tables[d.tableIndex], previous = source.tables[d.tableIndex - 1];
+        const nearby = canonicalHeader((table?.precedingText ?? "") + (previous?.cells.length === 1 && previous.grid.every(row => row.length === 1) ? previous.cells[0].parsedText : ""));
+        const nearbyDates = [...new Set([...nearby.matchAll(/(\d{4})年(\d{1,2})月(\d{1,2})日現在/g)].map(m => `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`))];
+        if (nearbyDates.length && (nearbyDates.length !== 1 || nearbyDates[0] !== d.asOfDate)) throw new Error("設備表の直前の日付と宣言が一致しません");
         if (d.rawSha256 !== source.source.rawSha256 || !source.tables[d.tableIndex] || !plain.includes(`${year}年${month}月${day}日`) || !validDate(source.source.period?.instant) || d.asOfDate > source.source.period!.instant!) throw new Error("設備表宣言の原本内参照を確認できません");
     }
     for (const table of source.tables) {
