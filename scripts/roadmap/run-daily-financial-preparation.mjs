@@ -130,7 +130,7 @@ async function main(){
         const prepared=await runDailyFinancialPreparation(config,{signal:controller.signal});
         let result=prepared.status==='prepared'?await acquirePreparedFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal,createFetchXbrl:()=>{
             normalFile(daily.envPath);loadEnv({path:daily.envPath,quiet:true});if(!process.env.EDINET_API_KEY)throw Error('Source acquisition credentials are missing');
-            const client=new EdinetXbrlDownloader({rootDir:join(config.outputDirectory,'provider-cache'),requestTimeoutMs:60000,maxRetries:0});return (docID,request)=>client.fetchXbrl(docID,request);
+            const client=new EdinetXbrlDownloader({rootDir:join(dirname(prepared.configPath),'provider-cache'),requestTimeoutMs:60000,maxRetries:0});return (docID,request)=>client.fetchXbrl(docID,request);
         }}):prepared;
         if(result.status==='acquired')result=await buildReconstructedFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal});
         console.log(JSON.stringify(result));if(result.status==='aborted')process.exitCode=1;
