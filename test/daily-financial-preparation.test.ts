@@ -1,5 +1,7 @@
+import {acquirePreparedFinancialCycle} from '../scripts/roadmap/acquire-financial-cycle.mjs';
+import {buildReconstructedFinancialCycle} from '../scripts/roadmap/build-financial-cycle.mjs';
 import {it,expect,vi} from 'vitest';
-import {mkdtempSync,rmSync,existsSync,readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {mkdtempSync,rmSync,existsSync,readFileSync,writeFileSync,mkdirSync,renameSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {spawnSync} from 'node:child_process';
@@ -53,3 +55,26 @@ it('容量不足だけを安全な固定メッセージで説明し、未知の�
  for(const message of ['Financial cycle preparation disk reserve','Daily preparation disk reserve'])expect(dailyFinancialFailureMessage(new Error(message))).toContain('insufficient disk space');
  for(const error of [new Error('SECRET /private/file'),{message:'SECRET'},null]){expect(dailyFinancialFailureMessage(error)).not.toContain('SECRET');expect(dailyFinancialFailureMessage(error)).toContain('details hidden')}
 });
+
+it('版2は日付ごとの候補を作り、翌日も前日の未完了入力を先に再開する',()=>fixture(async s=>{
+ const config={...s.config,version:2};const first=await runDailyFinancialPreparation(config,inactive);expect(first.status).toBe('prepared');expect(first.configPath).toBe(join(config.outputDirectory,'2026-10-30','preparation-config.json'));
+ vi.setSystemTime(new Date('2026-10-31T01:00:00Z'));const resumed=await runDailyFinancialPreparation(config,inactive);expect(resumed.status).toBe('prepared');expect(resumed.configPath).toBe(first.configPath);expect(existsSync(join(config.outputDirectory,'2026-10-31'))).toBe(false);
+}));
+it('版2も当日のmetadataが未完了なら出力rootを作らない',()=>fixture(async s=>{
+ vi.setSystemTime(new Date('2026-10-31T01:00:00Z'));expect((await runDailyFinancialPreparation({...s.config,version:2},inactive)).status).toBe('waiting-for-daily-metadata');expect(existsSync(s.config.outputDirectory)).toBe(false);
+}));
+
+it('版2は当日の構築完了を重複実行せず、改変された完了記録を拒否する',()=>fixture(async s=>{
+ const config={...s.config,version:2},prepared=await runDailyFinancialPreparation(config,inactive),cycle=readJSONSnapshot(prepared.configPath).value;
+ expect((await acquirePreparedFinancialCycle(cycle,{createFetchXbrl:()=>{throw Error('network not allowed')}})).status).toBe('acquired');expect((await buildReconstructedFinancialCycle(cycle)).status).toBe('built');
+ expect(await runDailyFinancialPreparation(config,inactive)).toEqual({status:'cycle-complete',day:'2026-10-30'});
+ const oldManifest=readFileSync(join(cycle.outputDirectory,'input.json'));
+ vi.setSystemTime(new Date('2026-10-31T01:00:00Z'));const envelope=structuredClone(s.envelope);envelope.checkpoint.completedDay='2026-10-31';envelope.checkpoint.throughDate='2026-10-30';Object.assign(envelope.checkpoint.lastCompletedRun,{endDate:'2026-10-30',closedThrough:'2026-10-30',refreshAfter:'2026-10-31T01:00:00.000Z',completedAt:'2026-10-31T01:00:00.000Z'});Object.assign(envelope.checkpoint.lastCompletedRun.probe,{date:'2026-10-31',observedAt:'2026-10-31T01:00:00.000Z'});atomicJSON(s.daily.checkpointPath,envelope);
+ const next=await runDailyFinancialPreparation(config,inactive);expect(next.status).toBe('prepared');expect(next.configPath).toBe(join(config.outputDirectory,'2026-10-31','preparation-config.json'));expect(readFileSync(join(cycle.outputDirectory,'input.json')).equals(oldManifest)).toBe(true);
+ const path=join(cycle.outputDirectory,'reconstructed','build.json'),record=readJSONSnapshot(path).value;record.body.status='not-built';writeFileSync(path,JSON.stringify(record));await expect(runDailyFinancialPreparation(config,inactive)).rejects.toThrow('completed daily cycle');
+}),30_000);
+
+it.each(['2026-02-30','2026-10-29'])('版2は不正日付や別日のhandoffを持つ候補%sを拒否する',day=>fixture(async s=>{
+ const config={...s.config,version:2};await runDailyFinancialPreparation(config,inactive);renameSync(join(config.outputDirectory,'2026-10-30'),join(config.outputDirectory,day));
+ await expect(runDailyFinancialPreparation(config,inactive)).rejects.toThrow(day==='2026-02-30'?'directory':'date differs');
+}));

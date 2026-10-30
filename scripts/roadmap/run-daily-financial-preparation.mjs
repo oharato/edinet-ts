@@ -16,7 +16,7 @@ const jstDate=time=>new Date(time+9*3600000).toISOString().slice(0,10);
 const hash=/^[a-f0-9]{64}$/;
 function settings(input){
     const s=structuredClone(input),fields=['version','metadataConfigPath','sourceArchivePath','populationPath','populationSha256','outputDirectory'];
-    if(!s||typeof s!=='object'||Array.isArray(s)||Object.keys(s).length!==fields.length||Object.keys(s).some(k=>!fields.includes(k))||s.version!==1||!hash.test(s.populationSha256))throw Error('Invalid daily financial preparation configuration');
+    if(!s||typeof s!=='object'||Array.isArray(s)||Object.keys(s).length!==fields.length||Object.keys(s).some(k=>!fields.includes(k))||![1,2].includes(s.version)||!hash.test(s.populationSha256))throw Error('Invalid daily financial preparation configuration');
     for(const k of ['metadataConfigPath','sourceArchivePath','populationPath','outputDirectory'])if(typeof s[k]!=='string'||!isAbsolute(s[k])||resolve(s[k])!==s[k])throw Error('Absolute preparation paths are required');
     for(const k of ['metadataConfigPath','sourceArchivePath','populationPath'])if(normalFile(s[k])!==s[k]||s[k].startsWith(s.outputDirectory+'/'))throw Error('Preparation inputs overlap or have aliases');
     if(new Set([s.metadataConfigPath,s.sourceArchivePath,s.populationPath]).size!==3)throw Error('Preparation inputs overlap');
@@ -40,6 +40,27 @@ export async function runDailyFinancialPreparation(input,{signal,readUnitState=u
     const summary=readJSONSnapshot(daily.guardSummaryPath).value,unit=await readUnitState(daily.guardUnit);
     if(!canStartDailyMetadata(summary,unit,{planSha256:daily.guardPlanSha256,workerSha256:daily.guardWorkerSha256}))return {status:'waiting-for-fixed-acquisition'};
     if(typeof summary.archivePath!=='string'||resolve(summary.archivePath)!==s.sourceArchivePath)throw Error('Completed acquisition archive differs');
+    if(s.version===2){
+        const today=jstDate(Date.now());let pending;
+        if(existsSync(s.outputDirectory)){
+            directory(s.outputDirectory);
+            for(const day of readdirSync(s.outputDirectory).sort()){
+                if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(Date.parse(day+'T00:00:00Z'))||new Date(day+'T00:00:00Z').toISOString().slice(0,10)!==day||day>today)throw Error('Invalid daily cycle directory');
+                const cycle=join(s.outputDirectory,day);directory(cycle);
+                const handoff=join(cycle,'handoff.json');
+                if(existsSync(handoff)&&readJSONSnapshot(handoff).value?.body?.day!==day)throw Error('Daily cycle date differs from handoff');
+                const receipt=join(cycle,'candidate','reconstructed','build.json');
+                if(!existsSync(receipt)){pending=day;break}
+                const saved=readJSONSnapshot(receipt).value;
+                if(saved.version!==1||saved.body?.status!=='built'||saved.body.inputSha256!==saved.inputSha256||saved.sha256!==sha256(canonical([saved.inputSha256,saved.body])))throw Error('Invalid completed daily cycle');
+                if(day===today)return {status:'cycle-complete',day};
+            }
+        }
+        const day=pending??today;
+        if(!pending){const checkpoint=readJSONSnapshot(daily.checkpointPath).value?.checkpoint;if(checkpoint?.completedDay!==today||checkpoint.active!==undefined)return {status:'waiting-for-daily-metadata'}}
+        if(!existsSync(s.outputDirectory))mkdirSync(s.outputDirectory,{mode:0o700});
+        return runDailyFinancialPreparation({...s,version:1,outputDirectory:join(s.outputDirectory,day)},{signal,readUnitState,prepareOptions});
+    }
     const binding=sha256(canonical([s,dailySnapshot.sha256,sha256(readFileSync(fileURLToPath(import.meta.url)))])),handoffPath=join(s.outputDirectory,'handoff.json');
     let handoff;
     if(existsSync(s.outputDirectory))directory(s.outputDirectory);

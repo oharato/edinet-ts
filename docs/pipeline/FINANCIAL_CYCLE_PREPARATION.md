@@ -142,3 +142,9 @@ status acquiringは残りあり、acquisition-pausedは容量余裕/試行上限
 構築後は `FinancialIndexPublication.prepare` の既定の厳格条件で候補を保存します。全母集団に利用可能値があり、原本・系列・値等の保留が0である条件を、自動で緩めません。`publicationCandidate.violations` に条件違反を保持し、`publicationEligible` は条件合格に加えてmetadataの閉日が取得完了cutoffに対して最新である場合だけtrueになります。候補の保存だけでは公開pointerは切り替わりません。
 
 公開先を明示して切り替える入口は `activateBuiltFinancialCycle(config, {catalogPath, expectedActive})` です。候補を再構築・再検査し、不適格なら `publication-blocked` と理由を返します。適格な場合だけ指定catalogへ候補を保存し、期待する直前候補ID（初回はnull）が一致した場合に切り替えます。古い期待値なら切替を拒否します。呼出元は候補とcatalogの排他を保持し、返された索引パスと公開先を読取側へ引き継いでください。日次serviceの公開先設定と読取側の再ロードは別途接続が必要です。
+
+## 日付を跨いで反復する設定
+
+日次準備設定の `version: 2` では、`outputDirectory` を日別候補の親フォルダとして使います。候補は `YYYY-MM-DD` ごとに分かれ、前日までの未完了候補があれば先に同じ固定入力で再開します。当日の候補を作るには、当日のmetadata完了証跡が必要です。構築済みの日は `cycle-complete` を返します。構築完了と公開適格性は別です。
+
+既存の `version: 1` は従来の固定出力先のままです。実行中の候補を版2へ付け替えず、既存処理の完了確認後、新しい親フォルダと固定runtimeで版2を開始してください。
