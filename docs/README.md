@@ -119,7 +119,7 @@ flowchart LR
 - [財務3項目と流動比率をSQLiteに保存して検索する](pipeline/FINANCIAL_SQLITE_STORE.md)
 - [観測と原本を保持する財務アーカイブ](pipeline/OBSERVED_FINANCIAL_ARCHIVE.md)
 - [公開snapshotによる財務検索と再ロード](pipeline/PUBLISHED_FINANCIAL_INDEX.md)
-- [固定年次計画と日次更新を実行する専用サービス](pipeline/ROADMAP_RUNTIME.md)
+- [固定年次計画・日次サービスと、停止DBの完全バックアップ/復元](pipeline/ROADMAP_RUNTIME.md)
 - [停止した専用DBのhot journal復旧](pipeline/SQLITE_RECOVERY.md)
 
 ## 開発・検証・配布

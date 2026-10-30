@@ -175,3 +175,42 @@ timerはenable/activeで次の通常確認は09:00JST、09〜23時台の5分間�
 監査JSONには `version: 1`、`status: "independently-verified"`、元DBの絶対パス `input` と指紋 `inputSha256`、新DBの絶対パス `output` と指紋 `outputSha256` を保存します。日次処理は、年次完了記録と元DBの対応、設定と監査JSONの対応、新DBの実指紋を確認します。証跡の作成自体はこの入力検査では行いません。
 
 設定やSDKが変わるため、以前のhandoffを上書きせず新しい出力先・固定runtimeで開始します。旧候補と元DBは切戻し用に保持します。監査証跡を指定しない従来設定では、年次完了記録と同じDBだけを入力にできます。
+
+## 停止したDBの完全バックアップと復元
+
+`scripts/roadmap/cold-sqlite-archive.py` は、停止したSQLiteファイル全体をgzipで保管します。元DBの全byte列と物理SHA-256を保ち、利用時には同じSQLite byte列へ復元します。格納されていた原本・観測時刻・解析結果を読み替えません。
+
+切戻し用の元DBと、現行設定や再開経路から参照するDBは保持します。容量整理の対象は、それらの参照から外したDBや検証コピーとして別途確認したものに限定してください。`pack` と `audit` は元DBを削除しません。
+
+```sh
+python3 scripts/roadmap/cold-sqlite-archive.py pack \
+  --source stopped.sqlite --out cold-archive \
+  --expected-sha256 <固定した元DBのSHA-256>
+python3 scripts/roadmap/cold-sqlite-archive.py audit --archive cold-archive
+```
+
+`pack` は通常ファイル・単一リンク・SQLiteヘッダーを検査し、WAL/SHM/journalがあれば停止します。生成したgzipを全量展開して元のサイズ/hashと照合し、処理中の元DBの変更も検査してから `receipt.json` を確定します。元DBと既存の出力先は上書きしません。gzip内の日時/ファイル名を固定し、圧縮物のhashも記録します。
+
+`audit` は元DBの所有者/同一性と、同じユーザーのプロセスが持つFDを調べ、監査JSONを追加保存します。元DBを開いているFD、またはFDを検査できないプロセスがあれば `status: blocked` です。`no-open-readers-observed` も将来の再起動を許可する判定ではありません。設定・サービス・手動の再開経路を確認し、対象DBの利用を止めてから次へ進みます。
+
+```sh
+# 廃止対象と確認した元DBだけを、圧縮保管へ移す
+python3 scripts/roadmap/cold-sqlite-archive.py retire --archive cold-archive
+# 元の場所へ復元する。既存のファイルやsymlinkがあれば停止
+python3 scripts/roadmap/cold-sqlite-archive.py restore --archive cold-archive
+# 別の未使用パスで復元を試す場合
+python3 scripts/roadmap/cold-sqlite-archive.py restore \
+  --archive cold-archive --target restored.sqlite
+```
+
+`retire` は、gzipと元DBを再照合し、FD監査を前後2回行い、元DBの変更・利用中・検査不能がない場合だけ元のファイルを外します。圧縮原本と監査結果は保持します。`restore` は固定FDでgzipのhash/CRCと全展開byteを検査し、元圧縮物の差し替えも拒否した上で、別の一時ファイルから上書きなしで公開します。
+
+Linux・Python 3向けです。元DBは最大1TiB、receiptは1MiB以下。圧縮/復元中は34GiBの空き留保を確認し、復元前には元サイズ+留保分の容量を要求します。SQLiteを開くときは、復元したファイルをSDKへ渡してください。
+
+### 実DBで確認した範囲
+
+年次原本DB17,476,337,664 bytesを970,915,701 bytesのgzipへ追加保管しました。固定SHA-256との一致と全量復元を確認し、独立処理でも元DBとの全byte比較を実行しています。元DBの物理SHA・サイズ・更新時刻は変わっていません。実DBを別ファイルへ全量復元して再openする確認は、追加容量を確保した後の残工程です。
+
+FD監査では開いている元DBのFDは見つかりませんでしたが、同じユーザーの2プロセスを検査できず `blocked` となりました。元DBは保持し、容量解放は実施していません。本処理から現行の日次サービスの設定・原本pool・DBは変更していません。証跡は `data/roadmap/cold-year-financial-archive-20261031/` です。
+
+境界テスト14件で、完全復元後のSQL読取、既存パスの保護、改変、sidecar/symlink、容量不足、検査不能、後から現れたreaderの拒否を確認しています。
