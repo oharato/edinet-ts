@@ -2,6 +2,12 @@
 
 [全体計画](EDINET_TS_ROADMAP.md)の全段階を対象に、実装・原本照合・配布・運用を進めています。部分実装や限定標本の検証だけで、その段階全体を完了とは扱いません。無償・既存データを優先します。
 
+## 保存XMLの署名検証からDB取込への接続（2026-10-31）
+
+Linux/Python 3/GnuPG 2向けのオフライン検証スクリプトを追加しました。隔離した鍵環境で完全フィンガープリント・SHA-2署名・取得時XML hash・入力不変を検査し、成功時だけ保存receiptと既存Store CLI向けmanifestを出します。既存証跡は上書きしません。
+
+実GnuPGを使う6境界テストと関連CLIテストが成功。保存済み公式実差分の署名検証→CLI取込を実行し、独立Pythonで2,181記録/65,430項目・取得出典・原XML hashを照合しました。証跡は `data/roadmap/corporate-registry-signature-store-20261031/`、使い方は[署名確認と取込](../companies/CORPORATE_REGISTRY.md#保存済みxmlの署名を確認して取り込む)。取得時刻等の宣言は署名対象外で、自動取得・ZIP全パート監査・全国実状態・稼働環境への反映は残ります。
+
 ## 保存DBから法人状態を再構成（2026-10-31）
 
 `CorporateRegistryStore.reconstruct` と `reconstruct-corporate-registry-store` CLIを追加しました。保存済みv1 DBの原XML hash・記録位置を保持し、XML入口と共通の訂正/削除/cutoff/カレンダー判断を使います。配布全体の矛盾は対象法人外も検査し、候補10,000件/16MiB超過を省略せず拒否します。

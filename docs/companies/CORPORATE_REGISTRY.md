@@ -358,3 +358,45 @@ Node 26.12.1で、公式サンプル全件・休日・通常日の欠落・未�
 別の合成試験では100,001件・113.7MBの保存済み差分と、小さな別法人の全件起点を使用しました。JavaScriptヒープ128MiB上限で状態再構成に成功し、最大RSSは約186MiB、初回159.4秒・同じ接続の再実行0.12秒でした。候補件数上限の拒否も確認しました。共有hostでの一回の測定であり、全国の実データの状態や速度を保証する結果ではありません。
 
 証跡は `data/roadmap/corporate-registry-stored-state-{real,large}-20261031/` です。全国の実全件と連続差分、署名・取得監査との統合、EDINET法人同一性、固定配布物と実運用への反映は残ります。
+
+
+## 保存済みXMLの署名を確認して取り込む
+
+Linux上でPython 3とGnuPG 2を使える場合は、`scripts/roadmap/verify-corporate-registry-signature.py` で保存済みのXML・分離署名・公開鍵を照合できます。ネットワーク取得やユーザーの鍵環境は使いません。公開鍵を取得しただけで信用せず、[国税庁の公開鍵ページ](https://www.houjin-bangou.nta.go.jp/download/kokaikagi/)等で確認した完全なフィンガープリントを指定してください。
+
+入力JSONの例です。ファイルの相対パスは、このJSONを置いたディレクトリから解決します。
+
+```json
+{
+  "file": "diff_20261028.xml",
+  "signature": "diff_20261028.xml.asc",
+  "publicKey": "nta-public-key.asc",
+  "fingerprint": "F4109E821F0DE67C4BA1947C4BCD87A24D615230",
+  "sha256": "c29b0724eccdda7023f538731203f6e773322d7f9a98d6d04cad0f1a93fb9329",
+  "source": {
+    "sourceUrl": "https://www.houjin-bangou.nta.go.jp/download/sabun/",
+    "observedAt": "2026-10-29T12:58:31.721Z",
+    "dataDate": "2026-10-28",
+    "kind": "diff",
+    "purpose": "download"
+  },
+  "part": "diff_20261028.xml"
+}
+```
+
+このhash・取得日時は検証に使った保存原本の例です。別の取得物へコピーせず、自分の取得記録を指定します。鍵更新時も、信頼するフィンガープリントを別途確認します。
+
+```sh
+python3 scripts/roadmap/verify-corporate-registry-signature.py \
+  --manifest signed-input.json --out verified-delivery
+edinet-ts import-corporate-registry-file \
+  --db corporate-registry.sqlite --manifest verified-delivery/import.json
+```
+
+検証が成功すると、新規ディレクトリへ `receipt.json` と `import.json` を出力します。前者には検証日時、GnuPG版と結果、鍵/署名/XMLのhash、信頼したフィンガープリント、取込manifestを保存します。後者は既存の取込CLIへそのまま渡せます。StoreでもXML hashを再検査するため、署名検証後にXMLが変わった場合は取込を拒否します。既存の証跡ディレクトリは上書きしません。
+
+署名失敗・別鍵・期限切れ/失効・SHA-2以外の署名・取得hash不一致・検証中の入力変更は拒否します。通常ファイルと単一リンクを要求し、XMLは8GiB、署名/鍵は各1MiB、manifestは2MiB以下です。GnuPG各呼出しの上限は120秒です。
+
+署名が保証するのはXMLと署名鍵の対応です。`source` の取得時刻・対象日・URL、ZIPの網羅性、全国配布の全パート取得は別の取得監査で確認します。Storeへ直接渡す未検証入力が、この手順を経たものとして扱われることはありません。原ZIP・原XML・署名・公開鍵・取得記録・検証receiptを別途保持してください。
+
+保存済みの公式実差分で、署名検証→取込manifest→CLI取込の経路を確認しました。独立Pythonで2,181記録・65,430項目と出典/hashの一致を確認しています。証跡は `data/roadmap/corporate-registry-signature-store-20261031/` です。自動取得・ZIP全パートの監査・全国実状態・稼働環境への反映は引き続き残ります。
