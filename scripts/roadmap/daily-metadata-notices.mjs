@@ -2,7 +2,7 @@ import {createHash} from 'node:crypto';
 import {setImmediate as yieldTurn} from 'node:timers/promises';
 import {parseDocumentTimestamp} from '../../dist/document-timestamp.js';
 
-export const DAILY_NOTICE_RULES_VERSION = 2;
+export const DAILY_NOTICE_RULES_VERSION = 3;
 
 const date = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
     && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
@@ -18,7 +18,7 @@ const key = o => createHash('sha256').update(JSON.stringify([o.listDate, o.docum
 export function assertDailyNoticeState(state, repository) {
     const now = Date.now(), today = new Date(now + 9 * 3600000).toISOString().slice(0, 10);
     if (!object(state, ['rulesVersion', 'afterSequence', 'seen', 'pending', 'unresolved'])
-        || state.rulesVersion !== undefined && state.rulesVersion !== DAILY_NOTICE_RULES_VERSION
+        || state.rulesVersion !== undefined && ![2, DAILY_NOTICE_RULES_VERSION].includes(state.rulesVersion)
         || !Number.isSafeInteger(state.afterSequence) || state.afterSequence < 0 || state.afterSequence > repository.getLastObservationSequence()
         || !Array.isArray(state.seen) || state.seen.length > 100000
         || !Array.isArray(state.pending) || state.pending.length > 10000
@@ -38,7 +38,7 @@ export async function scanDailyMetadataNotices(repository, state, save, {signal}
     const throughSequence = repository.getLastObservationSequence();
     let readObservations = 0, newNotices = 0;
     if (signal?.aborted) return {complete: state.afterSequence === throughSequence, aborted: true, readObservations, newNotices};
-    if (state.rulesVersion === undefined) {
+    if (state.rulesVersion !== DAILY_NOTICE_RULES_VERSION) {
         // 旧判定で処理済みの通知も再評価し、既存の再取得待ちは保持します。
         state.rulesVersion = DAILY_NOTICE_RULES_VERSION;
         state.afterSequence = 0;
@@ -76,6 +76,12 @@ export async function scanDailyMetadataNotices(repository, state, save, {signal}
                 }
                 if (rows.length < 1000) break;
                 cursor = rows.at(-1).sequence;
+            }
+            if (!found && docID === d.docID) {
+                const submitted = parseDocumentTimestamp(d.submitDateTime, false);
+                const submittedDay = submitted === undefined ? undefined : new Date(submitted + 9 * 3600000).toISOString().slice(0, 10);
+                // 提出日時は再取得日の候補に限り、元一覧で確認できるまでは未解決のままにします。
+                if (submittedDay !== undefined && submitted <= Date.parse(o.observedAt) && submittedDay < o.listDate) targets.add(submittedDay);
             }
             referencesKnown &&= found;
         }
