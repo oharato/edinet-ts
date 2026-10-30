@@ -1,3 +1,4 @@
+import {encodeArchiveContent,decodeArchiveContent,type ArchiveContentEncoding} from './archive-content';
 import { assertXmlInput } from "../xml-input";
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
@@ -14,6 +15,8 @@ import { IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION } from "../ifrs-financial-detail
 export const OBSERVED_FINANCIAL_ARCHIVE_VERSION = "1";
 export interface ObservedFinancialArchiveOptions {
     readOnly?: boolean;
+    /** 新規DBの原本保存方式。既存DBは保存済みの方式を自動検出します。 */
+    compression?: "gzip";
 }
 export interface FinancialArchiveSourceTransferOptions {
     sourceArchiveSha256: string;
@@ -92,7 +95,7 @@ export interface ArchivedFinancialSnapshots {
         extracted: number;
     };
 }
-const kind = "edinet-ts-observed-financial-archive-v1";
+const kind = "edinet-ts-observed-financial-archive-v1", gzipKind = "edinet-ts-observed-financial-archive-gzip-v1";
 const schema = {
     archive_format: "CREATE TABLE archive_format(kind TEXT NOT NULL)",
     archive_observations: "CREATE TABLE archive_observations(id TEXT PRIMARY KEY,doc_id TEXT NOT NULL,parent_doc_id TEXT,edinet_code TEXT,observed_ms INTEGER NOT NULL,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
@@ -141,6 +144,7 @@ export function financialArchiveExtractionProvenance(options: ArchivedFinancialS
 /** 専用の追記アーカイブ。旧DBを移行せず、原観測・原本と版付き解析結果を保持します。 */
 export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
     private readonly archiveFile?: string;
+    private readonly contentEncoding: ArchiveContentEncoding;
     private readonly validatedObservationRows = new Map<string, Record<string, unknown>>();
     private validatedObservationBytes = 0;
     /** 全列が不変な行だけ再解析を省略。本文/索引は毎回SQLiteから読み直します。 */
@@ -168,11 +172,53 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
     }
 
     constructor(file: string, options: ObservedFinancialArchiveOptions = {}) {
-        super(file, options, { table: "archive_format", kind, schema });
+        if (!options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["readOnly", "compression"].includes(k)))
+            throw new Error("不正なアーカイブ設定です");
+        const {readOnly, compression} = options;
+        if (compression !== undefined && compression !== "gzip")
+            throw new Error("不正なアーカイブ設定です");
+        super(file, {readOnly}, {table: "archive_format", kind: compression === "gzip" ? gzipKind : kind, compatibleKinds: [kind, gzipKind], schema});
+        this.contentEncoding = this.rows("SELECT kind FROM archive_format")[0].kind === gzipKind ? "gzip" : "plain";
         this.archiveFile = file === ":memory:" ? undefined : realpathSync(file);
+    }
+    private content(sourceSha256: string): Buffer | undefined {
+        const size = this.rows("SELECT length(xml) AS bytes FROM archive_contents WHERE sha256=?", [sourceSha256]);
+        if (!size.length) return undefined;
+        if (typeof size[0].bytes !== "number" || !Number.isSafeInteger(size[0].bytes) || size[0].bytes < 0 || size[0].bytes > 256 * 1024 * 1024)
+            throw new Error("一原本の上限は256MiBです");
+        const bytes = this.rows("SELECT xml FROM archive_contents WHERE sha256=?", [sourceSha256])[0]?.xml;
+        if (!(bytes instanceof Uint8Array) || bytes.byteLength !== size[0].bytes)
+            throw new Error("保存原本のhashまたは圧縮内容が不整合です");
+        try {
+            return decodeArchiveContent(bytes, this.contentEncoding, sourceSha256);
+        } catch {
+            throw new Error("保存原本のhashまたは圧縮内容が不整合です");
+        }
     }
     /** 停止した原本アーカイブのreadOnlyコピー全体を固定します。 */
     snapshotSha256(): string { return this.readOnlySnapshotSha256(); }
+    /** 固定readOnly入力の一覧観測を原時刻・IDのまま転送します。 */
+    transferObservationsTo(target: ObservedFinancialArchive, options: {sourceArchiveSha256: string; afterId?: string; limit?: number}) {
+        if (!(target instanceof ObservedFinancialArchive) || target === this || this.archiveFile !== undefined && this.archiveFile === target.archiveFile || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["sourceArchiveSha256", "afterId", "limit"].includes(k)))
+            throw new Error("異なる転送先と固定原本指紋を指定してください");
+        const {sourceArchiveSha256, afterId, limit = 1000} = options;
+        if (typeof sourceArchiveSha256 !== "string" || !/^[a-f0-9]{64}$/.test(sourceArchiveSha256) || afterId !== undefined && (typeof afterId !== "string" || !afterId.trim() || afterId.length > 256) || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000)
+            throw new Error("観測転送の指紋・cursor・上限が不正です");
+        if (this.snapshotSha256() !== sourceArchiveSha256) throw new Error("固定入力の指紋が異なります");
+        target.append([], []);
+        return this.transaction(() => {
+            if (afterId !== undefined) {
+                const previous = this.rows("SELECT * FROM archive_observations WHERE id=?", [afterId])[0];
+                if (!previous) throw new Error("転送cursorが固定観測にありません");
+                this.decodeObservation(previous);
+            }
+            const rows = this.rows("SELECT * FROM archive_observations WHERE id>? ORDER BY id LIMIT ?", [afterId ?? "", limit + 1]);
+            const observations = rows.slice(0, limit).map(row => this.decodeObservation(row));
+            const {insertedObservations} = target.append(observations);
+            return {sourceArchiveSha256, transferredObservations: observations.length, insertedObservations,
+                ...(observations.length ? {nextAfterId: observations.at(-1)!.observationId} : {}), complete: rows.length <= limit};
+        }, false);
+    }
     /** 固定readOnly原本から全版の宣言/内容を追記。各原本をcommitし、再投入は冪等です。 */
     transferSourcesTo(target: ObservedFinancialArchive, options: FinancialArchiveSourceTransferOptions): FinancialArchiveSourceTransferResult {
         if (!(target instanceof ObservedFinancialArchive) || target === this || this.archiveFile !== undefined && this.archiveFile === target.archiveFile || !options || typeof options !== "object" || Array.isArray(options) || Object.keys(options).some(k => !["sourceArchiveSha256", "afterId", "availableBy", "limit"].includes(k)))
@@ -222,20 +268,10 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
             let insertedSources = 0, insertedContents = 0, bytes = 0;
             for (; !candidate.done && transferredIds.length < limit; candidate = iterator.next()) {
                 const {row, source: normalized} = candidate.value, body = normalized;
-                const size = this.rows("SELECT length(xml) AS bytes FROM archive_contents WHERE sha256=?", [body.sourceSha256]);
-                const length = size[0]?.bytes;
-                if (size.length && (typeof length !== "number" || !Number.isSafeInteger(length) || length < 0 || length > 256 * 1024 * 1024))
-                    throw new Error("転送原本は256MiB以下です");
-                if (typeof length === "number" && bytes + length > 256 * 1024 * 1024 && transferredIds.length) break;
-                let xml: string | undefined;
-                if (size.length) {
-                    const raw = this.rows("SELECT xml FROM archive_contents WHERE sha256=?", [body.sourceSha256])[0]?.xml;
-                    if (!(raw instanceof Uint8Array) || raw.byteLength !== length || hash(raw) !== body.sourceSha256)
-                        throw new Error("転送原本内容のhash不一致です");
-                    xml = Buffer.from(raw).toString("utf8");
-                    if (!Buffer.from(xml, "utf8").equals(raw)) throw new Error("転送原本はUTF-8です");
-                    bytes += raw.byteLength;
-                }
+                const raw=this.content(body.sourceSha256);
+                if(raw&&bytes+raw.byteLength>256*1024*1024&&transferredIds.length)break;
+                let xml:string|undefined;
+                if(raw){xml=raw.toString("utf8");if(!Buffer.from(xml,"utf8").equals(raw))throw Error("転送原本はUTF-8です");bytes+=raw.byteLength}
                 const added = target.append([], [{ ...normalized, ...(xml === undefined ? {} : { xml }) }]);
                 insertedSources += added.insertedSources;
                 insertedContents += added.insertedContents;
@@ -304,13 +340,13 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                     insertedSources++;
                 }
                 if (s.bytes !== undefined) {
-                    const old = this.rows("SELECT xml FROM archive_contents WHERE sha256=?", [s.body.sourceSha256]);
-                    if (old.length) {
-                        if (!(old[0].xml instanceof Uint8Array) || hash(old[0].xml) !== s.body.sourceSha256 || !Buffer.from(old[0].xml).equals(s.bytes))
+                    const old = this.content(s.body.sourceSha256);
+                    if (old !== undefined) {
+                        if (!old.equals(s.bytes))
                             throw new Error("保存原本が不整合です");
                     }
                     else {
-                        this.run("INSERT INTO archive_contents VALUES(?,?)", [s.body.sourceSha256, s.bytes]);
+                        this.run("INSERT INTO archive_contents VALUES(?,?)", [s.body.sourceSha256, encodeArchiveContent(s.bytes,this.contentEncoding,s.body.sourceSha256)]);
                         insertedContents++;
                     }
                 }
@@ -399,11 +435,9 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                 const latestMs = timestamp(latest.availableAt, true)!;
                 if (new Set(declarations.filter(d => timestamp(d.availableAt, true) === latestMs).map(d => d.sourceSha256)).size > 1)
                     return { ...item, status: "conflicting", availableAt: latest.availableAt };
-                const content = this.rows("SELECT xml FROM archive_contents WHERE sha256=?", [latest.sourceSha256]);
-                if (content.length && (!(content[0].xml instanceof Uint8Array) || hash(content[0].xml) !== latest.sourceSha256))
-                    throw new Error("保存原本のhashが一致しません");
-                if (!content.length && s.formatAvailability?.formats.xbrl.state === "not-provided") return absent();
-                return { ...item, status: content.length ? "stored" : "declaration-only", sourceSha256: latest.sourceSha256, availableAt: latest.availableAt, availableByCutoff: content.length > 0 && latestMs <= timestamp(cutoff, true)! };
+                const content = this.content(latest.sourceSha256);
+                if (content === undefined && s.formatAvailability?.formats.xbrl.state === "not-provided") return absent();
+                return { ...item, status: content !== undefined ? "stored" : "declaration-only", sourceSha256: latest.sourceSha256, availableAt: latest.availableAt, availableByCutoff: content !== undefined && latestMs <= timestamp(cutoff, true)! };
             }).sort((a, b) => a.docID < b.docID ? -1 : a.docID > b.docID ? 1 : 0);
             return { cutoff, edinetCodes, selection, items };
         }, false);
@@ -536,18 +570,10 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                     flush();
                 const source = { ...latest.body };
                 if (latest.ms <= cut) {
-                    const size = this.rows("SELECT length(xml) AS bytes FROM archive_contents WHERE sha256=?", [source.sourceSha256]);
-                    if (size.length) {
-                        const bytes = Number(size[0].bytes);
-                        if (!Number.isSafeInteger(bytes) || bytes < 0 || bytes > 256 * 1024 * 1024)
-                            throw new Error("一原本の上限は256MiBです");
-                        if (batchBytes + bytes > 256 * 1024 * 1024)
-                            flush();
-                        const content = this.rows("SELECT xml FROM archive_contents WHERE sha256=?", [source.sourceSha256])[0]?.xml;
-                        if (!(content instanceof Uint8Array) || hash(content) !== source.sourceSha256)
-                            throw new Error("保存原本のhashが一致しません");
-                        source.xml = Buffer.from(content).toString("utf8");
-                        batchBytes += bytes;
+                    const content=this.content(source.sourceSha256);
+                    if(content){
+                        if(batchBytes+content.byteLength>256*1024*1024)flush();
+                        source.xml=content.toString("utf8");batchBytes+=content.byteLength;
                     }
                 }
                 batch.push(source);

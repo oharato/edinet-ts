@@ -100,7 +100,7 @@ export async function prepareFinancialCycle(settings,{signal,maxObservationPages
         const save=async()=>{atomicJSON(progressPath,{version:1,inputSha256,body:progress,sha256:sha256(canonical([inputSha256,progress]))});await onCheckpoint(structuredClone(progress));await yieldTurn()};
         const remaining=2n*BigInt(statSync(config.metadataPath).size);
         ensureSpace(directory,remaining);
-        target=new ObservedFinancialArchive(archivePath);
+        target=new ObservedFinancialArchive(archivePath,{compression:'gzip'});
         for(let page=0;progress.metadataCursor<config.throughSequence&&page<maxObservationPages&&!signal?.aborted;page++){
             ensureSpace(directory);const transferred=archiveFinancialDocumentObservations(repository,target,{sourceId:config.sourceId,throughSequence:config.throughSequence,afterSequence:progress.metadataCursor,pageSize:1000,maxPages:1});progress.metadataCursor=transferred.nextAfterSequence;await save();
         }

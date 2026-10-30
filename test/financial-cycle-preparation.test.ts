@@ -1,3 +1,4 @@
+import {Database} from '../src/db/node-sqlite';
 import {syncBuiltinESMExports} from 'node:module';
 import fs from 'node:fs';
 import {it,expect,vi} from 'vitest';
@@ -18,6 +19,8 @@ async function fixture(fn:(s:any)=>Promise<void>,rows=2,sources=2){
 }
 it('新しい候補へ固定観測/原本と取得計画を準備し、再投入でも変えない',()=>fixture(async s=>{
  const before=readFileSync(s.config.metadataPath);const result=await prepareFinancialCycle(s.config);expect(result).toMatchObject({status:'prepared',population:1,selected:2,reusedSources:2,pendingSources:0,unavailableSources:0,financialValuesValidated:false});
+ const stored=new Database(result.archivePath,{readOnly:true});
+ try{const statement=stored.prepare('SELECT xml FROM archive_contents');try{const bytes=statement.get()!.xml as Uint8Array;expect(Buffer.from(bytes).subarray(0,2).toString('hex')).toBe('1f8b')}finally{statement.close()}}finally{stored.close()}
  const original=readFileSync(result.archivePath);expect((await prepareFinancialCycle(s.config)).reused).toBe(true);expect(readFileSync(result.archivePath).equals(original)).toBe(true);expect(readFileSync(s.config.metadataPath).equals(before)).toBe(true);
 }));
 it('1000観測の境界で再開し、後続観測が増えても固定末尾を保つ',()=>fixture(async s=>{

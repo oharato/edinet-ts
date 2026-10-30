@@ -7,6 +7,7 @@ import { Database, type NativeDatabase } from "./node-sqlite";
 interface DedicatedSqliteFormat {
     table: string;
     kind: string;
+    compatibleKinds?: readonly string[];
     schema: Readonly<Record<string, string>>;
 }
 const identity = (s: fs.BigIntStats) => [s.dev, s.ino, s.size, s.mtimeNs, s.ctimeNs].join(":");
@@ -167,7 +168,7 @@ export class DedicatedSqliteDatabase {
         if (objects.length !== Object.keys(this.format.schema).length || objects.some(o => typeof o.name !== "string" || !Object.hasOwn(this.format.schema, o.name) || typeof o.sql !== "string" || normalized(o.sql) !== normalized(this.format.schema[o.name])))
             throw new Error("専用DBの固定schema以外は使えません");
         const meta = this.rows(`SELECT kind FROM ${this.format.table}`);
-        if (meta.length !== 1 || meta[0].kind !== this.format.kind)
+        if (meta.length !== 1 || (meta[0].kind !== this.format.kind && !this.format.compatibleKinds?.includes(meta[0].kind as string)))
             throw new Error("非対応の専用DB形式です");
     }
     protected transaction<T>(fn: () => T, write = true): T {

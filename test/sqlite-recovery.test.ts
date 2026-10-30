@@ -50,3 +50,13 @@ it('同期前の次headerが途中で切れても、同期済み区画だけで�
  const sector=journal.readUInt32BE(20),bytes=journal.subarray(0,journal.length-sector+4);writeFileSync(options.source+'-journal',bytes);options.journalSha256=hash(bytes);
  const result=recoverDedicatedSqliteSnapshot(options);expect(result.journal.ignoredUnsyncedTail).toBe(true);expect(readFileSync(result.output.path).equals(original)).toBe(true);
 }));
+
+it('gzip保存方式の識別子をhot journal復旧後も保持する',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'sqlite-recovery-gzip-'));
+ try{
+  const source=join(dir,'source.sqlite'),db=new ObservedFinancialArchive(source,{compression:'gzip'});db.close();const before=readFileSync(source);
+  await crashDatabase(source,dir,"UPDATE archive_format SET kind=kind||printf('%0500000d',1)");
+  const result=recoverDedicatedSqliteSnapshot(openSource(dir));expect(readFileSync(result.output.path)).toEqual(before);
+  const restored=new ObservedFinancialArchive(result.output.path,{readOnly:true});restored.close();
+ }finally{rmSync(dir,{recursive:true,force:true})}
+},20000);

@@ -78,3 +78,27 @@ it.each(['2026-02-30','2026-10-29'])('版2は不正日付や別日のhandoffを�
  const config={...s.config,version:2};await runDailyFinancialPreparation(config,inactive);renameSync(join(config.outputDirectory,'2026-10-30'),join(config.outputDirectory,day));
  await expect(runDailyFinancialPreparation(config,inactive)).rejects.toThrow(day==='2026-02-30'?'directory':'date differs');
 }));
+
+function migratedConfig(s:any){
+ const output=join(s.dir,'compressed.sqlite'),path=join(s.dir,'migration.json');
+ const source=new ObservedFinancialArchive(s.config.sourceArchivePath,{readOnly:true}),target=new ObservedFinancialArchive(output,{compression:'gzip'});
+ let inputSha256:string;
+ try{inputSha256=source.snapshotSha256();source.transferSourcesTo(target,{sourceArchiveSha256:inputSha256})}finally{source.close();target.close()}
+ const proof={version:1,status:'independently-verified',input:s.config.sourceArchivePath,inputSha256,output,outputSha256:sha256(readFileSync(output))};
+ atomicJSON(path,proof,{createOnly:true});return {proof,path,config:{...s.config,sourceArchivePath:output,sourceArchiveMigrationPath:path,sourceArchiveMigrationSha256:sha256(readFileSync(path))}};
+}
+it.each([1,2])('版%sの日次入力で、固定した移行監査証跡と圧縮原本を引き継ぐ',version=>fixture(async s=>{
+ const {config}=migratedConfig(s);const result=await runDailyFinancialPreparation({...config,version},inactive);
+ expect(result).toMatchObject({status:'prepared',reusedSources:1,pendingSources:0});
+ const recipe=readJSONSnapshot(result.configPath).value;expect(recipe.sourceArchivePath).toBe(config.sourceArchivePath);
+ expect(recipe.sourceArchiveSha256).toBe(sha256(readFileSync(config.sourceArchivePath)));
+}));
+it('移行監査証跡の未固定・別入力・別出力・別hashを候補作成前に拒否する',()=>fixture(async s=>{
+ const {config,path,proof}=migratedConfig(s);
+ await expect(runDailyFinancialPreparation({...config,sourceArchiveMigrationSha256:'0'.repeat(64)},inactive)).rejects.toThrow('migration proof');
+ for(const changed of [{input:proof.output},{output:proof.input},{status:'transferred'},{outputSha256:'0'.repeat(64)}]){
+  atomicJSON(path,{...proof,...changed});
+  await expect(runDailyFinancialPreparation({...config,sourceArchiveMigrationSha256:sha256(readFileSync(path))},inactive)).rejects.toThrow(/migration proof|fingerprint/);
+  expect(existsSync(config.outputDirectory)).toBe(false);
+ }
+}));

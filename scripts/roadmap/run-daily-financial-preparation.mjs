@@ -15,11 +15,15 @@ import {normalFile,readJSONSnapshot,atomicJSON,canonical,sha256} from './operati
 const jstDate=time=>new Date(time+9*3600000).toISOString().slice(0,10);
 const hash=/^[a-f0-9]{64}$/;
 function settings(input){
-    const s=structuredClone(input),fields=['version','metadataConfigPath','sourceArchivePath','populationPath','populationSha256','outputDirectory'];
-    if(!s||typeof s!=='object'||Array.isArray(s)||Object.keys(s).length!==fields.length||Object.keys(s).some(k=>!fields.includes(k))||![1,2].includes(s.version)||!hash.test(s.populationSha256))throw Error('Invalid daily financial preparation configuration');
+    const s=structuredClone(input),required=['version','metadataConfigPath','sourceArchivePath','populationPath','populationSha256','outputDirectory'],fields=[...required,'sourceArchiveMigrationPath','sourceArchiveMigrationSha256'];
+    if(!s||typeof s!=='object'||Array.isArray(s)||required.some(k=>!Object.hasOwn(s,k))||Object.keys(s).some(k=>!fields.includes(k))||![1,2].includes(s.version)||!hash.test(s.populationSha256))throw Error('Invalid daily financial preparation configuration');
     for(const k of ['metadataConfigPath','sourceArchivePath','populationPath','outputDirectory'])if(typeof s[k]!=='string'||!isAbsolute(s[k])||resolve(s[k])!==s[k])throw Error('Absolute preparation paths are required');
     for(const k of ['metadataConfigPath','sourceArchivePath','populationPath'])if(normalFile(s[k])!==s[k]||s[k].startsWith(s.outputDirectory+'/'))throw Error('Preparation inputs overlap or have aliases');
     if(new Set([s.metadataConfigPath,s.sourceArchivePath,s.populationPath]).size!==3)throw Error('Preparation inputs overlap');
+    if(s.sourceArchiveMigrationPath!==undefined||s.sourceArchiveMigrationSha256!==undefined){
+        const p=s.sourceArchiveMigrationPath;
+        if(typeof p!=='string'||!isAbsolute(p)||resolve(p)!==p||normalFile(p)!==p||p.startsWith(s.outputDirectory+'/')||[s.metadataConfigPath,s.sourceArchivePath,s.populationPath].includes(p)||!hash.test(s.sourceArchiveMigrationSha256))throw Error('Invalid source archive migration proof');
+    }
     return s;
 }
 function directory(path){const s=lstatSync(path);if(!s.isDirectory()||s.isSymbolicLink()||realpathSync(path)!==path)throw Error('Normal preparation directory required')}
@@ -39,7 +43,12 @@ export async function runDailyFinancialPreparation(input,{signal,readUnitState=u
     if(signal?.aborted)return {status:'aborted'};
     const summary=readJSONSnapshot(daily.guardSummaryPath).value,unit=await readUnitState(daily.guardUnit);
     if(!canStartDailyMetadata(summary,unit,{planSha256:daily.guardPlanSha256,workerSha256:daily.guardWorkerSha256}))return {status:'waiting-for-fixed-acquisition'};
-    if(typeof summary.archivePath!=='string'||resolve(summary.archivePath)!==s.sourceArchivePath)throw Error('Completed acquisition archive differs');
+    let migratedSha256;
+    if(s.sourceArchiveMigrationPath!==undefined){
+        const proof=readJSONSnapshot(s.sourceArchiveMigrationPath),p=proof.value;
+        if(proof.sha256!==s.sourceArchiveMigrationSha256||p?.version!==1||p.status!=='independently-verified'||typeof summary.archivePath!=='string'||p.input!==resolve(summary.archivePath)||p.output!==s.sourceArchivePath||p.input===p.output||!hash.test(p.inputSha256)||!hash.test(p.outputSha256))throw Error('Source archive migration proof differs');
+        migratedSha256=p.outputSha256;
+    }else if(typeof summary.archivePath!=='string'||resolve(summary.archivePath)!==s.sourceArchivePath)throw Error('Completed acquisition archive differs');
     if(s.version===2){
         const today=jstDate(Date.now());let pending;
         if(existsSync(s.outputDirectory)){
@@ -84,6 +93,7 @@ export async function runDailyFinancialPreparation(input,{signal,readUnitState=u
         if(population.status!=='available'||!population.total)throw Error('Listed population is unavailable at cutoff');
         const free=statfsSync(dirname(s.outputDirectory),{bigint:true});if(free.bavail*free.bsize<34n*1024n**3n)throw Error('Daily preparation disk reserve');
         const sourceArchiveSha256=await snapshotHash(s.sourceArchivePath,signal);
+        if(migratedSha256!==undefined&&sourceArchiveSha256!==migratedSha256)throw Error('Migrated source archive fingerprint differs');
         if(signal?.aborted)return {status:'aborted'};
         if(readJSONSnapshot(daily.checkpointPath).sha256!==observed.sha256)throw Error('Daily checkpoint changed before handoff');
         const config={version:1,metadataPath:daily.metadataPath,metadataCheckpointPath:join(s.outputDirectory,'metadata-completion.json'),sourceId:daily.sourceId,
@@ -95,6 +105,7 @@ export async function runDailyFinancialPreparation(input,{signal,readUnitState=u
         atomicJSON(handoffPath,handoff,{createOnly:true});
     }
     const {body}=handoff;
+    if(migratedSha256!==undefined&&body?.config?.sourceArchiveSha256!==migratedSha256)throw Error('Migrated source archive handoff differs');
     if(!body||body.config?.outputDirectory!==join(s.outputDirectory,'candidate')||body.config.metadataCheckpointPath!==join(s.outputDirectory,'metadata-completion.json')
         ||sha256(body.metadataCheckpointText)!==body.metadataCheckpointSha256)throw Error('Financial handoff paths or metadata differ');
     const frozen=JSON.parse(body.metadataCheckpointText),frozenPath=body.config.metadataCheckpointPath,configPath=join(s.outputDirectory,'preparation-config.json');

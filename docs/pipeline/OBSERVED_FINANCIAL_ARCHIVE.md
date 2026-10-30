@@ -6,6 +6,18 @@
 
 形式は `OBSERVED_FINANCIAL_ARCHIVE_VERSION = "1"` です。既存のメタデータDB、BS/明細Storeや世代DBは移行・変更しません。
 
+## 原本を圧縮して保存する
+
+新規DBに `{compression: "gzip"}` を指定すると、原本XMLをgzipで保存します。
+
+```ts
+const archive = new ObservedFinancialArchive("data/compressed.sqlite", {compression: "gzip"});
+```
+
+再open時は保存方式を自動検出します。この指定は既存DBの変換には使いません。既存の非圧縮DBを移す場合は、停止した入力をreadOnlyで開き、新規の圧縮DBへ `transferSourcesTo` で転送します。一覧観測は `transferObservationsTo` で原時刻・IDを保って転送します。どちらも入力の `snapshotSha256()` を指定し、返されたcursorから再開できます。転送後の検証が終わるまで元DBを保持します。
+
+展開後のbyte列を元のSHA-256と照合するため、BOM・空白・原値は変わりません。原本単位の展開上限は256 MiBです。保存方式は専用の形式識別子で区別し、旧SDKは圧縮DBを開けません。物理DBの指紋も変わるので、既存の取得計画やcheckpointをそのまま流用しないでください。
+
 ## 保持するもの
 
 | 保存対象 | 内容と識別 |
