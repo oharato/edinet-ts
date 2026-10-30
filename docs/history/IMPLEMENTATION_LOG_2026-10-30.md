@@ -785,3 +785,8 @@ Node 26.12.1 / npm 12.2.1で、build、本体・公開API例の型検査、全15
 両日次unitの参照先を切り替え、metadata timerのactiveと通常財務timerの一時停止を確認した。構築中のサービスと入力は変更していない。この時点ではcheckpoint自体の移行と新しい日次完了は未確認。移行後のrulesVersion 2を旧metadata runtimeは読めないため、復帰先にもルール2対応runtimeを使う必要がある。
 
 証拠は `data/roadmap/notice-v2-deployment-proof.json`、`notice-v2-preflight-proof.json`、`notice-v2-fixed-runtime-replay-proof.json` と `bulk-build-deployment-proof.json` に保存した。これらはGit管理外の実行記録であり、現在の稼働状態は実unitとreceiptを確認する。
+
+
+続いて、新しい財務候補の作成側にも現行通知ルール版を必須とする条件を追加した（85e3bb4）。当日完了に見える旧ルールcheckpointでも新規候補を作らず、metadata側の実移行・再完了を待つ。設定版1/2とも、出力とcheckpointを変更せず待機し、新ルールの完了後に準備できる試験を追加。関連2ファイル46テストがNode 26で成功した。
+
+固定SDKは維持し、通知判定2ファイルとこの引継ぎ処理の計3ファイルだけを反映した別runtimeへ両日次unitを再設定した。改めて22検査と全139,758観測の再生が成功し、checkpoint未変更・未解決89件の再現を確認。最新の切替証跡は `notice-v2-handoff-deployment-proof.json`、検査は `notice-v2-handoff-preflight-proof.json`、再生は `notice-v2-handoff-fixed-runtime-replay-proof.json`。この時点でも実checkpoint移行は未確認で、構築中の固定候補・公開catalogは変更していない。
