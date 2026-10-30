@@ -241,7 +241,7 @@ export class EdinetXbrlObject {
         return selectFinancialReportingBasis(this._docID, this._dataMap, this.contextMap, this.duplicateContextIds);
     }
 
-    /** IFRS・JPY・連結・明示期末の直接3科目。単体・合算・通貨換算は未対応です。 */
+    /** IFRS・JPY・連結・明示期末の直接科目。単体・合算・通貨換算は未対応です。 */
     public selectIfrsBalanceSheetMetric(id: IfrsBalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<IfrsBalanceSheetMetricId> {
         if (!Object.prototype.hasOwnProperty.call(IFRS_BALANCE_SHEET_REGISTRY, id)) throw new Error("不正なIFRS貸借対照表IDです");
         // getterや呼出元の変更を後続の条件検証へ持ち込まず、入口で確認した範囲を固定します。

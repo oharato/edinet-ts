@@ -8,8 +8,9 @@ import { FINANCIAL_DETAIL_REGISTRY, type FinancialDetailMetricId } from "../fina
 import { IFRS_FINANCIAL_DETAIL_REGISTRY, type IfrsFinancialDetailMetricId } from "../ifrs-financial-detail-registry";
 import { toSafeMetricNumber, type FactSelectionResult } from "../metric-selection";
 import type { FinancialPeriodType, ComparisonOperator, SortOrder } from "../financial-options";
+import { IFRS_BALANCE_SHEET_REGISTRY, type IfrsBalanceSheetMetricId } from "../ifrs-balance-sheet-registry";
 export const FINANCIAL_SEARCH_INDEX_VERSION = "1";
-export type FinancialIndexMetricId = BalanceSheetMetricId | FinancialDetailMetricId | IfrsFinancialDetailMetricId;
+export type FinancialIndexMetricId = BalanceSheetMetricId | IfrsBalanceSheetMetricId | FinancialDetailMetricId | IfrsFinancialDetailMetricId;
 export interface FinancialIndexCohort {
     generation: string;
     group: "balanceSheet" | "details";
@@ -192,7 +193,7 @@ function array<T>(v: readonly T[], max: number): T[] {
         return v[i];
     });
 }
-const families = (c: Pick<FinancialIndexCohort, "group" | "accountingStandard">): string[] => c.group === "balanceSheet" ? Object.keys(BALANCE_SHEET_REGISTRY) : c.accountingStandard === "IFRS" ? Object.keys(IFRS_FINANCIAL_DETAIL_REGISTRY) : Object.keys(FINANCIAL_DETAIL_REGISTRY).filter(k => FINANCIAL_DETAIL_REGISTRY[k as FinancialDetailMetricId].periodType === "duration");
+const families = (c: Pick<FinancialIndexCohort, "group" | "accountingStandard">): string[] => c.group === "balanceSheet" ? Object.keys(c.accountingStandard === "IFRS" ? IFRS_BALANCE_SHEET_REGISTRY : BALANCE_SHEET_REGISTRY) : c.accountingStandard === "IFRS" ? Object.keys(IFRS_FINANCIAL_DETAIL_REGISTRY) : Object.keys(FINANCIAL_DETAIL_REGISTRY).filter(k => FINANCIAL_DETAIL_REGISTRY[k as FinancialDetailMetricId].periodType === "duration");
 export function normalizeFinancialIndexSearch(cohort: FinancialIndexCohort, options: FinancialIndexSearchOptions) {
     const c = flat(cohort, ["generation", "group", "accountingStandard", "scope", "currency", "period", "periodType", "docIDs"]), p = flat(c.period, ["instant", "startDate", "endDate"]);
     if (!isFinancialIndexGenerationId(c.generation) || !["balanceSheet", "details"].includes(c.group as string) || !["J-GAAP", "IFRS"].includes(c.accountingStandard as string) || !["Consolidated", "NonConsolidated"].includes(c.scope as string) || c.currency !== "JPY" || c.accountingStandard === "IFRS" && c.scope !== "Consolidated")

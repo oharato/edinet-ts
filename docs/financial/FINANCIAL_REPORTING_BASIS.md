@@ -90,7 +90,7 @@ const result = createAutomaticFinancialSnapshots(xml, {
 | 判定 | balanceSheet | detailsの既定 |
 |---|---|---|
 | J-GAAP | 既存BS3 snapshot | 既存のduration2科目（原価/販管費） |
-| IFRS連結 | IFRS BS3 snapshot | IFRS PL5 snapshot |
+| IFRS連結 | [IFRS BS8項目](IFRS_BALANCE_SHEET_SELECTION.md)のsnapshot | IFRS PL5 snapshot |
 
 detailMetricIdsで、その基準のduration明細を明示できます。期間型/基準にない項目や未知/重複/疎配列は拒否します。IFRS単体は既存抽出器の対象外として停止し、日本基準へ切り替えません。
 

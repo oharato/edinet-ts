@@ -58,7 +58,7 @@ flowchart LR
 - [型付き入力定数と文字列指定](financial/TYPED_OPTIONS.md)
 - [DEIから財務基準・当期を確定する](financial/FINANCIAL_REPORTING_BASIS.md)
 - [J-GAAPのBS3項目・検索・流動比率](financial/BALANCE_SHEET.md)
-- [IFRSの貸借対照表3項目を原記載から読む](financial/IFRS_BALANCE_SHEET_SELECTION.md)
+- [IFRSの貸借対照表を原記載から読む](financial/IFRS_BALANCE_SHEET_SELECTION.md)
 - [直接記載された財務項目を読む・複数社で探す](financial/FINANCIAL_DETAILS.md)
 - [IFRS連結の直接PL・CF明細](financial/IFRS_FINANCIAL_DETAILS.md)
 - [連続する12か月決算の売上高・営業利益前年比を比べる](financial/ANNUAL_REVENUE_GROWTH.md)

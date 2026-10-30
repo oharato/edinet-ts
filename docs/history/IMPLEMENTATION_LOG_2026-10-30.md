@@ -790,3 +790,31 @@ Node 26.12.1 / npm 12.2.1で、build、本体・公開API例の型検査、全15
 続いて、新しい財務候補の作成側にも現行通知ルール版を必須とする条件を追加した（85e3bb4）。当日完了に見える旧ルールcheckpointでも新規候補を作らず、metadata側の実移行・再完了を待つ。設定版1/2とも、出力とcheckpointを変更せず待機し、新ルールの完了後に準備できる試験を追加。関連2ファイル46テストがNode 26で成功した。
 
 固定SDKは維持し、通知判定2ファイルとこの引継ぎ処理の計3ファイルだけを反映した別runtimeへ両日次unitを再設定した。改めて22検査と全139,758観測の再生が成功し、checkpoint未変更・未解決89件の再現を確認。最新の切替証跡は `notice-v2-handoff-deployment-proof.json`、検査は `notice-v2-handoff-preflight-proof.json`、再生は `notice-v2-handoff-fixed-runtime-replay-proof.json`。この時点でも実checkpoint移行は未確認で、構築中の固定候補・公開catalogは変更していない。
+
+
+## IFRSのBS追加5項目を保存・検索へ接続（2026-10-30）
+
+公式2025-11-01版jpigp XSDで確認した非流動資産、有利子負債の流動/非流動、リース負債の流動/非流動を辞書版2へ追加した。直接選択器の期間・scope・JPY・出典/原値保持を再利用し、負債とリースを合算しない。既定のIFRS snapshot/メモリ検索は従来3項目を維持し、明示指定時だけ追加する。CLIの `screen-ifrs-bs --metrics` も同じ指定を受け付ける。
+
+DEIによる自動snapshotはBS8項目を保存する。観測アーカイブの版付きcacheとSQL索引にも接続し、IFRSとJ-GAAPのBS項目群を分けた。新しい辞書版が抽出cacheと世代の来歴に含まれる。旧3項目世代は新SDKで同じ検索結果を読み、原本アーカイブと索引のbyte不変・同じ世代IDへの新結果上書き拒否を確認した。旧SDKは新8項目の行を拒否するため、配布・切戻しでは対応SDKと世代を組にする。
+
+実4社（S100YK0W、S100YHX3、S100YGCS、S100TP3N）×2期の追加5項目40選択について、独立ElementTree/Decimal処理で28採用・12不在を確認した。選択結果に含まれる候補延べ56factの多重度、context/entity/期間/単位/decimalsと原値も照合。固定PDFから再抽出した7ページの28表示値を単位倍率・流動/非流動区分付きで照合し、7ページ全体を画像で目視した。当期のSQL保存は14値・不在6件を独立SQLite readerで確認し、原XMLと索引のbyte不変も確認した。
+
+保存・検索経路の実原本検証には、検証時刻の人工的な観測宣言を使った。提供元の実際の一覧観測・提出時刻を再構成した証拠ではない。負債とリースの内包関係、全業種・全年度、稼働SDKと利用先への反映は未確認で、公開catalogは変更していない。証拠は `data/roadmap/ifrs-instant-real-latest.json` が指す候補の `sdk-results.json`、`independent-proof.json`、`pdf-visual-proof.json`、`legacy-compatibility-proof.json` に保存した。
+
+
+## 通知checkpointの実移行と新ルールでの当日完了（2026-10-30）
+
+100社単位の索引構築が自然にauto-restartへ移る間隙で、固定runtime 85e3bb4のmetadata unitを一度起動した。構築を停止せず、共有排他の下で旧checkpointをrulesVersion 2へ移行。当日probeと直近の日次取得を完了し、140,884観測・未解決89件・pending日0・activeなし・サービス終了0を確認した。取得予算は151→159要求で引き継いだ。
+
+固定runtimeの検証器を使い、移行後の通知状態・原観測末尾・日次完了証跡の整合と、完了時刻がruntime切替後であることを再確認した。監査中のmetadata/checkpointのbyte指紋は不変。構築候補の入力指紋と凍結済みmetadata（旧通知判定の未解決126件）も保持した。全通知を解決したという意味ではなく、公開catalogは未切替。索引構築はその後640社完了・残り3,172社・失敗0件で継続している。
+
+実行間隙は `data/roadmap/notice-v2-gap-start-proof.json`、完了監査は `notice-v2-live-migration-proof.json` に保存した。移行前の再生・切替証跡は当時の状態として保持する。
+
+
+未解決89件の提出日時も通信なしで調査した。自身の提出日時がある39件のうち、参照先ごとの既知一覧日を除くと、元書類自身が未確認の20件に13日分（2024-03-28〜2025-10-28）の一覧再取得候補が残る。親参照だけが不明な既知の自身を再取得候補に混ぜない。日時の一致だけで元一覧の存在を確定せず、checkpointも変更していない。手元のstock-data原本cacheに該当参照先のディレクトリは見つからなかった。次は元一覧を実際に確認し、未解決を保持したまま再観測できる入口を検証する。記録は `unresolved-notice-submit-date-inventory.json`。
+
+全体テストの初回実行は、手順にあるdata/artifacts除外を付けず、過去配布物5組のテストも拾っていたためSIGINTで停止した。現行158ファイルに対し発見対象が850ファイルとなっていた。`npm test` 自体にdata/artifactsの除外を組み込み、現行の追跡済み157ファイルと新規1ファイルが漏れなく検出されることを確認して全体テストを再実行した。発見対象の証拠は `ifrs-instant-test-discovery-proof.json`。
+
+
+修正後の `npm test -- --maxWorkers=1` はNode 26.12.1で158ファイル・4,218テストが成功した（450.88秒）。build、本体/公開型、公開ESM/CJSの追加export、Python保存保護5件、ローカル文書リンク540件の検査も成功。実3社・同一期末のbuilt CLIをAPIと比較して一致し、入力原本も不変だった。確認ログとsource/distの指紋は `ifrs-instant-verification-summary.json` に記録する。新しいIFRS辞書版2のSDKはまだ稼働unit・公開catalog・stock-dataへ反映していない。索引構築は固定SDKのまま940社完了・残り2,872社・失敗0件で継続中。

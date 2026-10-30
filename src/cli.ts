@@ -157,9 +157,10 @@ program.command("explain-document-relations")
 
 
 program.command("screen-ifrs-bs")
-    .description("同じ期末のIFRS連結・円の直接3項目で、明示した会社を検索します")
+    .description("同じ期末のIFRS連結・円の直接項目で、明示した会社を検索します")
     .requiredOption("--manifest <path>", "fileとIFRS metadataを持つJSON配列")
-    .option("--conditions <json>", "currentAssets/currentLiabilities/totalLiabilitiesのAND条件", "[]")
+    .option("--metrics <ids>", "既定3項目に追加する直接項目ID（カンマ区切り）")
+    .option("--conditions <json>", "直接項目のAND条件（追加項目は--metricsにも指定）", "[]")
     .option("--sort-by <id>", "並べ替える直接項目ID")
     .option("--order <order>", "asc/desc")
     .option("--offset <number>", "条件一致後に読み飛ばす件数", Number)
@@ -177,7 +178,7 @@ program.command("screen-ifrs-bs")
                 bytes += input.bytes.byteLength;
                 return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), metadata: entry.metadata };
             });
-            const result = screenIfrsBalanceSheetDocuments(documents, { conditions: JSON.parse(options.conditions), sortBy: options.sortBy, order: options.order, offset: options.offset, limit: options.limit });
+            const result = screenIfrsBalanceSheetDocuments(documents, { metricIds: options.metrics === undefined ? undefined : options.metrics.split(",").map((id:string) => id.trim()), conditions: JSON.parse(options.conditions), sortBy: options.sortBy, order: options.order, offset: options.offset, limit: options.limit });
             console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
         } catch {
             console.error("IFRS検索の入力を確認してください（同一期末・IFRS連結・JPYの明示一覧と有効な検索条件が必要です）");

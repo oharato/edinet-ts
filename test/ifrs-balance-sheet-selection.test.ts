@@ -16,11 +16,11 @@ const parse = (text: string) => new EdinetXbrlParser().parse(text);
 const definitions = Object.values(IFRS_BALANCE_SHEET_REGISTRY);
 const segment = '<xbrldi:explicitMember dimension="extension:SegmentAxis">extension:SegmentMember</xbrldi:explicitMember>';
 
-describe("IFRS連結の貸借対照表3項目（公式定義を基にした合成fixture）", () => {
+describe("IFRS連結の貸借対照表8項目（公式定義を基にした合成fixture）", () => {
     it("別辞書をfreezeし、J-GAAP版1/18指標/候補を変更しない", () => {
-        expect(IFRS_BALANCE_SHEET_REGISTRY_VERSION).toBe("1"); expect(BALANCE_SHEET_REGISTRY_VERSION).toBe("1");
+        expect(IFRS_BALANCE_SHEET_REGISTRY_VERSION).toBe("2"); expect(BALANCE_SHEET_REGISTRY_VERSION).toBe("1");
         expect(Object.keys(METRIC_REGISTRY)).toHaveLength(18); expect(Object.isFrozen(IfrsBalanceSheetMetricId)).toBe(true); expect(Object.isFrozen(IFRS_BALANCE_SHEET_REGISTRY)).toBe(true);
-        expect(definitions.map(d => d.candidates[0].key)).toEqual(["jpigp_cor:CurrentAssetsIFRS", "jpigp_cor:TotalCurrentLiabilitiesIFRS", "jpigp_cor:LiabilitiesIFRS"]);
+        expect(definitions.map(d => d.candidates[0].key)).toEqual(["jpigp_cor:CurrentAssetsIFRS", "jpigp_cor:TotalCurrentLiabilitiesIFRS", "jpigp_cor:LiabilitiesIFRS", "jpigp_cor:NonCurrentAssetsIFRS", "jpigp_cor:InterestBearingLiabilitiesCLIFRS", "jpigp_cor:InterestBearingLiabilitiesNCLIFRS", "jpigp_cor:LeaseLiabilitiesCLIFRS", "jpigp_cor:LeaseLiabilitiesNCLIFRS"]);
         for (const definition of definitions) {
             expect(definition).toMatchObject({ unit: "JPY", periodType: "instant", valueType: "decimal" });
             expect(Object.isFrozen(definition)).toBe(true); expect(Object.isFrozen(definition.candidates)).toBe(true); expect(Object.isFrozen(definition.candidates[0])).toBe(true);
@@ -122,13 +122,14 @@ describe("IFRS連結の貸借対照表3項目（公式定義を基にした合�
         });
         it("既存J-GAAP選択はIFRSタグを採用しない", () => {
             const object = parse(xml(f(), context()));
-            expect(object.selectBalanceSheetMetric(definition.id, { ...options, accountingStandard: "J-GAAP" })).toMatchObject({ status: "missing", reason: "tag-absent" });
+            if (Object.hasOwn(BALANCE_SHEET_REGISTRY, definition.id)) expect(object.selectBalanceSheetMetric(definition.id as keyof typeof BALANCE_SHEET_REGISTRY, { ...options, accountingStandard: "J-GAAP" })).toMatchObject({ status: "missing", reason: "tag-absent" });
+            else expect(() => object.selectBalanceSheetMetric(definition.id as never, { ...options, accountingStandard: "J-GAAP" })).toThrow();
         });
     });
     it("内訳・非流動・負債資本合計から不足値を計算しない", () => {
         const facts = ["jpigp_cor:NonCurrentAssetsIFRS", "jpigp_cor:EquityAndLiabilitiesIFRS", "jpigp_cor:OtherCurrentLiabilitiesCLIFRS"].map(key => fact("123", "", key)).join("");
         const object = parse(xml(facts));
-        for (const id of Object.values(IfrsBalanceSheetMetricId)) expect(object.selectIfrsBalanceSheetMetric(id, options)).toMatchObject({ status: "missing", reason: "tag-absent" });
+        for (const id of [IfrsBalanceSheetMetricId.CurrentAssets, IfrsBalanceSheetMetricId.CurrentLiabilities, IfrsBalanceSheetMetricId.TotalLiabilities]) expect(object.selectIfrsBalanceSheetMetric(id, options)).toMatchObject({ status: "missing", reason: "tag-absent" });
     });
     it("旧ifrs-fullタグを代用しない", () => {
         const object = parse(xml(["CurrentAssets", "CurrentLiabilities", "Liabilities"].map(name => fact("120", "", `ifrs-full:${name}`)).join("")));

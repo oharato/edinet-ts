@@ -6,6 +6,7 @@ import {createIfrsBalanceSheetSnapshot,type IfrsBalanceSheetSnapshot} from "./if
 import {createIfrsFinancialDetailSnapshot,type IfrsFinancialDetailSnapshot} from "./ifrs-financial-detail-screening";
 import {FINANCIAL_DETAIL_REGISTRY,DEFAULT_FINANCIAL_DETAIL_METRICS,type FinancialDetailMetricId} from "./financial-detail-registry";
 import {IFRS_FINANCIAL_DETAIL_REGISTRY,DEFAULT_IFRS_FINANCIAL_DETAIL_METRICS,type IfrsFinancialDetailMetricId} from "./ifrs-financial-detail-registry";
+import {IfrsBalanceSheetMetricId} from "./ifrs-balance-sheet-registry";
 export interface AutomaticFinancialSnapshotOptions {docID:string;detailMetricIds?:readonly (FinancialDetailMetricId|IfrsFinancialDetailMetricId)[];}
 type SnapshotOutcome<T>={status:"created";snapshot:T}|{status:"unavailable";reason:"current-period-context-absent"|"duplicate-current-period-context"};
 export type AutomaticFinancialSnapshots={inputXmlSha256:string;targetCurrency:"JPY"}&(
@@ -49,6 +50,6 @@ export function createAutomaticFinancialSnapshots(xml:string,input:AutomaticFina
  const chosen=metrics??[...DEFAULT_IFRS_FINANCIAL_DETAIL_METRICS];
  if(chosen.some(id=>!Object.hasOwn(IFRS_FINANCIAL_DETAIL_REGISTRY,id)))throw new AutomaticFinancialProjectionError("IFRSのduration明細だけを指定してください");
  return {status:"resolved",accountingStandard:"IFRS",basis,inputXmlSha256,targetCurrency:"JPY",
-  balanceSheet:m.contexts.instant.length?{status:"created",snapshot:createIfrsBalanceSheetSnapshot(xml,{...common,accountingStandard:"IFRS",scope:"Consolidated",instant:m.instant})}:unavailable("instant"),
+  balanceSheet:m.contexts.instant.length?{status:"created",snapshot:createIfrsBalanceSheetSnapshot(xml,{...common,accountingStandard:"IFRS",scope:"Consolidated",instant:m.instant},Object.values(IfrsBalanceSheetMetricId))}:unavailable("instant"),
   details:m.contexts.duration.length?{status:"created",snapshot:createIfrsFinancialDetailSnapshot(xml,{...common,accountingStandard:"IFRS",scope:"Consolidated",period:m.period,periodType:m.periodType},chosen as IfrsFinancialDetailMetricId[])}:unavailable("duration")};
 }
