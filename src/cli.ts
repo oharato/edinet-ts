@@ -54,7 +54,7 @@ import { screenAnnualNetIncomeGrowth } from "./annual-net-income-growth";
 import { screenCagr, screenPerShareGrowth, PerShareGrowthMetricId } from "./annual-cagr";
 import { screenFinancialDetailDocuments } from "./financial-detail-screening";
 import { screenFinancialDetailSnapshots } from "./financial-detail-snapshots";
-import { readRegularFile, LOCAL_IMPORT_LIMITS } from "./local-balance-sheet-import";
+import { readRegularFile, assertRegularFileByteBudget, LOCAL_IMPORT_LIMITS } from "./local-balance-sheet-import";
 import { runLocalBalanceSheetImport, runLocalBalanceSheetDiff } from "./local-balance-sheet-import";
 import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots } from "./balance-sheet-screening";
 import { screenFinancialSnapshots } from "./financial-screening";
@@ -1580,11 +1580,15 @@ program.command("screen-bs")
             const manifestPath = path.resolve(options.manifest);
             const entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifestPath, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
             if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error("manifestは100件以下の配列です");
-            let bytes = 0;
-            const snapshots = entries.map(entry => {
+            const files = entries.map(entry => {
                 if (!entry || typeof entry !== "object" || Array.isArray(entry) || typeof entry.file !== "string" || !entry.file.trim() ||
                     Object.keys(entry).some(key => !["secCode", "docID", "file", "instant", "scope", "accountingStandard"].includes(key))) throw new Error("不正なmanifest項目です");
-                const input = readRegularFile(path.resolve(path.dirname(manifestPath), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
+                return path.resolve(path.dirname(manifestPath), entry.file);
+            });
+            assertRegularFileByteBudget(files);
+            let bytes = 0;
+            const snapshots = entries.map((entry, i) => {
+                const input = readRegularFile(files[i], Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
                 bytes += input.bytes.byteLength;
                 const xml = new TextDecoder("utf-8", { fatal: true }).decode(input.bytes);
                 return createBalanceSheetSnapshot(xml, { secCode: entry.secCode, docID: entry.docID, instant: entry.instant, scope: entry.scope, accountingStandard: entry.accountingStandard, currency: "JPY" });

@@ -219,6 +219,8 @@ edinet-ts screen-bs --manifest ./inputs/manifest.json \
 
 相対fileは実行cwdではなくmanifestのディレクトリ基準です。currencyはCLIがJPYに固定します。
 
+`screen-bs` と `import-bs` は、原本1件64 MiB・一覧合計256 MiBまでです。本文を読む前に通常ファイルのサイズを合計し、上限を超える一覧は解析せずに拒否します。同じファイルを複数回指定した場合も、指定回数分を数えます。実際に読む際にも残り容量と読取り中の変更を検査するため、事前検査後のファイルの成長で上限を回避することはできません。
+
 CLIはmanifestのローカルXBRLを解析して厳密選択を行います。serialized選択結果や余分なmanifestフィールドを受け付けません。
 
 manifest/file/条件/来歴の不正はstderr・非0終了、成功はstdoutへJSONです。`--conditions null`も入力エラーです。
