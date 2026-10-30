@@ -1,5 +1,8 @@
 import {createHash} from 'node:crypto';
 import {setImmediate as yieldTurn} from 'node:timers/promises';
+import {parseDocumentTimestamp} from '../../dist/document-timestamp.js';
+
+export const DAILY_NOTICE_RULES_VERSION = 2;
 
 const date = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
     && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
@@ -14,7 +17,8 @@ const key = o => createHash('sha256').update(JSON.stringify([o.listDate, o.docum
 
 export function assertDailyNoticeState(state, repository) {
     const now = Date.now(), today = new Date(now + 9 * 3600000).toISOString().slice(0, 10);
-    if (!object(state, ['afterSequence', 'seen', 'pending', 'unresolved'])
+    if (!object(state, ['rulesVersion', 'afterSequence', 'seen', 'pending', 'unresolved'])
+        || state.rulesVersion !== undefined && state.rulesVersion !== DAILY_NOTICE_RULES_VERSION
         || !Number.isSafeInteger(state.afterSequence) || state.afterSequence < 0 || state.afterSequence > repository.getLastObservationSequence()
         || !Array.isArray(state.seen) || state.seen.length > 100000
         || !Array.isArray(state.pending) || state.pending.length > 10000
@@ -31,8 +35,19 @@ export function assertDailyNoticeState(state, repository) {
 export async function scanDailyMetadataNotices(repository, state, save, {signal} = {}) {
     assertDailyNoticeState(state, repository);
     if (typeof save !== 'function') throw Error('Daily notice checkpoint writer is required');
-    const throughSequence = repository.getLastObservationSequence(), seen = new Set(state.seen), pending = new Map(state.pending.map(p => [p.date, p.notBefore]));
+    const throughSequence = repository.getLastObservationSequence();
     let readObservations = 0, newNotices = 0;
+    if (signal?.aborted) return {complete: state.afterSequence === throughSequence, aborted: true, readObservations, newNotices};
+    if (state.rulesVersion === undefined) {
+        // 旧判定で処理済みの通知も再評価し、既存の再取得待ちは保持します。
+        state.rulesVersion = DAILY_NOTICE_RULES_VERSION;
+        state.afterSequence = 0;
+        state.seen = [];
+        state.unresolved = [];
+        await save(structuredClone(state));
+        await yieldTurn();
+    }
+    const seen = new Set(state.seen), pending = new Map(state.pending.map(p => [p.date, p.notBefore]));
     const validate = o => {
         const today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
         if (!o || !date(o.listDate) || o.listDate >= today || !time(o.observedAt) || Date.parse(o.observedAt) > Date.now()
@@ -43,22 +58,31 @@ export async function scanDailyMetadataNotices(repository, state, save, {signal}
         const d = o.document, references = String(d.withdrawalStatus) === '1'
             ? (d.parentDocID ? [d.parentDocID] : []) : [...new Set([d.docID, ...(d.parentDocID ? [d.parentDocID] : [])])];
         const targets = new Set();
+        let referencesKnown = references.length > 0;
         for (const docID of references) {
-            let cursor = 0;
+            let cursor = 0, found = false;
             for (;;) {
                 const rows = repository.getDocumentObservations({docID, afterSequence: cursor, limit: 1000});
                 for (const original of rows) {
                     validate(original);
-                    if (original.listDate < o.listDate) targets.add(original.listDate);
+                    const submitted = parseDocumentTimestamp(original.document.submitDateTime, false);
+                    const sameDaySubmission = original.listDate === o.listDate && submitted !== undefined
+                        && submitted <= Date.parse(o.observedAt) && submitted <= Date.parse(original.observedAt)
+                        && new Date(submitted + 9 * 3600000).toISOString().slice(0, 10) === original.listDate;
+                    if (original.listDate < o.listDate || sameDaySubmission) {
+                        targets.add(original.listDate);
+                        found = true;
+                    }
                 }
                 if (rows.length < 1000) break;
                 cursor = rows.at(-1).sequence;
             }
+            referencesKnown &&= found;
         }
         for (const target of targets) if (!repository.hasCompleteListForDate(target, o.observedAt))
             pending.set(target, [pending.get(target) ?? o.observedAt, o.observedAt].sort()[1]);
         if (pending.size > 10000) throw Error('Daily notice target limit exceeded');
-        return targets.size > 0;
+        return referencesKnown;
     };
     if (state.afterSequence < throughSequence) {
         const unresolved = [];

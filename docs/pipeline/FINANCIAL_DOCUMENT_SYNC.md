@@ -177,9 +177,15 @@ throughDateはseedで取得済みの閉じた最終日です。コピー先・na
 
 ### 変更通知から既知の過去一覧日を再観測する
 
-内部checkpoint版2のnoticesは、原観測のafterSequence、通知identityのseen、日付/最低観測時刻のpending、参照元が不明な通知の原観測sequenceを持ちます。旧版1は保持した予算/実行範囲を使って版2へ移行します。旧runtimeへ戻す場合は旧checkpointも復元し、版2を版1として読ませません。
+checkpoint本体の現行版3には、原観測のafterSequence、通知identityのseen、日付/最低観測時刻のpending、参照元が不明な通知の原観測sequenceを保存します。旧版1/2の予算・実行範囲を保持して版3へ移行し、必要な日次取得で完了証跡を作ります。旧runtimeへ戻す場合は対応するcheckpointも保持し、版3を旧形式として読ませません。
 
-取下書はparentDocIDを、書類情報修正/不開示開始/解除の通知はdocIDと親宣言を使い、保存済み観測のうち通知一覧日より前の既知一覧日を探します。既知日と通知の実observedAtを同じcheckpointへ保存し、その時刻以降の取得markerがない日を直近7日とは別に取り直します。
+取下書はparentDocIDを、書類情報修正/不開示開始/解除の通知はdocIDと親宣言を使い、保存済み観測から元の一覧日を探します。通知より前の一覧日に加え、同日の提出も確認できます。同日の場合は、提出日時が有効で、その日本時間の日付が一覧日と一致し、通知と元観測の両時刻以前であることを必須にします。一覧日が同じだけでは元の提出を確認したことにしません。
+
+既知日と通知の実observedAtを同じcheckpointへ保存し、その時刻以降の完全取得markerがない日を直近7日とは別に取り直します。同日の完全取得が既にあれば再取得しません。参照先が複数ある場合は全ての日付が確認できるまでunresolvedに残し、分かっている日だけ先に再観測します。親が不明な取下書を、その書類自身の提出で解決しません。
+
+通知の判定基準は `notices.rulesVersion = 2` で管理します。これはcheckpoint本体の `version = 3` とは別です。判定版のない旧noticesは、処理済みの通知も含めて原観測を最初から再評価します。元データと既存の再取得待ちは維持し、再評価のcursorをpageごとに保存するため、中断後はその位置から再開できます。
+
+旧ルールの `completedDay` と `lastCompletedRun` は完了証跡として再利用せず、取得予算・処理中の範囲を引き継いで当日probeと日次取得の完了を確認し直します。予算切れでも古い完了証跡に戻しません。新しいnoticesを未対応の旧runtimeへ渡さず、対応コードとcheckpointを組にして保持してください。
 
 通知を新しく保存した直後・cursor保存前に停止しても、原観測の再読込で対象日を復元します。通知の原本文/過去のobservedAtを書き換えません。
 
@@ -224,4 +230,4 @@ edinet-ts archive-financial-document-observations --metadata data/daily.sqlite \
 
 候補の再作成には、少なくともsourceId・throughSequence・原本availableBy・書類選択cutoff・母集団・SDK/Node/SQLiteの固定版・観測pageSize・期待する観測指紋/候補指紋を保持します。原観測転送、原本転送、FinancialSourceJob.beginを順に実行して入力を封じ、取得後の別cutoff/候補から構築へ進みます。
 
-これらの境界を使う日次財務の自動runnerと、raw pool/候補の保存寿命管理・構築/品質/公開の反復接続は後続工程です。
+これらの境界を使う日次財務runnerは実装済みです。raw pool/候補の保存寿命管理と、品質を満たした公開までの反復運用は引き続き残ります。稼働版と検証範囲は[実装状況](../plans/IMPLEMENTATION_STATUS.md)で確認してください。

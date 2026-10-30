@@ -2,7 +2,7 @@ import {it,expect,vi} from 'vitest';
 import {EdinetRepository} from '../dist/db/edinet-repository.js';
 import {scanDailyMetadataNotices,assertDailyNoticeState} from '../scripts/roadmap/daily-metadata-notices.mjs';
 import {collectDailyMetadata} from '../scripts/roadmap/daily-metadata-control.mjs';
-const empty=()=>({afterSequence:0,seen:[] as string[],pending:[] as {date:string;notBefore:string}[],unresolved:[] as number[]});
+const empty=()=>({rulesVersion:2,afterSequence:0,seen:[] as string[],pending:[] as {date:string;notBefore:string}[],unresolved:[] as number[]});
 const doc=(docID:string,extra:any={})=>({docID,secCode:'10010',edinetCode:'E12345',docDescription:'fixture',docTypeCode:'120',submitDateTime:'2026-09-01 09:00',periodStart:'2025-04-01',periodEnd:'2026-03-31',withdrawalStatus:'0',docInfoEditStatus:0,disclosureStatus:'0',...extra});
 const edit=(id='A',extra:any={})=>doc(id,{docInfoEditStatus:1,opeDateTime:'2026-10-29 09:00',...extra});
 const withdrawal=(id='NOTICE',parent='B')=>doc(id,{docTypeCode:null,withdrawalStatus:'1',parentDocID:parent});
@@ -60,4 +60,55 @@ it('通知の対象日で取得失敗しても、同じ開始時刻と対象日�
 it('残り9要求でprobe・7日・通知対象1日を完了し、予算を使い切っても再投入で追加取得しない',()=>fixture(async repo=>{
  old();repo.saveDocumentList([doc('A')],'2026-09-01');now();const state:any=daily();state.budget.requests=247;
  const fetch=vi.fn(async(date:string)=>date==='2026-10-24'?[edit()]:[]);expect((await collectDailyMetadata(repo,fetch,state,()=>{})).status).toBe('complete');expect(state.budget.requests).toBe(256);expect(fetch).toHaveBeenCalledTimes(9);fetch.mockClear();expect((await collectDailyMetadata(repo,fetch,state,()=>{})).status).toBe('already-complete');expect(fetch).not.toHaveBeenCalled();
+}));
+
+it('同日提出の修正通知は、その日の完全取得が通知時刻を満たせば再取得も未解決化もしない',()=>fixture(async repo=>{
+ repo.saveDocumentList([edit('A',{submitDateTime:'2026-10-29T00:00:00Z'})],'2026-10-29');const state=empty();await scanDailyMetadataNotices(repo,state,()=>{});
+ expect(state.pending).toEqual([]);expect(state.unresolved).toEqual([]);expect(state.seen).toHaveLength(1);expect(repo.getLastObservationSequence()).toBe(1);
+}));
+it.each([null,'2026-09-01 09:00','2026-10-29 25:00','2026-10-29T23:00:00-05:00'])('同じ一覧日だけでは元の提出日不明を解決しない: %s',submitDateTime=>fixture(async repo=>{
+ repo.saveDocumentList([edit('A',{submitDateTime})],'2026-10-29');const state=empty();await scanDailyMetadataNotices(repo,state,()=>{});expect(state.unresolved).toEqual([1]);expect(state.pending).toEqual([]);
+}));
+it('観測時刻より後の提出日時では同日の元書類を確認したことにしない',()=>fixture(async repo=>{
+ old();repo.saveDocumentList([edit('A',{submitDateTime:'2026-10-29 23:00'})],'2026-10-29');now();const state=empty();await scanDailyMetadataNotices(repo,state,()=>{});expect(state.unresolved).toEqual([1]);
+}));
+it('同日提出の取下対象は確認できるが、親のない取下通知は自身で解決しない',()=>fixture(async repo=>{
+ repo.saveDocumentList([doc('A',{submitDateTime:'2026-10-29 09:00'}),withdrawal('NOTICE','A'),doc('UNKNOWN',{submitDateTime:'2026-10-29 09:00',withdrawalStatus:'1',parentDocID:null})],'2026-10-29');
+ const state=empty();await scanDailyMetadataNotices(repo,state,()=>{});expect(state.pending).toEqual([]);expect(state.unresolved).toEqual([3]);
+}));
+it('自分の過去一覧が分かっても親の参照先が不明なら通知を残し、既知の日は再取得対象にする',()=>fixture(async repo=>{
+ old();repo.saveDocumentList([doc('A')],'2026-09-01');now();repo.saveDocumentList([edit('A',{parentDocID:'MISSING'})],'2026-10-29');const state=empty();await scanDailyMetadataNotices(repo,state,()=>{});
+ expect(state.unresolved).toEqual([2]);expect(state.pending).toEqual([{date:'2026-09-01',notBefore:'2026-10-30T01:00:00.000Z'}]);
+}));
+it('日次収集でも同日提出の通知を完全取得証跡で解決し、要求を追加しない',()=>fixture(async repo=>{
+ const state:any=daily(),fetch=vi.fn(async(date:string)=>date==='2026-10-24'?[edit('A',{submitDateTime:'2026-10-24 09:00'})]:[]);
+ expect(await collectDailyMetadata(repo,fetch,state,()=>{})).toEqual({status:'complete',throughDate:'2026-10-29'});expect(state.notices.unresolved).toEqual([]);expect(state.notices.pending).toEqual([]);expect(fetch).toHaveBeenCalledTimes(8);expect(fetch.mock.calls.filter(c=>c[0]==='2026-10-24')).toHaveLength(1);
+}));
+
+it('旧checkpointの処理済み通知も全件再評価し、不明な親と既存の再取得待ちを保持する',()=>fixture(async repo=>{
+ old();repo.saveDocumentList([doc('A')],'2026-09-01');now();repo.saveDocumentList([edit('A',{parentDocID:'MISSING'})],'2026-10-29');const current=empty();await scanDailyMetadataNotices(repo,current,()=>{});
+ const {rulesVersion,...legacy}=structuredClone(current);legacy.unresolved=[];const saved:any[]=[];await scanDailyMetadataNotices(repo,legacy,(s:any)=>saved.push(s));
+ expect(legacy).toMatchObject({rulesVersion:2,afterSequence:2,unresolved:[2],pending:current.pending});expect(saved.map(s=>s.afterSequence)).toEqual([0,2]);expect(legacy.seen).toEqual(current.seen);expect(repo.getLastObservationSequence()).toBe(2);
+}));
+it('追加観測がなくても旧checkpointの同日通知を再評価する',()=>fixture(async repo=>{
+ repo.saveDocumentList([edit('A',{submitDateTime:'2026-10-29 09:00'})],'2026-10-29');const current=empty();await scanDailyMetadataNotices(repo,current,()=>{});const {rulesVersion,...legacy}=structuredClone(current);legacy.unresolved=[1];
+ await scanDailyMetadataNotices(repo,legacy,()=>{});expect(legacy).toMatchObject({rulesVersion:2,afterSequence:1,unresolved:[],pending:[]});expect(legacy.seen).toEqual(current.seen);
+}));
+it('旧通知の再評価をpage境界で保存し、中断後に最初から再評価し直さない',()=>fixture(async repo=>{
+ repo.saveDocumentList([...Array.from({length:1000},(_,i)=>doc('F'+i)),withdrawal('NOTICE','MISSING')],'2026-10-29');const legacy:any={afterSequence:1001,seen:[],pending:[],unresolved:[]};let saved:any;const cursors:number[]=[];
+ await expect(scanDailyMetadataNotices(repo,legacy,(s:any)=>{cursors.push(s.afterSequence);if(s.afterSequence>1000)throw Error('disk');saved=s})).rejects.toThrow('disk');expect(cursors).toEqual([0,1000,1001]);
+ expect(saved).toMatchObject({rulesVersion:2,afterSequence:1000});const resumed:number[]=[];await scanDailyMetadataNotices(repo,saved,(s:any)=>resumed.push(s.afterSequence));expect(resumed).toEqual([1001]);expect(saved.unresolved).toEqual([1001]);expect(saved.seen).toHaveLength(1);
+}));
+it('中断済みの呼出しでは旧通知checkpointを移行しない',()=>fixture(async repo=>{
+ repo.saveDocumentList([edit()],'2026-10-29');const legacy={afterSequence:1,seen:[],pending:[],unresolved:[1]},before=structuredClone(legacy),save=vi.fn(),controller=new AbortController();controller.abort();
+ expect(await scanDailyMetadataNotices(repo,legacy,save,{signal:controller.signal})).toMatchObject({aborted:true});expect(legacy).toEqual(before);expect(save).not.toHaveBeenCalled();expect(()=>assertDailyNoticeState({...legacy,rulesVersion:99},repo)).toThrow();
+}));
+it('旧通知ルールの完了証跡を再利用せず、予算を維持して日次完了を確認し直す',()=>fixture(async repo=>{
+ const state:any=daily(),fetch=vi.fn(async(date:string)=>date==='2026-10-24'?[edit('A',{submitDateTime:'2026-10-24 09:00'})]:[]);await collectDailyMetadata(repo,fetch,state,()=>{});
+ delete state.notices.rulesVersion;state.notices.unresolved=[1];state.lastCompletedRun.unresolvedNotices=1;vi.setSystemTime(new Date('2026-10-30T02:00:00Z'));fetch.mockClear();const saved:any[]=[];
+ expect((await collectDailyMetadata(repo,fetch,state,(s:any)=>saved.push(s))).status).toBe('complete');expect(fetch).toHaveBeenCalledTimes(8);expect(state.budget.requests).toBe(16);expect(state.notices).toMatchObject({rulesVersion:2,unresolved:[]});expect(state.lastCompletedRun).toMatchObject({refreshAfter:'2026-10-30T02:00:00.000Z',unresolvedNotices:0});expect(saved[0].completedDay).toBeUndefined();expect(saved[0].lastCompletedRun).toBeUndefined();expect(saved[0].budget.requests).toBe(8);
+}));
+it('移行時の予算が尽きても旧完了証跡を新ルールの完了扱いにしない',()=>fixture(async repo=>{
+ const state:any=daily(),fetch=vi.fn(async()=>[]);await collectDailyMetadata(repo,fetch,state,()=>{});delete state.notices.rulesVersion;state.budget.requests=256;fetch.mockClear();
+ expect((await collectDailyMetadata(repo,fetch,state,()=>{})).status).toBe('budget-exhausted');expect(fetch).not.toHaveBeenCalled();expect(state.completedDay).toBeUndefined();expect(state.lastCompletedRun).toBeUndefined();expect(state.active).toBeDefined();expect(state.notices.rulesVersion).toBe(2);
 }));

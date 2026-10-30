@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {backfillFinancialDocumentLists} from '../../dist/index.js';
-import {assertDailyNoticeState,scanDailyMetadataNotices} from './daily-metadata-notices.mjs';
+import {assertDailyNoticeState,scanDailyMetadataNotices,DAILY_NOTICE_RULES_VERSION} from './daily-metadata-notices.mjs';
 
 export const DAILY_METADATA_MAX_REQUESTS = 256;
 
@@ -40,10 +40,14 @@ export async function collectDailyMetadata(repository, fetchList, state, save, {
             throw Error('Invalid daily metadata run');
     }
     repository.assertWritable();
-    if (state.version === 1) state.notices = {afterSequence: 0, seen: [], pending: [], unresolved: []};
+    if (state.version === 1) state.notices = {rulesVersion: DAILY_NOTICE_RULES_VERSION, afterSequence: 0, seen: [], pending: [], unresolved: []};
     state.version = 3;
     assertDailyNoticeState(state.notices, repository);
     if (state.lastCompletedRun !== undefined) assertCompletedMetadataRun(state.lastCompletedRun, repository.getLastObservationSequence(), state.throughDate);
+    if (state.notices.rulesVersion !== DAILY_NOTICE_RULES_VERSION || state.lastCompletedRun === undefined) {
+        delete state.completedDay;
+        delete state.lastCompletedRun;
+    }
     const persist = () => save(structuredClone(state));
     const result = (status, fields = {}) => ({status, ...fields,
         ...(state.notices.pending.length ? {pendingNoticeDates: state.notices.pending.length} : {}),
