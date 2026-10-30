@@ -8,3 +8,7 @@ if(result.master.status==='available'){const source:string=result.master.sourceS
 const reader=new FinancialSearchIndex('financial.sqlite',{readOnly:true});const fingerprint:string=reader.snapshotSha256();reader.close();void [entity,amount,fingerprint];
 // @ts-expect-error マスターのknownAtを財務世代と別に指定できない。
 const invalid:CompanyFinancialScreeningOptions={...options,company:{...options.company,knownAt:'2027-01-01T00:00:00Z'}};void invalid;
+
+import {compareCompanyFinancialsByIndustry,type CompanyIndustryComparisonResult} from '../../dist/index.js';
+const comparison:CompanyIndustryComparisonResult=compareCompanyFinancialsByIndustry('financial.sqlite',[master],{cohort:options.cohort,company:options.company,metricIds:['costOfSales']});
+const exactMean:string|undefined=comparison.industries[0]?.metrics[0]?.mean.numerator;void exactMean;

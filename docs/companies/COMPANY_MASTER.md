@@ -15,6 +15,7 @@ flowchart LR
 - [企業マスター観測の永続保存](#store)
 - [企業マスター間の観測差分](#changes)
 - [業種・企業属性による財務検索](#financial-screening)
+- [業種ごとの財務比較](#industry-comparison)
 
 各節のAPI・入力条件は区別します。検証件数と配布物の記録は実施当時のもので、現在の全体検証や稼働状態を示しません。
 
@@ -115,7 +116,6 @@ import {screenCompanyFinancials} from 'edinet-ts';
 const result = screenCompanyFinancials('financial-index.sqlite', snapshots, {
   cohort, // generation/group/standard/scope/currency/period/periodType
   company: {
-    sourceUrl: snapshots[0].sourceUrl,
     asOf: '2026-10-29',
     listingStatus: 'listed',
     industry: '建設業',
@@ -163,3 +163,59 @@ Node 26.12.1の隔離コピーで全161ファイル・4,303テスト、build・�
 保存済み実データでは、2026-10-29基準の上場・建設業150社から、J-GAAP連結・2025-04-01〜2026-03-31の売上原価76行を検索しました。全76値を別のPython/SQLite/XML処理で原本のhash・context・単位・原値と照合し、必須項目非採用16書類とページ指定も一致しました。後から取得した2026-10-30基準の公式マスターを追加しても、以前の財務cutoffでの選択と結果は不変でした。
 
 これは一業種・一期間・一指標の検証です。全市場の充足率保証やPDF金額照合ではありません。市場区分・法的イベント履歴・業種統計・通貨換算は残工程で、保存財務値の再抽出や未検証値の公開昇格は行いません。
+
+<a id="industry-comparison"></a>
+
+## 業種ごとの財務比較
+
+`compareCompanyFinancialsByIndustry()` は、指定した指標が**すべて利用可能な共通企業集合**について、業種別の最小・最大・合計・平均・中央値を返します。指標ごとに別の企業集合を使った平均ではありません。
+
+```ts
+import {compareCompanyFinancialsByIndustry} from 'edinet-ts';
+
+const comparison = compareCompanyFinancialsByIndustry('financial-index.sqlite', snapshots, {
+  cohort, // 同一世代・会計基準・連結範囲・通貨・期間
+  company: {asOf: '2026-10-29', listingStatus: 'listed'},
+  metricIds: ['costOfSales', 'sellingGeneralAndAdministrativeExpenses'],
+});
+
+for (const group of comparison.industries) {
+  console.log(group.industry, group.usableCompanies, group.metrics);
+}
+```
+
+`sample: "complete-case"` は共通採用集合であることを示します。全体の `metricIds` に要求指標を返し、`rows` と `diagnostics` に計算根拠を残します。企業情報の時点選択・EDINETコードによる結合・索引のreadOnly検査は[財務検索](#financial-screening)と共通です。
+
+### 集計対象を確認する
+
+各業種の件数は次の意味です。業種の空欄・未記録は `industry: null` にまとめます。
+
+| フィールド | 意味 |
+|---|---|
+| `masterCompanies` | 企業条件に合うマスター企業数 |
+| `usableCompanies` | 同じ財務cohortで全要求指標を採用できた企業数 |
+| `excludedCompanies` | 必須指標の欠損・曖昧・非対応・unsafe-numberで除外した企業数。複数の欠損を一社として数える |
+| `unrepresentedCompanies` | 上の採用・除外のいずれにも該当する財務記録がない企業数 |
+
+このAPIでは数値条件やページ指定を受け付けません。先に数値で絞った標本や先頭ページだけで、業種全体の平均を計算することを防ぎます。`company` の業種・決算月・上場区分等による母集団の絞込はできます。
+
+`unrepresentedCompanies` は未開示や解析失敗の確定分類ではありません。会計基準・期間が違う会社、原本未保存、選択未解決なども含み得ます。したがって `usableCompanies / masterCompanies` を対象年度の開示充足率とは扱いません。
+
+### 平均と中央値の表現
+
+各 `metrics` 要素は指標名・採用数と統計値を持ちます。合計・平均・中央値は `{numerator, denominator}` の十進整数文字列による分数です。たとえば0.1と0.2の平均は `{"numerator":"3","denominator":"20"}` となります。合計が安全整数範囲を超えても、途中でnumberへ丸めません。元の報告精度が上がるという意味ではありません。
+
+採用企業が0社の業種では `metrics: []` を返します。平均0とは区別してください。採用企業が1社なら、その会社の値が平均・中央値です。中央値は昇順の中央値、偶数社なら中央2値の算術平均です。負値・0も採用値として計算に含めます。
+
+### CLI
+
+```sh
+edinet-ts compare-financial-industries \
+  --db financial-index.sqlite --cohort cohort.json \
+  --metrics costOfSales,sellingGeneralAndAdministrativeExpenses \
+  --company-master snapshots.json --company-query company-query.json --pretty
+```
+
+`company-query.json` に `knownAt` は指定せず、財務世代のcutoffを使います。原本の再取得・再抽出や通貨換算は行いません。異なる基準・期間・scope・指標の意味差を埋めた業種比較は別の工程です。
+
+実原本検証では、上場マスター3,812社・34業種について、同一期の売上原価をJ-GAAPとIFRSで分けて比較しました。採用はJ-GAAP 1,556社・IFRS 144社、必須指標非採用はそれぞれ208社・32社です。独立Python/SQLite/Fraction処理で企業の結合・業種別件数・全統計が一致し、採用1,700値を元XMLのhash・context・namespace・原値・報告精度・JPY単位まで照合しました。CLIもAPIと一致し、元索引は不変です。全期間・全指標やPDFの照合ではなく、旧完成候補を使ったこの比較の検証です。公開世代は変更していません。

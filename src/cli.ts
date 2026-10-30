@@ -31,6 +31,7 @@ import {createHash} from "node:crypto";
 import {ObservedFinancialArchive,normalizeArchivedFinancialSnapshotOptions} from "./db/observed-financial-archive";
 import {FinancialSearchIndex,normalizeFinancialIndexSearch,isFinancialIndexGenerationId} from "./db/financial-search-index";
 import {screenCompanyFinancials} from "./company-financial-screening";
+import {compareCompanyFinancialsByIndustry} from "./company-industry-comparison";
 import {FinancialIndexBuild,normalizeFinancialIndexBuildInput} from "./db/financial-index-build";
 import { screenIfrsFinancialDetailDocuments } from "./ifrs-financial-detail-screening";
 import { screenIfrsBalanceSheetDocuments } from "./ifrs-balance-sheet-screening";
@@ -634,6 +635,23 @@ program.command("screen-financial-index")
             }
         } catch { console.error("財務索引・比較集合・保存項目・数値条件・企業マスターの観測/業種を確認してください（入力内容は非表示）"); process.exitCode=1; }
         finally { index?.close(); }
+    });
+
+program.command("compare-financial-industries")
+    .description("同一財務集合の業種別件数・平均・中央値を共通採用企業で比較します")
+    .requiredOption("--db <path>", "停止した財務検索索引")
+    .requiredOption("--cohort <path>", "同一世代・基準・scope・期間のJSON")
+    .requiredOption("--metrics <csv>", "共通採用を必要とする保存済み指標")
+    .requiredOption("--company-master <path>", "完全マスター観測の配列JSON（64MiB以下）")
+    .requiredOption("--company-query <path>", "企業条件JSON。knownAtは財務世代へ固定")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        try{
+            const read=(file:string,max:number)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),max).bytes));
+            const result=compareCompanyFinancialsByIndustry(path.resolve(options.db),read(options.companyMaster,64*1024*1024),{
+                cohort:read(options.cohort,LOCAL_IMPORT_LIMITS.manifestBytes),company:read(options.companyQuery,LOCAL_IMPORT_LIMITS.manifestBytes),metricIds:options.metrics.split(",").map((m:string)=>m.trim())});
+            console.log(JSON.stringify(result,null,options.pretty?2:undefined));
+        }catch{console.error("同一財務集合・保存指標・企業マスターの観測条件を確認してください（入力内容は非表示）");process.exitCode=1;}
     });
 
 program.command("screen-published-financial-index")

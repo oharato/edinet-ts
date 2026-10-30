@@ -151,3 +151,6 @@ export type {DedicatedSqliteRecoveryKind,DedicatedSqliteRecoveryOptions,Dedicate
 
 export {screenCompanyFinancials} from './company-financial-screening';
 export type {CompanyFinancialScreeningOptions,CompanyFinancialScreeningRow,CompanyFinancialScreeningResult} from './company-financial-screening';
+
+export {compareCompanyFinancialsByIndustry} from "./company-industry-comparison";
+export type {CompanyIndustryComparisonOptions,CompanyIndustryComparisonResult,CompanyIndustryGroup,IndustryMetricStatistics,IndustryExactValue} from "./company-industry-comparison";
