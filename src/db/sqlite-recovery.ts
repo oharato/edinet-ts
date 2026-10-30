@@ -1,3 +1,4 @@
+import {LargeHoldingStore} from './large-holding-store';
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
@@ -18,6 +19,7 @@ const formats = {
     "financial-index-publication": FinancialIndexPublication,
     "company-master-store": CompanyMasterStore,
     "corporate-registry-store": CorporateRegistryStore,
+    "large-holding-store": LargeHoldingStore,
 } as const;
 export type DedicatedSqliteRecoveryKind = keyof typeof formats;
 export interface DedicatedSqliteRecoveryOptions {

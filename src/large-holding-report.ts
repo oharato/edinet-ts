@@ -138,18 +138,34 @@ export function extractLargeHoldingReport(document: LargeHoldingDocument): Large
     return { ...result, inputXmlSha256: createHash("sha256").update(xml).digest("hex") };
 }
 export interface LargeHoldingSearchOptions { cutoff: string; dutyDate: string; scope: "report" | "holder"; metric: LargeHoldingMetric; holderContains?: string; issuerEdinetCode?: string; condition?: { operator: ComparisonOperator; value: number }; sort?: "value-asc" | "value-desc"; offset?: number; limit?: number; }
-export function searchLargeHoldingReports(documents: readonly LargeHoldingDocument[], options: LargeHoldingSearchOptions): { reports: LargeHoldingReport[]; rows: { sourceIndex: number; row: LargeHoldingRow }[]; matched: number; filtered: number; excluded: { docID: string; rowKey?: string; reason: string }[] } {
+export function searchLargeHoldingReports(documents: readonly LargeHoldingDocument[], options: LargeHoldingSearchOptions): LargeHoldingSearchResult {
     if (!Array.isArray(documents) || documents.length > 100 || !options) throw new Error("大量保有検索は100原本以下です");
+    validateLargeHoldingSearchOptions(options);
+    const all = Array.from(documents, d => { if (!d) throw new Error("原本が必要です"); return { xml: d.xml, metadata: captureMetadata(d.metadata) }; });
+    if (all.some(d => typeof d.xml !== "string") || all.reduce((n, d) => n + Buffer.byteLength(d.xml), 0) > 256 * 1024 * 1024) throw new Error("大量保有の原本上限を確認してください");
+    return searchLargeHoldingInputs(all, options, (d,metadata) => extractLargeHoldingReport({xml:d.xml,metadata}));
+}
+export interface LargeHoldingSearchResult {reports:LargeHoldingReport[];rows:{sourceIndex:number;row:LargeHoldingRow}[];matched:number;filtered:number;excluded:{docID:string;rowKey?:string;reason:string}[];}
+function validateLargeHoldingSearchOptions(options:LargeHoldingSearchOptions) {
     const { cutoff, dutyDate, scope, metric, holderContains, issuerEdinetCode, condition, sort, offset = 0, limit = 100 } = options, cut = parseDocumentTimestamp(cutoff, true);
     if (cut === undefined || !validDate(dutyDate) || !["report", "holder"].includes(scope) || !Object.values(LargeHoldingMetric).includes(metric) || holderContains !== undefined && (typeof holderContains !== "string" || !holderContains.trim() || holderContains.length > 1000) || issuerEdinetCode !== undefined && !/^E\d{5}$/.test(issuerEdinetCode) || condition !== undefined && (!condition || typeof condition !== "object" || Array.isArray(condition) || !["gt", "gte", "lt", "lte", "eq"].includes(condition.operator) || !Number.isFinite(condition.value)) || sort !== undefined && !["value-asc", "value-desc"].includes(sort) || !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error("大量保有検索のcutoff/義務発生日/範囲/条件を確認してください");
-    const all = Array.from(documents, d => { if (!d) throw new Error("原本が必要です"); return { xml: d.xml, metadata: captureMetadata(d.metadata) }; }).sort((a, b) => a.metadata.docID < b.metadata.docID ? -1 : a.metadata.docID > b.metadata.docID ? 1 : 0);
-    if (all.some(d => typeof d.xml !== "string") || all.reduce((n, d) => n + Buffer.byteLength(d.xml), 0) > 256 * 1024 * 1024 || new Set(all.map(d => d.metadata.docID)).size !== all.length) throw new Error("大量保有の原本重複/上限を確認してください");
+    return { cutoff, dutyDate, scope, metric, holderContains, issuerEdinetCode, condition, sort, offset, limit, cut };
+}
+/** 内部用。原本から生成/検査済みの解析結果を、XML入口と同じ規則で検索します。 */
+export function searchParsedLargeHoldingReports(reports:readonly LargeHoldingReport[],options:LargeHoldingSearchOptions):LargeHoldingSearchResult {
+    return searchLargeHoldingInputs(reports,options,(report,metadata)=>({...structuredClone(report),metadata}));
+}
+function searchLargeHoldingInputs<T extends {metadata:LargeHoldingMetadata}>(values:readonly T[],options:LargeHoldingSearchOptions,load:(value:T,metadata:LargeHoldingMetadata)=>LargeHoldingReport):LargeHoldingSearchResult {
+    if(!Array.isArray(values)||values.length>10000||!options)throw Error("大量保有検索は10000解析結果以下です");
+    const { cutoff, dutyDate, scope, metric, holderContains, issuerEdinetCode, condition, sort, offset, limit, cut }=validateLargeHoldingSearchOptions(options);
+    const all=Array.from(values,value=>({value,metadata:captureMetadata(value.metadata)})).sort((a,b)=>a.metadata.docID<b.metadata.docID?-1:a.metadata.docID>b.metadata.docID?1:0);
+    if(new Set(all.map(d=>d.metadata.docID)).size!==all.length)throw Error("大量保有の原本が重複しています");
     const excluded: { docID: string; rowKey?: string; reason: string }[] = [], inputs = all.filter(d => { const known = parseDocumentTimestamp(d.metadata.knownAt, true)!, submitted = parseDocumentTimestamp(d.metadata.submitDateTime, false)!; if (known > cut || submitted > cut) { excluded.push({ docID: d.metadata.docID, reason: "not-known-at-cutoff" }); return false; } return true; });
     const ids = new Set(inputs.map(d => d.metadata.docID)), parents = new Set<string>();
     for (const d of inputs) if (d.metadata.docTypeCode === "360" && d.metadata.parentDocID) { if (ids.has(d.metadata.parentDocID) || parents.has(d.metadata.parentDocID)) throw new Error("訂正系列を先に選んでください。親子/競合する訂正を同時に検索できません"); parents.add(d.metadata.parentDocID); }
     const reports: LargeHoldingReport[] = [], rows: { sourceIndex: number; row: LargeHoldingRow }[] = []; let filtered = 0, count = 0;
     for (const input of inputs) {
-        const report = extractLargeHoldingReport(input), sourceIndex = reports.length; reports.push(report); count += report.rows.length; if (count > 10000) throw new Error("大量保有検索は10000保有者行以下です");
+        const report = load(input.value,input.metadata), sourceIndex = reports.length; reports.push(report); count += report.rows.length; if (count > 10000) throw new Error("大量保有検索は10000保有者行以下です");
         if (report.status !== "selected") { excluded.push({ docID: input.metadata.docID, reason: report.diagnostics[0]?.reason ?? "unsupported" }); continue; }
         if (report.cover.dutyDate.status !== "selected" || report.cover.dutyDate.raw !== dutyDate || issuerEdinetCode && report.metadata.issuerEdinetCode !== issuerEdinetCode) { filtered++; continue; }
         const totalRowKey = report.reportTotal.status === "selected" ? report.reportTotal.rowKey : undefined;

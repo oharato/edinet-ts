@@ -29,6 +29,7 @@
         "document-pipeline.ts",
         "company-financial.ts",
         "corporate-registry-state.ts",
-        "corporate-registry-store.ts"
+        "corporate-registry-store.ts",
+        "large-holding-store.ts"
     ]
 }

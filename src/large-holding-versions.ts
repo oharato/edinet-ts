@@ -7,6 +7,8 @@ export type LargeHoldingVersionReason = "selected" | "conflicting-observations" 
 export interface LargeHoldingVersionDecision { rootDocID: string; status: "selected" | "unresolved" | "unavailable"; reason: LargeHoldingVersionReason; selectedDocID?: string; chainDocIDs: string[]; observationIds: string[]; inactiveDocuments?: { docID: string; reason: LargeHoldingVersionReason }[]; }
 export interface SelectedLargeHoldingObservation { rootDocID: string; observedAt: string; observationIds: string[]; observation: AnalyzedDocumentObservation & { document: LargeHoldingVersionDocument }; }
 export interface LargeHoldingVersionSelection { version: typeof LARGE_HOLDING_VERSIONS_VERSION; cutoff: string; decisions: LargeHoldingVersionDecision[]; selected: SelectedLargeHoldingObservation[]; ignored: { observationId: string; reason: "after-cutoff" | "superseded-observation" | "unsupported-document-type" }[]; holdingValuesMerged: false; reconstructedUnobservedHistory: false; }
+/** 内部共有: 一覧原観測から保存する書類属性。 */
+export const LARGE_HOLDING_VERSION_FIELDS = ["docID", "parentDocID", "withdrawalStatus", "disclosureStatus", "docInfoEditStatus", "docTypeCode", "edinetCode", "secCode", "submitDateTime", "opeDateTime", "formCode", "issuerEdinetCode"] as const;
 interface Variant { observation: SelectedLargeHoldingObservation["observation"]; observed: number; submitted?: number; signature: string; }
 interface State { id: string; observed: number; variants: Variant[]; conflict: boolean; }
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
@@ -28,7 +30,7 @@ function availability(s: State): LargeHoldingVersionReason | undefined {
 export function selectLargeHoldingReportVersions(observations: readonly LargeHoldingVersionObservation[], cutoff: string): LargeHoldingVersionSelection {
     const cut = timestamp(cutoff, true);
     if (cut === undefined || !Array.isArray(observations) || observations.length > 10000) throw new Error("timezone付きcutoffと10000件以下の大量保有観測が必要です");
-    const fields = ["docID", "parentDocID", "withdrawalStatus", "disclosureStatus", "docInfoEditStatus", "docTypeCode", "edinetCode", "secCode", "submitDateTime", "opeDateTime", "formCode", "issuerEdinetCode"] as const;
+    const fields = LARGE_HOLDING_VERSION_FIELDS;
     const captured = Array.from({ length: observations.length }, (_, i) => {
         const value = observations[i];
         if (!value || Object.keys(value).some(k => !["observationId", "observedAt", "listDate", "document"].includes(k)) || !value.document || typeof value.document !== "object" || Array.isArray(value.document)) throw new Error("大量保有の観測形式が不正です");

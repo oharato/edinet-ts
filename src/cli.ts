@@ -9,6 +9,7 @@ import {FinancialSourceJob,normalizeFinancialSourceJobInput} from "./db/financia
 import { searchOfficerRemuneration } from "./officer-remuneration";
 import { searchOfficerDetails } from "./officer-details";
 import { searchPolicyShareholdings } from "./policy-shareholdings";
+import { LargeHoldingStore } from "./db/large-holding-store";
 import { searchObservedLargeHoldingReports } from "./observed-large-holding";
 import { searchLargeHoldingReports } from "./large-holding-report";
 import { searchMajorShareholderDetails } from "./major-shareholder-details";
@@ -461,6 +462,59 @@ program.command("screen-subsidiary-human-capital")
             for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error();
             console.log(JSON.stringify(screenSubsidiaryHumanCapitalMetrics(documents, options.metric, { conditions: JSON.parse(options.conditions), labelContains: options.labelContains, childcareMethod: options.childcareMethod, order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit) }), null, options.pretty ? 2 : undefined));
         } catch { console.error("子会社表の原本・対象期末・項目・定義・注記宣言を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("import-large-holdings")
+    .description("一覧観測と原本hash付き解析結果を専用Storeへ追記します")
+    .requiredOption("--db <path>", "大量保有専用SQLite")
+    .requiredOption("--observations <path>", "一覧観測JSON配列。原本だけの追記は空配列")
+    .option("--manifest <path>", "任意fileとdocID/availableAt/sourceSha256/coverContextRefのJSON配列")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let store: LargeHoldingStore | undefined;
+        try {
+            const readJSON = (file: string) => JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(path.resolve(file), LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            const observations = readJSON(options.observations), manifest = options.manifest === undefined ? undefined : path.resolve(options.manifest), entries = manifest === undefined ? [] : readJSON(manifest);
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error();
+            let bytes = 0;
+            const sources = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "docID", "availableAt", "sourceSha256", "coverContextRef"].includes(k))) throw new Error();
+                const { file, ...source } = entry;
+                if (file === undefined) return source;
+                if (typeof file !== "string" || !file.trim()) throw new Error();
+                const input = readRegularFile(path.resolve(path.dirname(manifest!), file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes));
+                bytes += input.bytes.byteLength;
+                return { ...source, xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes) };
+            });
+            store = new LargeHoldingStore(options.db);
+            console.log(JSON.stringify(store.append(observations, sources), null, options.pretty ? 2 : undefined));
+        } catch { console.error("大量保有Storeの保存先・観測・原本宣言・hashを確認してください（入力内容は非表示）"); process.exitCode = 1; }
+        finally { store?.close(); }
+    });
+
+program.command("search-large-holding-store")
+    .description("原XMLを再読込せず、保存済み大量保有を訂正選択付きで検索します")
+    .requiredOption("--db <path>", "大量保有専用SQLite")
+    .requiredOption("--cutoff <datetime>", "timezone付きの観測cutoff")
+    .requiredOption("--duty-date <date>", "報告義務発生日")
+    .requiredOption("--scope <scope>", "reportまたはholder")
+    .requiredOption("--metric <metric>", "大量保有指標ID")
+    .option("--holder-contains <text>", "原表名義に含まれる文字列")
+    .option("--issuer-edinet-code <code>", "発行者EDINETコード")
+    .option("--condition <json>", "operator/valueの条件")
+    .option("--sort <order>", "value-ascまたはvalue-desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数", "100")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let store: LargeHoldingStore | undefined;
+        try {
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            store = new LargeHoldingStore(options.db, { readOnly: true });
+            const result = store.search({ cutoff: options.cutoff, dutyDate: options.dutyDate, scope: options.scope, metric: options.metric, holderContains: options.holderContains, issuerEdinetCode: options.issuerEdinetCode, condition: options.condition === undefined ? undefined : JSON.parse(options.condition), sort: options.sort, offset: Number(options.offset), limit: Number(options.limit) });
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+        } catch { console.error("大量保有Store・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+        finally { store?.close(); }
     });
 
 program.command("screen-large-holdings")

@@ -98,6 +98,8 @@ export { LARGE_HOLDING_REPORT_VERSION, LargeHoldingMetric, extractLargeHoldingRe
 export type { LargeHoldingMetadata, LargeHoldingDocument, LargeHoldingEvidence, LargeHoldingSelection, LargeHoldingRow, LargeHoldingReport, LargeHoldingSearchOptions } from "./large-holding-report";
 export { LARGE_HOLDING_VERSIONS_VERSION, selectLargeHoldingReportVersions } from "./large-holding-versions";
 export type { LargeHoldingVersionDocument, LargeHoldingVersionObservation, LargeHoldingVersionReason, LargeHoldingVersionDecision, SelectedLargeHoldingObservation, LargeHoldingVersionSelection } from "./large-holding-versions";
+export {LargeHoldingStore,LARGE_HOLDING_STORE_VERSION} from "./db/large-holding-store";
+export type {LargeHoldingStoreAppendResult,LargeHoldingStoreSearchResult} from "./db/large-holding-store";
 export { searchObservedLargeHoldingReports } from "./observed-large-holding";
 export type { ObservedLargeHoldingSource } from "./observed-large-holding";
 export {POLICY_SHAREHOLDINGS_VERSION,extractPolicyShareholdings,searchPolicyShareholdings} from "./policy-shareholdings";

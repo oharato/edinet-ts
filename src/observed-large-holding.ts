@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { selectLargeHoldingReportVersions, type LargeHoldingVersionObservation } from "./large-holding-versions";
-import { extractLargeHoldingReport, searchLargeHoldingReports, type LargeHoldingDocument, type LargeHoldingSearchOptions } from "./large-holding-report";
+import { extractLargeHoldingReport, searchLargeHoldingReports, searchParsedLargeHoldingReports, type LargeHoldingReport, type LargeHoldingDocument, type LargeHoldingSearchOptions } from "./large-holding-report";
 import { parseDocumentTimestamp as timestamp } from "./document-timestamp";
 export interface ObservedLargeHoldingSource { docID: string; availableAt: string; sourceSha256: string; coverContextRef: string; xml?: string; }
 /** 選ばれた訂正版の原本がなければ理由を返し、旧版の値で埋めません。 */
@@ -17,7 +17,7 @@ export function searchObservedLargeHoldingReports(observations: readonly LargeHo
         return { docID, availableAt, sourceSha256, coverContextRef, xml };
     });
     if (new Set(inputs.map(s => s.docID)).size !== inputs.length || inputs.reduce((n, s) => n + Buffer.byteLength(s.xml ?? ""), 0) > 256 * 1024 * 1024) throw new Error("大量保有の原本重複/合計上限を確認してください");
-    const byID = new Map(inputs.map(s => [s.docID, s])), documents: LargeHoldingDocument[] = [], unavailableSources: { rootDocID: string; docID: string; reason: "source-missing" | "not-available-at-cutoff" | "source-not-loaded" | "source-hash-mismatch" | "source-parse-failed" }[] = [];
+    const byID = new Map(inputs.map(s => [s.docID, s])), reports: LargeHoldingReport[] = [], unavailableSources: { rootDocID: string; docID: string; reason: "source-missing" | "not-available-at-cutoff" | "source-not-loaded" | "source-hash-mismatch" | "source-parse-failed" }[] = [];
     for (const selected of selection.selected) {
         const d = selected.observation.document, docID = d.docID, s = byID.get(docID);
         const failed = (reason: typeof unavailableSources[number]["reason"]) => unavailableSources.push({ rootDocID: selected.rootDocID, docID, reason });
@@ -29,9 +29,7 @@ export function searchObservedLargeHoldingReports(observations: readonly LargeHo
         const status = selected.observation.statuses;
         if (Object.values(status).some(v => v.presence !== "known" || v.code !== "0")) throw new Error("選択済み観測の利用状態が整合しません");
         const document: LargeHoldingDocument = { xml: s.xml, metadata: { docID, docTypeCode: d.docTypeCode as "350" | "360", formCode: d.formCode!, edinetCode: d.edinetCode!, issuerEdinetCode: d.issuerEdinetCode!, parentDocID: d.parentDocID ?? undefined, submitDateTime: d.submitDateTime!, knownAt: new Date(Math.max(available, timestamp(selected.observedAt, true)!)).toISOString(), coverContextRef: s.coverContextRef, withdrawalStatus: "0", disclosureStatus: "0", docInfoEditStatus: "0" } };
-        // shortcut: 事前検査と既存検索で2回解析。大量処理は解析済みsnapshotの検索へ移行します。
-        try { extractLargeHoldingReport(document); } catch { failed("source-parse-failed"); continue; }
-        documents.push(document);
+        try { reports.push(extractLargeHoldingReport(document)); } catch { failed("source-parse-failed"); continue; }
     }
-    return { selection, ...searchLargeHoldingReports(documents, options), unavailableSources };
+    return { selection, ...searchParsedLargeHoldingReports(reports, options), unavailableSources };
 }
