@@ -818,3 +818,25 @@ DEIによる自動snapshotはBS8項目を保存する。観測アーカイブの
 
 
 修正後の `npm test -- --maxWorkers=1` はNode 26.12.1で158ファイル・4,218テストが成功した（450.88秒）。build、本体/公開型、公開ESM/CJSの追加export、Python保存保護5件、ローカル文書リンク540件の検査も成功。実3社・同一期末のbuilt CLIをAPIと比較して一致し、入力原本も不変だった。確認ログとsource/distの指紋は `ifrs-instant-verification-summary.json` に記録する。新しいIFRS辞書版2のSDKはまだ稼働unit・公開catalog・stock-dataへ反映していない。索引構築は固定SDKのまま940社完了・残り2,872社・失敗0件で継続中。
+
+
+## 提出日時から元一覧を確認する通知ルール3（2026-10-30）
+
+自身の元一覧が見つからない通知では、有効な提出日時の日本時間の日を取得候補へ加えるよう修正した（73b681c）。通知の実観測時刻以前・通知一覧日より前という条件を守り、元一覧でdocIDを確認するまでは未解決を保持する。親の日時を子から推定せず、取下通知自身の日時も使わない。空の完全取得でも解決扱いにせず、同じ通知の候補日を再取得し続けない。ルール2も原観測から再評価し、予算・再取得待ちを維持して新しい日次完了を確認する。
+
+Node 26で関連3ファイル65テスト、財務準備・再構築の境界2ファイル35テストが成功した。作業コードと固定runtimeの全140,884観測の再生では、未解決89件を保持したまま13候補日を復元し、原DB/checkpointは不変だった。固定SDK f1d39b6を維持し、通知・財務引継ぎの3ファイルだけを反映したruntimeは起動前22検査に成功。両日次unitを切り替え、100社構築の自然な間隙でmetadataを起動した。構築を強制停止していない。
+
+実取得後は165,557観測で当日完了、再取得待ち0件、予算159→200/256要求となった。13候補日が完全取得され、自身の提出日時から候補にした20書類すべてを元一覧で確認できた。以前の未解決89件から27件が解決し、旧未解決62件と新しく見つかった10件、計72件を保持している。全通知の解決とは扱わない。移行後の通知状態・原観測末尾・完了証跡を固定runtimeで監査し、監査中のmetadata/checkpointのbyte不変、構築中の入力指紋と凍結metadataの保持を確認した。
+
+完了後の定期起動は構築との排他で終了75となり得るため、その最終終了値を日次完了結果と混同しない。完了自体はcheckpointの新しいprobe/完了時刻・cursor・未解決件数の整合と、実行ログで確認した。新しいIFRS BS8項目のSDKと公開catalog・stock-dataは未切替。古い一覧の追加観測により次候補の対象書類が増える可能性があるため、次回の取得計画・容量を改めて確認する。
+
+証拠は `data/roadmap/notice-v3-fixed-runtime-replay-proof.json`、`notice-v3-preflight-proof.json`、`notice-v3-deployment-proof.json`、`notice-v3-gap-start-proof.json`、`notice-v3-live-migration-proof.json`、`notice-v3-unresolved-inventory.json`。残る72件について、未確認の自身の提出日時から追加できる候補日はこの調査時点で0件であり、親参照や原本等の別の確認が必要。
+
+
+## IFRS BS辞書2のSDKを次の日次unitへ反映（2026-10-30）
+
+4218テスト・実原本照合を通過したSDKのsource/dist指紋を再確認し、コミット73b681cのSDKと通知ルール3を含む別固定runtimeを作った。依存はF1固定runtimeのmanifestと一致するものを維持し、実行に必要なscriptだけを含めて2,503ファイルを固定。SDKの辞書版2/8項目・既定3項目のexport、ルール3の現行165,557観測/未解決72件のcheckpoint、旧3項目索引の実3社の検索結果・byte不変を通信なしで検証した。起動前22検査も成功した。
+
+両日次unitをこの固定runtimeへ切り替えた。metadataを100社構築の自然な処理間隙で起動し、already-complete・追加要求0で終了0を確認。checkpointのSHAと取得予算200要求は不変だった。現在構築中の候補はSDK F1の専用サービスを継続し、1,540社完了・残り2,272社・失敗0件。通常財務timerは一時停止を維持し、この構築完了後に復帰する。新SDKによる次の日次構築・全社品質検証と公開catalog/stock-dataの切替は未完了。SDKと対応世代を組にして配布・切戻しする条件も維持する。
+
+証拠は `data/roadmap/sdk-ifrs-v2-runtime-candidate.json`、`sdk-ifrs-v2-preflight-proof.json`、`sdk-ifrs-v2-smoke-proof.json`、`sdk-ifrs-v2-deployment-proof.json`、`sdk-ifrs-v2-gap-start-proof.json`、`sdk-ifrs-v2-live-metadata-proof.json`。初回stagingでは必要のない開発scriptも含んでいたため、unitを切り替える前に除外し、最終manifestとlauncherの指紋を作り直して検査した。稼働中のruntimeは書き換えていない。
