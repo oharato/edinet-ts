@@ -192,3 +192,6 @@ export function searchDisclosureTableCells(documents: readonly DisclosureTableDo
     }
     return { sources, rows, matched, excluded };
 }
+
+/** 内部用: 保存本文を同じ安全制限で再検査します。 */
+export function parseDisclosureTableFragment(raw: string) { return parseFragment(raw); }

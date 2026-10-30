@@ -1,3 +1,4 @@
+import {FacilityDetailStore} from "./facility-detail-store";
 import {LargeHoldingStore} from './large-holding-store';
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -20,6 +21,7 @@ const formats = {
     "company-master-store": CompanyMasterStore,
     "corporate-registry-store": CorporateRegistryStore,
     "large-holding-store": LargeHoldingStore,
+    "facility-detail-store": FacilityDetailStore,
 } as const;
 export type DedicatedSqliteRecoveryKind = keyof typeof formats;
 export interface DedicatedSqliteRecoveryOptions {

@@ -1,4 +1,4 @@
-# 設備表の直接明細と条件検索
+# 設備表の明細・保存・条件検索
 
 設備表から簿価や土地面積を読み、同じ期末の記載を条件検索します。利用者が表の対象会社・基準日を確認し、読めない形式や値は理由付きで残します。
 
@@ -57,7 +57,7 @@ const result = screenFacilityDetails([document], {
 
 訂正原本の選択は先に行ってください。asOfDateは設備の基準日であり、knownAtや当時の開示範囲を自動判定する機能とは別です。
 
-最大100原本・合計256MiB・100,000物理セル/10,000設備行、条件100件/ページ1,000行。小規模なメモリ検索で、SQL索引と全市場運用の機能ではありません。
+最大100原本・合計256MiB・100,000物理セル/10,000設備行、条件100件/ページ1,000行。直接検索の上限です。保存後の再検索には[専用Store](#store)を使えます。全市場運用の性能・容量検証は未完了です。
 
 ## 検証と残り
 
@@ -67,6 +67,63 @@ const result = screenFacilityDetails([document], {
 
 4PDFの設備表（エクシオ44/46ページ、ミライト45/34ページ）を画像で確認し、14行52原数値と円/m²換算、4ダッシュがPDFの独立転記と一致しました。全96行のPDF独立照合は未完了です。
 
-未対応: 表形式の網羅、借地/共有持分/所有会社の意味の自動判定、住所分離/地番照合、全社の保有不動産一覧、地価結合、DB索引。確認済みの記載行を扱うAPIとして提供し、計画6c全体の完成とは区別します。
+未対応: 表形式の網羅、借地/共有持分/所有会社の意味の自動判定、住所分離/地番照合、全社の保有不動産一覧、地価結合、DB索引の全市場性能・移行運用。確認済みの記載行を扱うAPIとして提供し、計画6c全体の完成とは区別します。
 
 最終確認: Node 26.12.1で全85ファイル・2,802テスト（1ワーカー）、公開API型検査、buildが成功。最新のsource/buildで全96行のJSONが一致し、2年度の100億円以上検索は各7行/順序が独立Decimal期待値と一致しました。公開ESM/CJSからのAPIも確認済みです。
+
+
+<a id="store"></a>
+## 原表と明細を保存して再検索する
+
+`FacilityDetailStore` は、確認済みの表宣言・原表本文・行/セル参照・4指標の採用状態を専用SQLiteへ保存します。XML全体はDBへ複製しません。原XMLは既存の保管先に残し、Storeの原本SHA-256と対応させてください。
+
+```mermaid
+flowchart LR
+  XML[保管した原XML] --> E[確認済み宣言で抽出]
+  E --> DB[原表本文と明細を保存]
+  DB --> S[同じ基準日のsnapshotを選択]
+  S --> Q[円・平方メートルで再検索]
+```
+
+```ts
+import { FacilityDetailStore } from "edinet-ts";
+const writer = new FacilityDetailStore("facilities.sqlite");
+const saved = writer.append([document]); // 上の例の原本・宣言
+writer.close();
+
+const reader = new FacilityDetailStore("facilities.sqlite", { readOnly: true });
+try {
+  const result = reader.search({
+    asOfDate: "2026-03-31",
+    snapshotIds: saved.snapshotIds,
+    sort: { field: "landAreaM2", order: "desc" }
+  });
+  console.log(result.rows);
+} finally {
+  reader.close();
+}
+```
+
+同じ原本・宣言の再投入では同じsnapshot IDを返し、二重保存しません。原本や確認済み宣言が異なる場合は別snapshotとして保持します。同じ提出者・同じ基準日の複数原本を検索へ同時に含めると拒否します。訂正版を先に選び、その投入結果の `snapshotIds` を指定してください。省略時は指定基準日の保存原本が対象です。
+
+`asOfDate` は表の基準日です。このStoreは訂正系列や観測cutoffを自動選択しません。`rights: unconfirmed` と `propertyIdentity: not-established` も保存し、表の行を確認済みの所有物件へ読み替えません。
+
+読取専用の初回監査では全保存記録のhash・索引を確認し、保存した原表本文から表の配置・明細を再構成して突合します。検査済みの私有snapshotを再利用するため、以後の検索で原XMLを再読込する必要はありません。`audit()` でも保存整合性を確認できます。外部原XMLの再照合や、日付・組織宣言の意味の自動認証とは別の検査です。
+
+SQLの `facility_values` viewにはsnapshot ID、原本hash、基準日、組織、所在地原文、表/行/セル位置、4指標の原値・十進文字列・単位・倍率・非採用理由を用意しています。SQLでも対象snapshotを指定してください。全保存版を合算したり、十進文字列の文字列順を数値順に使ったりしないでください。
+
+### CLI
+
+manifestは `file`、`selection`、`accountingStandard`、`declarations` を持つJSON配列です。`file` はmanifestからの相対パスまたは絶対パスで指定します。
+
+```sh
+edinet-ts import-facility-details --db facilities.sqlite --manifest facilities.json
+edinet-ts search-facility-detail-store --db facilities.sqlite \
+  --as-of-date 2026-03-31 --sort-by landAreaM2 --order desc --pretty
+```
+
+原本を選ぶ場合は `--snapshot-ids ID1,ID2`、数値条件は `--conditions '[{"field":"totalBookValueJPY","operator":"gte","value":10000000000}]'` を指定します。
+
+一回の投入は100原本、各64 MiB・合計256 MiB以下、保存結果は一原本32 MiB以下です。一検索も100原本・保存本文合計256 MiB、100,000物理セル・10,000設備行以下です。多くの原本を保存した場合はsnapshot IDで検索集合を分けます。SQLite復旧形式名は `facility-detail-store`。抽出形式が変わる場合は新しいDBを構築してください。
+
+Storeの限定照合では実4原本・96行の62検索が直接検索と一致し、独立XML処理の1,286物理セル・384項目（数値330・非数値54）がSQL保存値まで一致しました。CLI/APIで作成したDBの全byteも一致しています。全96行のPDF独立照合と全市場運用は引き続き未完了です。

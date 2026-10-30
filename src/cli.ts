@@ -9,6 +9,7 @@ import {FinancialSourceJob,normalizeFinancialSourceJobInput} from "./db/financia
 import { searchOfficerRemuneration } from "./officer-remuneration";
 import { searchOfficerDetails } from "./officer-details";
 import { searchPolicyShareholdings } from "./policy-shareholdings";
+import { FacilityDetailStore } from "./db/facility-detail-store";
 import { LargeHoldingStore } from "./db/large-holding-store";
 import { searchObservedLargeHoldingReports } from "./observed-large-holding";
 import { searchLargeHoldingReports } from "./large-holding-report";
@@ -462,6 +463,52 @@ program.command("screen-subsidiary-human-capital")
             for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error();
             console.log(JSON.stringify(screenSubsidiaryHumanCapitalMetrics(documents, options.metric, { conditions: JSON.parse(options.conditions), labelContains: options.labelContains, childcareMethod: options.childcareMethod, order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit) }), null, options.pretty ? 2 : undefined));
         } catch { console.error("子会社表の原本・対象期末・項目・定義・注記宣言を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("import-facility-details")
+    .description("確認済み設備表の原文と根拠付き明細を専用Storeへ保存します")
+    .requiredOption("--db <path>", "設備明細専用SQLite")
+    .requiredOption("--manifest <path>", "file/selection/accountingStandard/declarationsのJSON配列")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let store: FacilityDetailStore | undefined;
+        try {
+            const manifest = path.resolve(options.manifest), entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifest, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries) throw new Error();
+            let bytes = 0;
+            const documents = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "selection", "accountingStandard", "declarations"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
+                const input = readRegularFile(path.resolve(path.dirname(manifest), entry.file), Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytes)); bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), selection: entry.selection, accountingStandard: entry.accountingStandard, declarations: entry.declarations };
+            });
+            store = new FacilityDetailStore(options.db);
+            console.log(JSON.stringify(store.append(documents), null, options.pretty ? 2 : undefined));
+        } catch { console.error("設備Storeの保存先・原本・表宣言を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+        finally { store?.close(); }
+    });
+
+program.command("search-facility-detail-store")
+    .description("保存済み設備表を同じ基準日・円/平方メートルの条件で検索します")
+    .requiredOption("--db <path>", "設備明細専用SQLite")
+    .requiredOption("--as-of-date <date>", "確認済みの表の基準日")
+    .option("--snapshot-ids <csv>", "投入結果のsnapshotIdsをカンマ区切りで選択")
+    .option("--conditions <json>", "field/operator/valueのAND条件", "[]")
+    .option("--contains <text>", "所在地・会社名・セグメントに含まれる文字列")
+    .option("--organization <kind>", "reporting-company/domestic-subsidiaries/overseas-subsidiaries")
+    .option("--sort-by <field>", "totalBookValueJPY/landBookValueJPY/buildingsBookValueJPY/landAreaM2")
+    .option("--order <order>", "ascまたはdesc", "desc")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数", "100")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let store: FacilityDetailStore | undefined;
+        try {
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            store = new FacilityDetailStore(options.db, { readOnly: true });
+            const result = store.search({ asOfDate: options.asOfDate, snapshotIds: options.snapshotIds === undefined ? undefined : options.snapshotIds.split(",").map((id: string) => id.trim()), conditions: JSON.parse(options.conditions), contains: options.contains, organization: options.organization, sort: options.sortBy === undefined ? undefined : { field: options.sortBy, order: options.order }, offset: Number(options.offset), limit: Number(options.limit) });
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+        } catch { console.error("設備Store・基準日・対象snapshot・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+        finally { store?.close(); }
     });
 
 program.command("import-large-holdings")

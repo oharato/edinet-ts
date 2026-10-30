@@ -84,7 +84,7 @@ flowchart LR
 - [関係会社の記載明細と逆引き](disclosures/AFFILIATED_COMPANY_DETAILS.md)
 - [表の行や対象を区別する指定を追跡する](disclosures/CONTEXT_DIMENSION_TRACES.md)
 - [開示本文の表とセルの出典](disclosures/DISCLOSURE_TABLES.md)
-- [設備表の直接明細と条件検索](disclosures/FACILITY_DETAILS.md)
+- [設備表の明細・保存・条件検索](disclosures/FACILITY_DETAILS.md)
 - [一次大量保有の明細・訂正版選択](disclosures/LARGE_HOLDING.md)
 - [主要顧客の記載明細と逆引き](disclosures/MAIN_CUSTOMER_DETAILS.md)
 - [大株主表と大量保有の引用を分ける](disclosures/MAJOR_SHAREHOLDER_DETAILS.md)

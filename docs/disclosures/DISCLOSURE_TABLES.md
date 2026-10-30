@@ -55,7 +55,7 @@ const matches = searchDisclosureTableCells([{ xml: savedXml, selection }], { con
 
 入れ子の表は独立した数値明細へ展開しません。この照合は原XMLの保持確認であり、5,764セルのPDF独立照合ではありません。
 
-本文表追加時点からの進展: [設備](FACILITY_DETAILS.md)・[顧客](MAIN_CUSTOMER_DETAILS.md)・[関係会社](AFFILIATED_COMPANY_DETAILS.md)・[セグメント](SEGMENT_DETAILS.md)・[受注](ORDER_DETAILS.md)・[株主分類](SHAREHOLDER_CATEGORIES.md)・[大株主/引用](MAJOR_SHAREHOLDER_DETAILS.md)の個別モデル/検証を追加しました。各領域の対応形式と確認範囲に限定し、全形式の意味/期間確定、DB索引は未完了です。
+本文表追加時点からの進展: [設備](FACILITY_DETAILS.md)・[顧客](MAIN_CUSTOMER_DETAILS.md)・[関係会社](AFFILIATED_COMPANY_DETAILS.md)・[セグメント](SEGMENT_DETAILS.md)・[受注](ORDER_DETAILS.md)・[株主分類](SHAREHOLDER_CATEGORIES.md)・[大株主/引用](MAJOR_SHAREHOLDER_DETAILS.md)の個別モデル/検証を追加しました。設備の原表付きStoreと再検索も追加しています。各領域の対応形式と確認範囲に限定し、全形式の意味/期間確定、他領域のDB索引・全市場の保存運用は未完了です。
 
 本文を構造化金融値と同等には扱いません。全体計画6a/6b/6cの完了ではありません。
 

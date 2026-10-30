@@ -58,7 +58,13 @@ export function extractFacilityDetails(input: FacilityDetailDocument): FacilityD
         if (!Number.isSafeInteger(tableIndex) || tableIndex < 0 || !validDate(asOfDate) || !organizations.includes(organization) || typeof rawSha256 !== "string" || !/^[a-f0-9]{64}$/.test(rawSha256)) throw new Error("設備表の位置/日付/対象組織/hashが不正です");
         return { tableIndex, asOfDate, organization, rawSha256 }; });
     if (new Set(declarations.map(d => d.tableIndex)).size !== declarations.length) throw new Error("設備表宣言が重複しています");
-    const source = extractDisclosureTables(xml, { docID, kind: DisclosureTableKind.Facilities, contextRef }), rows: FacilityDetailRow[] = [], diagnostics: FacilityDetailsExtraction["diagnostics"] = [];
+    const source = extractDisclosureTables(xml, { docID, kind: DisclosureTableKind.Facilities, contextRef });
+    return projectFacilityDetails(source, { selection: { docID, contextRef, kind }, accountingStandard, declarations });
+}
+/** 内部共有: 検査済み本文表から同じ設備明細を再構成します。 */
+export function projectFacilityDetails(source: DisclosureTableExtraction, input: Omit<FacilityDetailDocument, "xml">): FacilityDetailsExtraction {
+    const { accountingStandard, declarations, selection: { docID, contextRef } } = input;
+    const rows: FacilityDetailRow[] = [], diagnostics: FacilityDetailsExtraction["diagnostics"] = [];
     if (source.status !== "selected") return { declaredAccountingStandard: accountingStandard, source, rows, diagnostics };
     const plain = canonicalHeader(source.parsedText);
     for (const d of declarations) {
@@ -91,6 +97,17 @@ export function screenFacilityDetails(documents: readonly FacilityDetailDocument
     excluded: { sourceIndex: number; rowKey: string; fields: FacilityField[] }[];
 } {
     if (!Array.isArray(documents) || documents.length > 100 || !options) throw new Error("設備検索は100原本以下です");
+    const query = normalizeFacilityOptions(options), { asOfDate } = query;
+    const inputs = Array.from(documents as readonly FacilityDetailDocument[], d => { if (!d) throw new Error("設備原本が不正です");
+        const { xml, declarations, selection, accountingStandard } = d; if (!selection || !Array.isArray(declarations)) throw new Error("設備原本が不正です");
+        const { docID, contextRef, kind } = selection; return { xml, accountingStandard, selection: { docID, contextRef, kind }, declarations: Array.from(declarations as readonly FacilityTableDeclaration[], item => ({ ...item })) }; });
+    if (inputs.some(d => typeof d.xml !== "string") || inputs.reduce((n, d) => n + Buffer.byteLength(d.xml), 0) > 256 * 1024 * 1024 ||
+        new Set(inputs.map(d => JSON.stringify([d.selection.docID, d.selection.contextRef]))).size !== inputs.length || inputs.some(d => d.declarations.some(p => p.asOfDate !== asOfDate))) throw new Error("設備検索の原本重複/混在/上限を確認してください");
+    inputs.sort((a, b) => a.selection.docID < b.selection.docID ? -1 : a.selection.docID > b.selection.docID ? 1 : a.selection.contextRef < b.selection.contextRef ? -1 : a.selection.contextRef > b.selection.contextRef ? 1 : 0);
+    return screenParsedFacilityDetails(inputs.map(extractFacilityDetails), query);
+}
+function normalizeFacilityOptions(options: FacilityScreeningOptions) {
+    if (!options) throw new Error("設備検索の条件が必要です");
     const { asOfDate, contains, organization, sort, offset = 0, limit = 100, conditions: requested = [] } = options;
     if (!validDate(asOfDate) || contains !== undefined && (typeof contains !== "string" || !contains.trim() || contains.length > 1000) || organization !== undefined && !organizations.includes(organization) ||
         !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000 || !Array.isArray(requested) || requested.length > 100) throw new Error("設備検索の条件が不正です");
@@ -98,15 +115,15 @@ export function screenFacilityDetails(documents: readonly FacilityDetailDocument
         if (!fields.includes(field) || !["gt", "gte", "lt", "lte", "eq"].includes(operator) || !Number.isFinite(value)) throw new Error("設備条件が不正です"); return { field, operator, value }; });
     const sorting = sort ? { field: sort.field, order: sort.order } : undefined;
     if (sorting && (!fields.includes(sorting.field) || !["asc", "desc"].includes(sorting.order))) throw new Error("設備順序が不正です");
-    const inputs = Array.from(documents as readonly FacilityDetailDocument[], d => { if (!d) throw new Error("設備原本が不正です");
-        const { xml, declarations, selection, accountingStandard } = d; if (!selection || !Array.isArray(declarations)) throw new Error("設備原本が不正です");
-        const { docID, contextRef, kind } = selection; return { xml, accountingStandard, selection: { docID, contextRef, kind }, declarations: Array.from(declarations as readonly FacilityTableDeclaration[], item => ({ ...item })) }; });
-    if (inputs.some(d => typeof d.xml !== "string") || inputs.reduce((n, d) => n + Buffer.byteLength(d.xml), 0) > 256 * 1024 * 1024 ||
-        new Set(inputs.map(d => JSON.stringify([d.selection.docID, d.selection.contextRef]))).size !== inputs.length || inputs.some(d => d.declarations.some(p => p.asOfDate !== asOfDate))) throw new Error("設備検索の原本重複/混在/上限を確認してください");
-    inputs.sort((a, b) => a.selection.docID < b.selection.docID ? -1 : a.selection.docID > b.selection.docID ? 1 : a.selection.contextRef < b.selection.contextRef ? -1 : a.selection.contextRef > b.selection.contextRef ? 1 : 0);
-    const extractions: FacilityDetailsExtraction[] = [], issuers = new Set<string>(); let physicalCells = 0, projectedRows = 0;
-    for (const input of inputs) {
-        const extraction = extractFacilityDetails(input);
+    return { asOfDate, contains, organization, sort: sorting, offset, limit, conditions };
+}
+/** 内部共有: 保存済みの検査済み設備明細をXML検索と同じ規則で検索します。 */
+export function screenParsedFacilityDetails(extractions: readonly FacilityDetailsExtraction[], options: FacilityScreeningOptions) {
+    const { asOfDate, contains, organization, sort: sorting, offset, limit, conditions } = normalizeFacilityOptions(options);
+    if (!Array.isArray(extractions) || extractions.length > 100 || new Set(extractions.map(e => JSON.stringify([e.source.source.docID,e.source.source.contextRef]))).size !== extractions.length) throw new Error("設備検索の原本重複/上限を確認してください");
+    const issuers = new Set<string>(); let physicalCells = 0, projectedRows = 0;
+    for (const extraction of extractions as readonly FacilityDetailsExtraction[]) {
+        if (extraction.rows.some(row => row.asOfDate !== asOfDate)) throw new Error("設備明細の時点が混在しています");
         if (extraction.source.source.entity) {
             const issuer = JSON.stringify([extraction.source.source.entity.scheme, extraction.source.source.entity.identifier]);
             if (issuers.has(issuer)) throw new Error("同じ提出者の設備原本が重複しています。訂正系列を先に選択してください");
@@ -114,11 +131,10 @@ export function screenFacilityDetails(documents: readonly FacilityDetailDocument
         }
         physicalCells += extraction.source.tables.reduce((n, table) => n + table.cells.length, 0); projectedRows += extraction.rows.length;
         if (physicalCells > 100000 || projectedRows > 10000) throw new Error("設備検索は100000物理セル/10000行以下です");
-        extractions.push(extraction);
     }
     const rows: { sourceIndex: number; row: FacilityDetailRow }[] = [], excluded: { sourceIndex: number; rowKey: string; fields: FacilityField[] }[] = []; let filtered = 0, count = 0;
     const required = [...new Set([...conditions.map(c => c.field), ...(sorting ? [sorting.field] : [])])];
-    extractions.forEach((extraction, sourceIndex) => extraction.rows.forEach(row => {
+    (extractions as readonly FacilityDetailsExtraction[]).forEach((extraction, sourceIndex) => extraction.rows.forEach(row => {
         if (++count > 10000) throw new Error("設備検索は10000行以下です");
         const unavailable = required.filter(f => row.values[f].status !== "numeric");
         if (unavailable.length) { excluded.push({ sourceIndex, rowKey: row.rowKey, fields: unavailable }); return; }
@@ -132,5 +148,5 @@ export function screenFacilityDetails(documents: readonly FacilityDetailDocument
     }));
     if (sorting) rows.sort((a, b) => { const av = a.row.values[sorting.field], bv = b.row.values[sorting.field];
         return av.status === "numeric" && bv.status === "numeric" ? compareFractions(fraction(av.decimal), fraction(bv.decimal)) * (sorting.order === "asc" ? 1 : -1) : 0; });
-    return { extractions, rows: rows.slice(offset, offset + limit), matched: rows.length, filtered, excluded };
+    return { extractions: [...extractions], rows: rows.slice(offset, offset + limit), matched: rows.length, filtered, excluded };
 }
