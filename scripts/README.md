@@ -72,10 +72,10 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 npm run build
 npx --no-install tsc --noEmit
 npx --no-install tsc --project test/types/tsconfig.json
-npm test -- --maxWorkers=1 --exclude 'data/**' --exclude 'artifacts/**'
+npm test -- --maxWorkers=1
 python3 scripts/test_artifact_store.py
 ```
 
-`data/` と `artifacts/` の固定配布物には過去のソースとテストが含まれるため、現在のソースの検証から除外します。`test/` 以下はESM・CLI・SQLiteを含めて実行します。ESMテストが古い `dist/` を参照しないよう、先にビルドしてください。
+`data/` と `artifacts/` の固定配布物には過去のソースとテストが含まれるため、`npm test` が既定で現在のソースの検証から除外します。`test/` 以下はESM・CLI・SQLiteを含めて実行します。ESMテストが古い `dist/` を参照しないよう、先にビルドしてください。
 
 CLIテストは子プロセスを起動します。`spawnSync` の `error.code` が `EPERM` なら、実行環境の子プロセス制限を確認してください。終了状態だけで成功と判断せず、子プロセス起動を許可した環境で再実行します。
