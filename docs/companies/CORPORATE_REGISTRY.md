@@ -810,6 +810,30 @@ edinet-ts link-company-corporate-states --compressed \
 
 SIGKILLでhot journalが残った場合は、[専用DBの復旧](../pipeline/SQLITE_RECOVERY.md)へ `kind: "corporate-registry-block-store"` を渡し、別候補へ戻します。復旧後にこのStoreで原本を監査し、取込を再開してください。元DB/journalは変更しません。
 
+### 署名検証済みZIPからパート単位で取り込む
+
+保存済みの署名検証receiptを使う場合は、運用スクリプトでXMLをディスクへ展開せずに取り込めます。Linuxの `flock`、Python 3、圧縮Storeを含む固定SDKが必要です。
+
+```bash
+node scripts/roadmap/import-corporate-registry-archive.mjs \
+  --receipt /absolute/archive-verification.json \
+  --receipt-sha256 <検証済みreceiptのSHA-256> \
+  --sdk /absolute/fixed-sdk/dist/index.js \
+  --db /absolute/registry-blocks.sqlite \
+  --checkpoint /absolute/import-checkpoint.json \
+  --max-parts 1
+```
+
+同じ引数で繰り返すと、取込済みパートをDB全記録監査で確認し、次のパートから再開します。`--max-parts` は1〜100（既定1）。checkpointの `status: pending` は指定上限まで正常に処理した状態、`complete` はreceiptの全パートを保存した状態です。途中のmanifestはパートが不足するため、全国状態の再構成には使いません。
+
+DB commit後にcheckpoint保存が中断しても、次回に同じパートを再検証し、重複を作らず再開します。上流ZIP読取の後検査や原XMLのSHA照合に失敗した場合は、そのパートだけをrollbackします。SIGKILLのhot journalは通常の再開前に、上記の別候補への復旧が必要です。
+
+別の日のreceiptを同じDBへ追加する場合は、新しいcheckpointを指定し、`--expected-db-sha256 <停止した既存DBのSHA-256>` を付けます。初回に元DBのhashと全記録監査を確認してから追記します。再開時も同じ引数を使い、過去のcheckpointとmanifestを保持してください。全件と差分のmanifestは、同じDB上のfileIdsを使って既存の再構成APIへ渡します。
+
+DBとcheckpointのロックは処理中保持します。終了コードは成功0、入力・監査・容量等の失敗1、signal中断2、排他競合75です。34GiB留保とDB640MiB上限を維持します。receiptは事前に信頼した署名検証結果をSHAで固定する入力であり、このスクリプト自身がPGP署名を再検証するものではありません。ZIPとXMLのhash・サイズ・不変は既存のstream helperで検査します。
+
+この入口の合成ZIP/実SQLiteによる再開・追記・rollback検証と、前節の一回限りの全国取込検証は別の証拠です。実全国データでの運用入口の完走・連続差分・定期起動は残ります。
+
 ### 確認した範囲
 
 Node 26.12.1で関連10ファイル/95テスト、本体・配布公開型・build（226ファイル）が成功しました。ブロック境界、1 MiBでの分割、履歴のページング、全件/差分・改称/削除、上流失敗・中断、圧縮本文/索引/件数/孤立ブロック/意味の改変、容量不足時のrollbackを確認しています。
