@@ -153,7 +153,7 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
             this.validatedObservationRows.delete(row.id as string);
         }
         const bytes = this.observationRowBytes(row);
-        if (this.validatedObservationRows.size < 100000 && this.validatedObservationBytes + bytes <= 128 * 1024 * 1024) {
+        if (this.validatedObservationRows.size < 200000 && this.validatedObservationBytes + bytes <= 256 * 1024 * 1024) {
             this.validatedObservationRows.set(row.id as string, {...row});
             this.validatedObservationBytes += bytes;
         }
