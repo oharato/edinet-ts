@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {selectDocumentVersions,type DocumentVersionObservation} from "./document-version-selection";
 import {createAutomaticFinancialSnapshots,normalizeAutomaticFinancialDetailMetricIds,AutomaticFinancialProjectionError,type AutomaticFinancialSnapshotOptions,type AutomaticFinancialSnapshots} from "./automatic-financial-snapshots";
 import {parseDocumentTimestamp as timestamp} from "./document-timestamp";
-export const OBSERVED_FINANCIAL_SNAPSHOT_VERSION="4";
+export const OBSERVED_FINANCIAL_SNAPSHOT_VERSION="5";
 export interface ObservedFinancialSource {docID:string;availableAt:string;sourceSha256:string;xml?:string;}
 export interface ObservedFinancialSnapshotOptions extends Pick<AutomaticFinancialSnapshotOptions,"detailMetricIds"> {cutoff:string;}
 export interface ObservedFinancialSnapshotRecord {

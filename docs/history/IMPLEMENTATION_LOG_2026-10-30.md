@@ -892,3 +892,16 @@ readOnly私有コピーでは、初回検査の前後と再利用の都度にフ
 半期修正版の別世代は200社・失敗0で区切り、その固定SDKと途中結果を保持。追加の重複修正を含む別の2,491ファイルのSDK候補を作成し、最終検証後に新しい計画を開始する。日次runtimeと公開catalogは変更していない。
 
 最終検証はNode 26.12.1で現行158ファイル/4,263テストが全成功（317.90秒、maxWorkers=2/testTimeout=30000）。開始時と終了時のsrc/test/scripts全461ファイルのhashが一致し、旧保存ソースは除外済み。build・本体型・公開NodeNext型・固定SDKのESM/CJS版確認も成功。文書リンク541件は問題なし。記録はfinancial-duplicates-final-regression-inputs.jsonとfinancial-duplicates-verification-summary.json。
+
+
+## 先行再構築への集約と、修正済み元一覧/固定通知の区別
+
+固定SDKによる別候補financial-duplicates-rebuild-20261030は100社・失敗0で完了後、100社ずつ進める私有サービスの事前15検査を通し起動した。別経路のduplicates-v5-rebuild-20261030が先行していることを確認し、入力原本・母集団・cutoff・SDK配布物205ファイルのbyte一致を検査。重複していた私有サービス側だけを200社・失敗0で停止し、不要なuser unitを削除した。両候補は保持し、共通796行の本文JSONを独立SQLite処理で比較して全件一致した。先行workerはhost PIDとDBで600社までの完了を確認し、そのまま継続している。公開切替は行っていない。記録はfinancial-rebuild-equivalence-proof.json、financial-rebuild-shared-subset-comparison.json、financial-duplicates-rebuild-service-stop-proof.json。
+
+旧候補の観測衝突18件を現在のmetadataで再確認したところ、2件は後から元一覧の再取得があった。残り16件は同じ応答内の修正済み元一覧（区分2）と固定された修正通知（区分1）の併存だった。公式API仕様64〜65頁では、元一覧は修正済みの現状、通知は操作時点の情報を保持する。出典日・提出日時・操作日・既知発行体・取下げ/不開示・安定した種類/親/形式宣言を確認できる場合だけ、同時刻の元一覧と過去通知を区別する。未知の出典や当日の操作、後から観測した通知、元一覧同士の矛盾は推測解消しない。
+
+新しい境界テストは修正前に採用ケース1件が失敗し、残り14件が成功することを確認。修正後は関連3ファイル/69件が成功し、旧抽出版4を含む未完了計画への混在拒否を追加した。抽出版はobserved:5。元の凍結入力は16/18件で元一覧を区別し、最新metadataでは18/18件で区別できた。独立Python/SQLite/datetime/hashlib処理で、34の採用metadata判断について元一覧の出典日・状態・選択期間と、通知の過去日付・安定した属性を照合した。これは文書IDごとのmetadata検証であり、訂正親子グラフ全体・原本取得・財務金額の完了を意味しない。記録はedited-original-snapshot-real-replay.jsonとedited-original-snapshot-independent-proof.json。
+
+同じ作業ツリーでは利用側DBへの世代転送の改善も並行しているため、今回の通知選択は49f4e41に4ファイルの差分だけを重ねた隔離worktreeでも検証する。先行している固定SDKの全社構築は更新せず、旧入力・旧版の状態と混在させない。
+
+通知選択の隔離検証はNode 26.12.1で全159ファイル/4,279テストが成功（366.10秒、maxWorkers=2/testTimeout=30000）。build・本体型・公開NodeNext型・ESM/CJS版5も成功。共有作業ツリーの当該4ファイルは検証済み差分とhash一致し、文書リンク545件も問題なし。記録はedit-notice-isolated-inputs.jsonとedit-notice-verification-summary.json。利用側DB転送の並行差分はこの隔離検証に含めない。

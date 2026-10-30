@@ -43,6 +43,25 @@ function availability(candidate: Candidate): DocumentVersionReason | undefined {
     const start = candidate.targetPeriod?.startDate ?? candidate.periodStart, end = candidate.targetPeriod?.endDate ?? candidate.periodEnd;
     if (!validDate(start) || !validDate(end) || start > end) return "period-unavailable";
 }
+const jstDay = (time: number) => new Date(time + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+/** 元一覧は現状、修正通知は操作時の固定記録。翌日以降に確認した同時刻の元一覧だけを優先する。 */
+function editedOriginal(candidate: Candidate): boolean {
+    const d = candidate.observation.document, s = candidate.observation.statuses;
+    return s.docInfoEditStatus.code === "2" && s.withdrawalStatus.code === "0" && s.disclosureStatus.code === "0" &&
+        candidate.submittedAt !== undefined && candidate.observation.listDate === jstDay(candidate.submittedAt) &&
+        d.opeDateTime === null && /^E\d{5}$/.test(d.edinetCode ?? "");
+}
+function pastEditNotice(original: Candidate, notice: Candidate): boolean {
+    const d = notice.observation.document, s = notice.observation.statuses, operated = timestamp(d.opeDateTime, false);
+    if (s.docInfoEditStatus.code !== "1" || s.withdrawalStatus.code !== "0" || s.disclosureStatus.code !== "0" ||
+        operated === undefined || operated < original.submittedAt! || operated > original.observedAt ||
+        notice.observation.listDate !== jstDay(operated) || jstDay(operated) >= jstDay(original.observedAt)) return false;
+    const stable = (document: typeof d) => {
+        const { opeDateTime: _o, docInfoEditStatus: _e, ...rest } = document;
+        return JSON.stringify(rest);
+    };
+    return stable(original.observation.document) === stable(d);
+}
 /** 内部共有: 保存入口でも選択器と同じ項目・状態検証を使います。 */
 export function captureDocumentVersionObservations(observations:readonly DocumentVersionObservation[]){
     if(!Array.isArray(observations))throw new Error("観測は配列です");
@@ -72,6 +91,7 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
     const latest = new Map<string, Candidate>(), ignored: { observationId: string; reason: "after-cutoff" | "unsupported-document-type" }[] = [];
     const history = new Map<string, { ids: string[]; parents: Set<string> }>();
     const supported = (type: string | null | undefined) => roots.includes(type ?? "") || corrections.includes(type ?? "");
+    const tied = new Map<string, Candidate[]>();
     const identity = (item: Candidate) => {
         const { withdrawalStatus: _w, disclosureStatus: _d, docInfoEditStatus: _e, ...document } = item.observation.document;
         return JSON.stringify([document, item.observation.statuses, item.periodStart, item.periodEnd]);
@@ -89,11 +109,17 @@ export function selectDocumentVersions(observations: readonly DocumentVersionObs
         } else ignored.push({ observationId: observation.observationId, reason: "unsupported-document-type" });
         const candidate: Candidate = { observation, observedAt: input.observed, submittedAt, periodStart: input.periodStart, periodEnd: input.periodEnd, observationIds: [observation.observationId], conflict: false };
         const previous = latest.get(doc.docID);
-        if (!previous || candidate.observedAt > previous.observedAt) latest.set(doc.docID, candidate);
+        if (!previous || candidate.observedAt > previous.observedAt) { latest.set(doc.docID, candidate); tied.delete(doc.docID); }
         else if (candidate.observedAt === previous.observedAt) {
+            const group = tied.get(doc.docID) ?? [previous]; group.push(candidate); tied.set(doc.docID, group);
             previous.conflict ||= identity(previous) !== identity(candidate);
             previous.observationIds.push(observation.observationId);
         }
+    }
+    for (const [docID, group] of tied) {
+        const previous = latest.get(docID)!, original = group.find(editedOriginal);
+        if (previous.conflict && original && group.every(item => identity(item) === identity(original) || pastEditNotice(original, item)))
+            latest.set(docID, { ...original, conflict: false, observationIds: previous.observationIds });
     }
     // 種類が消えた新観測も、過去に対象だった同じdocIDを失効させます。
     const retained = new Set<string>();
