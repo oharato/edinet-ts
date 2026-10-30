@@ -273,7 +273,7 @@ try {
 
 検索前に、保存本文・索引・件数・集約指紋を一記録ずつ全体検査します。索引の改変を「番号が見つからない」という空結果へ隠しません。readOnlyでは固定私有コピーの不変を確認し、検査済み状態を同じ接続内で再利用します。書込接続では検索ごとに検査します。大容量では最初のコピー・検査に時間がかかるため、検索用接続を使い回してください。
 
-`verification: "all-records"` は保存整合の検査です。元の全国データの網羅性や法的状態を認証する意味ではありません。訂正・削除の行も検索対象として保持し、この検索だけで現在状態へ合成しません。大容量保存から再構成器へ原本来歴を維持して接続する工程は残っています。
+`verification: "all-records"` は保存整合の検査です。元の全国データの網羅性や法的状態を認証する意味ではありません。訂正・削除の行も検索対象として保持し、この検索だけで現在状態へ合成しません。保存した記録からの状態再構成は、次の `reconstruct` を使います。
 
 ### 上限と中断・復旧
 
@@ -304,6 +304,57 @@ file.jsonはAPI例の `{file, source, part, sha256}`、query.jsonは検索例の
 
 別の合成負荷試験では、113.7MB・100,001記録をNode 26.12.1のJavaScriptヒープ128MiB上限で取り込み、再open後の末尾ページを検索しました。プロセス最大RSSは約198MiBで、ヒープ上限と全メモリ量は別です。取込129.4秒・初回検査付き検索87.5秒・同じ接続の次回検索0.73秒でした。一回・共有hostの測定で、実全国データの速度保証や状態再構成ではありません。34GiBの空き容量留保も維持しました。
 
-証跡は `data/roadmap/corporate-registry-store-real-20261031/` と `corporate-registry-store-stress-20261031/` に保存しています。状態再構成との接続、全国全件・連続差分での運用照合、取得/署名監査、配布と稼働環境への反映は残工程です。
+証跡は `data/roadmap/corporate-registry-store-real-20261031/` と `corporate-registry-store-stress-20261031/` に保存しています。全国全件・連続差分での運用照合、取得/署名監査、配布と稼働環境への反映は残工程です。
 
 保存追加の隔離検証: Node 26.12.1で全170ファイル・4,389テスト、build・本体/公開型・ESM/CJSが成功しました。日次CLI試験の子時計固定後の再実行で、並行作業の分割換算・dataflow・busy timeout変更は含めません。
+
+
+## 保存した記録から状態を再構成する
+
+`store.reconstruct(deliveries, query, calendar?)` は、保存済みファイルのIDを使って全件・日次差分を適用します。原XMLを再読込せず、保存時の原XML SHA-256とファイル内の記録位置を返します。切り出したXMLを作り直したり、そのhashを原本hashとして返したりしません。
+
+```ts
+const store = new CorporateRegistryStore('corporate-registry.sqlite', {readOnly: true});
+try {
+  const result = store.reconstruct([
+    {scope: 'national', expectedParts: 1, fileIds: [fullReceipt.id]},
+    {scope: 'national', expectedParts: 2, fileIds: [diffReceipt1.id, diffReceipt2.id]},
+  ], {
+    corporateNumber: '1010001001202',
+    asOf: '2026-10-29',
+    knownAt: '2026-10-30T12:00:00Z',
+    registryPurpose: 'download',
+  });
+  console.log(result.selection);
+} finally {
+  store.close();
+}
+```
+
+配布の全パートを取得したことは呼出元が確認して宣言します。`expectedParts` とID数の一致だけで全国の網羅性を認証するものではありません。同じ配布の各パートは対象日・full/diff・目的が一致する必要があります。
+
+訂正・削除・cutoff・未作成日の判断はXML入力の再構成APIと共通です。検索対象外の法人を含む配布全体を検査するため、別法人だけにある重複や配布内容の矛盾も見逃して対象法人の状態を確定することはありません。
+
+`storage.verification` は `all-records`、`storage.files` は保存時の受領記録です。`sources` と同じ順序で並び、各記録の `sourceIndex` から元ファイルのID・SHA-256・パート名へ戻れます。既存の保存形式v1をそのまま読めるため、DBの移行は不要です。
+
+### CLI
+
+manifestの各配布を `{scope, expectedParts, fileIds}` で記述します。queryと任意のcalendarはXML入力の再構成CLIと同じ形式です。
+
+```sh
+edinet-ts reconstruct-corporate-registry-store \
+  --db corporate-registry.sqlite \
+  --manifest deliveries.json --query query.json --pretty
+```
+
+保存カレンダーを使う場合は `--calendar calendar.json` を加えます。manifestとqueryは各2MiB以下です。
+
+### 上限と検証範囲
+
+最大100配布・合計100ファイルです。対象法人の候補原記録は合計10,000件・16MiBまでで、超過時はエラーになります。一部だけ返して状態を確定することはありません。配布全体の照合はSQLカーソルで逐次処理します。同じreadOnly接続では、改変を監視する私有コピー上の検査結果と配布指紋を再利用し、指紋キャッシュは最大1,024件に制限します。
+
+Node 26.12.1で、公式サンプル全件・休日・通常日の欠落・未来観測カレンダー・実差分のみの5ケースが、XML入口と変更前SDKの結果に一致しました。CLIも一致し、元DBのhashは変化していません。
+
+別の合成試験では100,001件・113.7MBの保存済み差分と、小さな別法人の全件起点を使用しました。JavaScriptヒープ128MiB上限で状態再構成に成功し、最大RSSは約186MiB、初回159.4秒・同じ接続の再実行0.12秒でした。候補件数上限の拒否も確認しました。共有hostでの一回の測定であり、全国の実データの状態や速度を保証する結果ではありません。
+
+証跡は `data/roadmap/corporate-registry-stored-state-{real,large}-20261031/` です。全国の実全件と連続差分、署名・取得監査との統合、EDINET法人同一性、固定配布物と実運用への反映は残ります。

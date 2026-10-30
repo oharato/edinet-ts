@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {captureRegistryStateQuery,registryValuesSignature,reconstructRegistryCandidates} from './corporate-registry-state-core';
 import {parseCorporateRegistryPublicationCalendar,type CorporateRegistryPublicationCalendarInput,type CorporateRegistryPublicationCalendar} from './corporate-registry-calendar';
 import {XMLParser} from 'fast-xml-parser';
 import {assertXmlInput} from './xml-input';
@@ -115,11 +116,9 @@ export interface CorporateRegistryStateResult {
     calendar?:Omit<CorporateRegistryPublicationCalendar,'holidays'>&{status:'available'|'after-cutoff'};
     nonPublicationDays?:{date:string;reason:'year-end'|'weekend'|'holiday';holidayName?:string}[];
 }
-const nextRegistryDate=(value:string,days=1)=>new Date(Date.parse(value+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 /** 全国全件を起点に連続日次差分を適用。訂正は法人の全履歴を置換し、承継先は統合しません。 */
 export function reconstructCorporateRegistryState(inputs:readonly CorporateRegistryDelivery[],query:CorporateRegistryStateQuery,calendarInput?:CorporateRegistryPublicationCalendarInput):CorporateRegistryStateResult {
-    const q=structuredClone(query);
-    if(!object(q)||Object.keys(q).some(k=>!['corporateNumber','asOf','knownAt','registryPurpose'].includes(k))||typeof q.corporateNumber!=='string'||!/^\d{13}$/.test(q.corporateNumber)||typeof q.asOf!=='string'||!date(q.asOf)||!['sample','download'].includes(q.registryPurpose)||parseDocumentTimestamp(q.knownAt,true)===undefined||!Array.isArray(inputs))fail();
+    const q=captureRegistryStateQuery(query);if(!Array.isArray(inputs))fail();
     const calendar=calendarInput===undefined?undefined:parseCorporateRegistryPublicationCalendar(calendarInput);
     const length=inputs.length;if(!Number.isSafeInteger(length)||length<0||length>100)fail();let bytes=0,files=0;
     const captured=Array.from({length},(_,i)=>{
@@ -140,67 +139,8 @@ export function reconstructCorporateRegistryState(inputs:readonly CorporateRegis
         const reason=first.purpose!==q.registryPurpose?'purpose-mismatch':observed>cutoff?'source-after-cutoff':first.dataDate>q.asOf?'data-after-as-of':undefined;
         if(reason)excludedDeliveries.push({deliveryIndex,reason});
         const records=all.filter(r=>r.record.values.corporateNumber===q.corporateNumber).sort((a,b)=>Number(a.record.values.sequenceNumber)-Number(b.record.values.sequenceNumber));
-        const signature=JSON.stringify(all.map(r=>r.record.values).sort((a,b)=>a.corporateNumber.localeCompare(b.corporateNumber)||Number(a.sequenceNumber)-Number(b.sequenceNumber)));
+        const signature=registryValuesSignature(all.map(r=>r.record.values).sort((a,b)=>a.corporateNumber.localeCompare(b.corporateNumber)||Number(a.sequenceNumber)-Number(b.sequenceNumber)));
         return {deliveryIndex,sourceIndices,dataDate:first.dataDate,observedAt:new Date(observed).toISOString(),kind:first.kind,records,observed,signature,excluded:!!reason};
     });
-    const result:CorporateRegistryStateResult={query:q,sources,deliveries:candidates.map(({observed,signature,excluded,...d})=>d),excludedDeliveries,appliedDeliveries:[],history:[],selection:{status:'unavailable',reason:'no-baseline'}};
-    const holidays=new Map(calendar?.holidays.map(h=>[h.date,h.name]));
-    if(calendar){const {holidays:_,...metadata}=calendar;result.calendar={...metadata,status:parseDocumentTimestamp(calendar.observedAt,true)!>cutoff?'after-cutoff':'available'};result.nonPublicationDays=[];}
-    const nonPublication=(day:string):NonNullable<CorporateRegistryStateResult['nonPublicationDays']>[number]|undefined=>{
-        if(!calendar)return undefined;
-        const monthDay=day.slice(5),weekday=new Date(day+'T00:00:00Z').getUTCDay();
-        if(monthDay>='12-29'||monthDay<='01-03')return {date:day,reason:'year-end'};
-        if(weekday===0||weekday===6)return {date:day,reason:'weekend'};
-        const name=holidays.get(day);return name?{date:day,reason:'holiday',holidayName:name}:undefined;
-    };
-    const eligible=candidates.filter(d=>!d.excluded),baselines=eligible.filter(d=>d.kind==='full').sort((a,b)=>b.dataDate.localeCompare(a.dataDate)||b.observed-a.observed);
-    const base=baselines[0];if(!base)return result;
-    const chosen=new Map<string,typeof base>();
-    for(const d of eligible.filter(d=>d.dataDate>=base.dataDate).sort((a,b)=>b.observed-a.observed)){
-        const key=d.kind+':'+d.dataDate,prior=chosen.get(key);
-        if(prior&&prior.observed===d.observed&&prior.signature!==d.signature){result.selection={status:'unresolved',reason:'conflicting-deliveries',deliveryIndex:d.deliveryIndex};return result;}
-        if(!prior)chosen.set(key,d);
-    }
-    if(result.calendar?.status==='after-cutoff'){result.selection={status:'unresolved',reason:'calendar-after-cutoff'};return result;}
-    if(calendar&&(Number(base.dataDate.slice(0,4))<calendar.firstYear||Number(q.asOf.slice(0,4))>calendar.lastYear)){result.selection={status:'unresolved',reason:'calendar-outside-coverage'};return result;}
-    if(calendar&&q.asOf>new Date(cutoff+9*3600000).toISOString().slice(0,10)){result.selection={status:'unresolved',reason:'as-of-after-cutoff'};return result;}
-    result.coverage={from:base.dataDate,through:base.dataDate};
-    const advance=(through:string)=>{
-        while(result.coverage!.through<through){const day=nextRegistryDate(result.coverage!.through),skip=nonPublication(day);if(!skip)break;result.nonPublicationDays!.push(skip);result.coverage!.through=day;}
-    };
-    const reject=(reason:Extract<CorporateRegistryStateSelection,{status:'unresolved'}>['reason'],deliveryIndex:number)=>{result.selection={status:'unresolved',reason,deliveryIndex};return result;};
-    let current:CorporateRegistryRecordReference|undefined=base.records[0],deleted=false;
-    if(current&&(current.record.values.latest!=='1'||current.record.values.process==='99'))return reject('invalid-baseline-record',base.deliveryIndex);
-    const check=(records:CorporateRegistryRecordReference[],day:string)=>records.some(r=>!r.record.processKnown)?'unknown-process' as const:records.some(r=>['changeDate','closeDate','assignmentDate'].some(k=>r.record.values[k as CorporateRegistryField]>day))?'record-after-data-date' as const:undefined;
-    const baseProblem=check(base.records,base.dataDate);if(baseProblem)return reject(baseProblem,base.deliveryIndex);
-    result.history=[...base.records];result.appliedDeliveries.push(base.deliveryIndex);
-    const diffs=[...chosen.values()].filter(d=>d.kind==='diff'&&d.dataDate>base.dataDate).sort((a,b)=>a.dataDate.localeCompare(b.dataDate));
-    for(const d of diffs){
-        advance(nextRegistryDate(d.dataDate,-1));
-        const next=nextRegistryDate(result.coverage.through);
-        if(d.dataDate!==next){result.selection={status:'unresolved',reason:'coverage-gap',gap:{from:next,to:nextRegistryDate(d.dataDate,-1)}};return result;}
-        if(nonPublication(d.dataDate))return reject('delivery-on-non-publication-day',d.deliveryIndex);
-        const records=d.records,problem=check(records,d.dataDate);if(problem)return reject(problem,d.deliveryIndex);
-        if(records.length){
-            const deletions=records.filter(r=>r.record.values.process==='99');
-            if(deletions.length){
-                if(records.length!==1)return reject('mixed-deletion-records',d.deliveryIndex);
-                if(deletions[0].record.deletionExtraFields.length)return reject('deletion-extra-fields',d.deliveryIndex);
-                current=deletions[0];deleted=true;result.history=[];
-            }else{
-                if(records.filter(r=>r.record.values.latest==='1').length!==1||records.at(-1)!.record.values.latest!=='1')return reject('invalid-latest-flags',d.deliveryIndex);
-                const corrected=records.some(r=>r.record.values.correct==='1');
-                if(!corrected){
-                    if((!current||deleted)&&records[0].record.values.process!=='01')return reject('change-without-base-record',d.deliveryIndex);
-                    if(records.some((r,i)=>r.record.values.process==='01'&&(i!==0||current&&!deleted)))return reject('duplicate-assignment',d.deliveryIndex);
-                }
-                result.history=corrected?[...records]:[...result.history,...records];current=records.at(-1)!;deleted=false;
-            }
-        }
-        result.appliedDeliveries.push(d.deliveryIndex);result.coverage.through=d.dataDate;
-    }
-    advance(q.asOf);
-    if(result.coverage.through<q.asOf){result.selection={status:'unresolved',reason:'coverage-gap',gap:{from:nextRegistryDate(result.coverage.through),to:q.asOf}};return result;}
-    result.selection=current?{status:deleted?'deleted':'available',record:current}:{status:'unavailable',reason:'not-in-baseline'};
-    return result;
+    return reconstructRegistryCandidates(q,sources,candidates,excludedDeliveries,calendar);
 }

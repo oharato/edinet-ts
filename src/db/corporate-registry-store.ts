@@ -1,8 +1,10 @@
 import {createHash} from 'node:crypto';
 import {DedicatedSqliteDatabase} from './dedicated-sqlite';
-import {parseCorporateRegistryDownloadXml,CORPORATE_REGISTRY_FIELDS,type CorporateRegistrySource,type CorporateRegistryRecord} from '../corporate-registry';
+import {parseCorporateRegistryDownloadXml,CORPORATE_REGISTRY_FIELDS,type CorporateRegistrySource,type CorporateRegistryRecord,type CorporateRegistryStateQuery,type CorporateRegistryStateResult} from '../corporate-registry';
 import {readCorporateRegistryFile,CORPORATE_REGISTRY_STREAM_MAX_BYTES,type CorporateRegistryStreamReceipt} from '../corporate-registry-stream';
 import {parseDocumentTimestamp} from '../document-timestamp';
+import {captureRegistryStateQuery,registryValuesSignature,reconstructRegistryCandidates,type CorporateRegistryCandidate} from '../corporate-registry-state-core';
+import {parseCorporateRegistryPublicationCalendar,type CorporateRegistryPublicationCalendarInput} from '../corporate-registry-calendar';
 const schema={
  registry_format:'CREATE TABLE registry_format(kind TEXT NOT NULL)',
  registry_contents:'CREATE TABLE registry_contents(sha256 TEXT PRIMARY KEY,body TEXT NOT NULL,body_sha256 TEXT NOT NULL)',
@@ -28,10 +30,13 @@ interface StoredContent {parserVersion:'nta-download-stream-1';sha256:string;byt
 export interface CorporateRegistryStoredFile extends StoredContent {id:string;part:string;source:CorporateRegistrySource;attribution:'国税庁法人番号公表サイト（国税庁）を加工して作成';}
 export interface CorporateRegistryFileImport {file:string;source:CorporateRegistrySource;part:string;sha256:string;}
 export interface CorporateRegistryStoredQuery {corporateNumber:string;knownAt:string;registryPurpose:CorporateRegistrySource['purpose'];offset?:number;limit?:number;}
+export interface CorporateRegistryStoredDelivery {scope:'national';expectedParts:number;fileIds:readonly string[];}
+export interface CorporateRegistryStoredStateResult extends CorporateRegistryStateResult {storage:{verification:'all-records';files:CorporateRegistryStoredFile[]};}
 /** 原記録を専用DBへ原子的に保存。同一byte列は共有し、観測時刻・part・目的は別に保持します。 */
 export class CorporateRegistryStore extends DedicatedSqliteDatabase {
  private importing=false;
  private verified=false;
+ private deliverySignatures=new Map<string,string>();
  constructor(file:string,options:{readOnly?:boolean}={}){super(file,options,{table:'registry_format',kind:'edinet-ts-corporate-registry-v1',schema});}
  private idle(){if(this.importing||this.closed)throw Error('法人番号取込中またはclose済みです');}
  private read<T>(fn:()=>T):T{this.idle();const sha=this.readOnly?this.readOnlySnapshotSha256():undefined;const value=this.transaction(fn,false);if(sha!==undefined&&sha!==this.readOnlySnapshotSha256())invalid();return value;}
@@ -91,6 +96,49 @@ export class CorporateRegistryStore extends DedicatedSqliteDatabase {
    return {query:{...q,offset,limit},verification:'all-records' as const,total,rows};
   });
  }
+ private deliverySignature(files:CorporateRegistryStoredFile[]):string {
+  const ids=files.map(f=>f.id),kind=files[0].source.kind,key=JSON.stringify([kind,[...ids].sort()]);
+  if(this.readOnly&&this.deliverySignatures.has(key))return this.deliverySignatures.get(key)!;
+  const join=' FROM registry_records r JOIN registry_files f ON f.content_sha256=r.content_sha256 WHERE f.id IN ('+ids.map(()=>'?').join(',')+')',unique=kind==='full'?'r.corporate_number':'r.sequence_number';
+  if(this.rows('SELECT 1 bad'+join+' GROUP BY '+unique+' HAVING COUNT(*)>1 LIMIT 1',ids).length)throw Error('全国配布の法人番号または一連番号が分割間で重複しています');
+  const statement=this.db.prepare('SELECT '+textColumn('body',128*1024,'r.')+join+' ORDER BY r.corporate_number,r.sequence_number');
+  let signature:string;
+  try{
+   function* values(){for(const row of statement.iterate(...ids)){if(typeof row.body!=='string')invalid();const record=JSON.parse(row.body) as CorporateRegistryRecord;yield Object.fromEntries(CORPORATE_REGISTRY_FIELDS.map(k=>[k,record.values[k]])) as CorporateRegistryRecord['values'];}}
+   signature=registryValuesSignature(values());
+  }finally{statement.close();}
+  if(this.readOnly){if(this.deliverySignatures.size>=1024)this.deliverySignatures.clear();this.deliverySignatures.set(key,signature);}
+  return signature;
+ }
+ /** 保存済みの全分割から原本SHA・元記録位置を保持して再構成します。XML投影は作りません。 */
+ reconstruct(inputs:readonly CorporateRegistryStoredDelivery[],query:CorporateRegistryStateQuery,calendarInput?:CorporateRegistryPublicationCalendarInput):CorporateRegistryStoredStateResult {
+  const q=captureRegistryStateQuery(query),calendar=calendarInput===undefined?undefined:parseCorporateRegistryPublicationCalendar(calendarInput);
+  if(!Array.isArray(inputs))invalid();const length=inputs.length;if(!Number.isSafeInteger(length)||length<0||length>100)invalid();let partCount=0;
+  const manifests=Array.from({length},(_,i)=>{
+   if(!Object.hasOwn(inputs,i))invalid();const d=inputs[i];
+   if(!d||typeof d!=='object'||Array.isArray(d)||Object.keys(d).some(k=>!['scope','expectedParts','fileIds'].includes(k)))invalid();
+   const {scope,expectedParts,fileIds}=d;if(scope!=='national'||!Number.isSafeInteger(expectedParts)||expectedParts<1||!Array.isArray(fileIds))invalid();const count=fileIds.length;
+   if(!Number.isSafeInteger(count)||count!==expectedParts||(partCount+=count)>100)invalid();
+   const ids=Array.from({length:count},(_,j)=>{if(!Object.hasOwn(fileIds,j))invalid();return fileIds[j]});if(ids.some(id=>!digest(id))||new Set(ids).size!==ids.length)invalid();return ids;
+  });
+  return this.read(()=>{
+   this.verifyAll();const files:CorporateRegistryStoredFile[]=[],sources:CorporateRegistryStateResult['sources']=[],excluded:CorporateRegistryStateResult['excludedDeliveries']=[],cutoff=parseDocumentTimestamp(q.knownAt,true)!;let selectedCount=0,selectedBytes=0;
+   const candidates:CorporateRegistryCandidate[]=manifests.map((ids,deliveryIndex)=>{
+    const parts=ids.map(id=>{const row=this.rows('SELECT '+fileColumns+' FROM registry_files WHERE id=?',[id])[0];if(!row)throw Error('保存済み全国配布のpartがありません');return this.decodeFile(row);}),first=parts[0].source;
+    if(parts.some(f=>f.source.dataDate!==first.dataDate||f.source.kind!==first.kind||f.source.purpose!==first.purpose))throw Error('全国配布の対象日・種別・目的が分割間で一致しません');
+    const indices=new Map<string,number>(),sourceIndices=parts.map(file=>{const index=sources.length;indices.set(file.id,index);files.push(file);sources.push({...file.source,inputXmlSha256:file.sha256,attribution:file.attribution});return index;});
+    const observed=Math.max(...parts.map(f=>Date.parse(f.source.observedAt))),reason=first.purpose!==q.registryPurpose?'purpose-mismatch':observed>cutoff?'source-after-cutoff':first.dataDate>q.asOf?'data-after-as-of':undefined;
+    if(reason)excluded.push({deliveryIndex,reason});
+    const signature=this.deliverySignature(parts),records:CorporateRegistryStateResult['history']=[],statement=this.db.prepare('SELECT '+recordColumns('r.')+',f.id file_id FROM registry_records r JOIN registry_files f ON f.content_sha256=r.content_sha256 WHERE f.id IN ('+ids.map(()=>'?').join(',')+') AND r.corporate_number=? ORDER BY r.sequence_number');
+    try{for(const row of statement.iterate(...ids,q.corporateNumber)){
+     const index=indices.get(String(row.file_id));if(index===undefined)invalid();const record=this.decodeRecord(row,files[index].source);selectedBytes+=Buffer.byteLength(canonical(record));
+     if(++selectedCount>10000||selectedBytes>16*1024*1024)throw Error('再構成する一法人の原記録は合計1万件・16MiB以下です');records.push({sourceIndex:index,record});
+    }}finally{statement.close();}
+    return {deliveryIndex,sourceIndices,dataDate:first.dataDate,observedAt:new Date(observed).toISOString(),kind:first.kind,records,observed,signature,excluded:!!reason};
+   });
+   return {...reconstructRegistryCandidates(q,sources,candidates,excluded,calendar),storage:{verification:'all-records',files}};
+  });
+ }
  private auditContent(file:CorporateRegistryStoredFile){
   const digest=createHash('sha256');let count=0;
   for(;;){const batch=this.rows('SELECT '+recordColumns()+' FROM registry_records WHERE content_sha256=? AND record_no>? ORDER BY record_no LIMIT 500',[file.sha256,count]);if(!batch.length)break;
@@ -114,5 +162,5 @@ export class CorporateRegistryStore extends DedicatedSqliteDatabase {
  audit(id:string){if(!digest(id))invalid();return this.read(()=>{
   const file=this.decodeFile(this.rows('SELECT '+fileColumns+' FROM registry_files WHERE id=?',[id])[0]);return {verification:'all-records' as const,file,records:this.auditContent(file)};
  });}
- override close(){if(this.importing)throw Error('法人番号取込の完了後にcloseしてください');super.close();}
+ override close(){if(this.importing)throw Error('法人番号取込の完了後にcloseしてください');this.deliverySignatures.clear();super.close();}
 }

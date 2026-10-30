@@ -685,6 +685,35 @@ program.command("query-corporate-registry-store")
         finally{store?.close();}
     });
 
+function readRegistryCalendar(inputPath:string|undefined) {
+    if(inputPath===undefined)return undefined;
+    const file=path.resolve(inputPath),input=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(file,LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+    if(!input||typeof input!=="object"||Array.isArray(input)||Object.keys(input).some(k=>!["policy","holidays"].includes(k)))throw Error();
+    const load=(key:"policy"|"holidays",encoding:string)=>{
+        const source=input[key];if(!source||typeof source!=="object"||Array.isArray(source)||Object.keys(source).some(k=>!["file","sourceUrl","observedAt"].includes(k))||typeof source.file!=="string"||!source.file.trim())throw Error();
+        return {text:new TextDecoder(encoding,{fatal:true,ignoreBOM:true}).decode(readRegularFile(path.resolve(path.dirname(file),source.file),1024*1024).bytes),sourceUrl:source.sourceUrl,observedAt:source.observedAt};
+    };
+    const policy=load("policy","utf-8"),holidays=load("holidays","shift_jis");
+    return {policy:{html:policy.text,sourceUrl:policy.sourceUrl,observedAt:policy.observedAt},holidays:{csv:holidays.text,sourceUrl:holidays.sourceUrl,observedAt:holidays.observedAt}};
+}
+
+program.command("reconstruct-corporate-registry-store")
+    .description("検査した保存DBの全分割から、原本来歴を保持して法人番号状態を再構成します")
+    .requiredOption("--db <path>", "停止した法人番号専用DB")
+    .requiredOption("--manifest <path>", "scope/expectedParts/fileIdsを持つ全国配布の配列JSON")
+    .requiredOption("--query <path>", "corporateNumber/asOf/knownAt/registryPurposeのJSON")
+    .option("--calendar <path>", "保存した未作成日カレンダーのJSON")
+    .option("--pretty", "JSONを整形")
+    .action(options=>{
+        let store:CorporateRegistryStore|undefined;
+        try{
+            const read=(file:string)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            const manifest=read(options.manifest),query=read(options.query),calendar=readRegistryCalendar(options.calendar);
+            store=new CorporateRegistryStore(path.resolve(options.db),{readOnly:true});console.log(JSON.stringify(store.reconstruct(manifest,query,calendar),null,options.pretty?2:undefined));
+        }catch{console.error("法人番号保存DB・全国配布の全file ID・対象日/cutoff・カレンダーを確認してください（入力内容は非表示）");process.exitCode=1;}
+        finally{store?.close();}
+    });
+
 program.command("reconstruct-corporate-registry")
     .description("全国全件と連続する日次差分から法人番号の状態を再構成します")
     .requiredOption("--manifest <path>", "scope/expectedParts/parts(file/source)を持つ配布単位の配列JSON")
@@ -704,17 +733,7 @@ program.command("reconstruct-corporate-registry")
                     return {xml:new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(input.bytes),source:part.source};
                 })};
             });
-            let calendar;
-            if(options.calendar!==undefined){
-                const file=path.resolve(options.calendar),input=read(file);
-                if(!input||typeof input!=="object"||Array.isArray(input)||Object.keys(input).some(k=>!["policy","holidays"].includes(k)))throw Error();
-                const load=(key:"policy"|"holidays",encoding:string)=>{
-                    const source=input[key];if(!source||typeof source!=="object"||Array.isArray(source)||Object.keys(source).some(k=>!["file","sourceUrl","observedAt"].includes(k))||typeof source.file!=="string"||!source.file.trim())throw Error();
-                    return {text:new TextDecoder(encoding,{fatal:true,ignoreBOM:true}).decode(readRegularFile(path.resolve(path.dirname(file),source.file),1024*1024).bytes),sourceUrl:source.sourceUrl,observedAt:source.observedAt};
-                };
-                const policy=load("policy","utf-8"),holidays=load("holidays","shift_jis");
-                calendar={policy:{html:policy.text,sourceUrl:policy.sourceUrl,observedAt:policy.observedAt},holidays:{csv:holidays.text,sourceUrl:holidays.sourceUrl,observedAt:holidays.observedAt}};
-            }
+            const calendar=readRegistryCalendar(options.calendar);
             console.log(JSON.stringify(reconstructCorporateRegistryState(deliveries,query,calendar),null,options.pretty?2:undefined));
         }catch{console.error("法人番号・日付/cutoff・全国全件と差分の全分割・XML出典・未作成日カレンダーを確認してください（入力内容は非表示）");process.exitCode=1;}
     });
