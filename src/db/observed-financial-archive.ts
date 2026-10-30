@@ -147,11 +147,13 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
     private readonly contentEncoding: ArchiveContentEncoding;
     private readonly validatedObservationRows = new Map<string, Record<string, unknown>>();
     private validatedObservationBytes = 0;
-    /** 全列が不変な行だけ再解析を省略。本文/索引は毎回SQLiteから読み直します。 */
+    private readOnlyObservationFingerprint?: string;
+    /** 書込可能DBでは、本文/索引を読み直した上で完全一致行の再解析だけ省きます。 */
     private validateFingerprintObservation(row: Record<string, unknown>) {
         const previous = typeof row.id === "string" ? this.validatedObservationRows.get(row.id) : undefined;
         if (previous && Object.keys(previous).length === Object.keys(row).length && Object.keys(previous).every(k => Object.hasOwn(row,k) && previous[k] === row[k])) return;
         this.decodeObservation(row);
+        if (this.readOnly) return;
         if (previous) {
             this.validatedObservationBytes -= this.observationRowBytes(previous);
             this.validatedObservationRows.delete(row.id as string);
@@ -168,6 +170,7 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
     close() {
         this.validatedObservationRows.clear();
         this.validatedObservationBytes = 0;
+        this.readOnlyObservationFingerprint = undefined;
         super.close();
     }
 
@@ -377,7 +380,11 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
     }
     /** 取得による追記で変わらない、全一覧観測の指紋。会社の分割上限を超えて走査します。 */
     observationsSha256(): string {
-        return this.transaction(() => {
+        if (this.readOnly) {
+            this.readOnlySnapshotSha256();
+            if (this.readOnlyObservationFingerprint !== undefined) return this.readOnlyObservationFingerprint;
+        }
+        const fingerprint = this.transaction(() => {
             const digest = createHash("sha256").update("edinet-observations-v1\n");
             let after = "";
             for (;;) {
@@ -391,6 +398,12 @@ export class ObservedFinancialArchive extends DedicatedSqliteDatabase {
                 after = String(rows.at(-1)!.id);
             }
         }, false);
+        if (this.readOnly) {
+            // 私有copyの不変確認後だけ再利用し、初回走査中の変更も受け入れません。
+            this.readOnlySnapshotSha256();
+            this.readOnlyObservationFingerprint = fingerprint;
+        }
+        return fingerprint;
     }
     /** 取得worker共有: 実時計と検査済み本文を一件commitし、観測metadataだけを返します。 */
     appendAcquiredSource(docID: string, xml: string): Omit<ObservedFinancialSource, "xml"> {

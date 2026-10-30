@@ -853,3 +853,12 @@ Node 26で関連3ファイル65テスト、財務準備・再構築の境界2フ
 新しいpoolと証跡を参照する日次設定 `daily-financial-promoted-config.json` を作り、同じcode manifestを持つ別固定runtimeから参照するよう両日次unitを設定した。起動前22検査とSDK/metadata/旧索引の不変確認が成功し、通常財務timerは構築完了まで一時停止を維持する。元pool、取得完了候補、構築入力、公開catalog・stock-dataは維持。構築は2,440社完了・残り1,372社・失敗0件で進行中。次候補の全取得計画と構築、pool継承・保存整理の毎日の自動化は残工程。
 
 証拠は `data/roadmap/daily100-preflight-proof.json`、`daily100-deployment-proof.json`、`promoted-source-pool-20261030/independent-audit.json`、同 `reuse-proof.json`、同 `controller-preflight-proof.json`、`promoted-pool-preflight-proof.json`、`promoted-pool-deployment-proof.json` に保持した。
+
+
+## readOnly観測検査と全社構築の完了確認
+
+readOnly私有コピーでは、初回検査の前後と再利用の都度にファイル不変検査を通して観測指紋を再利用する。書込可能DBの全行再読取は維持し、readOnly側の行キャッシュは保持しない。変更・置換・切詰め・リンク追加と初回走査中の変更を拒否するテストを追加した。Node 26.12.1でbuild、公開型検査、全158ファイル/4,234テストが成功。ローカル文書リンク540件も問題なし。
+
+実139,758観測の同一DB/指紋で6回検査を比較し、旧14,694.7 ms、新4,245.2 ms。ファイル全体hashとコピー作成は計測外で、処理全体の速度保証ではない。稼働中の固定runtimeは変更していない。
+
+旧SDK固定の会社別索引は3,812社すべてcomplete、専用サービスは停止、通常財務timerはactive/waitingへ復帰した。14,436行・利用可能36,026値、利用可能値のある会社3,732社。構築receiptのpublicationEligibleとfinancialValuesValidatedはいずれもfalse。期間不一致198書類等の品質問題を残し、公開catalogは切り替えていない。

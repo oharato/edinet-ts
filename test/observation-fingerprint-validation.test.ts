@@ -1,4 +1,4 @@
-import{it,expect}from'vitest';import{mkdtempSync,rmSync}from'node:fs';import{join}from'node:path';import{tmpdir}from'node:os';import{createHash}from'node:crypto';import{ObservedFinancialArchive,type DocumentVersionObservation}from'../src/index';import{Database}from'../src/db/node-sqlite';
+import{it,expect}from'vitest';import{mkdtempSync,rmSync,readFileSync,writeFileSync,renameSync,unlinkSync,linkSync,symlinkSync,truncateSync}from'node:fs';import{join}from'node:path';import{tmpdir}from'node:os';import{createHash}from'node:crypto';import{ObservedFinancialArchive,type DocumentVersionObservation}from'../src/index';import{Database}from'../src/db/node-sqlite';
 const observation=(id='A'):DocumentVersionObservation=>({observationId:id,observedAt:'2026-06-25T00:00:00Z',document:{docID:id,edinetCode:'E12345',parentDocID:null,docTypeCode:'120'}});
 function fixture(fn:(archive:ObservedFinancialArchive,path:string)=>void){const dir=mkdtempSync(join(tmpdir(),'observation-fingerprint-'));const path=join(dir,'archive.sqlite'),archive=new ObservedFinancialArchive(path);try{archive.append([observation()]);fn(archive,path);}finally{archive.close();rmSync(dir,{recursive:true,force:true});}}
 function measure(archive:ObservedFinancialArchive){let calls=0;const a=archive as any,original=a.decodeObservation.bind(a);a.decodeObservation=(row:any)=>{calls++;return original(row);};return()=>calls;}
@@ -10,3 +10,19 @@ it('readOnlyコピーを元DBの更新と混同せず、close後は再利用し�
 it.each(['bytes','entries'])('%s上限に達した行を省略せず再検査する',limit=>fixture(archive=>{const a=archive as any;if(limit==='bytes')a.validatedObservationBytes=256*1024*1024;else for(let i=0;i<200000;i++)a.validatedObservationRows.set('cached'+i,{});const count=measure(archive),first=archive.observationsSha256();expect(archive.observationsSha256()).toBe(first);expect(count()).toBe(2);expect(a.validatedObservationRows.size).toBe(limit==='bytes'?0:200000);}));
 
 it('旧件数上限を超えてもbyte上限内の完全一致行は再解析しない',()=>fixture(archive=>{const a=archive as any;for(let i=0;i<100000;i++)a.validatedObservationRows.set('cached'+i,{});const count=measure(archive);const first=archive.observationsSha256();expect(archive.observationsSha256()).toBe(first);expect(count()).toBe(1);expect(a.validatedObservationRows.size).toBe(100001);}));
+
+
+it('不変なreadOnlyコピーでは全観測のSQL走査を一回に抑え、書込用と同じ指紋を返す',()=>fixture((writer,path)=>{
+ const reader=new ObservedFinancialArchive(path,{readOnly:true}),a=reader as any,original=a.rows.bind(a);let scans=0;
+ a.rows=(sql:string,...args:any[])=>{if(sql.startsWith('SELECT * FROM archive_observations'))scans++;return original(sql,...args)};
+ try{const expected=writer.observationsSha256();expect(reader.observationsSha256()).toBe(expected);expect(scans).toBeGreaterThan(0);scans=0;expect(reader.observationsSha256()).toBe(expected);expect(scans).toBe(0);expect(a.validatedObservationRows.size).toBe(0);}finally{reader.close()}
+}));
+it.each(['rewrite','replace','truncate','hardlink','symlink'])('readOnlyの観測指紋を再利用するときも私有copyの%sを拒否する',action=>fixture((_writer,path)=>{
+ const reader=new ObservedFinancialArchive(path,{readOnly:true}),probe=(reader as any).snapshotFile,side=join(path+'-side');
+ try{reader.observationsSha256();const bytes=readFileSync(probe);if(action==='rewrite')writeFileSync(probe,bytes);else if(action==='truncate')truncateSync(probe,0);else if(action==='hardlink')linkSync(probe,side);else{writeFileSync(side,bytes);unlinkSync(probe);if(action==='replace')renameSync(side,probe);else symlinkSync(side,probe)}expect(()=>reader.observationsSha256()).toThrow();}finally{reader.close()}
+}));
+it('初回のreadOnly観測走査中に変わったcopyを固定指紋として保存しない',()=>fixture((_writer,path)=>{
+ const reader=new ObservedFinancialArchive(path,{readOnly:true}),a=reader as any,original=a.rows.bind(a),probe=a.snapshotFile;let changed=false;
+ a.rows=(sql:string,...args:any[])=>{const rows=original(sql,...args);if(!changed&&sql.startsWith('SELECT * FROM archive_observations')){changed=true;writeFileSync(probe,readFileSync(probe))}return rows};
+ try{expect(()=>reader.observationsSha256()).toThrow('変化');expect(()=>reader.observationsSha256()).toThrow('変化');}finally{reader.close()}
+}));
