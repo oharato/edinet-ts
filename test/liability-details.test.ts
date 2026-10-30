@@ -27,7 +27,7 @@ const doc = (code: string, raw: string): FinancialDetailDocument => ({ xml: xml(
 
 describe("借入・社債・リースの直接9残高", () => {
     it("辞書v6でも既定5項目の集合を維持する", () => {
-        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("8");
+        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("9");
         expect(DEFAULT_FINANCIAL_DETAIL_METRICS).toEqual(["noncurrentAssets", "noncurrentLiabilities", "cashAndDeposits", "costOfSales", "sellingGeneralAndAdministrativeExpenses"]);
         const oldFacts = ["NoncurrentAssets", "NoncurrentLiabilities", "CashAndDeposits"].map(tag => tagFact(tag, "10")).join("");
         const input = xml("100", undefined, oldFacts);
@@ -61,12 +61,12 @@ describe("借入・社債・リースの直接9残高", () => {
         const result = screenFinancialDetailDocuments([doc("1001", "9007199254740993")], { metricIds: [id], sortBy: id });
         expect(result).toMatchObject({ total: 0, excludedRows: 1, reasonCounts: { "unsafe-number": 1 } });
     });
-    it.each(mappings)("%sのnil・未知namespace・重複候補/contextを拒否", (id, tag) => {
+    it.each(mappings)("%sのnil・未知namespace・重複contextを拒否し、完全一致候補は採用する", (id, tag) => {
         const nil = instance(tagFact(tag, "", 'xsi:nil="true"'), context());
         expect(createFinancialDetailSnapshot(nil, metadata(), [id]).selections[id]).toMatchObject({ status: "missing", reason: "nil" });
         const unknown = xml().replace("http://disclosure.edinet-fsa.go.jp/taxonomy/jppfs/2024-11-01/jppfs_cor", "urn:unknown");
         expect(createFinancialDetailSnapshot(unknown, metadata(), [id]).selections[id]).toMatchObject({ status: "unsupported", reason: "unknown-namespace" });
-        expect(createFinancialDetailSnapshot(xml("120", undefined, tagFact(tag, "120")), metadata(), [id]).selections[id]).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(createFinancialDetailSnapshot(xml("120", undefined, tagFact(tag, "120")), metadata(), [id]).selections[id]).toMatchObject({ status: "selected", reason: "selected-identical-duplicates" });
         expect(createFinancialDetailSnapshot(xml("120", undefined, "", context().repeat(2)), metadata(), [id]).selections[id]).toMatchObject({ status: "ambiguous", reason: "duplicate-context" });
     });
     it.each(mappings)("%sで連結単体・時点・期間・基準・通貨を代用しない", (id, tag) => {

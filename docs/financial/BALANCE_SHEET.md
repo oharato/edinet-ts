@@ -40,7 +40,7 @@
 | `currentLiabilities` | `jppfs_cor:CurrentLiabilities` | JPY / Instant |
 | `totalLiabilities` | `jppfs_cor:Liabilities` | JPY / Instant |
 
-指標の対応表（registry）のversionは `BALANCE_SHEET_REGISTRY_VERSION`（現在 `"1"`）。定義・候補配列・辞書はfreezeしています。負債純資産合計や内訳の加算、資産から純資産を引く差額補完は行いません。
+指標の対応表（registry）のversionは `BALANCE_SHEET_REGISTRY_VERSION`（現在 `"2"`）。定義・候補配列・辞書はfreezeしています。負債純資産合計や内訳の加算、資産から純資産を引く差額補完は行いません。
 
 <a id="selection-利用方法"></a>
 
@@ -82,7 +82,7 @@ DEIから条件を得る場合は[財務基準判定](FINANCIAL_REPORTING_BASIS.
 - `selected` はraw、任意のsafeNumber、採用source、探索時点までのevidenceを返します。巨大整数・高精度decimalは `selected-raw-only`。decimalsは倍率ではありません。
 - `missing` はタグ不在・context不一致・nilを区別します。nil・空・欠損を0にせず、実値0・有効な負数は保持します。
 - `unsupported` は基準・単位・namespace・context・entity・明細次元・不正decimal等の理由を持ちます。JPY以外や未定義unitを推測変換しません。
-- `ambiguous` は重複contextまたは複数適合factです。同値重複も先頭採用しません。
+- `ambiguous` は重複contextまたは複数適合factです。有効な候補の原値・タグ/名前空間・精度・単位・期間・範囲・次元・entityが完全一致する場合だけ、全証跡と`selected-identical-duplicates`理由を残して1件として採用します。数値丸めによる同値化はしません。
 - 文書内のcontextにentity identifier/schemeが不明なもの、または複数entityがあれば `unsupported-entity` として止めます。主提出者の推測は行いません。Instant/Durationの混在・不正contextも拒否します。
 - 全社factは明細次元なし、単体は公式の連結/単体axis/memberの対のみを許容します。部門・調整項目・typed dimension・未知scenarioは全社へ混ぜません。
 - 公式jppfs taxonomy URI形式を確認し、未知namespaceの同じlocal nameやprefixのURI偽装を代用しません。全taxonomy年度の意味確認を保証するものではありません。
@@ -95,7 +95,7 @@ DEIから条件を得る場合は[財務基準判定](FINANCIAL_REPORTING_BASIS.
 
 [財務正規化計画](../plans/FINANCIAL_NORMALIZATION.md)の最初の3項目について、F01〜F05/F07〜F11/F14/F15の適用範囲を合成/保存テスト用データで検証済みです。InstantのみのAPIなのでF14は時点完全一致と期間型拒否が対象です。訂正書類選択やDurationの分類は未実装です。
 
-保存済み2企業のXBRL（`CJ_2371_kakakucom.xbrl`、`S100TMMG/XBRL/PublicDoc/*.xbrl`）で、連結/単体それぞれ3項目のraw・元タグ・namespace URI・context・時点・単位・decimalsをraw取得APIと突合します。`3031_raccoon.xbrl`の連結負債は同じcontextのfactが重複しており、原値の一致を確認しつつ`ambiguous / multiple-facts`を維持します。
+保存済み2企業のXBRL（`CJ_2371_kakakucom.xbrl`、`S100TMMG/XBRL/PublicDoc/*.xbrl`）で、連結/単体それぞれ3項目のraw・元タグ・namespace URI・context・時点・単位・decimalsをraw取得APIと突合します。`3031_raccoon.xbrl`の連結負債は同じcontextのfactが重複しており、精度・期間・単位等も完全一致することを確認して`selected-identical-duplicates`で採用し、全factを証跡へ残します。
 
 金額はこの資料へ掲載しません。IFRS書類の単体jppfsがIFRS宣言で拒否されることも確認します。
 
@@ -364,3 +364,5 @@ Pythonの`Decimal`（精度60桁）は表示用の参考値に使い、条件の
 PDFは百万円表示で、計算は両項目を同じ単位のまま比べています。両時点とも2026年有報の当期・前期比較列を使った、**表示金額から求めた流動比率の確認**です。PDFに掲載された流動比率という別の指標値との一致を主張するものではありません。2025年当時のXBRL原本・全市場・他の基準・元金額の丸め誤差は、この確認の対象外です。
 
 この独立期待値に基づくAPIの条件・並び順64件、ビルド済みCLIの比率条件・並び順・ページ指定8件も成功しました。原本・金額・個別の計算結果と詳細の照合記録はGit管理外に保持しています。新規取得・認証・費用・既存DBの変更・依存追加はありません。
+
+辞書版2では、保存済みsnapshotの新しい重複採用理由を検査するときも、2候補以上の有効な完全一致と採用元の一致を要求します。旧JSONの`ambiguous/multiple-facts`は読込だけで採用へ変えません。旧SDKは新しい採用理由を拒否するため、新しい索引世代と対応SDKを組にして配布・切戻ししてください。

@@ -17,14 +17,14 @@ describe('IFRSの直接PL/CF17項目',()=>{
  it('合算/差引で税金・設備・配当・借入範囲を補完しない',()=>{
   for(const id of ['incomeTaxesPaidCashFlow','netIncomeTaxesRefundPaidCashFlow','dividendsPaidToOwnersOfParentCashFlow','propertyPlantEquipmentPurchaseCashFlow','longTermBorrowingsRepaymentCashFlow'] as const)expect(select(id,doc('1001',{absent:id}))).toMatchObject({status:'missing',reason:'tag-absent'});
  });
- it.each(['sellingGeneralAndAdministrativeExpenses','profitBeforeTax'] as const)('%sの実原本で確認した完全一致重複だけを理由付きで採用する',id=>{
+ it.each(mappings)('%sの完全一致重複だけを理由付きで採用する',(id,tag)=>{
   const r=select(id,doc('1001',{duplicate:id}));expect(r).toMatchObject({status:'selected',reason:'selected-identical-duplicates'});expect(r.evidence).toHaveLength(2);
-  const d=doc('1001',{duplicate:id}),tag=mappings.find(([key])=>key===id)![1],marker='<jpigp_cor:'+tag,at=d.xml.lastIndexOf(marker);
-  for(const change of [(s:string)=>s.replace('decimals="INF"','decimals="0"'),(s:string)=>s.replace(/>\d+</,'>999<')]){
+  const d=doc('1001',{duplicate:id}),marker='<jpigp_cor:'+tag,at=d.xml.lastIndexOf(marker);
+  for(const change of [(s:string)=>s.replace('decimals="INF"','decimals="0"'),(s:string)=>s.replace(/>-?\d+</,'>999<')]){
    const changed={...d,xml:d.xml.slice(0,at)+change(d.xml.slice(at))};expect(select(id,changed)).toMatchObject({status:'ambiguous',reason:'multiple-facts'});
   }
  });
- it('他科目の重複は勝手に完全一致採用へ変えない',()=>{expect(select('costOfSales',doc('1001',{duplicate:'costOfSales'}))).toMatchObject({status:'ambiguous',reason:'multiple-facts'});});
+
  it.each(['0','-0','-10.25','9007199254740993'])('0/負数/巨大原値%sを失わない',raw=>{
   const r=select('incomeTaxesPaidCashFlow',doc('1001',{raw}));expect(r).toMatchObject({status:'selected',raw});expect(r.status==='selected'&&r.safeNumber).toBe(raw==='9007199254740993'?undefined:Number(raw));
  });

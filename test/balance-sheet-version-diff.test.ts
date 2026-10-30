@@ -70,7 +70,7 @@ describe("同一原本の財務再解析差分",()=>{
         const result=diff(store,row([a,"40","80"]),row([b,"40","80"],"v2"));expect(result.metrics.currentAssets.valueComparison).toBe("unavailable");expect(result.metrics.currentAssets.changes.status).toBe(true);expect(result.status).toBe("changed");
     }));
     it("曖昧候補から採用へ変わっても旧値を推測しない",()=>fixture(store=>{
-        const result=diff(store,row(undefined,"v1",{extra:fact("120","",keys[0])}),row(undefined,"v2"));
+        const result=diff(store,row(undefined,"v1",{extra:fact("121","",keys[0])}),row(undefined,"v2"));
         expect(result.metrics.currentAssets.before.status).toBe("ambiguous");expect(result.metrics.currentAssets.valueComparison).toBe("unavailable");expect(result.currentRatio.before.reason).toBe("ambiguous-input");
     }));
     it("unsupportedから採用へ変わった理由と候補を保持",()=>fixture(store=>{

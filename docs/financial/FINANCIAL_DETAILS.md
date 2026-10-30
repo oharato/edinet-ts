@@ -70,7 +70,7 @@ const expenses = createFinancialDetailSnapshot(xml, {
 
 実際の0や負数は保持します。連結→単体、当期→前期、未知namespace→同名タグへのfallbackはありません。
 
-税引前当期純利益だけは、原値・精度・単位・期間・scope・次元・entityが一致する有効な重複を、全候補の証跡と理由`selected-identical-duplicates`付きで1件として採用します。他科目の同値重複は曖昧として止めます。
+財務明細では、原値・タグ/名前空間・精度・解決済み単位・期間・scope・次元・entityが完全一致する有効な重複を、全候補の証跡と理由`selected-identical-duplicates`付きで1件として採用します。数値へ丸めて同値にした候補や、異値・精度差・nil混在・重複context定義は採用しません。
 
 XML文字列を受けるsnapshot APIは構文を検査しますが、XBRLスキーマ検証ではありません。
 
@@ -308,7 +308,7 @@ Node26.12.1で全1,378テスト（既存1,159＋追加219）、本体/使用例�
 
 営業利益・経常利益・特別利益/特別損失・当期純利益では代用しません。法人税等は還付等で負値になることがあり、原値をそのまま保持します。
 
-税引前当期純利益は、損益計算書とCF計算書に同じ値が繰り返されるため、この項目に限り完全一致の重複を採用します。実原本テスト用データ（3031ラクーン連結・2024年4月期）の税引前535,861,000円は同値2件から採用し、全候補は証跡へ保持します。異値・精度差・単位/文脈差・nil混在・重複context定義は従来どおり不採用です。
+税引前当期純利益は、損益計算書とCF計算書に同じ値が繰り返されるため、当初この項目で完全一致の重複採用を導入しました。現在は他の直接財務明細も同じ検証を使います。実原本テスト用データ（3031ラクーン連結・2024年4月期）の税引前535,861,000円は同値2件から採用し、全候補は証跡へ保持します。異値・精度差・単位/文脈差・nil混在・重複context定義は従来どおり不採用です。
 
 旧版が保存した`ambiguous/multiple-facts`の税引前snapshotは、その状態のまま検査・検索できます。読み込みだけで採用へ変更しません。
 
@@ -328,7 +328,7 @@ registryはこの変更で4→5、後述CF3追加で5→6です。
 | `CashDividendsPaidCashFlow` | `cashDividendsPaidCashFlow` | `CashDividendsPaidFinCF` |
 | `LongTermLoansRepaymentCashFlow` | `longTermLoansRepaymentCashFlow` | `RepaymentOfLongTermLoansPayableFinCF` |
 
-還付/支払還付純額、非支配株主配当、短期借入返済は代用・合算しません。不在・nil・単体CF非開示を0へ変えません。同値重複の採用特例は税引前のみです。
+還付/支払還付純額、非支配株主配当、短期借入返済は代用・合算しません。不在・nil・単体CF非開示を0へ変えません。完全一致する有効重複は他の財務明細と同じ規則で扱います。
 
 ```ts
 const metricIds = [FinancialDetailMetricId.IncomeTaxesPaidCashFlow,
@@ -356,3 +356,5 @@ const result = screenFinancialDetailDocuments(documents, { metricIds,
 [ROIC](ROIC.md)の確認済み負債集合にも明示利用できます。タグ不在・nilは0にせず、保存済みsnapshotを読み込んだだけで再抽出しません。
 
 追加2タグの名称・monetary型・instant・credit属性は、[金融庁2026年版タクソノミ](https://www.fsa.go.jp/search/20251111.html)の公式ZIP/XSDと照合しました。合成境界試験による抽出確認であり、この2科目の実企業原本による金額照合はまだ行っていません。
+
+財務明細辞書版9では完全一致重複の検証を全明細へ適用します。旧JSONの曖昧判定は読取だけで変更せず、新しい採用結果を保存する場合は候補の一致を再検査します。版の異なる未完了計画へ混在させず、新しい索引世代を作成してください。旧SDKは新しい採用理由を持つ他明細を拒否するため、配布・切戻しでは対応するSDKと索引世代を組にします。BSも別の辞書版で完全一致重複を検証します。汎用の旧18指標の既定選択は維持します。

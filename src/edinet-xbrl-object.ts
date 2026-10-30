@@ -233,7 +233,7 @@ export class EdinetXbrlObject {
 
     /** J-GAAP・JPY・明示した時点/scopeのBS直接factを正規化します。 */
     public selectBalanceSheetMetric(id: BalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<BalanceSheetMetricId> {
-        return selectDefinedMetricFact(BALANCE_SHEET_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        return selectDefinedMetricFact(BALANCE_SHEET_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, { collapseIdenticalDuplicates: true });
     }
 
     /** DEIとcontextから、推測で補わず財務の基準・当期の範囲を確定します。 */
@@ -252,7 +252,7 @@ export class EdinetXbrlObject {
         if (accountingStandard !== "IFRS") return { metricId: id, status: "unsupported", reason: "unsupported-standard", evidence: [] };
         if (scope !== "Consolidated") return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
         // 不正なinstant/duration混在も消さずに共用の期間検証へ渡します。
-        return selectDefinedMetricFact(IFRS_BALANCE_SHEET_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        return selectDefinedMetricFact(IFRS_BALANCE_SHEET_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, { collapseIdenticalDuplicates: true });
     }
 
     /** IFRS・連結・JPYの直接PL/CF。別範囲のタグから補完せず、原符号を保持します。 */
@@ -263,14 +263,14 @@ export class EdinetXbrlObject {
         if (accountingStandard !== "IFRS") return { metricId: id, status: "unsupported", reason: "unsupported-standard", evidence: [] };
         if (scope !== "Consolidated") return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
         return selectDefinedMetricFact(IFRS_FINANCIAL_DETAIL_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds,
-            { collapseIdenticalDuplicates: id === "profitBeforeTax" || id === "sellingGeneralAndAdministrativeExpenses" });
+            { collapseIdenticalDuplicates: true });
     }
 
     /** 一般事業J-GAAPの直接5科目。現預金/同等物・内訳を混同しません。 */
     public selectFinancialDetail(id: FinancialDetailMetricId, options: MetricSelectionOptions): FactSelectionResult<FinancialDetailMetricId> {
         if (!Object.prototype.hasOwnProperty.call(FINANCIAL_DETAIL_REGISTRY, id)) throw new Error("不正な財務明細IDです");
         return selectDefinedMetricFact(FINANCIAL_DETAIL_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds,
-            { collapseIdenticalDuplicates: id === "incomeBeforeIncomeTaxes" });
+            { collapseIdenticalDuplicates: true });
     }
 
     /** 人的資本は提出会社単体のみ。負値は原値をevidenceへ残し不採用とします。 */

@@ -29,11 +29,13 @@ describe("CF支払・返済の直接3項目", () => {
         for (const id of ids) expect(selected.selections[id]).toMatchObject({ status: "selected", raw, safeNumber: raw === "9007199254740993" ? undefined : Number(raw) });
         expect(json(normalizeFinancialDetailSnapshot(json(selected)))).toEqual(json(selected));
     });
-    it.each(mappings)("%sのnil/重複は0/先頭にしない", (id, tag) => {
+    it.each(mappings)("%sのnilは欠損、完全一致重複だけを採用する", (id, tag) => {
         const f = (attrs = "") => fact("", attrs, `jppfs_cor:${tag}`);
         expect(row(instance(f('xsi:nil="true"'))).selections[id]).toMatchObject({ status: "missing", reason: "nil" });
         const duplicate = row(instance(fact("10", "", `jppfs_cor:${tag}`) + fact("10", "", `jppfs_cor:${tag}`)));
-        expect(duplicate.selections[id]).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(duplicate.selections[id]).toMatchObject({ status: "selected", reason: "selected-identical-duplicates" });
+        const conflict=row(instance(fact("10", "", `jppfs_cor:${tag}`) + fact("11", "", `jppfs_cor:${tag}`)));
+        expect(conflict.selections[id]).toMatchObject({status:"ambiguous",reason:"multiple-facts"});
         expect(json(normalizeFinancialDetailSnapshot(duplicate))).toEqual(json(duplicate));
     });
     it.each(["scope", "period", "currency", "namespace", "dimensions", "standard"])("%sが違う値を採用しない", kind => {

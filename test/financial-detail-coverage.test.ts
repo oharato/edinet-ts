@@ -29,7 +29,7 @@ describe("財務明細の母集団付き充足率", () => {
     it.each(["missing", "ambiguous", "unsafe-number", "not-extracted", "incomparable"])("%sを区別する", state => {
         let row = snapshot();
         if (state === "missing") row = createFinancialDetailSnapshot(instance("", context), { ...cohort, secCode: "1001", docID: "DOC1" }, ["cashAndDeposits"]);
-        if (state === "ambiguous") row = snapshot("100", fact("100", "", "jppfs_cor:CashAndDeposits"));
+        if (state === "ambiguous") row = snapshot("100", fact("101", "", "jppfs_cor:CashAndDeposits"));
         if (state === "unsafe-number") row = snapshot("9007199254740993");
         if (state === "not-extracted") row = createFinancialDetailSnapshot(instance("", context), { ...cohort, secCode: "1001", docID: "DOC1" }, ["noncurrentAssets"]);
         if (state === "incomparable") row = createFinancialDetailSnapshot(instance("", context), { ...cohort, scope: "NonConsolidated", secCode: "1001", docID: "DOC1" }, ["cashAndDeposits"]);

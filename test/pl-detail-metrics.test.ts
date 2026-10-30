@@ -25,7 +25,7 @@ const doc = (code: string, raw: string): FinancialDetailDocument => ({ xml: xml(
 
 describe("PL追加明細5項目（売上総利益・営業外収益/費用・税引前・法人税等）", () => {
     it("辞書v6でも既定5項目は不変で、新5項目は明示時だけ返す", () => {
-        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("8");
+        expect(FINANCIAL_DETAIL_REGISTRY_VERSION).toBe("9");
         expect(DEFAULT_FINANCIAL_DETAIL_METRICS).toEqual(["noncurrentAssets", "noncurrentLiabilities", "cashAndDeposits", "costOfSales", "sellingGeneralAndAdministrativeExpenses"]);
         expect(Object.keys(createFinancialDetailSnapshot(xml(), metadata()).selections).sort()).toEqual(["costOfSales", "sellingGeneralAndAdministrativeExpenses"]);
         expect(Object.keys(createFinancialDetailSnapshot(xml(), metadata(), ids).selections).sort()).toEqual([...ids].sort());
@@ -52,10 +52,10 @@ describe("PL追加明細5項目（売上総利益・営業外収益/費用・税
         const nil = createFinancialDetailSnapshot(xml("120", "GrossProfit", tagFact("GrossProfit", "", 'xsi:nil="true"')), metadata(), ids).selections.grossProfit;
         expect(nil).toMatchObject({ status: "missing", reason: "nil" });
     });
-    it("同値でも複数factは財務明細では曖昧のまま（税引前だけを除く）", () => {
+    it("財務明細の完全一致重複は証跡を残して採用する", () => {
         const dup = xml("120", undefined, tagFact("GrossProfit", "120"));
         expect(createFinancialDetailSnapshot(dup, metadata(), [FinancialDetailMetricId.GrossProfit]).selections.grossProfit)
-            .toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+            .toMatchObject({ status: "selected", reason: "selected-identical-duplicates" });
     });
     it("明示複数社検索の条件・並び・ページ", () => {
         const documents = [doc("1003", "300"), doc("1002", "200"), doc("1001", "200"), doc("1004", "50")];

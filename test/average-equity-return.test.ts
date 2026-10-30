@@ -38,6 +38,10 @@ describe("掲載値とは別の計算ROE", () => {
         expect(() => object.selectMetric("netIncome", data.income.metadata, { collapseIdenticalDuplicates: "false" } as any)).toThrow();
         let calls = 0; object.selectMetric("netIncome", data.income.metadata, { get collapseIdenticalDuplicates() { calls++; return true; } }); expect(calls).toBe(1);
     });
+    it("自己資本の完全一致重複は直接明細の証跡を保持して計算する",()=>{
+        const data=input();data.opening.xml=data.opening.xml.replace('</xbrli:xbrl>',fact("90","","jppfs_cor:ShareholdersEquity","opening")+'</xbrli:xbrl>');
+        expect(calculateAverageEquityReturn(data)).toMatchObject({status:"calculated",value:0.1});
+    });
     it.each(["missing", "unsafe", "entity", "date", "scope", "company", "standard", "quarter", "short", "duplicate-component"])("%sを別原値や期末だけで補完しない", kind => {
         const data: any = input();
         if (kind === "missing") data.opening.xml = data.opening.xml.replaceAll('jppfs_cor:ValuationAndTranslationAdjustments', 'jppfs_cor:Other');
@@ -49,7 +53,7 @@ describe("掲載値とは別の計算ROE", () => {
         if (kind === "standard") data.closing.metadata.accountingStandard = "IFRS";
         if (kind === "quarter") data.income.metadata.periodType = "quarterly";
         if (kind === "short") data.income.metadata.period.startDate = "2024-10-01";
-        if (kind === "duplicate-component") data.opening.xml = data.opening.xml.replace('</xbrli:xbrl>', fact("90", "", "jppfs_cor:ShareholdersEquity", "opening") + '</xbrli:xbrl>');
+        if (kind === "duplicate-component") data.opening.xml = data.opening.xml.replace('</xbrli:xbrl>', fact("91", "", "jppfs_cor:ShareholdersEquity", "opening") + '</xbrli:xbrl>');
         expect(calculateAverageEquityReturn(data).status).toBe("unavailable");
     });
     it.each([["gt", ["10020"]], ["gte", ["10020", "10010"]], ["lt", ["10030"]], ["lte", ["10010", "10030"]], ["eq", ["10010"]]] as const)("%sを厳密分数で比較", (operator, codes) => {

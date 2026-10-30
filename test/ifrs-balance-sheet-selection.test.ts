@@ -17,8 +17,8 @@ const definitions = Object.values(IFRS_BALANCE_SHEET_REGISTRY);
 const segment = '<xbrldi:explicitMember dimension="extension:SegmentAxis">extension:SegmentMember</xbrldi:explicitMember>';
 
 describe("IFRS連結の貸借対照表8項目（公式定義を基にした合成fixture）", () => {
-    it("別辞書をfreezeし、J-GAAP版1/18指標/候補を変更しない", () => {
-        expect(IFRS_BALANCE_SHEET_REGISTRY_VERSION).toBe("2"); expect(BALANCE_SHEET_REGISTRY_VERSION).toBe("1");
+    it("別辞書をfreezeし、各辞書版と主要18指標を確認する", () => {
+        expect(IFRS_BALANCE_SHEET_REGISTRY_VERSION).toBe("3"); expect(BALANCE_SHEET_REGISTRY_VERSION).toBe("2");
         expect(Object.keys(METRIC_REGISTRY)).toHaveLength(18); expect(Object.isFrozen(IfrsBalanceSheetMetricId)).toBe(true); expect(Object.isFrozen(IFRS_BALANCE_SHEET_REGISTRY)).toBe(true);
         expect(definitions.map(d => d.candidates[0].key)).toEqual(["jpigp_cor:CurrentAssetsIFRS", "jpigp_cor:TotalCurrentLiabilitiesIFRS", "jpigp_cor:LiabilitiesIFRS", "jpigp_cor:NonCurrentAssetsIFRS", "jpigp_cor:InterestBearingLiabilitiesCLIFRS", "jpigp_cor:InterestBearingLiabilitiesNCLIFRS", "jpigp_cor:LeaseLiabilitiesCLIFRS", "jpigp_cor:LeaseLiabilitiesNCLIFRS"]);
         for (const definition of definitions) {
@@ -89,8 +89,8 @@ describe("IFRS連結の貸借対照表8項目（公式定義を基にした合�
             expect(select(f(), unknown)).toMatchObject({ status: "unsupported", reason: "unsupported-entity" });
             expect(select(f(), context() + context("other", "", instant, "OTHER"))).toMatchObject({ status: "unsupported", reason: "unsupported-entity" });
         });
-        it.each(["120.00", "99"])("同値/異値の重複fact%sを曖昧とする", raw => {
-            expect(select(f() + f(raw))).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        it.each(["120.00", "99"])("重複fact%sは完全一致だけ採用する", raw => {
+            expect(select(f() + f(raw))).toMatchObject(raw === "120.00" ? { status: "selected", reason: "selected-identical-duplicates" } : { status: "ambiguous", reason: "multiple-facts" });
         });
         it("重複context ID/同一期末別contextも曖昧とする", () => {
             expect(select(f(), context() + context())).toMatchObject({ status: "ambiguous", reason: "duplicate-context" });

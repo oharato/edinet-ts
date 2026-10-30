@@ -13,7 +13,7 @@ const f = (raw = "100", attrs = "", ctx = "current") => fact(raw, attrs, "jppfs_
 const snapshot = (xml = instance(f() + f()), code = "1001") => createFinancialDetailSnapshot(xml, meta(code), [id]);
 const json = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
-describe("税引前だけ完全一致重複を採用し、保存証跡と旧判定を保持", () => {
+describe("財務明細の完全一致重複を採用し、保存証跡と旧判定を保持", () => {
     it.each(["100", "-100", "0", "-0", "9007199254740993"])("原値%sを合算せず保持してJSON往復", raw => {
         const row = snapshot(instance(f(raw) + f(raw))), selected = row.selections[id]!;
         expect(selected).toMatchObject({ status: "selected", reason: "selected-identical-duplicates", raw, evidence: [{ reason: raw === "9007199254740993" ? "selected-raw-only" : "selected" }, {}] });
@@ -63,12 +63,13 @@ describe("税引前だけ完全一致重複を採用し、保存証跡と旧判�
         expect(() => normalizeFinancialDetailSnapshot(row)).toThrow();
         expect(() => screenFinancialDetailSnapshots([row], { metricIds: [id] })).toThrow();
     });
-    it("他科目の同値重複は曖昧、新理由への偽装も拒否", () => {
+    it("他の明細も完全一致だけ採用し、旧JSONの曖昧判定を保持する", () => {
         const row = createFinancialDetailSnapshot(instance(fact("100", "", "jppfs_cor:GrossProfit") + fact("100", "", "jppfs_cor:GrossProfit")), meta(), ["grossProfit"]);
-        expect(row.selections.grossProfit!.status).toBe("ambiguous");
+        expect(row.selections.grossProfit).toMatchObject({status:"selected",reason:"selected-identical-duplicates"});
         expect(json(normalizeFinancialDetailSnapshot(row))).toEqual(json(row));
-        const forged: any = json(row), evidence = forged.selections.grossProfit.evidence;
-        forged.selections.grossProfit = { ...forged.selections.grossProfit, status: "selected", reason: "selected-identical-duplicates", raw: "100", safeNumber: 100, source: evidence[0] };
+        const legacy:any=json(row);legacy.selections.grossProfit={metricId:"grossProfit",status:"ambiguous",reason:"multiple-facts",evidence:legacy.selections.grossProfit.evidence};
+        expect(json(normalizeFinancialDetailSnapshot(legacy))).toEqual(legacy);
+        const forged:any=json(row);forged.selections.grossProfit.evidence[1].raw="101";
         expect(() => normalizeFinancialDetailSnapshot(forged)).toThrow();
     });
     it.each(["gte", "lte", "gt", "lt", "eq"] as const)("%sのXML/JSON条件・両順・ページ・欠損を一致", operator => {

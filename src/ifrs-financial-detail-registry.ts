@@ -32,4 +32,4 @@ export const IFRS_FINANCIAL_DETAIL_REGISTRY:Readonly<Record<IfrsFinancialDetailM
  bondsAndLongTermBorrowingsRepaymentCashFlow:define("bondsAndLongTermBorrowingsRepaymentCashFlow","RedemptionOfBondsAndRepaymentsOfLongTermBorrowingsFinCFIFRS"),
  leaseObligationsRepaymentCashFlow:define("leaseObligationsRepaymentCashFlow","RepaymentsOfLeaseObligationsFinCFIFRS")
 });
-export const IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION="1";
+export const IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION="2";

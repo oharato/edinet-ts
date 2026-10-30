@@ -12,7 +12,7 @@ const context = (code: string, options: { scope?: string; instant?: string } = {
 interface XmlOptions { absent?: IfrsBalanceSheetMetricId; nil?: IfrsBalanceSheetMetricId; duplicate?: IfrsBalanceSheetMetricId; unit?: string; entity?: string; scope?: string; instant?: string; namespace?: string; extra?: string; }
 function xml(raw = "120.5000", code = "1001", options: XmlOptions = {}) {
     const f = (id: IfrsBalanceSheetMetricId, tag: string) => fact(options.nil === id ? "" : raw, options.nil === id ? 'xsi:nil="true"' : "", `jpigp_cor:${tag}`);
-    const facts = mappings.filter(([id]) => id !== options.absent).map(([id, tag]) => f(id, tag) + (options.duplicate === id ? f(id, tag) : "")).join("") + (options.extra ?? "");
+    const facts = mappings.filter(([id]) => id !== options.absent).map(([id, tag]) => f(id, tag) + (options.duplicate === id ? f(id, tag).replace(`>${raw}<`, `>${raw}0<`) : "")).join("") + (options.extra ?? "");
     return instance(facts, context(options.entity ?? code, options), `<xbrli:unit id="money"><xbrli:measure>${options.unit ?? "iso4217:JPY"}</xbrli:measure></xbrli:unit>`)
         .replace('<xbrli:xbrl ', `<xbrli:xbrl xmlns:jpigp_cor="${options.namespace ?? "http://disclosure.edinet-fsa.go.jp/taxonomy/jpigp/2025-11-01/jpigp_cor"}" `);
 }
@@ -88,7 +88,7 @@ describe("明示IFRS企業集合の条件と順序", () => {
         expect(result).toMatchObject({ total: 2, excludedRows: 1, filteredRows: 1, reasonCounts: { "unsafe-number": 3 } });
     });
     it("不要項目欠損は残し、必要項目欠損/曖昧/unsupported/unsafeを区別", () => {
-        const inputs = [doc("1001", "10", { absent: "totalLiabilities" }), doc("1002", "10", { nil: "currentAssets" }), doc("1003", "10", { duplicate: "currentAssets" }),
+        const inputs = [doc("1001", "10", { absent: "totalLiabilities" }), doc("1002", "10", { nil: "currentAssets" }), doc("1003", "10", { extra: fact("11", "", "jpigp_cor:CurrentAssetsIFRS") }),
             doc("1004", "10", { unit: "iso4217:USD" }), doc("1005", "9007199254740993")];
         const result = screenIfrsBalanceSheetDocuments(inputs, { sortBy: "currentAssets" });
         expect(codes(result)).toEqual(["10010"]); expect(result.excludedRows).toBe(4);

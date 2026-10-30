@@ -12,4 +12,4 @@ export const BALANCE_SHEET_REGISTRY: Readonly<Record<BalanceSheetMetricId, Metri
     currentLiabilities: define("currentLiabilities", "CurrentLiabilities"),
     totalLiabilities: define("totalLiabilities", "Liabilities")
 });
-export const BALANCE_SHEET_REGISTRY_VERSION = "1";
+export const BALANCE_SHEET_REGISTRY_VERSION = "2";

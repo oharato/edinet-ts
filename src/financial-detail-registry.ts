@@ -60,4 +60,4 @@ export const FINANCIAL_DETAIL_REGISTRY: Readonly<Record<FinancialDetailMetricId,
     shareholdersEquity: define("shareholdersEquity", "ShareholdersEquity", "instant"),
     valuationAndTranslationAdjustments: define("valuationAndTranslationAdjustments", "ValuationAndTranslationAdjustments", "instant")
 });
-export const FINANCIAL_DETAIL_REGISTRY_VERSION = "8";
+export const FINANCIAL_DETAIL_REGISTRY_VERSION = "9";

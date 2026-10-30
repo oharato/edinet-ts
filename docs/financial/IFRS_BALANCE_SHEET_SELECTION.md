@@ -41,7 +41,7 @@ if (result.status === "selected") console.log(result.raw, result.source);
 
 書類IDと期末は例です。会計基準は元書類で確認して指定します。タグがあるだけで、その書類をIFRSと推定しません。
 
-`raw` に原文字列、`source` にタグ・名前空間・context・entity・期間・単位・decimalsを返します。安全に数値へ変換できる場合だけ `safeNumber` が付きます。0、nil、タグ不在、期間やscopeの不一致、曖昧な複数候補を区別します。同値の重複は共通選択器の規則で扱い、候補を出典に残します。
+`raw` に原文字列、`source` にタグ・名前空間・context・entity・期間・単位・decimalsを返します。安全に数値へ変換できる場合だけ `safeNumber` が付きます。0、nil、タグ不在、期間やscopeの不一致、曖昧な複数候補を区別します。有効な候補の原値・タグ/名前空間・精度・単位・期間・範囲・次元・entityが完全一致する重複だけ、`selected-identical-duplicates`で採用し、全候補を出典に残します。異値・精度差・nil混在・重複context定義は採用しません。
 
 IFRS以外は `unsupported-standard`、単体は `unsupported-semantics` です。正規の `jpigp` 名前空間と日付を検査し、旧 `ifrs-full` や企業独自タグへ代替しません。J-GAAPの辞書・版は変更しません。
 
@@ -96,7 +96,7 @@ node dist/cli.js screen-ifrs-bs --manifest files.json \
 
 ## 自動抽出・保存・SQL検索
 
-DEIで当期・基準・scopeを解決する `createAutomaticFinancialSnapshots()` は、IFRSのBS8項目を記録します。[観測アーカイブ](../pipeline/OBSERVED_FINANCIAL_ARCHIVE.md)もこの結果を保存・cacheします。辞書版2がcacheの指紋に含まれるため、旧3項目の抽出cacheを新結果として使いません。旧世代を上書きせず、新しい索引世代を作ってください。新SDKは旧3項目の索引世代も読めますが、旧SDKは8項目を記録した行を拒否します。配布・切戻しでは、対応するSDKと索引世代を組にしてください。
+DEIで当期・基準・scopeを解決する `createAutomaticFinancialSnapshots()` は、IFRSのBS8項目を記録します。[観測アーカイブ](../pipeline/OBSERVED_FINANCIAL_ARCHIVE.md)もこの結果を保存・cacheします。辞書版3（8項目化は版2、完全一致重複の採用は版3）がcacheの指紋に含まれるため、旧3項目の抽出cacheを新結果として使いません。旧世代を上書きせず、新しい索引世代を作ってください。新SDKは旧3項目の索引世代も読めますが、旧SDKは8項目を記録した行を拒否します。配布・切戻しでは、対応するSDKと索引世代を組にしてください。
 
 `FinancialSearchIndex.screen()` は、`group: "balanceSheet"`・`accountingStandard: "IFRS"`・明示期末のcohortで追加IDを受け付けます。`metricIds` に必要な項目を指定し、条件・並べ替えにも同じIDを使えます。SQL側は指定項目だけを返します。旧世代に記録のない項目はタグ不在と推定せず、選択記録不足として拒否します。
 

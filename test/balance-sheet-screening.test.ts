@@ -55,7 +55,7 @@ describe("BS3科目の別横断検索", () => {
     it("必要指標の欠損・曖昧・巨大整数を診断し除外する", () => {
         const missing = snapshot("1001", ["absent", "40", "80"]);
         const unsafe = snapshot("1002", ["9007199254740993", "40", "80"]);
-        const ambiguous = createBalanceSheetSnapshot(instance(fact("1", "", keys[0]) + fact("1", "", keys[0]), context()), { ...meta, secCode: "1003" });
+        const ambiguous = createBalanceSheetSnapshot(instance(fact("1", "", keys[0]) + fact("2", "", keys[0]), context()), { ...meta, secCode: "1003" });
         const result = run([missing, unsafe, ambiguous], query);
         expect(result).toMatchObject({ total: 0, excludedRows: 3, reasonCounts: { missing: 3, ambiguous: 1, "unsafe-number": 1, unsupported: 0 } });
         expect(result.diagnostics.find(d => d.reason === "unsafe-number")).toMatchObject({ required: true, selectionReason: "selected-raw-only" });
@@ -181,4 +181,16 @@ describe("screen-bs CLI", () => {
             expect(result.status).toBe(1); expect(result.stdout).toBe(""); expect(result.stderr.length).toBeGreaterThan(0);
         } finally { rmSync(dir, { recursive: true, force: true }); }
     });
+});
+
+it.each(['raw','decimals','unit','namespace','nil','reason','period','single'])('BSの完全一致重複採用で偽造%sを拒否し、旧曖昧JSONは維持する',field=>{
+ const input=instance(fact('100','','jppfs_cor:CurrentAssets')+fact('100','','jppfs_cor:CurrentAssets'),context());
+ const row=createBalanceSheetSnapshot(input,meta),selected=row.selections.currentAssets;
+ expect(selected).toMatchObject({status:'selected',reason:'selected-identical-duplicates'});
+ expect(screenBalanceSheetSnapshots([row],{sortBy:'currentAssets'}).total).toBe(1);
+ const legacy:any=structuredClone(row);legacy.selections.currentAssets={metricId:'currentAssets',status:'ambiguous',reason:'multiple-facts',evidence:legacy.selections.currentAssets.evidence};
+ expect(screenBalanceSheetSnapshots([legacy],{sortBy:'currentAssets'}).excludedRows).toBe(1);
+ const forged:any=structuredClone(row),e=forged.selections.currentAssets.evidence[1];
+ if(field==='raw')e.raw='101';if(field==='decimals')e.decimals='0';if(field==='unit')e.unit='iso4217:USD';if(field==='namespace')e.namespaceURI='https://example.test/fake';if(field==='nil')e.nil=true;if(field==='reason')e.reason='unsupported-unit';if(field==='period')e.period.instant='2024-03-31';if(field==='single')forged.selections.currentAssets.evidence.pop();
+ expect(()=>screenBalanceSheetSnapshots([forged],{sortBy:'currentAssets'})).toThrow();
 });

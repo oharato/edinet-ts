@@ -877,3 +877,18 @@ readOnly私有コピーでは、初回検査の前後と再利用の都度にフ
 固定した修正SDK（私有runtimeの2,491ファイルをmanifest検査）で、同じ凍結原本・母集団・cutoffを入力とする別世代halfyear-v4-rebuild-20261030の構築を開始。旧候補、日次runtime、公開catalogは変更していない。
 
 半期期間照合の修正後、Node 26.12.1でbuild・本体型・公開NodeNext型・ESM/CJSの抽出版4が成功。全158ファイル/4,238テストが成功（420.79秒）、文書リンク540件も問題なし。全社再構築は別途継続中。
+
+
+## BS・財務明細の完全一致重複を証跡付きで採用
+
+完成候補の曖昧323値を分類し、原値・タグ/名前空間・精度・解決済み単位・期間・範囲・次元・entityが完全一致する有効候補317件を確認。独立Python/SQLite/gzip/hashlib/ElementTree処理で、314原本の候補と元XMLの原値・精度・期間/entity・全社次元・JPY単位を照合した。BS208件（日本基準203・IFRS5）と明細109件（日本基準38・IFRS71）を対象に、既存の共通完全一致判定を各専用選択器へ適用した。旧18指標の既定選択は変更していない。
+
+同じ保存原本・元の期間/範囲による323値の再生は317件採用・6件曖昧を維持。別の再生結果とも全323値の判定が一致した。残る6件は異値2件と対象外通貨4件で、丸め・合算・換算で採用しない。私有記録はambiguous-value-inventory.json、identical-duplicates-independent-xml-proof.json、all-financial-duplicates-real-replay-proof.json、financial-duplicates-real-verification-summary.json。PDF照合や修正後の全社再構築の完了を示す検証ではない。
+
+辞書版は日本基準BS2/明細9、IFRS BS3/明細2へ更新した。旧JSONの曖昧判定は読込だけで昇格させない。新しいBS採用理由は2候補以上の完全一致と採用元の一致を検査し、原値・精度・単位・名前空間・nil・理由・期間・候補数の偽造を拒否する。旧版の未完了計画とは混在させず、SDKと索引世代を組にして配布・切戻しする。
+
+検証途中の対象別npxコマンドはdata内の旧保存ソースも拾っていたため、その件数を現行版の成功件数として扱わず停止した。以降は除外設定を持つnpm testを使用。現行BSの対象別検証では505件成功・辞書版の期待値1件を修正した。全体回帰は4,263件中4,261件成功・旧期待値2件が不一致となり、流動比率の異値fixtureとIFRS cacheの辞書版を修正して関連49件の成功を確認。共有hostでは5秒制限のI/O/CLI試験がtimeoutとなったため、最終全体検証のコマンドには--testTimeout=30000を指定した。アプリ本体の処理制限や判定条件は緩めていない。
+
+半期修正版の別世代は200社・失敗0で区切り、その固定SDKと途中結果を保持。追加の重複修正を含む別の2,491ファイルのSDK候補を作成し、最終検証後に新しい計画を開始する。日次runtimeと公開catalogは変更していない。
+
+最終検証はNode 26.12.1で現行158ファイル/4,263テストが全成功（317.90秒、maxWorkers=2/testTimeout=30000）。開始時と終了時のsrc/test/scripts全461ファイルのhashが一致し、旧保存ソースは除外済み。build・本体型・公開NodeNext型・固定SDKのESM/CJS版確認も成功。文書リンク541件は問題なし。記録はfinancial-duplicates-final-regression-inputs.jsonとfinancial-duplicates-verification-summary.json。

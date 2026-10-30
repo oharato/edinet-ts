@@ -68,7 +68,7 @@ it('同じ提出者の別証券コードを異なる企業として重複比較�
  const a=entry(1,'IFRS'),b=entry(2,'IFRS',s=>s.replaceAll('E12002','E12001'));b.observation.document.edinetCode='E12001';const s=setup([a,b]);try{expect(()=>s.index.screen(cohort('IFRS'),{metricIds:['costOfSales']})).toThrow('同一企業');expect(s.index.screen({...cohort('IFRS'),docIDs:['A1']},{metricIds:['costOfSales']}).total).toBe(1);}finally{s.close();}
 });
 it.each(['nil','unit','duplicate']as const)('%sの非採用状態をSQLの除外理由と全候補に保持する',kind=>{
- const s=setup([entry(1,'J-GAAP',x=>kind==='nil'?x.replace(/<jppfs_cor:CostOfSales\b([^>]*)>10<\/jppfs_cor:CostOfSales>/,'<jppfs_cor:CostOfSales$1 xsi:nil="true"></jppfs_cor:CostOfSales>'):kind==='unit'?x.replace('iso4217:JPY','iso4217:USD'):x.replace(/(<jppfs_cor:CostOfSales\b[^>]*>10<\/jppfs_cor:CostOfSales>)/,'$1$1'))]);
+ const s=setup([entry(1,'J-GAAP',x=>kind==='nil'?x.replace(/<jppfs_cor:CostOfSales\b([^>]*)>10<\/jppfs_cor:CostOfSales>/,'<jppfs_cor:CostOfSales$1 xsi:nil="true"></jppfs_cor:CostOfSales>'):kind==='unit'?x.replace('iso4217:JPY','iso4217:USD'):x.replace(/(<jppfs_cor:CostOfSales\b[^>]*>)(10)(<\/jppfs_cor:CostOfSales>)/,(_all,open,value,close)=>open+value+close+open+'11'+close))]);
  try{const r=s.index.screen(cohort(),{metricIds:['costOfSales'],conditions:[{metric:'costOfSales',operator:'eq',value:0}]});expect(r.total).toBe(0);expect(r.excludedRows).toBe(1);expect(r.diagnostics[0]).toMatchObject({reason:{nil:'missing',unit:'unsupported',duplicate:'ambiguous'}[kind],selectionReason:{nil:'nil',unit:'unsupported-unit',duplicate:'multiple-facts'}[kind]});}finally{s.close();}
 });
 it('十進小数のguard済みnumberを元の文字列と分けてSQL比較する',()=>{
@@ -79,4 +79,10 @@ it('書込途中の失敗で新世代の行・値を全て戻し、旧世代を�
 });
 it('返す本文の破損を、正しい索引値で正常結果へ隠さない',()=>{
  const dir=mkdtempSync(join(tmpdir(),'financial-index-body-'));try{const path=join(dir,'index.sqlite'),s=setup([entry()],path);s.close();const raw=new Database(path);raw.exec("UPDATE financial_rows SET body='corrupt' WHERE group_id='details'");raw.close();const index=new FinancialSearchIndex(path);try{expect(()=>index.screen(cohort(),{metricIds:['costOfSales']})).toThrow('本文のhash');}finally{index.close();}}finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+it.each(['J-GAAP','IFRS'] as const)('%sの完全一致明細重複をSQLへ保存し、全証跡と採用理由を読取でも保持する',standard=>{
+ const tag=standard==='IFRS'?'jpigp_cor:CostOfSalesIFRS':'jppfs_cor:CostOfSales';
+ const s=setup([entry(1,standard,x=>x.replace(new RegExp('(<'+tag+'\\b[^>]*>10</'+tag+'>)'),'$1$1'))]);
+ try{const r=s.index.screen(cohort(standard),{metricIds:['costOfSales'],conditions:[{metric:'costOfSales',operator:'eq',value:10}]});expect(r.total).toBe(1);expect(r.excludedRows).toBe(0);const selected=r.rows[0].snapshot.selections.costOfSales;expect(selected).toMatchObject({status:'selected',reason:'selected-identical-duplicates',raw:'10'});expect(selected?.evidence).toHaveLength(2);}finally{s.close();}
 });

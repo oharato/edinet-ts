@@ -159,8 +159,8 @@ function normalizeCopied(value: unknown): FinancialDetailSnapshot {
             if (item.reason !== "unknown-context") entities.add(item.entity ? canonical(item.entity) : "unknown");
             if (item.reason === "unsupported-entity") entityUnsupported = true;
         }
-        // 旧JSONの曖昧という判定は保持し、新しい採用札を持つ税引前だけ完全一致を検証します。
-        const expected = expectedSelection(result.evidence, id, metadata, id === "incomeBeforeIncomeTaxes" && result.reason === "selected-identical-duplicates");
+        // 旧JSONの曖昧という判定は保持し、新しい採用理由を持つ結果は完全一致を検証します。
+        const expected = expectedSelection(result.evidence, id, metadata, result.reason === "selected-identical-duplicates");
         if (result.status !== expected.status || result.reason !== expected.reason) throw new Error("採用状態/理由と候補の記録が矛盾しています");
         if (result.status === "selected") {
             hasSelected = true;
