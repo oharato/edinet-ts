@@ -8,7 +8,7 @@ import {canonical,sha256,normalFile,readJSONSnapshot,atomicJSON} from './operati
 const format='edinet-ts-corporate-registry-archive-job-v1',reserve=34*1024**3,margin=64*1024**2;
 const helper=fileURLToPath(new URL('./stream-corporate-registry-member.py',import.meta.url));
 const digest=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
-const capacity=(db,limit)=>{const s=statfsSync(dirname(db));if(Number(s.bavail)*Number(s.bsize)<reserve+2*limit-(existsSync(db)?statSync(db).size:0)+margin)throw Error('Corporate registry capacity reserve reached')};
+const capacity=(db,limit)=>{const s=statfsSync(dirname(db));if(Number(s.bavail)*Number(s.bsize)<reserve+2*limit-(existsSync(db)?statSync(db).size:0)+margin)throw Object.assign(Error('Corporate registry capacity reserve reached'),{code:'CORPORATE_REGISTRY_CAPACITY'})};
 async function* chunks(receiptPath,entry,signal,check){
  const child=spawn('python3',[helper,'--receipt',receiptPath,'--entry',entry],{stdio:['ignore','pipe','pipe'],signal});
  let terminal=false;const exit=new Promise((done,reject)=>{child.once('error',reject);child.once('close',(code)=>{terminal=true;done(code)})});exit.catch(()=>{});
@@ -68,4 +68,4 @@ async function main(){
   try{const result=await importCorporateRegistryArchive({receiptPath:resolve(values.receipt),receiptSha256:values['receipt-sha256'],dbPath:resolve(values.db),checkpointPath:resolve(values.checkpoint),sdkPath:resolve(values.sdk),maxParts:Number(values['max-parts']),expectedDbSha256:values['expected-db-sha256'],signal:controller.signal});console.log(JSON.stringify(result))}finally{process.off('SIGINT',stop);process.off('SIGTERM',stop)}
  }finally{for(const fd of fds.reverse())closeSync(fd)}
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)main().catch(error=>{console.error('法人番号原本・固定receipt・DB・checkpoint・排他・留保容量を確認してください（入力内容は非表示）');process.exitCode=error?.exitCode??(error?.name==='AbortError'?2:1)});
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)main().catch(error=>{console.error(error?.code==='CORPORATE_REGISTRY_CAPACITY'?'法人番号取込を容量保護で停止しました。34GiB留保とDB/検査copy用の空きを確認してください（入力内容は非表示）':'法人番号原本・固定receipt・DB・checkpoint・排他・留保容量を確認してください（入力内容は非表示）');process.exitCode=error?.exitCode??(error?.name==='AbortError'?2:1)});

@@ -830,7 +830,7 @@ DB commit後にcheckpoint保存が中断しても、次回に同じパートを�
 
 別の日のreceiptを同じDBへ追加する場合は、新しいcheckpointを指定し、`--expected-db-sha256 <停止した既存DBのSHA-256>` を付けます。初回に元DBのhashと全記録監査を確認してから追記します。再開時も同じ引数を使い、過去のcheckpointとmanifestを保持してください。全件と差分のmanifestは、同じDB上のfileIdsを使って既存の再構成APIへ渡します。
 
-DBとcheckpointのロックは処理中保持します。終了コードは成功0、入力・監査・容量等の失敗1、signal中断2、排他競合75です。34GiB留保とDB640MiB上限を維持します。receiptは事前に信頼した署名検証結果をSHAで固定する入力であり、このスクリプト自身がPGP署名を再検証するものではありません。ZIPとXMLのhash・サイズ・不変は既存のstream helperで検査します。
+DBとcheckpointのロックは処理中保持します。終了コードは成功0、入力・監査・容量等の失敗1、signal中断2、排他競合75です。容量保護による停止は専用メッセージで区別し、APIでは `error.code: CORPORATE_REGISTRY_CAPACITY` を返します。34GiB留保とDB640MiB上限を維持します。receiptは事前に信頼した署名検証結果をSHAで固定する入力であり、このスクリプト自身がPGP署名を再検証するものではありません。ZIPとXMLのhash・サイズ・不変は既存のstream helperで検査します。
 
 この入口の合成ZIP/実SQLiteによる再開・追記・rollback検証と、前節の一回限りの全国取込検証は別の証拠です。実全国データでの運用入口の完走・連続差分・定期起動は残ります。
 
