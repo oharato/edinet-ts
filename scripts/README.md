@@ -72,11 +72,13 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 npm run build
 npx --no-install tsc --noEmit
 npx --no-install tsc --project test/types/tsconfig.json
-npm test -- --maxWorkers=1
+npm test -- --maxWorkers=1 --testTimeout=30000
 python3 scripts/test_artifact_store.py
 ```
 
 `data/` と `artifacts/` の固定配布物には過去のソースとテストが含まれるため、`npm test` が既定で現在のソースの検証から除外します。`test/` 以下はESM・CLI・SQLiteを含めて実行します。ESMテストが古い `dist/` を参照しないよう、先にビルドしてください。
+
+運用テストは34GiBの留保に加え、DB/検査コピー用の空き容量を確認します。小さなtmpfsを `TMPDIR` にすると容量保護で停止するため、運用テストには十分な空きのある通常のローカルディスクを使用してください。留保値やtimeoutを緩めず、固定ソース・一時領域・対象件数と失敗した実行も記録します。
 
 CLIテストは子プロセスを起動します。`spawnSync` の `error.code` が `EPERM` なら、実行環境の子プロセス制限を確認してください。終了状態だけで成功と判断せず、子プロセス起動を許可した環境で再実行します。
 
