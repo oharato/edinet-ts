@@ -669,3 +669,57 @@ ZIPを使う場合は、リポジトリの `scripts/roadmap/stream-corporate-reg
 全国全件DBや完全な展開XMLは作成せず、元ZIPの不変を確認しました。比較用に先頭2,000記録だけから作った約2.25 MBの派生入力は別に保持しています。SDK走査は固定runtimeで約538秒、独立走査は約1,307秒。共有ホスト上の一回の測定であり、他環境の性能保証ではありません。先頭2,000記録の派生入力を使った旧/新デコードの3回交互比較では、出力全byte一致で中央値約1,135→220ms、CPU約1,372→247msでした。この小標本の値を全国運用の性能保証には使いません。証跡は `data/roadmap/corporate-registry-stream-state-national-20261031/`。
 
 全国DBの保存、連続する実差分の反復・復旧運用、全EDINET法人への拡大、法人同一性の確認、利用先への反映は引き続き残工程です。
+
+
+## 全国原本から企業マスター全体を照合する
+
+保存DBを作らずマスター全体を確認する場合は、`linkCompanyMasterCorporateStreamStates` を使います。全国全件と必要な連続差分を一度ずつ検査し、対象の法人番号だけを保持します。保存DB経由の結合と同じ規則で、番号・原名称の一致、閉鎖、名称相違、番号の共有などを区別します。
+
+```mermaid
+flowchart LR
+  M[保存企業マスター] --> Q[時点・対象企業を選択]
+  Q --> N[共有番号を除いた法人番号集合]
+  X[全国全パートの原本stream] --> A[全記録・hash・重複を検査]
+  N --> A
+  A --> S[対象法人の状態を再構成]
+  S --> L[番号・原名称・閉鎖を照合]
+  Q --> L
+  L --> R[元のEDINET IDと保留理由を保持]
+```
+
+```ts
+import { linkCompanyMasterCorporateStreamStates } from "edinet-ts";
+
+const result = await linkCompanyMasterCorporateStreamStates(
+  savedMasters, streamDeliveries,
+  {
+    edinetCodes: selectedEdinetCodes,
+    asOf: "2026-10-30", knownAt: observedCutoff,
+    registryPurpose: "download"
+  },
+  savedCalendar, { signal: controller.signal }
+);
+console.log(result.rows.map(row => [row.company.edinetCode, row.reason]));
+```
+
+`streamDeliveries` は前節の `reconstructCorporateRegistryStreamStates` と同じ入力です。各パートには出典・期待SHA-256・`AsyncIterable<Uint8Array>` を渡します。ZIPの場合は生成側で署名検証済みのreceiptを確認し、XMLのstdoutに加えて生成プロセスの正常終了も確認してください。
+
+| 結果 | 意味 |
+|---|---|
+| `rows` | 元の会社情報、照合理由、番号・原名称の一致状況。対象の状態を読んだ行は `state` に原記録・coverage・出典を保持 |
+| `absentEdinetCodes` | 選択した時点とマスター条件に含まれなかった要求ID |
+| `scan` | 結合に用いた全パートの検査receipt。対象が番号なし・共有番号・不在だけの場合は原本を読まず、この項目も返さない |
+
+検索フィルタの外に同じ番号の別EDINET IDがあっても、`shared-corporate-number` として保留します。名称を正規化して一致へ変えたり、閉鎖法人の承継先を追ってIDを統合したりしません。`entityIdentity` は引き続き `not-established` です。
+
+対象IDは2万件以下、照合する異なる法人番号は1万件以下です。全国原本・保持記録・メモリ索引・状態応答には前節と同じ上限が適用されます。原記録が合計1万件を超える長期差分を渡す場合は集合を分けてください。保存DB経由の既存APIは従来どおり100 ID以下です。中断signalは原本の生成側にも渡します。
+
+### CLI
+
+```sh
+edinet-ts link-company-corporate-stream-states \
+  --master saved-masters.json --manifest stream-deliveries.json \
+  --query company-link-query.json --calendar calendar.json --pretty
+```
+
+queryは上のAPIの第3引数と同じJSON、manifestは前節の `parts(file/source/sha256)` 形式です。ファイルパスはmanifestの場所を基準に解決します。masterは64 MiB以下、query・manifestは各2 MiB以下です。XMLの全展開ファイルをCLIへ渡す場合はその保存容量も必要です。展開ファイルを作らずZIPから読む場合はAPIと前節の補助スクリプトを組み合わせます。

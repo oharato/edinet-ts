@@ -11,7 +11,7 @@ import { searchOfficerDetails } from "./officer-details";
 import { searchPolicyShareholdings } from "./policy-shareholdings";
 import { reconstructCorporateRegistryStreamStates } from "./corporate-registry-stream-state";
 import { readCorporateRegistryFileChunks } from "./corporate-registry-stream";
-import { linkCompanyMasterCorporateStates } from "./company-corporate-state";
+import { linkCompanyMasterCorporateStates,linkCompanyMasterCorporateStreamStates } from "./company-corporate-state";
 import { FacilityDetailStore } from "./db/facility-detail-store";
 import { LargeHoldingStore } from "./db/large-holding-store";
 import { searchObservedLargeHoldingReports } from "./observed-large-holding";
@@ -790,6 +790,15 @@ program.command("query-corporate-registry-store")
         finally{store?.close();}
     });
 
+function readRegistryStreamManifest(manifestPath:string) {
+ const entries=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(manifestPath,LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+ if(!Array.isArray(entries)||entries.length>100)throw Error();
+ return entries.map(d=>{
+  if(!d||typeof d!=="object"||Array.isArray(d)||Object.keys(d).some(k=>!["scope","expectedParts","parts"].includes(k))||!Array.isArray(d.parts)||d.parts.length>100)throw Error();
+  return {...d,parts:d.parts.map((p:any)=>{if(!p||typeof p!=="object"||Array.isArray(p)||Object.keys(p).some(k=>!["file","source","sha256"].includes(k))||typeof p.file!=="string"||!p.file.trim())throw Error();return {source:p.source,sha256:p.sha256,chunks:readCorporateRegistryFileChunks(path.resolve(path.dirname(manifestPath),p.file))};})};
+ });
+}
+
 function readRegistryCalendar(inputPath:string|undefined) {
     if(inputPath===undefined)return undefined;
     const file=path.resolve(inputPath),input=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(file,LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
@@ -823,13 +832,24 @@ program.command("reconstruct-corporate-registry-streams")
     .action(async options=>{
         try{
             const manifestPath=path.resolve(options.manifest),read=(file:string)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
-            const entries=read(manifestPath);if(!Array.isArray(entries)||entries.length>100)throw Error();
-            const deliveries=entries.map(d=>{
-                if(!d||typeof d!=="object"||Array.isArray(d)||Object.keys(d).some(k=>!["scope","expectedParts","parts"].includes(k))||!Array.isArray(d.parts)||d.parts.length>100)throw Error();
-                return {...d,parts:d.parts.map((p:any)=>{if(!p||typeof p!=="object"||Array.isArray(p)||Object.keys(p).some(k=>!["file","source","sha256"].includes(k))||typeof p.file!=="string"||!p.file.trim())throw Error();return {source:p.source,sha256:p.sha256,chunks:readCorporateRegistryFileChunks(path.resolve(path.dirname(manifestPath),p.file))};})};
-            });
+            const deliveries=readRegistryStreamManifest(manifestPath);
             console.log(JSON.stringify(await reconstructCorporateRegistryStreamStates(deliveries,read(options.query),readRegistryCalendar(options.calendar)),null,options.pretty?2:undefined));
         }catch{console.error("全国全パートの通常ファイル・hash・対象法人/対象日/cutoffを確認してください（入力内容は非表示）");process.exitCode=1;}
+    });
+
+program.command("link-company-corporate-stream-states")
+    .description("全国原本を一度検査して企業マスターと番号・原名称を照合します")
+    .requiredOption("--master <path>", "保存したCompanyMasterSnapshotのJSON配列")
+    .requiredOption("--manifest <path>", "scope/expectedParts/parts(file/source/sha256)のJSON配列")
+    .requiredOption("--query <path>", "2万件以下のedinetCodes/asOf/knownAt/registryPurposeと任意のマスター条件")
+    .option("--calendar <path>", "保存した未作成日カレンダーのJSON")
+    .option("--pretty", "JSONを整形")
+    .action(async options=>{
+        try{
+            const read=(file:string,bytes=LOCAL_IMPORT_LIMITS.manifestBytes)=>JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(readRegularFile(path.resolve(file),bytes).bytes));
+            const result=await linkCompanyMasterCorporateStreamStates(read(options.master,LOCAL_IMPORT_LIMITS.sourceBytes),readRegistryStreamManifest(path.resolve(options.manifest)),read(options.query),readRegistryCalendar(options.calendar));
+            console.log(JSON.stringify(result,null,options.pretty?2:undefined));
+        }catch{console.error("企業マスター・全国全パート・hash・対象企業/対象日/cutoffを確認してください（入力内容は非表示）");process.exitCode=1;}
     });
 
 program.command("link-company-corporate-states")

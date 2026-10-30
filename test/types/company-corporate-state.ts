@@ -5,3 +5,12 @@ const result:CompanyCorporateStateResult=linkCompanyMasterCorporateStates([],sto
 const identity:'not-established'=result.entityIdentity;
 const rows:CompanyCorporateStateLink[]=result.rows;
 void [identity,rows];store.close();
+
+import {linkCompanyMasterCorporateStreamStates,type CompanyCorporateStreamStateResult,type CorporateRegistryStateResult} from '../../dist/index.js';
+async function checkStream(){
+ const result:CompanyCorporateStreamStateResult=await linkCompanyMasterCorporateStreamStates([],[],query);
+ const state:CorporateRegistryStateResult|undefined=result.rows[0]?.state;
+ const completed:true|undefined=result.scan?.allPartsCompleted;
+ void [state,completed];
+}
+void checkStream;

@@ -167,8 +167,8 @@ export type {CorporateRegistryStreamReceipt,CorporateRegistryStreamOptions} from
 export {CorporateRegistryStore} from "./db/corporate-registry-store";
 export type {CorporateRegistryStoredFile,CorporateRegistryFileImport,CorporateRegistryStoredQuery,CorporateRegistryStoredDelivery,CorporateRegistryStoredStateResult} from "./db/corporate-registry-store";
 
-export {linkCompanyMasterCorporateStates} from "./company-corporate-state";
-export type {CompanyCorporateStateQuery,CompanyCorporateStateLinkReason,CompanyCorporateStateLink,CompanyCorporateStateResult} from "./company-corporate-state";
+export {linkCompanyMasterCorporateStates,linkCompanyMasterCorporateStreamStates} from "./company-corporate-state";
+export type {CompanyCorporateStreamStateResult,CompanyCorporateStateQuery,CompanyCorporateStateLinkReason,CompanyCorporateStateLink,CompanyCorporateStateResult} from "./company-corporate-state";
 
 export {reconstructCorporateRegistryStreamStates} from "./corporate-registry-stream-state";
 export type {CorporateRegistryStreamPart,CorporateRegistryStreamDelivery,CorporateRegistryStreamStateQuery,CorporateRegistryStreamStateResult} from "./corporate-registry-stream-state";
