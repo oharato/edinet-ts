@@ -132,7 +132,7 @@ async function main(){
             normalFile(daily.envPath);loadEnv({path:daily.envPath,quiet:true});if(!process.env.EDINET_API_KEY)throw Error('Source acquisition credentials are missing');
             const client=new EdinetXbrlDownloader({rootDir:join(dirname(prepared.configPath),'provider-cache'),requestTimeoutMs:60000,maxRetries:0});return (docID,request)=>client.fetchXbrl(docID,request);
         }}):prepared;
-        if(result.status==='acquired')result=await buildReconstructedFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal});
+        if(result.status==='acquired')result=await buildReconstructedFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal,maxCompanies:100});
         console.log(JSON.stringify(result));if(result.status==='aborted')process.exitCode=1;
     }
     finally{process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop)}

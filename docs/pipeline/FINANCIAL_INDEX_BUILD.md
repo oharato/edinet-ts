@@ -131,6 +131,8 @@ finishはpending/failedが一つでもあれば拒否します。条件/DB/指�
 
 ## 再構築済みの日次候補をまとめて構築する
 
+通常の日次入口 `scripts/roadmap/run-daily-financial-preparation.mjs` も、取得完了後の構築を一回100社で区切ります。101社の合成母集団で、実際の二重ロック下のCLIが100社で部分終了し、次の呼出しで残り1社を同じ入力指紋・同じ構築recipeのbyte列で完了することを確認しています。ライブラリAPIの既定20社は維持します。CLIの終了0だけで完了とせず、`status` と残件数を確認してください。既に凍結した候補は、その入力に固定したruntimeで再開します。
+
 `scripts/roadmap/build-prepared-financial-cycle.mjs` は、再構築receiptがある固定候補の索引を進めます。一回の上限は既定100社、指定可能な範囲は1〜100社です。同じSDK・構築script・固定configを使い、処理社数だけを引数で変えるため、既存の入力指紋と会社別checkpointを引き継げます。品質集計は公開承認とは別です。
 
 呼出元が既存runnerと同じ順序で、候補ルートとmetadata checkpointの排他を保持します。`--locked` 自体はロックを取得しません。
