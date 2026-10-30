@@ -33,7 +33,12 @@ export async function importCorporateRegistryArchive({receiptPath,receiptSha256,
  if(canonical(Object.fromEntries(Object.keys(binding).map(k=>[k,state[k]])))!==canonical(binding)||!Array.isArray(state.files)||state.files.length>receipt.parts.length)throw Error('Checkpoint belongs to another input');
  const validate=(file,i)=>{const p=receipt.parts[i],source={...receipt.source,sourceUrl:new URL(receipt.source.sourceUrl).href,observedAt:new Date(receipt.source.observedAt).toISOString()};if(file.id!==sha256(canonical([source,p.entry]))||file.sha256!==p.xmlSha256||file.bytes!==p.xmlBytes||file.part!==p.entry||canonical(file.source)!==canonical(source))throw Error('Checkpoint differs from verified part')};
  state.files.forEach(validate);
- if(state.files.length){const reader=new Store(dbPath,{readOnly:true});try{for(const file of state.files)if(canonical(reader.file(file.id))!==canonical(file))throw Error('Checkpoint differs from audited database')}finally{reader.close()}}
+ let deliveryValidated=false;
+ const audit=()=>{const reader=new Store(dbPath,{readOnly:true});try{
+  for(const file of state.files)if(canonical(reader.file(file.id))!==canonical(file))throw Error('Checkpoint differs from audited database');
+  if(state.files.length===receipt.parts.length){reader.reconstruct([{scope:'national',expectedParts:receipt.parts.length,fileIds:state.files.map(f=>f.id)}],{corporateNumber:'1010001001202',asOf:receipt.source.dataDate,knownAt:receipt.source.observedAt,registryPurpose:receipt.source.purpose});deliveryValidated=true}
+ }finally{reader.close()}};
+ if(state.files.length)audit();
  if(!present&&existsSync(dbPath)){
   if(!expectedDbSha256)throw Error('Existing DB requires its original checkpoint or explicit base hash');
   const before=statSync(normalFile(dbPath),{bigint:true}),hash=createHash('sha256');
@@ -43,13 +48,14 @@ export async function importCorporateRegistryArchive({receiptPath,receiptSha256,
   if(hash.digest('hex')!==expectedDbSha256||[before.dev,before.ino,before.size,before.mtimeNs,before.ctimeNs].join(':')!==[after.dev,after.ino,after.size,after.mtimeNs,after.ctimeNs].join(':'))throw Error('Base database differs from expected hash');
   const reader=new Store(dbPath,{readOnly:true});try{reader.query({corporateNumber:'1010001001202',knownAt:receipt.source.observedAt,registryPurpose:receipt.source.purpose,limit:0})}finally{reader.close()}
  }else if(!present&&expectedDbSha256)throw Error('Expected base database is missing');
- const save=()=>{if(readJSONSnapshot(receiptPath).sha256!==receiptSha256)throw Error('Receipt changed during import');atomicJSON(checkpointPath,{...binding,files:state.files,status:state.files.length===receipt.parts.length?'complete':'pending',manifest:{scope:'national',expectedParts:receipt.parts.length,fileIds:state.files.map(f=>f.id)}},{createOnly:!existsSync(checkpointPath)})};
+ const save=()=>{if(readJSONSnapshot(receiptPath).sha256!==receiptSha256)throw Error('Receipt changed during import');atomicJSON(checkpointPath,{...binding,files:state.files,status:deliveryValidated?'complete':'pending',deliveryValidated,manifest:{scope:'national',expectedParts:receipt.parts.length,fileIds:state.files.map(f=>f.id)}},{createOnly:!existsSync(checkpointPath)})};
  if(!present)save();
  let store;
  try{if(state.files.length<receipt.parts.length){store=new Store(dbPath);let imported=0;
   while(state.files.length<receipt.parts.length&&imported++<maxParts){signal?.throwIfAborted();capacity(dbPath,limit);const part=receipt.parts[state.files.length],result=await store.importChunks({source:receipt.source,part:part.entry,sha256:part.xmlSha256,chunks:chunks(receiptPath,part.entry,signal,()=>capacity(dbPath,limit))},{signal});validate(result.file,state.files.length);state.files.push(result.file);save()}
  }else save();
  }finally{store?.close()}
+ if(state.files.length===receipt.parts.length&&!deliveryValidated){audit();save()}
  return readJSONSnapshot(checkpointPath).value;
 }
 async function main(){
