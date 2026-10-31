@@ -8,7 +8,11 @@ import { SortOrder } from "./financial-options";
 export const SubsidiaryHumanCapitalLabelOperator = Object.freeze({ Equal: "eq", Contains: "contains" } as const);
 export type SubsidiaryHumanCapitalLabelOperator = typeof SubsidiaryHumanCapitalLabelOperator[keyof typeof SubsidiaryHumanCapitalLabelOperator];
 export const SUBSIDIARY_HUMAN_CAPITAL_LABEL_LIMITS = Object.freeze({ documents: 100, conditions: 100, candidates: 10000 });
-const namespace = "http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2025-11-01/jpcrp_cor";
+/** @internal Only reviewed taxonomy editions; do not infer compatible dates. */
+export function isSubsidiaryHumanCapitalNamespace(value: string | undefined): value is string {
+    return value === "http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2025-11-01/jpcrp_cor" ||
+        value === "http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2024-11-01/jpcrp_cor";
+}
 const tag = "ConsolidatedSubsidiariesMetricsOfConsolidatedSubsidiaries";
 export interface SubsidiaryHumanCapitalLabelMetadata { docID: string; instant: string; secCode?: string; }
 export interface SubsidiaryHumanCapitalLabelDocument { xml: string; metadata: SubsidiaryHumanCapitalLabelMetadata; }
@@ -104,7 +108,7 @@ export function selectSubsidiaryHumanCapitalLabels(inputMetadata: SubsidiaryHuma
         if (factKey.split(":").at(-1) !== tag) continue;
         for (const fact of list) {
             if (candidates.length >= SUBSIDIARY_HUMAN_CAPITAL_LABEL_LIMITS.candidates) throw new Error("ラベル候補は10000件以下です");
-            const context = contexts.get(fact.contextRef);
+            const context = contexts.get(fact.contextRef), namespace = fact.namespaceURI;
             let traceRef = traceIndexes.get(fact.contextRef);
             if (traceRef === undefined) {
                 const trace = fact.contextRef.trim() ? traceContext(fact.contextRef) : { contextId: fact.contextRef, status: "missing" as const,
@@ -126,7 +130,7 @@ export function selectSubsidiaryHumanCapitalLabels(inputMetadata: SubsidiaryHuma
                 const entries = trace.candidates[0].dimensions;
                 const entry = entries[0];
                 if (entries.length !== 1 || !entry || entry.location !== "scenario" || entry.kind !== "explicit" || entry.axis.status !== "resolved" || entry.member.status !== "resolved" ||
-                    entry.axis.namespaceURI !== namespace || entry.axis.localName !== "SequentialNumbersAxis" || entry.member.namespaceURI !== namespace ||
+                    !isSubsidiaryHumanCapitalNamespace(namespace) || entry.axis.namespaceURI !== namespace || entry.axis.localName !== "SequentialNumbersAxis" || entry.member.namespaceURI !== namespace ||
                     !/^Row(?:[1-9]|[1-9]\d|[12]\d{2}|300)Member$/.test(entry.member.localName ?? "")) evidence.reason = "unsupported-dimensions";
                 else {
                     dimensions = [{ axisNamespaceURI: namespace, axis: "SequentialNumbersAxis", memberNamespaceURI: namespace, member: entry.member.localName! }];

@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {isSubsidiaryHumanCapitalNamespace} from './subsidiary-human-capital-labels';
 import {parseDisclosureTableFragment,type DisclosureTable} from './disclosure-tables';
 import type {EdinetData} from './edinet-xbrl-object';
 import type {FinancialReportingBasis} from './financial-reporting-basis';
@@ -6,11 +7,12 @@ import type {ChildcareCalculationMethod,SubsidiaryHumanCapitalAnnotation,Subsidi
 
 export interface SubsidiaryHumanCapitalAutoNoteEvidence {
  rowKey:string;metric:SubsidiaryHumanCapitalMetricId;tableIndex:number;row:number;cellIndex:number;
+ referenceCellIndex?:number;referenceCellText?:string;
  noteNumber:number;noteText:string;cellText:string;proof:SubsidiaryHumanCapitalNoteProof;
  annotation:SubsidiaryHumanCapitalAnnotation;
 }
 export interface SubsidiaryHumanCapitalNoteInterpretation {
- version:'1';status:'matched'|'unresolved';reason?:string;proof?:SubsidiaryHumanCapitalNoteProof;
+ version:'2';status:'matched'|'unresolved';reason?:string;proof?:SubsidiaryHumanCapitalNoteProof;
  reportingPeriod?:{startDate:string;endDate:string};
  matched:SubsidiaryHumanCapitalAutoNoteEvidence[];
  unresolved:{rowKey:string;metric:SubsidiaryHumanCapitalMetricId;reason:string}[];
@@ -22,7 +24,8 @@ const ordinance=normal('「育児休業、介護休業等育児又は家族介�
 function method(text:string):ChildcareCalculationMethod|undefined {
  const s=normal(text);
  if(s===women)return 'womens-act';
- if([ordinance+'第71条の6第2号',ordinance+'第71条の6の第2号'].some(prefix=>s===prefix+'における育児休業等及び育児目的休暇の取得割合を算出したものであります。'))return 'ordinance-item2';
+ for(const [number,description,value] of [['1','育児休業等','ordinance-item1'],['2','育児休業等及び育児目的休暇','ordinance-item2']] as const)
+  if([ordinance+`第71条の6第${number}号`,ordinance+`第71条の6の第${number}号`].some(prefix=>s===prefix+`における${description}の取得割合を算出したものであります。`))return value;
 }
 function references(text:string):number[]{
  return [...new Set([...normal(text).matchAll(/\(注\)?(\d{1,2}(?:[、,]\d{1,2})*)\)?/g)].flatMap(m=>m[1].split(/[、,]/).map(Number)))];
@@ -30,7 +33,7 @@ function references(text:string):number[]{
 function footnotes(text:string):Map<number,string|undefined>{
  const lines=text.normalize('NFKC').split('\n'),kept:string[]=[];
  for(const line of lines){if(/^\s*\(\d+\)/.test(line))break;kept.push(line);}
- const scope=kept.join('\n'),starts=[...scope.matchAll(/(?:^|\n)\s*(?:\(注\)\s*)?(\d{1,2})[.．]/g)],notes=new Map<number,string|undefined>();
+ const scope=kept.join('\n'),starts=[...scope.matchAll(/(?:^|\n)\s*(?:\(注\)\s*)?(\d{1,2})(?:[.．]|[ \t]+)/g)],notes=new Map<number,string|undefined>();
  for(let i=0;i<starts.length;i++){
   const m=starts[i],id=Number(m[1]),body=scope.slice(m.index!+m[0].length,starts[i+1]?.index??scope.length).trim();
   notes.set(id,notes.has(id)||body.length>4096?undefined:body);
@@ -38,10 +41,11 @@ function footnotes(text:string):Map<number,string|undefined>{
  return notes;
 }
 const cell=(t:DisclosureTable,r:number,c:number)=>{const index=t.grid[r]?.[c];return index===null||index===undefined?undefined:t.cells[index];};
-function layout(t:DisclosureTable):'split-workers'|'two-methods'|undefined {
+function layout(t:DisclosureTable):'split-workers'|'two-methods'|'row-method'|undefined {
  const h=(r:number,c:number)=>normal(cell(t,r,c)?.parsedText??'');
  if(t.grid.length<4||h(0,0)!=='当事業年度'||h(1,0)!=='名称'||!h(1,1).includes('女性労働者の割合')||!h(1,2).startsWith('男性労働者の育児休業取得率(%)'))return;
  if(t.grid[0].length===8&&cell(t,1,2)?.columnSpan===3&&h(2,2)==='全労働者'&&h(2,3)==='正規労働者'&&h(2,4)==='非正規労働者'&&h(1,5).startsWith('労働者の男女の賃金の額の差異(%)')&&h(2,5)==='全労働者'&&h(2,6)==='うち正規労働者'&&h(2,7)==='うち非正規労働者')return 'split-workers';
+ if(t.grid[0].length===9&&cell(t,1,2)?.columnSpan===4&&h(2,2)==='全労働者'&&h(2,3)==='正規労働者'&&h(2,4)==='非正規労働者'&&h(2,5)===''&&h(1,6).startsWith('労働者の男女の賃金の差異(%)')&&h(2,6)==='全労働者'&&h(2,7)==='うち正規労働者'&&h(2,8)==='うち非正規労働者')return 'row-method';
  if(t.grid[0].length===7&&cell(t,1,2)?.columnSpan===2&&h(2,2).startsWith('育児休業取得率(%)')&&h(2,3).startsWith('育児休業等及び育児目的休暇の取得率(%)')&&h(1,4).startsWith('労働者の男女の賃金の差異(%)')&&h(2,4)==='全労働者'&&h(2,5)==='正規雇用労働者'&&h(2,6)==='パート・有期労働者')return 'two-methods';
 }
 function fraction(s:string):{n:bigint;d:bigint}|undefined{
@@ -59,10 +63,11 @@ function equalPercent(raw:string,text:string):boolean{
 }
 /** Internal: classify only the reviewed layouts and exact note sentences. Unknown links stay unconfirmed. */
 export function interpretSubsidiaryHumanCapitalNotes(base:SubsidiaryHumanCapitalMetricsExtraction,notes:readonly EdinetData[],basis:FinancialReportingBasis|undefined){
- const annotations:SubsidiaryHumanCapitalAnnotation[]=[],interpretation:SubsidiaryHumanCapitalNoteInterpretation={version:'1',status:'unresolved',matched:[],unresolved:[]};
+ const annotations:SubsidiaryHumanCapitalAnnotation[]=[],interpretation:SubsidiaryHumanCapitalNoteInterpretation={version:'2',status:'unresolved',matched:[],unresolved:[]};
  const unavailable=(reason:string)=>{interpretation.reason=reason;return{annotations,interpretation};};
  const note=notes[0];
- if(notes.length!==1||note.namespaceURI!=='http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2025-11-01/jpcrp_cor'||note.nil||note.unitRef||typeof note.rawValue!=='string')return unavailable('note-unavailable');
+ if(notes.length!==1||!isSubsidiaryHumanCapitalNamespace(note.namespaceURI)||note.nil||note.unitRef||typeof note.rawValue!=='string')return unavailable('note-unavailable');
+ if(base.rows.some(r=>r.label.status==='selected'&&r.label.dimensions?.[0]?.axisNamespaceURI!==note.namespaceURI))return unavailable('taxonomy-mismatch');
  const fields=basis?.fields,ends=fields?[fields.fiscalYearEnd,fields.currentPeriodEnd,fields.currentPeriodType,fields.fiscalYearStart]:[];
  if(ends.length!==4||ends.some(f=>f.status!=='selected')||!base.submitterEntity)return unavailable('period-unbound');
  const [fy,end,type,start]=ends;
@@ -72,7 +77,7 @@ export function interpretSubsidiaryHumanCapitalNotes(base:SubsidiaryHumanCapital
  const proof:SubsidiaryHumanCapitalNoteProof={key:'jpcrp_cor:InformationAboutEmployeesTextBlock',contextRef:note.contextRef,rawSha256:createHash('sha256').update(note.rawValue).digest('hex')};interpretation.proof=proof;
  let parsed:ReturnType<typeof parseDisclosureTableFragment>;
  try{parsed=parseDisclosureTableFragment(note.rawValue,true);}catch{return unavailable('unsupported-fragment');}
- type Located={table:DisclosureTable;row:number;kind:'split-workers'|'two-methods';notes:Map<number,string|undefined>};
+ type Located={table:DisclosureTable;row:number;kind:'split-workers'|'two-methods'|'row-method';notes:Map<number,string|undefined>};
  const located=new Map<string,Located[]>();
  for(let i=0;i<parsed.tables.length;i++){
   const first=parsed.tables[i],kind=layout(first);if(!kind)continue;
@@ -97,19 +102,20 @@ export function interpretSubsidiaryHumanCapitalNotes(base:SubsidiaryHumanCapital
    const miss=(reason:string)=>interpretation.unresolved.push({rowKey:r.label.rowKey!,metric,reason});
    if(labels.get(key)!==1||ambiguousLabels.has(key)||matches.length!==1){miss(matches.length?'ambiguous-row':'row-unmatched');continue;}
    const {table,row,kind,notes}=matches[0];
-   const columns:Partial<Record<SubsidiaryHumanCapitalMetricId,number[]>>=kind==='split-workers'?{femaleManagerRatio:[1],maleChildcareLeaveReportedAllRatio:[2],maleChildcareLeaveReportedRegularRatio:[3],maleChildcareLeaveReportedNonRegularRatio:[4],genderWageAllRatio:[5],genderWageRegularRatio:[6],genderWageNonRegularRatio:[7]}:{femaleManagerRatio:[1],maleChildcareLeaveReportedAllRatio:[2,3],genderWageAllRatio:[4],genderWageRegularRatio:[5],genderWageNonRegularRatio:[6]};
+   const columns:Partial<Record<SubsidiaryHumanCapitalMetricId,number[]>>=kind==='row-method'?{femaleManagerRatio:[1],maleChildcareLeaveReportedAllRatio:[2],maleChildcareLeaveReportedRegularRatio:[3],maleChildcareLeaveReportedNonRegularRatio:[4],genderWageAllRatio:[6],genderWageRegularRatio:[7],genderWageNonRegularRatio:[8]}:kind==='split-workers'?{femaleManagerRatio:[1],maleChildcareLeaveReportedAllRatio:[2],maleChildcareLeaveReportedRegularRatio:[3],maleChildcareLeaveReportedNonRegularRatio:[4],genderWageAllRatio:[5],genderWageRegularRatio:[6],genderWageNonRegularRatio:[7]}:{femaleManagerRatio:[1],maleChildcareLeaveReportedAllRatio:[2,3],genderWageAllRatio:[4],genderWageRegularRatio:[5],genderWageNonRegularRatio:[6]};
    const candidates=(columns[metric]??[]).flatMap(column=>{
     const data=cell(table,row,column);if(!data||data.row!==row||data.rowSpan!==1||data.columnSpan!==1||data.nestedTableCount)return[];
     const nil=s.reason==='nil',text=displayed(data.parsedText);if(nil?!['-','―','—','−',''].includes(text):!('raw'in s)||typeof s.raw!=='string'||!equalPercent(s.raw,data.parsedText))return[];
     return[{column,data,cellIndex:table.grid[row][column]!}];
    });
    if(candidates.length!==1){miss(candidates.length?'ambiguous-column':'value-unmatched');continue;}
-   const {column,data,cellIndex}=candidates[0];let found=false;
-   const add=(annotation:SubsidiaryHumanCapitalAnnotation,noteNumber:number,noteText:string)=>{annotations.push(annotation);interpretation.matched.push({rowKey:r.label.rowKey!,metric,tableIndex:table.index,row,cellIndex,noteNumber,noteText,cellText:data.parsedText,proof,annotation});found=true;};
+   const {column,data,cellIndex}=candidates[0],methodReference=kind==='row-method'?cell(table,row,5):undefined;let found=false;
+   const add=(annotation:SubsidiaryHumanCapitalAnnotation,noteNumber:number,noteText:string)=>{annotations.push(annotation);interpretation.matched.push({rowKey:r.label.rowKey!,metric,tableIndex:table.index,row,cellIndex,noteNumber,noteText,cellText:data.parsedText,...(annotation.kind==='childcare-method'&&methodReference?{referenceCellIndex:table.grid[row][5]!,referenceCellText:methodReference.parsedText}:{}),proof,annotation});found=true;};
    const refs=references(data.parsedText),nonapp=refs.filter(id=>notes.get(id)!==undefined&&normal(notes.get(id)!)==='対象となる従業員はおりません。');
    if(s.reason==='nil'&&nonapp.length===1)add({kind:'unavailable',rowKey:r.label.rowKey!,metric,state:'not-applicable',proof},nonapp[0],notes.get(nonapp[0])!);
    if(isChild&&!nonapp.length){
-    const headerRefs=[...new Set([0,1,2].flatMap(header=>references(cell(table,header,column)?.parsedText??'')))];
+    const rowMethod=methodReference;
+    const headerRefs=kind==='row-method'?(rowMethod&&rowMethod.row===row&&rowMethod.rowSpan===1&&rowMethod.columnSpan===1&&!rowMethod.nestedTableCount&&/^\(注\)?\d{1,2}\)?$/.test(normal(rowMethod.parsedText))?references(rowMethod.parsedText):[]):[...new Set([0,1,2].flatMap(header=>references(cell(table,header,column)?.parsedText??'')))];
     const methods=headerRefs.flatMap(id=>{const text=notes.get(id),value=text===undefined?undefined:method(text);return value?[{id,text:text!,value}]:[];});
     if(methods.length===1)add({kind:'childcare-method',rowKey:r.label.rowKey!,metric,method:methods[0].value,proof},methods[0].id,methods[0].text);
    }

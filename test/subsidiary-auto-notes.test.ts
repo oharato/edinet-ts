@@ -2,11 +2,13 @@ import {describe,it,expect} from 'vitest';
 import {extractSubsidiaryHumanCapitalMetrics as extract,screenSubsidiaryHumanCapitalMetrics as screen,SubsidiaryHumanCapitalMetricId as M} from '../src/subsidiary-human-capital-metrics';
 import {EdinetXbrlObject} from '../src/edinet-xbrl-object';
 import {parseDisclosureTableFragment} from '../src/disclosure-tables';
-import {subsidiaryDocument} from './fixtures/subsidiary-metrics';
+import {subsidiaryDocument,proof as fixtureProof} from './fixtures/subsidiary-metrics';
 const women='「女性の職業生活における活躍の推進に関する法律」（平成27年法律第64号）の規定に基づき算出したものであります。';
 const ordinance='「育児休業、介護休業等育児又は家族介護を行う労働者の福祉に関する法律」（平成3年法律第76号）の規定に基づき、「育児休業、介護休業等育児又は家族介護を行う労働者の福祉に関する法律施行規則」（平成3年労働省令第25号）第71条の6第2号における育児休業等及び育児目的休暇の取得割合を算出したものであります。';
 function table(name='合成子会社',nil=false){return `<table><tr><td colspan="8">当事業年度</td></tr><tr><td rowspan="2">名称</td><td rowspan="2">管理的地位にある労働者に占める女性労働者の割合（％）（注）1</td><td colspan="3">男性労働者の育児休業取得率（％）（注）2</td><td colspan="3">労働者の男女の賃金の額の差異（％）（注）1、3</td></tr><tr><td>全労働者</td><td>正規労働者</td><td>非正規労働者</td><td>全労働者</td><td>うち正規労働者</td><td>うち非正規労働者</td></tr><tr><td>${name}</td><td>10</td><td>120</td><td>100</td><td>0</td><td>75</td><td>80</td><td>${nil?'－（注）5':'60'}</td></tr></table>`;}
 function dual(left='120',right='150'){return `<table><tr><td colspan="7">当事業年度</td></tr><tr><td rowspan="2">名称</td><td rowspan="2">管理職に占める女性労働者の割合(％)(注1,2)</td><td colspan="2">男性労働者の育児休業取得率(％)(注2)</td><td colspan="3">労働者の男女の賃金の差異(％)(注1,2,4,5)</td></tr><tr><td>育児休業取得率(％)(注1)</td><td>育児休業等及び育児目的休暇の取得率(％)(注3)</td><td>全労働者</td><td>正規雇用労働者</td><td>パート・有期労働者</td></tr><tr><td>合成子会社</td><td>10</td><td>${left}</td><td>${right}</td><td>75</td><td>80</td><td>60</td></tr></table>`;}
+function rowMethod(reference='（注）2'){return table().replace('colspan="8"','colspan="9"').replace('colspan="3">男性','colspan="4">男性').replace('非正規労働者</td><td>全労働者','非正規労働者</td><td></td><td>全労働者').replace('<td>0</td><td>75',`<td>0</td><td>${reference}</td><td>75`).replace('賃金の額','賃金');}
+const rowNotes=`<p>（注）1　${women}</p><p>2　${ordinance.replace('第2号','第1号').replace('育児休業等及び育児目的休暇','育児休業等')}</p><p>3　${ordinance}</p>`;
 const dualNotes=`<p>(注)1．${women}</p><p>2．当連結会計年度における実績です。</p><p>3．${ordinance}</p>`;
 const notes=`<p>（注）1．${women}</p><p>2．${ordinance}</p><p>3．男女の賃金の差異です。</p><p>5．対象となる従業員はおりません。</p>`;
 function doc(raw='<p>連結子会社</p>'+table()+notes,nil=false){
@@ -17,6 +19,20 @@ function doc(raw='<p>連結子会社</p>'+table()+notes,nil=false){
 }
 const run=(d=doc())=>extract(d.xml,d.metadata,Object.values(M),'auto');
 describe('子会社注記の自動解釈',()=>{
+ it.each([['（注）2','ordinance-item1'],['（注）3','ordinance-item2']])('9列の行別参照 %s から %s を選び、賃金の列位置も保つ',(reference,method)=>{const r=run(doc('<p>連結子会社</p>'+rowMethod(reference)+rowNotes));expect(r.rows[0].selections[M.MaleChildcareLeaveAllRatio]).toMatchObject({status:'selected',declaration:{method}});expect(r.noteInterpretation?.matched).toHaveLength(3);expect(r.rows[0].selections[M.GenderWageAllRatio]).toMatchObject({status:'selected',raw:'0.75'});});
+ it.each(['（注）2abc','（注）9','', '（注）2、3'])('9列の行別参照 %s が不明・複数なら方法を補わない',reference=>{const r=run(doc('<p>連結子会社</p>'+rowMethod(reference)+rowNotes));expect(r.rows[0].selections[M.MaleChildcareLeaveAllRatio]?.status).toBe('reported');});
+
+ it('手動注記の確認cacheを異なるtaxonomyの行へ使い回さない',()=>{
+  const d=subsidiaryDocument('MIXED',[{name:'2025会社'},{name:'2024会社'}]),ns='xmlns:jpcrp_cor="http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2024-11-01/jpcrp_cor"';
+  d.xml=d.xml.replace('xmlns:xsi=',ns.replace('xmlns:jpcrp_cor=','xmlns:old=')+' xmlns:xsi=').replace(/<xbrli:context id="row2">[\s\S]*?<\/xbrli:context>/,context=>context.replaceAll('jpcrp_cor:','old:')).replace(/<jpcrp_cor:([^ >]+)([^>]*contextRef="row2"[^>]*)>([\s\S]*?)<\/jpcrp_cor:\1>/g,(_match,tag,attrs,text)=>`<old:${tag}${attrs}>${text}</old:${tag}>`);
+  const base=extract(d.xml,d.metadata);expect(base.rows.filter(r=>r.label.status==='selected')).toHaveLength(2);
+  const ordered=['2025-11-01','2024-11-01'].map(year=>base.rows.find(r=>r.label.dimensions?.[0]?.axisNamespaceURI.includes(year))!);
+  const annotations=ordered.map(r=>({kind:'childcare-method' as const,rowKey:r.label.rowKey!,metric:M.MaleChildcareLeaveAllRatio,method:'ordinance-item2' as const,proof:fixtureProof}));
+  expect(()=>extract(d.xml,d.metadata,Object.values(M),annotations)).toThrow(/注記/);
+ });
+ it('確認済み2024年版の行・数値・注記も同一taxonomy内で対応する',()=>{const d=doc();d.xml=d.xml.replaceAll('2025-11-01','2024-11-01');const r=run(d);expect(r.rows[0].label.status).toBe('selected');expect(r.rows[0].selections[M.MaleChildcareLeaveAllRatio]).toMatchObject({status:'selected',declaration:{method:'ordinance-item2'}});expect(r.noteInterpretation?.matched).toHaveLength(3);});
+ it.each(['metric','note','axis'])('2024/2025の%sが混在した根拠を対応させない',kind=>{const d=doc();d.xml=d.xml.replace('xmlns:xsi=','xmlns:old="http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2024-11-01/jpcrp_cor" xmlns:xsi=');if(kind==='metric')d.xml=d.xml.replaceAll('jpcrp_cor:AllEmployeesRatioOfMaleEmployeesTakingChildcareLeaveMetricsOfConsolidatedSubsidiaries','old:AllEmployeesRatioOfMaleEmployeesTakingChildcareLeaveMetricsOfConsolidatedSubsidiaries');if(kind==='note')d.xml=d.xml.replace('<jpcrp_cor:InformationAboutEmployeesTextBlock ', '<jpcrp_cor:InformationAboutEmployeesTextBlock xmlns:jpcrp_cor="http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2024-11-01/jpcrp_cor" ');if(kind==='axis')d.xml=d.xml.replaceAll('jpcrp_cor:SequentialNumbersAxis','old:SequentialNumbersAxis').replaceAll('jpcrp_cor:Row1Member','old:Row1Member');const r=run(d);expect(r.rows[0].selections[M.MaleChildcareLeaveAllRatio]?.status).not.toBe('selected');expect(r.noteInterpretation?.matched.filter(e=>e.metric===M.MaleChildcareLeaveAllRatio)).toHaveLength(0);});
+
  it('既定動作を変えず、列・注記・原値が一致した育休方法を付ける',()=>{
   const d=doc();expect(extract(d.xml,d.metadata).rows[0].selections[M.MaleChildcareLeaveAllRatio]?.status).toBe('reported');
   const r=run(d);expect(r.rows[0].selections[M.MaleChildcareLeaveAllRatio]).toMatchObject({status:'selected',declaration:{method:'ordinance-item2',origin:'automatic-rule'}});
