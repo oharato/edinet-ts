@@ -10,6 +10,9 @@
 
 初回区間のCPU診断後、行の再コピー削減/UTF-8バイト計算の候補（関連152件成功）と、列単位読取の候補（関連153件・build・公開型成功）を別環境で試しました。UTF-8・整数範囲・重複列名・行順・空結果は維持していますが、交互測定は前者1.261〜1.306、後者1.183〜1.298で、いずれも5組すべての条件を満たしません。候補は本体へ採用せず、ローカルbranch `candidate/reader-initial-045cad93956f` / `candidate/reader-initial-61c7b7872660` と `data/roadmap/prior-taxonomy-initial-candidate-20261031/` / `prior-taxonomy-initial-columnar-20261031/` にソース・patch・全測定を保持しました。追加の初回限定profileは `prior-taxonomy-initial-columnar-profile-20261031/`。初回監査のDB処理とJSON処理を引き続き改善し、固定基準で再測定します。
 
+
+準備済みSQLを最大8種類だけ保持する追加候補も検証しました。引数の毎回消去・型変更・不足引数・失敗後再実行・close待機を含む関連60テスト、build・公開型は成功。初回5組の比は1.187/1.409/1.248/1.209/1.235で4組のみ合格、全体中央値比1.24836でも全組合格条件は満たしません。本体未採用とし、ローカルbranch `candidate/reader-prepared-20261031`（`c9e55cc`）と `data/roadmap/prior-taxonomy-initial-prepared-20261031/` に保持。全20結果の品質hash、766ソース・262配布・元DB不変、専用scratch削除を確認しました。
+
 ## 前年度対応を含む全5,307件と配布・利用先の再検証（2026-10-31）
 
 前年度taxonomy・行別算定注記のルール版2までを含む766ファイルを私有snapshot `e841fd9` へ固定しました。Node 26.12.1で全246ファイル・5,307テストが一回ですべて成功（失敗/skip0、1 worker、既定30秒・既存個別timeoutを保持）。独立検査でも全test集合と収集/実行集合、全ケースの成功が一致し、766ソース・262配布ファイル・旧SDK227ファイルのhashは不変。終了時の元ツリー差分/追加src/test/scriptsも0です。同じ固定ソースのbuild・公開型・Python6件も成功しています。
