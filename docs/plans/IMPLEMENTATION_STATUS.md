@@ -6,7 +6,11 @@
 
 同じ固定版からpackageを作り、optional依存なし/native依存ありの2環境へoffline新規インストールしました。両環境で全265ファイルのhash、ESM/CJS・公開型、設備実原本の13 CLI呼出し・8検索・6行が一致。人的資本も実2原本37行・算定方法92件・非該当9件が既存の独立XML/PDF照合と一致し、既定/手動出力とCLI/API一致を保持しました。native DuckDB v2.0.0の実SQLも成功。package SHAは `53c49de90d1166bf784ca194fc917c031c65f93175c9253aceb3b12dde63dcad`、専用RAM最大255,057,920 bytesで削除済みです。
 
-証跡は `data/roadmap/auto-notes-combined-full-20261031/` と `auto-notes-installed-20261031/` のcompletion/independent-audit。原本変更・追加HTTP0です。この最新版のstock-data利用先回帰・正式配布/切替、全社再構築・品質/性能gate・実連続日次と各機能の未対応範囲は残ります。過去の固定packageや限定標本の成功を、最新利用先・全市場の完成とは扱いません。
+同じ最新packageを、後続のnative driver混在拒否を含むstock-data移行候補へ接続しました。SDKと依存をRAM、結合テストDBを上限96MiBの通常ディスクへ分け、34GiB留保を維持。固定lock・offline/remote禁止・scripts無効で候補/旧SDKをそれぞれ新規インストールし、両方の10ファイル64テストと型検査、候補の保存保護14件が成功しました。独立検査で全ケース成功と原consumer/旧SDK/packageのhash不変を確認し、専用領域は削除済みです。専用RAM/SSD合計の最大割当は469,540,864 bytesでした。
+
+先行63件の候補も成功しましたが、64件版の初回lockにはmusl用optional依存2件の欠落があり、検証用コピーだけへ既存固定lockの同版/integrityを補完しました。次のRAM上DBの容量停止、別試験環境の旧vendor tarとlockのintegrity不一致も保持。src/scriptsが同じ38ファイルである別の固定候補から、旧tarとlockの一致を確認して最終再検証しています。元lock・vendorは変更していません。成功証跡は `data/roadmap/auto-notes-stock-current-fresh-install-rev4-20261031/` のcompletion/independent-audit、先行失敗は同名revなし/rev2/rev3に保持。これは隔離移行候補の回帰で、正式stock-data/vendor・サービスは未切替です。
+
+証跡は `data/roadmap/auto-notes-combined-full-20261031/` と `auto-notes-installed-20261031/` のcompletion/independent-audit。原本変更・追加HTTP0です。この最新版の正式stock-data/vendor反映・正式配布/切替、全社再構築・品質/性能gate・実連続日次と各機能の未対応範囲は残ります。過去の固定packageや限定標本の成功を、最新利用先・全市場の完成とは扱いません。
 
 [全体計画](EDINET_TS_ROADMAP.md)の全段階を対象に、実装・原本照合・配布・運用を進めています。部分実装や限定標本の検証だけで、その段階全体を完了とは扱いません。無償・既存データを優先します。
 
