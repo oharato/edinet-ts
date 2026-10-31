@@ -1,5 +1,13 @@
 # 全体ロードマップの実装状況
 
+## 静的fixtureの読取専用共有と全国ジョブの再開（2026-10-31）
+
+通常SSDの空きを確保するため、23個の過去の検証コピーで `test/test_data` の同一XML/HTML 2,369件を既存の読取専用fixtureへ共有しました。全pathとbyteを維持し、23コピーのsrc/test/scripts/dist全hash、最新readerと取引Store固定候補の全ソース/配布hashは不変です。原本DB・archive・依存本体・配布物・最新/重要SDKは対象外。実空き増加は1,152,376,832 bytesでした。変更したのはfixtureのinodeと読取専用modeです。将来編集するときは、そのpathを独立copyへ置き換え、記録した元modeを戻してから編集します。稼働を確認できないプロセスを停止したり、検査不能のDB/原本を削除したりしていません。
+
+fixture読取の検証は既存の探索範囲も含む48ファイル288テストが成功しました。これは最新SDKの全体回帰の代替ではありません。独立監査でも全共有pathのhash・通常ファイル/inode・読取専用mode、全検証コピーと最新固定候補のhash不変を確認。証跡は `data/roadmap/static-fixture-sharing-20261031/plan.json`、`proof.json`、`independent-audit.json` です。
+
+空き容量の回復後、全国法人番号jobを固定receipt・SDK・元DB/ZIP・既存checkpointのhash照合から再開しました。1/6パート完了の状態から残り5パートを処理し、完了後には同じCLIで全件配送の再open監査を行います。34GiBの通常SSD留保、640MiBの検査copy上限、子process合計RSS1GiB・host MemAvailable2GiBの留保を監視します。旧失敗logは上書きせず、新しい証跡は `data/roadmap/corporate-registry-national-resume-rev3-20261031/` に保持。完了は同runの `completion.json` と全6パートのcheckpoint監査で判定し、起動だけでは全国job完了としません。
+
 ## 大量保有取引の保存・訂正選択付き再検索（2026-10-31）
 
 既存の `LargeHoldingStore.append` / `import-large-holdings` に取引表の解析保存を追加し、`searchTransactions` と `search-large-holding-transactions-store` を接続しました。原XMLは保存せず、原セル・解析結果・原本hashを保持します。観測cutoffと既存の訂正選択・原本宣言の競合検査を維持し、訂正原本の欠落を親の取引で補完しません。旧snapshotは保有指標を読めるまま、取引未解析を明示します。同じhashの原XMLを再投入すれば、保有指標を変えず取引を補完できます。1原本2MiB超は取引だけを保留し、従来の保有指標保存を維持します。
