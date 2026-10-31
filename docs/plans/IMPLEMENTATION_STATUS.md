@@ -12,20 +12,21 @@
 
 同じ新packageをstock-data隔離候補へ接続し、候補/旧SDKをそれぞれ固定lock・offline/remote禁止・scripts無効で新規インストールしました。各10ファイル64回帰と型、新版の保存保護14件が成功。新版265ファイルと旧版261ファイルは元tarとも一致し、旧lockの不足optional2件は検証用コピーだけで補完しました。元consumer・旧tar・固定SDK/原本は不変、専用RAM/SSD合計最大473,960,448 bytes、成功側scratchは削除済みです。証跡は `data/roadmap/subsidiary-definitions-installed-20261031/` と `subsidiary-definitions-stock-fresh-install-20261031/` のcompletion/independent-audit。両監査でも全64ケース集合・成功状態・lockとpackage指紋・旧SDK/元ファイル不変を再確認しました。正式vendor/catalog・サービスは未切替、全社品質・初回性能・実連続日次の受入は残ります。
 
-## 最新SDKの全検索一致と初回性能の未達確認（2026-10-31）
+## DuckDB読取の初回改善候補と性能受入の現在地（2026-10-31）
 
-検証済み766 source/SDK `dc6b45be…`（snapshot `e841fd9`）で、既存全社候補と同じ12検索をSQLite・毎回監査DuckDB・監査再利用DuckDBの別processで測定しました。warmup1回＋5回の3方式の対応する全60結果（計180件）のhashは一致し、旧検証済みreaderの60結果とも一致。原DB・全766ソース・262配布ファイルのhash不変とSDK指紋を独立再計算しました。入力は旧構築SDKの候補であり、最新SDKによる全社再構築・品質認証の代替ではありません。
+最新の性能候補は私有snapshot `0783733`、branch `candidate/reader-stream-20261031` です。検証済みルール版3を基に、最大8種類の準備済みSQL、16,000件のヘッダー上限、列単位の読取、文字列metadataの容量付き転送、チャンクの明示解放とストリーム読取を組み合わせています。値・根拠・数値型・整数精度・ファイル不変の検査は維持。16,000組のキーは最大32,001引数となり、Node 26で確認したSQLite上限32,766以内です。64MiBの元データ上限に加え、文字列のJSON転送はエスケープ後の上限を先に見積もり、収まらなければ従来の列読取へ戻します。
 
-数値条件は5件中4件成功。容量比0.39383、定常ケース比中央値0.09432・最悪0.15360、最大RSS比1.09247は合格ですが、初回はSQLite4,867.83 ms・DuckDB6,611.08 ms、比1.35812で上限1.25を未達です。接続開始から品質検査完了までを連続区間で測り、初回読込を事前に定めた5組のABBA・計20 processでも確認しました。各組の比は1.322/1.322/1.332/1.471/1.325、全体中央値比1.33567で未達。以前の単発合格を安定性の受入へ読み替えません。
+関連8ファイル168テスト・build・公開型が成功。チャンク解放の追加テストは旧実装で失敗し、修正後は5,001行の順序・日本語/絵文字・BLOB・リストがNative APIと一致し、解放後も保持されることを確認しました。元ツリーで実行してしまったbuildは全262ファイルが既存の検証済み版と一致し、隔離候補では別途buildし直しています。
 
-通常SSDの既存34GiB＋DuckDB4倍の容量条件を維持しました。内容が同じnpm cache575ファイルはパス・byte・権限を保ったまま共有し、約195MBを確保。元データ・SDK・依存本体は削除していません。完了した測定の専用scratchは削除済み、最大一時SSD159,789,056 bytes、worker自己報告の最大RSS955,961,344 bytesでした。証跡は `data/roadmap/prior-taxonomy-performance-20261031/` のcompletion/independent-audit、計測コード・全失敗条件・cache共有記録を保持しています。
+観測用フックを含まない初回計測で、接続から品質検査までを連続区間として5組のABBA・計20 processを実行しました。各組のDuckDB/SQLite比は1.182/1.150/1.169/1.207/1.209、全体中央値比1.19388で全5組が上限1.25を通過。全20結果の品質hash、766ソース・262配布・原DBのhash不変を確認しました。証跡は `data/roadmap/prior-taxonomy-initial-stream-20261031/`。同じ固定SDKと入力で12検索×5測定・3方式の全比較を `data/roadmap/stream-performance-20261031/` で実行中です。初回20 processは同一SDK/入力の既存結果へ指紋で結び、重複実行しません。全5数値条件・180結果の一致・独立監査、全体回帰と配布/利用先の再検証が終わるまで本体へ採用しません。最新SDKによる全社再構築・品質認証の代替にもなりません。
 
-初回区間のCPU診断後、行の再コピー削減/UTF-8バイト計算の候補（関連152件成功）と、列単位読取の候補（関連153件・build・公開型成功）を別環境で試しました。UTF-8・整数範囲・重複列名・行順・空結果は維持していますが、交互測定は前者1.261〜1.306、後者1.183〜1.298で、いずれも5組すべての条件を満たしません。候補は本体へ採用せず、ローカルbranch `candidate/reader-initial-045cad93956f` / `candidate/reader-initial-61c7b7872660` と `data/roadmap/prior-taxonomy-initial-candidate-20261031/` / `prior-taxonomy-initial-columnar-20261031/` にソース・patch・全測定を保持しました。追加の初回限定profileは `prior-taxonomy-initial-columnar-profile-20261031/`。初回監査のDB処理とJSON処理を引き続き改善し、固定基準で再測定します。
+途中候補の失敗も保持しています。8,192件（`02295fd`）は1.274、16,000件（`76edfdf`）は1.271、文字列転送（`e4d9cb4`）は1.357、チャンク解放（`3513bf0`）は1.323となった組があり、各5組すべての条件を満たしませんでした。各候補は関連159/167/168件・build・公開型が成功しましたが未採用です。対応する証跡は `prior-taxonomy-initial-batch8192-20261031/`、`prior-taxonomy-initial-batch16000-20261031/`、`prior-taxonomy-initial-value-wire-rev2-20261031/`、`prior-taxonomy-initial-chunks-20261031/`。各local branchと元ソース/patch・全結果を保持しています。以前の行コピー削減/列読取/準備済みSQL/結果close候補も同じ理由で未採用のまま保持しています。
 
+転送方式の診断では同じ4,096件の全結果一致を確認し、BLOB化/行全体JSON化は遅化、文字列metadataだけの転送は短縮しました（`duck-row-transfer-probe-20261031/`、`duck-value-transfer-probe-20261031/`）。CPU/GCの別診断はNative 10 processで初回中央値6,044.61ms・観測GC中央値337.11ms、major page fault 0。7.54秒の遅延は再現せず、同期SQLiteのGC観測も不完全なため、原因を断定しません。観測フック付きの5組通過を受入には流用していません（`value-wire-initial-cpu-gc-20261031/`）。
 
-準備済みSQLを最大8種類だけ保持する追加候補も検証しました。引数の毎回消去・型変更・不足引数・失敗後再実行・close待機を含む関連60テスト、build・公開型は成功。初回5組の比は1.187/1.409/1.248/1.209/1.235で4組のみ合格、全体中央値比1.24836でも全組合格条件は満たしません。本体未採用とし、ローカルbranch `candidate/reader-prepared-20261031`（`c9e55cc`）と `data/roadmap/prior-taxonomy-initial-prepared-20261031/` に保持。全20結果の品質hash、766ソース・262配布・元DB不変、専用scratch削除を確認しました。
+通常SSDの34GiB＋DuckDB4倍と制御用8MiB、RAM/worker上限を維持しています。文字列候補の初回は開始前guardで約0.7MB不足し、worker未起動のまま停止。実行中参照のない当作業のtsx cache35件・8,491,008 bytesをhash照合して専用RAMへ退避し、別rev2で再開しました。ソース・依存本体・原本は削除していません。失敗記録・退避計画/証拠は `prior-taxonomy-initial-value-wire-20261031/` に保持。完了した初回測定の専用scratchは削除済みです。
 
-native結果の明示解放も追加候補で確認しました。各SQLの返却後と整数範囲検査失敗時に `closeSync` を実行し、次のSQLを利用できます。追加テストは旧実装で失敗し、修正後は関連155件・build・公開型が成功。初回交互比較は1.340/1.248/1.253/1.243/1.256、全体中央値比1.24820で、全5組の基準は未達です。本体の性能修正としては未採用。候補branch `candidate/reader-result-close-20261031`（`b411578`）、証跡 `data/roadmap/prior-taxonomy-initial-result-close-20261031/` に保存しました。20結果の品質hashは一致、全766ソース/262配布hashを別処理でも再確認、通常SSDの容量留保維持・元DB不変・専用scratch削除済みです。
+比較履歴として、ルール版2のSDK `dc6b45be…`（`e841fd9`）では12検索の180結果が一致し、容量比0.39383、定常比中央値0.09432/最悪0.15360、RSS比1.09247の4条件が合格でした。初回比1.35812と別20 processの全体中央値比1.33567は未達。入力・全766ソース/262配布hashとSDK指紋を独立確認した証跡は `data/roadmap/prior-taxonomy-performance-20261031/` に保持し、最新候補の合格へ読み替えません。当時の同内容npm cache575ファイルの共有による約195MB確保も同所に記録しています。正式vendor/catalog・サービスは未切替、全社品質・実連続日次・正式反映と各機能の残工程は継続します。
 
 ## 前年度対応を含む全5,307件と配布・利用先の再検証（2026-10-31）
 
