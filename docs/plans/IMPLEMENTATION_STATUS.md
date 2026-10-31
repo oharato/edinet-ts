@@ -1,5 +1,11 @@
 # 全体ロードマップの実装状況
 
+## 大量保有取引の保存・訂正選択付き再検索（2026-10-31）
+
+既存の `LargeHoldingStore.append` / `import-large-holdings` に取引表の解析保存を追加し、`searchTransactions` と `search-large-holding-transactions-store` を接続しました。原XMLは保存せず、原セル・解析結果・原本hashを保持します。観測cutoffと既存の訂正選択・原本宣言の競合検査を維持し、訂正原本の欠落を親の取引で補完しません。旧snapshotは保有指標を読めるまま、取引未解析を明示します。同じhashの原XMLを再投入すれば、保有指標を変えず取引を補完できます。1原本2MiB超は取引だけを保留し、従来の保有指標保存を維持します。
+
+Node 26.12.1で関連7ファイル94テスト・公開型と隔離buildが成功しました。実6原本83取引の全保存JSONは既存の独立XML83行・PDF62行の照合結果に結び付く抽出JSONと一致し、訂正選択後の4検索は原本APIと一致。旧reader `0783733` の保有指標JSONも一致し、readOnly検索前後のDB hash・元原本hashは不変でした。2MiB超の原本も保有snapshotを保持して取引だけを `source-too-large` とするassert検査が成功。証跡は `data/roadmap/large-holding-transactions-store-20261031/`。固定候補 `60c8f40` / `candidate/holding-transactions-store-20261031` の全248ファイル・5,348テストが一回ですべて成功（失敗/skip0）。独立監査でも対象・収集・実行集合と全ケース成功、768ソース・262配布・旧SDKのhash不変を確認しました。全体証跡は `data/roadmap/large-holding-transactions-store-full-node26-20261031/`。取引の型テストが既存設定に未登録だったため、明示検査で成功を確認し、通常検査対象にも追加しました。検証済みソースはremoteの `candidate/holding-transactions-store-types-20261031` へpushし、commit `eac9e1b29c56dd4d1e977359fb5ec4fb75e09309` の一致を確認しました。後続 `eac9e1b` / `candidate/holding-transactions-store-types-20261031` は型検査設定1ファイルだけの変更で、実装・配布内容は同じです。登録後の通常型検査も成功しました。 同じ固定配布物265ファイルをoptional依存なし/native依存ありへ新規インストールし、両環境のESM/CJS・公開型・実6原本83取引・CLI/APIの4検索が成功。package SHAは `32a64fff866271a7e8b16696f28ccfefaabb081455b6bc48646e2c0e3db76e2f`。stock-data隔離候補と旧SDKは各64回帰・型、新版の保存保護14件と切戻しが成功しました。全監査で元consumer/vendor・原本・固定SDKのhash不変、成功側scratch削除を確認。root buildも全262ファイルが固定候補に一致し、root CLIの4検索がAPIと一致しました。証跡は `large-holding-transactions-store-installed-20261031/` と `large-holding-transactions-stock-fresh-install-20261031/`。正式配布・利用先・サービスは未切替で、全形式/全市場性能・移行運用・法的全文再構成は残ります。
+
 ## 子会社注記の出向者範囲・賃金構成・パート算定定義（2026-10-31）
 
 `annotations: "auto"` のルール版3で、確認済み文言の定義を `noteInterpretation.definitions` へ追加しました。見出しの注記番号と表・行・数値セル・XBRL原値を結び、出向者の包含/除外、賃金に含む/除く項目の例示、パートタイマーの実支給額・非FTE算定を原文hash付きで返します。非FTE算定を正規雇用者へ広げず、nil・不一致・未知/否定文・重複注記・親会社表は補完しません。値の補正や検索条件の自動変換は行わず、既定/手動の出力、従来の算定方法・非該当は維持しています。
