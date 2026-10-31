@@ -34,7 +34,7 @@ export function calculateAverageAssetsReturn(input: AverageAssetsReturnInput, me
     const captured = { income: capture(input.income), opening: capture(input.opening), closing: capture(input.closing) };
     const point = (document: typeof captured.income, metric: MetricId): ReturnPoint => ({ metadata: document.metadata,
         selection: new EdinetXbrlParser().parse(document.xml, document.metadata.docID).selectMetric(metric, {
-            accountingStandard: document.metadata.accountingStandard, scope: document.metadata.scope, period: document.metadata.period }),
+            accountingStandard: document.metadata.accountingStandard, scope: document.metadata.scope, period: document.metadata.period }, { collapseIdenticalDuplicates: true }),
         inputXmlSha256: createHash("sha256").update(document.xml).digest("hex") });
     const income = point(captured.income, sources[metricId]), opening = point(captured.opening, MetricId.TotalAssets), closing = point(captured.closing, MetricId.TotalAssets);
     const base: ReturnBase = { metricId, unit: "ratio", income, opening, closing };

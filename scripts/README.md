@@ -62,7 +62,9 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 
 ## 再構築済みの日次財務索引
 
-`roadmap/build-prepared-financial-cycle.mjs` は、固定済みの再構築候補を1〜100社ずつ構築する入口です。同じ入力指紋と会社別checkpointを使います。呼出元で排他を保持し、`--locked` を指定します。[構築手順](../docs/pipeline/FINANCIAL_INDEX_BUILD.md#再構築済みの日次候補をまとめて構築する)のロック順序・完了判定を確認してください。
+`roadmap/build-prepared-financial-cycle.mjs` は、固定済みの再構築候補を1〜100社ずつ構築する入口です。`--max-batches`（既定1、上限100）で複数batchのarchive/state/index接続を共有できます。日次入口は100社×10batchを上限にします。同じ入力指紋と会社別checkpointを使い、各batch前に容量・入力を再確認し、中断時は会社単位の残件から再開します。呼出元で全batch終了まで排他を保持し、`--locked` を指定します。[構築手順](../docs/pipeline/FINANCIAL_INDEX_BUILD.md#再構築済みの日次候補をまとめて構築する)のロック順序・完了判定を確認してください。
+
+`roadmap/verify-built-financial-cycle.mjs --config /absolute/path/config.json --locked` は構築済み候補の全採用直接値を独立Python処理で原本照合し、候補に結び付いた検証記録を保存します。候補の排他が必要です。品質条件だけでは正式切替できず、`activateBuiltFinancialCycle` でこの記録を再照合します。[原本照合と正式切替](../docs/pipeline/FINANCIAL_INDEX_PUBLICATION.md#正式な日次候補の原本照合)を参照してください。
 
 ## 全体テスト
 
@@ -81,5 +83,8 @@ python3 scripts/test_artifact_store.py
 運用テストは34GiBの留保に加え、DB/検査コピー用の空き容量を確認します。小さなtmpfsを `TMPDIR` にすると容量保護で停止するため、運用テストには十分な空きのある通常のローカルディスクを使用してください。留保値やtimeoutを緩めず、固定ソース・一時領域・対象件数と失敗した実行も記録します。
 
 CLIテストは子プロセスを起動します。`spawnSync` の `error.code` が `EPERM` なら、実行環境の子プロセス制限を確認してください。終了状態だけで成功と判断せず、子プロセス起動を許可した環境で再実行します。
+
+取得済み日次候補を解析済みSQLite・検索DuckDBへ接続する排他付きコマンドは `roadmap/run-acquired-duck-financial-cycle.mjs`。引数・再開・終了コードは [DuckDB構築仕様](../docs/pipeline/DUCK_FINANCIAL_CYCLE.md) を参照する。
+日次準備から原本取得・DuckDB構築までの一括実行は `roadmap/run-daily-duck-financial-cycle.mjs`（排他・provider設定・再開を含む）。既存SQLite日次経路とは別コマンドで、正式切替は明示した別工程。
 
 署名検証済み法人番号ZIPを圧縮Storeへ取り込む入口は `roadmap/import-corporate-registry-archive.mjs`。receiptのSHA固定、パート単位checkpoint、DB全記録監査付き再開、排他と34GiB留保を使います。引数・追記・終了コードは [法人番号の取込手順](../docs/companies/CORPORATE_REGISTRY.md#署名検証済みzipからパート単位で取り込む) を参照してください。

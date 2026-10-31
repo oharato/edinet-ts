@@ -20,9 +20,12 @@ const norm=(s:string)=>s.normalize("NFKC").replace(/\s/g,"");
 const date=(s:unknown):s is string=>typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;
 const kinds=["non-pure-summary","specified","deemed"] as const;
 function capture(d:PolicyShareholdingDocument):PolicyShareholdingDocument{
- if(!d?.selection||d.selection.kind!==DisclosureTableKind.PolicyShareholdings||!d.periodEnds||!date(d.periodEnds.current)||!date(d.periodEnds.previous)||d.periodEnds.previous>=d.periodEnds.current||!Array.isArray(d.tables)||!d.tables.length||d.tables.length>200)throw new Error("政策保有の本文/確認済み期間/表を指定してください");
- const seen=new Set<number>(),tables=Array.from({length:d.tables.length},(_,i)=>{
-  const t=d.tables[i];
+ if(!d?.selection||d.selection.kind!==DisclosureTableKind.PolicyShareholdings||!d.periodEnds||!date(d.periodEnds.current)||!date(d.periodEnds.previous)||d.periodEnds.previous>=d.periodEnds.current)throw new Error("政策保有の本文/確認済み期間/表を指定してください");
+ const declared=d.tables;if(!Array.isArray(declared))throw new Error("確認済み表の配列が必要です");
+ const tableCount=declared.length;if(!Number.isSafeInteger(tableCount)||tableCount<1||tableCount>200)throw new Error("確認済み表は1〜200件です");
+ const seen=new Set<number>(),tables=Array.from({length:tableCount},(_,i)=>{
+  if(!Object.hasOwn(declared,i))throw new Error("確認済み表の配列要素が欠落しています");
+  const t=declared[i];
   if(!t||Object.keys(t).some(k=>!["tableIndex","rawSha256","kind","headingTableIndex"].includes(k))||!Number.isSafeInteger(t.tableIndex)||t.tableIndex<0||seen.has(t.tableIndex)||!kinds.includes(t.kind)||typeof t.rawSha256!=="string"||!/^[a-f0-9]{64}$/.test(t.rawSha256)||t.kind!=="non-pure-summary"&&(!Number.isSafeInteger(t.headingTableIndex)||t.headingTableIndex!<0||t.headingTableIndex!>t.tableIndex)||t.kind==="non-pure-summary"&&t.headingTableIndex!==undefined)throw new Error("政策保有表の位置/hash/種類/見出し参照/重複を確認してください");
   seen.add(t.tableIndex);return {tableIndex:t.tableIndex,rawSha256:t.rawSha256,kind:t.kind,headingTableIndex:t.headingTableIndex};
  }).sort((a,b)=>a.tableIndex-b.tableIndex);
@@ -74,10 +77,11 @@ export function extractPolicyShareholdings(input:PolicyShareholdingDocument):Pol
 export interface PolicyShareholdingSearchOptions {kind:PolicyShareholdingKind;periodEnd:string;metric:"shares"|"reportedAmount"|"issueCount";listingClass?:PolicyShareholdingEntry["listingClass"];nameContains?:string;condition?:{operator:ComparisonOperator;value:number};sort?:"value-asc"|"value-desc";offset?:number;limit?:number;}
 const fraction=(s:string)=>{const [i,f=""]=s.split(".");return {numerator:BigInt(i+f),denominator:10n**BigInt(f.length)};};
 export function searchPolicyShareholdings(documents:readonly PolicyShareholdingDocument[],options:PolicyShareholdingSearchOptions){
- if(!Array.isArray(documents)||documents.length>100||!options)throw new Error("政策保有検索は100原本以下で条件が必要です");
+ if(!Array.isArray(documents)||!options)throw new Error("政策保有検索は100原本以下で条件が必要です");
+ const documentCount=documents.length;if(!Number.isSafeInteger(documentCount)||documentCount<0||documentCount>100)throw new Error("検索原本は100件以下です");
  const {kind,periodEnd,metric,listingClass,nameContains,condition,sort,offset=0,limit=100}=options;
  if(!kinds.includes(kind)||!date(periodEnd)||!["shares","reportedAmount","issueCount"].includes(metric)||kind==="non-pure-summary"&&metric==="shares"||kind!=="non-pure-summary"&&metric==="issueCount"||listingClass!==undefined&&!["non-listed","other-than-non-listed","not-established"].includes(listingClass)||nameContains!==undefined&&(typeof nameContains!=="string"||!nameContains.trim()||nameContains.length>1000)||condition!==undefined&&(!condition||typeof condition!=="object"||Array.isArray(condition)||!["gt","gte","lt","lte","eq"].includes(condition.operator)||!Number.isFinite(condition.value))||sort!==undefined&&!["value-asc","value-desc"].includes(sort)||!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>1000)throw new Error("政策保有検索の種類/期間/指標/条件を確認してください");
- const inputs=Array.from({length:documents.length},(_,i)=>capture(documents[i])).sort((a,b)=>a.selection.docID<b.selection.docID?-1:a.selection.docID>b.selection.docID?1:0);
+ const inputs=Array.from({length:documentCount},(_,i)=>{if(!Object.hasOwn(documents,i))throw new Error("検索原本の配列要素が欠落しています");return capture(documents[i]);}).sort((a,b)=>a.selection.docID<b.selection.docID?-1:a.selection.docID>b.selection.docID?1:0);
  if(inputs.some(d=>typeof d.xml!=="string")||inputs.reduce((n,d)=>n+Buffer.byteLength(d.xml),0)>256*1024*1024||new Set(inputs.map(d=>d.selection.docID)).size!==inputs.length)throw new Error("政策保有原本の重複/上限を確認してください");
  const extractions:PolicyShareholdingExtraction[]=[],rows:{sourceIndex:number;entry:PolicyShareholdingEntry}[]=[],excluded:{sourceIndex:number;rowKey:string;reason:string}[]=[],series=new Set<string>();let filtered=0,count=0,cells=0;
  for(const d of inputs){

@@ -42,7 +42,7 @@ it('曖昧な訂正系列・不開示系列から抽出しない',()=>{
 });
 it('IFRS連結と対象外単体を日本基準に切り替えず結果に保持する',()=>{
  expect(run([observation()],[source('A',xml({standard:'IFRS'}))],{cutoff}).records[0].result).toMatchObject({status:'resolved',accountingStandard:'IFRS'});
- expect(run([observation()],[source('A',xml({standard:'IFRS',consolidated:'false'}))],{cutoff}).records[0].result).toMatchObject({status:'unresolved',reason:'unsupported-ifrs-scope'});
+ expect(run([observation()],[source('A',xml({standard:'IFRS',consolidated:'false'}))],{cutoff}).records[0].result).toMatchObject({status:'resolved',accountingStandard:'IFRS'});
 });
 it('DEI不明と証券コード不在を解析失敗にしない',()=>{
  expect(run([observation()],[source('A',xml({standard:'US GAAP'}))],{cutoff}).records[0].result).toMatchObject({status:'unresolved',reason:'basis-unresolved'});
@@ -126,4 +126,23 @@ it.each(['160','170'])('半期%sの一覧が原本の半期累計と完全一致
 it('半期累計と開始日が違う一覧を終期だけで採用しない',()=>{
  const r=run([observation('A',undefined,{docTypeCode:'160',periodStart:'2025-04-02',periodEnd:'2025-09-30'})],[source('A',xml({periodCode:'HY',currentEnd:'2025-09-30'}))],{cutoff});
  expect(r.records).toEqual([]);expect(r.unavailableSources[0].reason).toBe('period-mismatch');
+});
+const amendment=(target:string,extra='')=>xml({extra:'<d:IdentificationOfDocumentSubjectToAmendmentDEI contextRef="filing">'+target+'</d:IdentificationOfDocumentSubjectToAmendmentDEI>'+extra});
+it('明示訂正対象は直前親だけでなく厳密な祖先を許し、欠落/空の旧原本も維持する',()=>{
+ for(const input of [amendment('A'),amendment('B'),xml(),amendment('')]){
+  const r=run([observation(),observation('B','A'),observation('C','B',{submitDateTime:'2026-06-26 10:00'})],[source('C',input)],{cutoff});
+  expect(r.records[0]).toMatchObject({docID:'C',result:{status:'resolved'}});expect(r.unavailableSources).toEqual([]);
+ }
+ expect(run([observation()],[source('A',amendment(''))],{cutoff}).records).toHaveLength(1);
+});
+it.each(['OTHER','C','SAME-ISSUER-OTHER-BRANCH'])('訂正対象%sが祖先外/自分なら金融値を採らず親へ戻らない',target=>{
+ const r=run([observation(),observation('B','A'),observation('C','B',{submitDateTime:'2026-06-26 10:00'})],[source(),source('C',amendment(target))],{cutoff});
+ expect(r.records).toEqual([]);expect(r.unavailableSources).toEqual([{rootDocID:'A',docID:'C',reason:'correction-target-mismatch'}]);
+});
+it('複数/不正namespace/contextの訂正対象はbasis保留として根拠を保持する',()=>{
+ const fact='<d:IdentificationOfDocumentSubjectToAmendmentDEI contextRef="filing">A</d:IdentificationOfDocumentSubjectToAmendmentDEI>';
+ for(const extra of [fact+fact,fact.replace('contextRef="filing"','contextRef="absent"'),fact.replace('<d:','<bad:').replace('</d:','</bad:').replace('contextRef=', 'xmlns:bad="urn:untrusted" contextRef=')]){
+  const r=run([observation(),observation('B','A')],[source('B',xml({extra}))],{cutoff});
+  expect(r.records[0].result).toMatchObject({status:'unresolved',reason:'basis-unresolved',basis:{status:'unresolved',issues:expect.arrayContaining([{reason:'field-unavailable',field:'amendmentTargetDocID'}])}});
+ }
 });

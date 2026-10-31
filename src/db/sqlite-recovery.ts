@@ -13,7 +13,12 @@ import { CompanyMasterStore } from "./company-master-store";
 import { CorporateRegistryStore } from "./corporate-registry-store";
 import {CorporateRegistryBlockStore,CORPORATE_REGISTRY_BLOCK_MAX_DB_BYTES} from "./corporate-registry-block-store";
 
+import {ParsedFinancialStore} from "./parsed-financial-store";
+import {ParsedFinancialJob} from "./parsed-financial-job";
+
 const formats = {
+    "parsed-financial-store": ParsedFinancialStore,
+    "parsed-financial-job": ParsedFinancialJob,
     "observed-financial-archive": ObservedFinancialArchive,
     "financial-source-job": FinancialSourceJob,
     "financial-index-build": FinancialIndexBuild,

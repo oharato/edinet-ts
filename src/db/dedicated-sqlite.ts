@@ -57,7 +57,7 @@ export class DedicatedSqliteDatabase {
             if (file === ":memory:") {
                 if (this.readOnly)
                     throw new Error("readOnlyのmemory DBは作成できません");
-                this.db = new Database(file);
+                this.db = new Database(file, { timeout: 5000 });
                 this.initialize();
                 return;
             }
@@ -67,7 +67,7 @@ export class DedicatedSqliteDatabase {
                     throw new Error("readOnlyのDBがありません");
                 const fd = fs.openSync(target, "wx", 0o600);
                 fs.closeSync(fd);
-                this.db = new Database(target);
+                this.db = new Database(target, { timeout: 5000 });
                 this.initialize();
                 return;
             }
@@ -113,14 +113,14 @@ export class DedicatedSqliteDatabase {
                     fs.closeSync(output);
             }
             this.snapshotFile = probe;
-            this.db = new Database(probe, { readOnly: true });
+            this.db = new Database(probe, { readOnly: true, timeout: 5000 });
             this.assertFormat();
             if (!this.readOnly) {
                 inspect(target);
                 if (identity(fs.statSync(target, { bigint: true })) !== originalIdentity!)
                     throw new Error("形式検査中にDBが変化しました");
                 this.db.close();
-                this.db = new Database(target);
+                this.db = new Database(target, { timeout: 5000 });
                 this.assertFormat();
                 fs.rmSync(dir, { recursive: true, force: true });
                 this.scratch = undefined;

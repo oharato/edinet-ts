@@ -9,3 +9,8 @@ const extended=createIfrsBalanceSheetSnapshot('<synthetic/>',metadata,[IfrsBalan
 const legacyStatus:string=extended.selections.currentAssets.status;
 const extraStatus:string|undefined=extended.selections.noncurrentAssets?.status;
 void legacyStatus;void extraStatus;void hash;void found;void wrong;
+// 単体は実行時に原本DEIの当期主範囲を検査する。
+const standaloneMetadata:IfrsBalanceSheetMetadata={...metadata,scope:ConsolidationScope.NonConsolidated};
+const standalone=createIfrsBalanceSheetSnapshot('<synthetic/>',standaloneMetadata);
+const declaredScope:string|undefined=standalone.reportingBasis?.status==='selected'?standalone.reportingBasis.metadata.scope:undefined;
+void declaredScope;

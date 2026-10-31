@@ -218,4 +218,22 @@ edinet-ts compare-financial-industries \
 
 `company-query.json` に `knownAt` は指定せず、財務世代のcutoffを使います。原本の再取得・再抽出や通貨換算は行いません。異なる基準・期間・scope・指標の意味差を埋めた業種比較は別の工程です。
 
+### DuckDB候補で使う
+
+検査済みの検索DuckDBにも同じ企業結合・業種比較を適用できます。`screenDuckCompanyFinancials()` / `compareDuckCompanyFinancialsByIndustry()` は同期版と同じ入力・返却形で、私有snapshotの全体監査後に非同期で読みます。
+
+```sh
+edinet-ts screen-duck-financial-index \
+  --db financial-index.duckdb --cohort cohort.json --metrics costOfSales \
+  --company-master snapshots.json --company-query company-query.json --pretty
+
+edinet-ts compare-duck-financial-industries \
+  --db financial-index.duckdb --cohort cohort.json --metrics costOfSales \
+  --company-master snapshots.json --company-query company-query.json --pretty
+```
+
+DuckDBの世代指紋は構築計画に解析済みStore指紋を含むため、同じ財務値のSQLite世代とは `generationSha256` が一致しない場合があります。企業結合・`total`・`excludedRows`・診断・統計値の一致を比較し、物理ファイルhashの一致は要求しません。
+
 実原本検証では、上場マスター3,812社・34業種について、同一期の売上原価をJ-GAAPとIFRSで分けて比較しました。採用はJ-GAAP 1,556社・IFRS 144社、必須指標非採用はそれぞれ208社・32社です。独立Python/SQLite/Fraction処理で企業の結合・業種別件数・全統計が一致し、採用1,700値を元XMLのhash・context・namespace・原値・報告精度・JPY単位まで照合しました。CLIもAPIと一致し、元索引は不変です。全期間・全指標やPDFの照合ではなく、旧完成候補を使ったこの比較の検証です。公開世代は変更していません。
+
+追加で、固定736ソースのSDKと実2社の同一年度・J-GAAP連結原本を使い、複数指標の共通集合を確認しました。売上原価・販管費・売上総利益では2社を採用し、長期借入金返済CFを加えると1社採用・欠損1社除外になります。建設業マスター200社の未収録198社は欠損除外と区別し、上場限定150社では1社採用・未収録149社を保持しました。3検索・10指標統計・返却13値が独立XML/Fraction計算と一致し、原本・固定runtimeは不変、通信0です。取得時刻が不明な原本を含むため、実行時に原本を検証した時刻を隔離索引の利用可能時刻の上限として使い、当初取得時刻・過去時点の利用可能性を認証していません。小索引98,304 bytesは検証後に削除しました。証跡は `data/roadmap/industry-multimetric-real-20261031/summary.json`。全市場・全指標の検証や公開世代の切替とは区別します。

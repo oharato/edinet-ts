@@ -28,7 +28,7 @@ it('観測・BOM付き原本・直接結果を保存し、再openで再解析せ
  const raw=new Database(path,{readOnly:true});const stmt=raw.prepare('SELECT xml FROM archive_contents');try{expect(Buffer.from(stmt.get()!.xml as Uint8Array).toString('utf8')).toBe(s.xml);}finally{stmt.close();raw.close();}
 }));
 it('IFRS連結の結果とIFRS単体の未確定も保存して再利用する',()=>{
- for(const consolidated of ['true','false']){const db=new ObservedFinancialArchive(':memory:');try{db.append([observation()],[source('A',reportingInstance({standard:'IFRS',consolidated}))]);const a=db.createSnapshots(query),b=db.createSnapshots(query);expect(b.records).toEqual(a.records);expect(b.cache.hits).toBe(1);expect(a.records[0].result).toMatchObject(consolidated==='true'?{status:'resolved',accountingStandard:'IFRS'}:{status:'unresolved',reason:'unsupported-ifrs-scope'});}finally{db.close();}}
+ for(const consolidated of ['true','false']){const db=new ObservedFinancialArchive(':memory:');try{db.append([observation()],[source('A',reportingInstance({standard:'IFRS',consolidated}))]);const a=db.createSnapshots(query),b=db.createSnapshots(query);expect(b.records).toEqual(a.records);expect(b.cache.hits).toBe(1);expect(a.records[0].result).toMatchObject({status:'resolved',accountingStandard:'IFRS'});}finally{db.close();}}
 });
 it('抽出版・ソースcommit・明示項目が変われば別の解析結果として保持する',()=>{
  const db=new ObservedFinancialArchive(':memory:');try{db.append([observation()],[source()]);for(const q of [query,{...query,extractorVersion:'test-2'},{...query,sourceCommit:'a'.repeat(40)},{...query,detailMetricIds:['costOfSales'] as const}]){expect(db.createSnapshots(q).cache.extracted).toBe(1);expect(db.createSnapshots(q).cache.hits).toBe(1);}}finally{db.close();}
@@ -122,4 +122,16 @@ it('会社を跨ぐ親参照の競合は、各社指定の取得計画でも両�
   db.append([a,x,b,other]);
   for(const [code,id] of [['E12345','A'],['E54321','X']]){const plan=db.planSourceAcquisition({cutoff:query.cutoff,edinetCodes:[code]});expect(plan.items).toEqual([]);expect(plan.selection.decisions.find(d=>d.rootDocID===id)).toMatchObject({reason:'unresolved-correction',observationIds:expect.arrayContaining(['B','conflict'])})}
  }finally{db.close()}
+});
+it('訂正対象の祖先照合はcache hitでも再実行し、別系列への流用を拒否する',()=>{
+ const db=new ObservedFinancialArchive(':memory:');
+ try{
+  const xml=reportingInstance({extra:'<d:IdentificationOfDocumentSubjectToAmendmentDEI contextRef="filing">OTHER</d:IdentificationOfDocumentSubjectToAmendmentDEI>'});
+  db.append([observation(),observation('B','A')],[source(),source('B',xml)]);
+  const first=db.createSnapshots(query),second=db.createSnapshots(query);
+  expect(first.records).toEqual([]);expect(second.records).toEqual([]);
+  expect(second.unavailableSources).toEqual([{rootDocID:'A',docID:'B',reason:'correction-target-mismatch'}]);
+  expect(first.cache).toEqual({hits:0,extracted:1});expect(second.cache).toEqual({hits:1,extracted:0});
+  expect(second.provenance.mappingVersions).toMatchObject({basis:'4',observed:'8'});
+ }finally{db.close();}
 });

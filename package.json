@@ -15,11 +15,12 @@
     "edinet-ts": "dist/cli.js"
   },
   "scripts": {
-    "build": "npm run clean && npm run generate-type-docs && tsc && npm run add-js-extensions",
+    "build": "npm run clean && npm run generate-type-docs && npm run prepare-financial-verifier && tsc && npm run add-js-extensions",
     "generate-type-docs": "node --import tsx scripts/generate-type-docs.ts",
     "add-js-extensions": "node scripts/add-js-extensions.js",
-    "test": "vitest run --exclude=data/** --exclude=artifacts/**",
-    "clean": "node -e \"require('node:fs').rmSync('dist', {recursive:true, force:true})\""
+    "test": "npm run prepare-financial-verifier && vitest run --exclude=data/** --exclude=artifacts/**",
+    "clean": "node -e \"require('node:fs').rmSync('dist', {recursive:true, force:true})\"",
+    "prepare-financial-verifier": "node scripts/copy-financial-verifier.js"
   },
   "keywords": [
     "edinet",
@@ -62,5 +63,8 @@
   "packageManager": "npm@12.2.1",
   "allowScripts": {
     "esbuild": true
+  },
+  "optionalDependencies": {
+    "@duckdb/node-api": "2.0.0-r.1"
   }
 }

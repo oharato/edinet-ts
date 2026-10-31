@@ -66,7 +66,7 @@ describe('自動判定から既存snapshotへの接続',()=>{
  it('基準未確定・証券コード不在・IFRS単体は推測ルートへ入れない',()=>{
   expect(auto(xml({standard:'US GAAP'}),{docID:'A'})).toMatchObject({status:'unresolved',reason:'basis-unresolved'});
   expect(auto(xml({security:null}),{docID:'A'})).toMatchObject({status:'unresolved',reason:'security-code-unavailable'});
-  expect(auto(xml({standard:'IFRS',consolidated:'false'}),{docID:'A'})).toMatchObject({status:'unresolved',reason:'unsupported-ifrs-scope'});
+  expect(auto(xml({standard:'IFRS',consolidated:'false'}),{docID:'A'})).toMatchObject({status:'resolved',accountingStandard:'IFRS'});
  });
  it('期間contextの不在と重複を区別し、もう一方のsnapshotは作れる',()=>{
   expect(auto(xml({noDuration:true}),{docID:'A'})).toMatchObject({status:'resolved',balanceSheet:{status:'created'},details:{status:'unavailable',reason:'current-period-context-absent'}});
@@ -116,4 +116,11 @@ it.each(['Japan GAAP','IFRS'])('年をまたぐ%sの単四半期も実contextか
 it('暦月計算で日付が繰り上がる変則開始日を単四半期として推測しない',()=>{
  const r=resolve(xml({periodCode:'Q2',start:'2025-01-31',end:'2026-01-30',currentEnd:'2025-07-30',quarterStart:'2025-05-01'}),'A');
  expect(r.status).toBe('selected');expect(r.status==='selected'&&r.metadata.quarterPeriod).toBeUndefined();
+});
+it('任意の訂正対象を既存DEIのnamespace/context検査で捕捉し、空/欠落は必須化しない',()=>{
+ for(const target of ['', 'S100PARENT']){
+  const r=resolve(xml({extra:'<d:IdentificationOfDocumentSubjectToAmendmentDEI contextRef="filing">'+target+'</d:IdentificationOfDocumentSubjectToAmendmentDEI>'}),'A');
+  expect(r.status).toBe('selected');if(r.status==='selected')expect(r.metadata.amendmentTargetDocID).toBe(target||undefined);
+ }
+ for(const target of ['A B\nC','A'.repeat(257)])expect(resolve(xml({extra:'<d:IdentificationOfDocumentSubjectToAmendmentDEI contextRef="filing">'+target+'</d:IdentificationOfDocumentSubjectToAmendmentDEI>'}),'A').status).toBe('unresolved');
 });

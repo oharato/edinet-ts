@@ -91,6 +91,10 @@ live workerのleaseや稼働中フラグではありません。停止済みDB�
 
 `finish` は全会社のcheckpointがcompleteであることを必要とします。会社別世代のhash、所有会社、cutoff、抽出/対応表版を計画と照合してから、全母集団を一つのSQL検索世代へ集約します。親子検査のため複数会社で読んだ同一観測は同一内容だけを重複除去し、矛盾する観測/財務行は拒否します。訂正差分と親の財務値は合成しません。
 
+訂正原本の扱いは、[金融庁のEDINETタクソノミ概要説明（2025年11月）](https://www.fsa.go.jp/search/20251111/1b-1_GaiyoSetsumei.pdf) 2-1-5/2-1-5-1（本文24〜25頁）も参照してください。本文全体がiXBRL対象の様式と財務本表だけが対象の様式では、添付が必要になる条件が異なり、縦覧終了後などはXBRLのない訂正もあります。現在の採用対象は選択済み原本の直接値で、消えた科目を親から補う根拠にはしません。
+
+同資料の訂正区分では、記載内容も変更する場合の `ReportAmendmentFlagDEI` と、記載内容を変えずXBRLだけを直す `XBRLAmendmentFlagDEI` を区別します。後者がfalseでも、数値が不変という意味ではありません。`AmendmentFlagDEI` は訂正有無の別項目です。表紙の提出日は当初日を残す場合があるため、訂正の提出時点・利用可能時点を表紙日だけから決めず、公式一覧の観測と実取得時刻を保持します。複数の訂正枝も、提出日時だけで優先順位を推定せず未解決を保持します。
+
 集約先の `FinancialIndexGeneration.assembly` に、計画hash、原本指紋、母集団、全会社別世代のID/hashを保持します。一回の会社数に関係なく、完成後は一つのgenerationで通常のSQL検索ができます。会社別世代も削除しません。
 
 集約先の書込は一transactionです。状態DBの完了markerは集約索引のcommit後に保存します。
@@ -131,6 +135,10 @@ finishはpending/failedが一つでもあれば拒否します。条件/DB/指�
 
 ## 再構築済みの日次候補をまとめて構築する
 
+`build-prepared-financial-cycle.mjs` の `--max-batches`（既定1、1〜100）で、1〜100社のbatchを同じarchive/state/index接続で反復できます。日次入口の上限は100社×10batchです。呼出元は全batch終了まで同じ排他を保持します。入力指紋・容量をbatchごとに確認し、signalは会社commitの境界で処理します。従来の会社checkpointを維持するため、停止後の再開で処理済み会社を再取得・再構築しません。
+
+
+
 通常の日次入口 `scripts/roadmap/run-daily-financial-preparation.mjs` も、取得完了後の構築を一回100社で区切ります。101社の合成母集団で、実際の二重ロック下のCLIが100社で部分終了し、次の呼出しで残り1社を同じ入力指紋・同じ構築recipeのbyte列で完了することを確認しています。ライブラリAPIの既定20社は維持します。CLIの終了0だけで完了とせず、`status` と残件数を確認してください。既に凍結した候補は、その入力に固定したruntimeで再開します。
 
 `scripts/roadmap/build-prepared-financial-cycle.mjs` は、再構築receiptがある固定候補の索引を進めます。一回の上限は既定100社、指定可能な範囲は1〜100社です。同じSDK・構築script・固定configを使い、処理社数だけを引数で変えるため、既存の入力指紋と会社別checkpointを引き継げます。品質集計は公開承認とは別です。
@@ -145,6 +153,23 @@ flock -n -E 75 --close "$CYCLE_ROOT.lock" \
 ```
 
 再構築前の候補や上限外の指定は拒否します。途中結果は `partial`、全社集約後は `built` を返します。終了コード0だけで全社完了とは判断せず、`status` と残件数を確認してください。公開catalogの切替は行いません。
+
+## 集約世代だけを利用側DBへ出力する
+
+`FinancialSearchIndex.exportGenerationTo(generation, targetIndex)` は、assemblyのある集約世代を空の別専用DBへ出力します。出力先も通常の `FinancialSearchIndex` で、世代ID・指紋・来歴・品質・検索結果を保持します。会社別世代は出力せず、元の構築DBと会社checkpointは再開・監査用に残します。
+
+```ts
+const source = new FinancialSearchIndex("data/build-index.sqlite", {readOnly: true});
+const target = new FinancialSearchIndex("data/reader-candidate.sqlite");
+try {
+  source.exportGenerationTo("listed-current", target);
+} finally {
+  target.close();
+  source.close();
+}
+```
+
+既存内容のある出力先、同一DB、未集約の会社別世代は拒否します。転送途中の失敗では出力先の全転送をrollbackします。出力は公開切替ではありません。読取DBの交換とreader再ロード・旧ファイルへの切戻しを検証したうえで、正式な切替手順を使います。元DBや旧読取DBの削除は行いません。
 
 ## 実母集団での確認と残工程
 

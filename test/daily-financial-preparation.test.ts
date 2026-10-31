@@ -113,14 +113,28 @@ it('移行監査証跡の未固定・別入力・別出力・別hashを候補作
  }
 }));
 
-it('日次CLIは100社で区切り、実際の排他下で同じ入力の残りを再開する',()=>fixture(async s=>{
+it('日次CLIは同じ接続で100社を越える複数batchを完了し、実際の排他下で同じ入力を再確認する',()=>fixture(async s=>{
  const population=readJSONSnapshot(s.config.populationPath).value;
  population.records.push(...Array.from({length:100},(_,i)=>({entityId:'edinet:E'+(20000+i),edinetCode:'E'+(20000+i),name:'fixture-'+i,filerType:'内国法人',listingStatus:'listed',securityCode:String(2000+i)+'0'})));
  atomicJSON(s.config.populationPath,population);const config={...s.config,populationSha256:sha256(readFileSync(s.config.populationPath))},configPath=join(s.dir,'financial.json');atomicJSON(configPath,config,{createOnly:true});
  // 親のfake clockは子へ伝わらないため、日次fixtureの当日を子でも固定する。
  const preload=join(s.dir,'offline.mjs');writeFileSync(preload,"import child from 'node:child_process';import {syncBuiltinESMExports} from 'node:module';child.execFileSync=(command,args)=>{if(command==='/usr/bin/systemctl'&&args.includes('edinet-roadmap-fixture.service'))return 'inactive\\n';throw Error('Unexpected external command')};syncBuiltinESMExports();globalThis.fetch=()=>{throw Error('Network forbidden')};const OriginalDate=Date;const fixed="+JSON.stringify(Date.now())+";globalThis.Date=class extends OriginalDate{constructor(...args){super(...(args.length?args:[fixed]))}static now(){return fixed}};");
  const run=()=>spawnSync('/usr/bin/flock',['-n','-E','75','--close',config.outputDirectory+'.lock','/usr/bin/flock','-n','-E','75','--close',s.daily.checkpointPath+'.lock',process.execPath,'--import',preload,resolve('scripts/roadmap/run-daily-financial-preparation.mjs'),configPath,'--locked'],{encoding:'utf8',maxBuffer:2*1024*1024});
- const first=run();expect(first.status,first.stderr).toBe(0);const partial=JSON.parse(first.stdout);expect(partial).toMatchObject({status:'partial',phase:'financial-build',completed:100,pending:1,failed:0});
- const directory=join(config.outputDirectory,'candidate','reconstructed'),input=readFileSync(join(directory,'build-input.json'));expect(existsSync(join(directory,'build.json'))).toBe(false);
- const second=run();expect(second.status,second.stderr).toBe(0);const completed=JSON.parse(second.stdout);expect(completed).toMatchObject({status:'built',inputSha256:partial.inputSha256,financialValuesValidated:false});expect(completed.quality.populationCompanies).toBe(101);expect(readFileSync(join(directory,'build-input.json')).equals(input)).toBe(true);
+ const first=run();expect(first.status,first.stderr).toBe(0);const completed=JSON.parse(first.stdout);expect(completed).toMatchObject({status:'built',financialValuesValidated:false});expect(completed.quality.populationCompanies).toBe(101);
+ const directory=join(config.outputDirectory,'candidate','reconstructed'),input=readFileSync(join(directory,'build-input.json'));expect(existsSync(join(directory,'build.json'))).toBe(true);
+ const second=run();expect(second.status,second.stderr).toBe(0);expect(JSON.parse(second.stdout)).toMatchObject({status:'built',inputSha256:completed.inputSha256});expect(readFileSync(join(directory,'build-input.json')).equals(input)).toBe(true);
 }),30_000);
+
+import {runDailyDuckFinancialCycle} from '../scripts/roadmap/daily-duck-financial-cycle.mjs';
+it('DuckDB日次経路は取得から構築まで進み、翌日は新候補と共有解析cacheを使う',()=>fixture(async s=>{
+ const config={...s.config,version:2},options={...inactive,parsedStorePath:join(s.dir,'parsed.sqlite'),sourceCommit:'a'.repeat(40),maxBatches:10};
+ const cliSettings=join(s.dir,'duck-daily.json');atomicJSON(cliSettings,config,{createOnly:true});
+ const preload=join(s.dir,'duck-offline.mjs');writeFileSync(preload,"import child from 'node:child_process';import {syncBuiltinESMExports} from 'node:module';child.execFileSync=(command,args)=>{if(command==='/usr/bin/systemctl')return 'inactive\\n';throw Error('Unexpected external command')};syncBuiltinESMExports();globalThis.fetch=()=>{throw Error('Network forbidden')};const OriginalDate=Date;const fixed="+JSON.stringify(Date.now())+";globalThis.Date=class extends OriginalDate{constructor(...args){super(...(args.length?args:[fixed]))}static now(){return fixed}};");
+ const args=['--import',preload,resolve('scripts/roadmap/run-daily-duck-financial-cycle.mjs'),'--config',cliSettings,'--parsed-store',options.parsedStorePath,'--source-commit',options.sourceCommit];
+ const cli=spawnSync(process.execPath,args,{encoding:'utf8',timeout:30000});expect(cli.status,cli.stderr).toBe(0);const first=JSON.parse(cli.stdout);expect(first).toMatchObject({status:'built',day:'2026-10-30',searchEngine:'duckdb',publicationEligible:false});
+ for(const lock of [config.outputDirectory+'.lock',s.daily.checkpointPath+'.lock']){const busy=spawnSync('/usr/bin/flock',['--no-fork','-n',lock,process.execPath,...args],{encoding:'utf8',timeout:30000});expect(busy.status,busy.stderr).toBe(75)}
+ const original=readFileSync(first.indexPath),cache=readFileSync(options.parsedStorePath);expect(await runDailyDuckFinancialCycle(config,options)).toMatchObject({status:'cycle-complete',day:'2026-10-30'});
+ vi.setSystemTime(new Date('2026-10-31T01:00:00Z'));expect(await runDailyDuckFinancialCycle(config,options)).toMatchObject({status:'waiting-for-daily-metadata'});
+ const next=structuredClone(s.envelope);Object.assign(next.checkpoint,{throughDate:'2026-10-30',completedDay:'2026-10-31',budget:{date:'2026-10-31',requests:8}});Object.assign(next.checkpoint.lastCompletedRun,{endDate:'2026-10-30',closedThrough:'2026-10-30',refreshAfter:'2026-10-31T01:00:00.000Z',completedAt:'2026-10-31T01:00:00.000Z',probe:{...next.checkpoint.lastCompletedRun.probe,date:'2026-10-31',observedAt:'2026-10-31T01:00:00.000Z'}});atomicJSON(s.daily.checkpointPath,next);
+ const second=await runDailyDuckFinancialCycle(config,options);expect(second).toMatchObject({status:'built',day:'2026-10-31'});expect(second.indexPath).not.toBe(first.indexPath);expect(readFileSync(first.indexPath)).toEqual(original);expect(readFileSync(options.parsedStorePath)).toEqual(cache);
+}),60000);

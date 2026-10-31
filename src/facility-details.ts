@@ -7,7 +7,7 @@ import type { ComparisonOperator } from "./financial-options";
 export type FacilityOrganization = "reporting-company" | "domestic-subsidiaries" | "overseas-subsidiaries";
 /** 表と日付/対象組織の対応は元書類を確認した宣言。hashの照合は意味の自動判定ではありません。 */
 export interface FacilityTableDeclaration { tableIndex: number; asOfDate: string; organization: FacilityOrganization; rawSha256: string; }
-export const FACILITY_DETAILS_VERSION = "2";
+export const FACILITY_DETAILS_VERSION = "3";
 export const FacilityField = Object.freeze({ TotalBookValueJPY: "totalBookValueJPY", LandBookValueJPY: "landBookValueJPY", BuildingsBookValueJPY: "buildingsBookValueJPY", LandAreaM2: "landAreaM2" } as const);
 export type FacilityField = typeof FacilityField[keyof typeof FacilityField];
 export type FacilityValue = { cellIndex: number; raw: string; unit: "JPY" | "m2"; multiplier: 1 | 1000000 } & (
@@ -35,9 +35,17 @@ function captureArray<T>(input: readonly T[], maximum: number): T[] {
         return input[index];
     });
 }
-function layout(table: DisclosureTable): { site: number; segment: number; company?: number; columns: Record<FacilityField, number> } | undefined {
+function layout(table: DisclosureTable, version: "2" | "3"): { site: number; segment: number; company?: number; columns: Record<FacilityField, number>; headerRows: number; asOfDate?: string } | undefined {
     const width = table.grid[0]?.length;
     if (![9, 11, 12].includes(width) || table.grid.length < 4) return;
+    if (version === "3" && width === 11 && table.grid.length >= 5) {
+        const paths4 = Array.from({ length: width }, (_, column) => [...new Set(table.grid.slice(1, 4).map(row => row[column]))].map(index => index === null || index === undefined ? "" : canonicalHeader(table.cells[index].parsedText)).join("/"));
+        const expected = ["事業所名(所在地)", "セグメントの名称", "設備の内容", "帳簿価額(百万円)/建物構築物", "帳簿価額(百万円)/機械運搬具工具器具備品", "帳簿価額(百万円)/土地/面積(m2)", "帳簿価額(百万円)/土地/金額", "帳簿価額(百万円)/リース資産", "帳簿価額(百万円)/ソフトウエア", "帳簿価額(百万円)/合計", "従業員数(名)"];
+        const dateRow = table.grid[0].map(index => index === null ? "" : canonicalHeader(table.cells[index].parsedText));
+        const dateCells = [...new Set(table.grid[0])].map(index => index === null ? "" : canonicalHeader(table.cells[index].parsedText));
+        if (paths4.every((path, index) => path === expected[index]) && dateRow.slice(0, 7).every(text => text === "") && dateRow.slice(7).every(text => text !== "") && dateCells.every(text => text === "" || /^\d{4}年\d{1,2}月\d{1,2}日現在$/.test(text)) && dateCells.filter(text => text !== "").length === 1)
+            return { site: 0, segment: 1, columns: { buildingsBookValueJPY: 3, landAreaM2: 5, landBookValueJPY: 6, totalBookValueJPY: 9 }, headerRows: 4, asOfDate: dateCells.find(text => text !== "")!.replace(/^(\d{4})年(\d{1,2})月(\d{1,2})日現在$/, (_all, year, month, day) => `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`) };
+    }
     const paths = Array.from({ length: width }, (_, column) => [...new Set(table.grid.slice(0, 3).map(row => row[column]))].map(index => index === null || index === undefined ? "" : canonicalHeader(table.cells[index].parsedText)).join("/"));
     const shift = width === 12 ? 1 : 0, extra = width >= 11 ? 1 : 0;
     if (shift && paths[0] !== "会社名" || paths[shift] !== "事業所名(所在地)" || paths[shift + 1] !== "セグメントの名称" || extra && paths[shift + 2] !== "設備の内容" || !/^従業員数\(人\)$/.test(paths[width - 1])) return;
@@ -47,12 +55,12 @@ function layout(table: DisclosureTable): { site: number; segment: number; compan
         !/^帳簿価額(?:\(百万円\))?\/土地\/面積\(m2\)$/.test(paths[area]) || !money(paths[land], /\/土地\/金額(?:\(百万円\))?$/) ||
         !money(paths[land + 1], /\/リース資産(?:\(百万円\))?$/) || !money(paths[total], /\/合計(?:\(百万円\))?$/) ||
         extra && !money(paths[total - 1], /\/その他$/)) return;
-    return { site: shift, segment: shift + 1, ...(shift ? { company: 0 } : {}), columns: { totalBookValueJPY: total, landBookValueJPY: land, buildingsBookValueJPY: start, landAreaM2: area } };
+    return { site: shift, segment: shift + 1, ...(shift ? { company: 0 } : {}), columns: { totalBookValueJPY: total, landBookValueJPY: land, buildingsBookValueJPY: start, landAreaM2: area }, headerRows: 3 };
 }
-function value(table: DisclosureTable, row: number, column: number, field: FacilityField): FacilityValue {
+function value(table: DisclosureTable, row: number, column: number, field: FacilityField, headerRows: number): FacilityValue {
     const cellIndex = table.grid[row][column]!, cell = table.cells[cellIndex], raw = cell.parsedText;
     const base = { cellIndex, raw, unit: field === "landAreaM2" ? "m2" as const : "JPY" as const, multiplier: field === "landAreaM2" ? 1 as const : 1000000 as const };
-    if (cell.row < 3 || cell.rowSpan !== 1 || cell.columnSpan !== 1) return { ...base, status: "unavailable", reason: "merged-data-cell" };
+    if (cell.row < headerRows || cell.rowSpan !== 1 || cell.columnSpan !== 1) return { ...base, status: "unavailable", reason: "merged-data-cell" };
     return { ...base, ...parseReportedTableNumber(raw, base.multiplier) };
 }
 export function extractFacilityDetails(input: FacilityDetailDocument): FacilityDetailsExtraction {
@@ -73,7 +81,7 @@ export function extractFacilityDetails(input: FacilityDetailDocument): FacilityD
     return projectFacilityDetails(source, { selection: { docID, contextRef, kind }, accountingStandard, declarations });
 }
 /** 内部共有: 検査済み本文表から同じ設備明細を再構成します。 */
-export function projectFacilityDetails(source: DisclosureTableExtraction, input: Omit<FacilityDetailDocument, "xml">): FacilityDetailsExtraction {
+export function projectFacilityDetails(source: DisclosureTableExtraction, input: Omit<FacilityDetailDocument, "xml">, version: "2" | "3" = "3"): FacilityDetailsExtraction {
     const { accountingStandard, declarations, selection: { docID, contextRef } } = input;
     const rows: FacilityDetailRow[] = [], diagnostics: FacilityDetailsExtraction["diagnostics"] = [];
     if (source.status !== "selected") return { declaredAccountingStandard: accountingStandard, source, rows, diagnostics };
@@ -89,17 +97,18 @@ export function projectFacilityDetails(source: DisclosureTableExtraction, input:
     for (const table of source.tables) {
         const declaration = declarations.find(d => d.tableIndex === table.index);
         if (!declaration) { diagnostics.push({ tableIndex: table.index, reason: "not-reviewed" }); continue; }
-        const mapping = layout(table);
+        const mapping = layout(table, version);
+        if (mapping?.asOfDate && mapping.asOfDate !== declaration.asOfDate) throw new Error("設備表の先頭日付と宣言が一致しません");
         if (!mapping || table.grid.some(row => row.some(index => index === null))) { diagnostics.push({ tableIndex: table.index, reason: "unsupported-layout" }); continue; }
-        for (let rowIndex = 3; rowIndex < table.grid.length; rowIndex++) {
+        for (let rowIndex = mapping.headerRows; rowIndex < table.grid.length; rowIndex++) {
             const ref = (col: number) => { const cellIndex = table.grid[rowIndex][col]!; return { cellIndex, raw: table.cells[cellIndex].parsedText }; }, site = ref(mapping.site), cell = table.cells[site.cellIndex];
-            if (!site.raw || cell.row < 3) { diagnostics.push({ tableIndex: table.index, rowIndex, reason: "site-unavailable" }); continue; }
+            if (!site.raw || cell.row < mapping.headerRows) { diagnostics.push({ tableIndex: table.index, rowIndex, reason: "site-unavailable" }); continue; }
             if (cell.rowSpan !== 1 || cell.columnSpan !== 1) { diagnostics.push({ tableIndex: table.index, rowIndex, reason: "merged-site-cell" }); continue; }
             const rowKey = createHash("sha256").update(JSON.stringify([docID, source.inputXmlSha256, source.source.rawSha256, contextRef, table.index, rowIndex])).digest("hex");
             rows.push({ rowKey, tableIndex: table.index, rowIndex, asOfDate: declaration.asOfDate, organization: declaration.organization,
                 siteAndLocation: site, ...(mapping.company === undefined ? {} : { companyLabel: ref(mapping.company) }), segment: ref(mapping.segment),
                 rights: "unconfirmed", propertyIdentity: "not-established", organizationVerification: "declared-source-reference-matched",
-                values: Object.fromEntries(fields.map(field => [field, value(table, rowIndex, mapping.columns[field], field)])) as Record<FacilityField, FacilityValue> });
+                values: Object.fromEntries(fields.map(field => [field, value(table, rowIndex, mapping.columns[field], field, mapping.headerRows)])) as Record<FacilityField, FacilityValue> });
         }
     }
     return { declaredAccountingStandard: accountingStandard, source, rows, diagnostics };

@@ -34,6 +34,8 @@
         "facility-detail-store.ts",
         "company-corporate-state.ts",
         "corporate-registry-stream-state.ts",
+        "financial-version-selection.ts",
+        "q4-extended-year.ts",
         "corporate-registry-block-store.ts"
     ]
 }

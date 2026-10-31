@@ -34,10 +34,15 @@ function period(p: OrderPeriod): OrderPeriod {
     return { startDate: p.startDate, endDate: p.endDate };
 }
 function capture(input: OrderDetailDocument): OrderDetailDocument {
-    if (!input?.selection || input.accountingStandard !== AccountingStandard.JGAAP || input.selection.kind !== DisclosureTableKind.ManagementAnalysis || !Array.isArray(input.declarations) || !input.declarations.length || input.declarations.length > 100) throw new Error("確認済みの受注原本と表宣言が必要です");
+    const rawDeclarations = input?.declarations;
+    if (!input?.selection || input.accountingStandard !== AccountingStandard.JGAAP || input.selection.kind !== DisclosureTableKind.ManagementAnalysis || !Array.isArray(rawDeclarations)) throw new Error("確認済みの受注原本と表宣言が必要です");
+    const length = rawDeclarations.length;
+    if (!Number.isSafeInteger(length) || length < 1 || length > 100) throw new Error("確認済みの受注原本と表宣言が必要です");
     const { xml, selection: { docID, kind, contextRef }, accountingStandard } = input;
     const seen = new Set<string>();
-    const declarations = Array.from(input.declarations as readonly OrderTableDeclaration[], d => {
+    const declarations = Array.from({ length }, (_, index) => {
+        if (!Object.hasOwn(rawDeclarations, index)) throw new Error("疎配列の受注宣言は使えません");
+        const d = rawDeclarations[index];
         if (!d || Object.keys(d).some(k => !["tableIndex", "period", "scope", "rawSha256"].includes(k)) || !Number.isSafeInteger(d.tableIndex) || d.tableIndex < 0 || !scopes.includes(d.scope) || typeof d.rawSha256 !== "string" || !/^[a-f0-9]{64}$/.test(d.rawSha256)) throw new Error("受注表の位置/範囲/本文参照が不正です");
         const p = period(d.period), key = JSON.stringify([d.tableIndex, p]);
         if (seen.has(key)) throw new Error("受注表の期間宣言が重複しています"); seen.add(key);
@@ -128,11 +133,16 @@ export function extractOrderDetails(input: OrderDetailDocument): OrderDetailExtr
 export interface OrderSearchOptions { period: OrderPeriod; scope: ConsolidationScope; role: OrderDetailRow["role"]; metric: OrderMetric; labelContains?: string; condition?: { operator: ComparisonOperator; value: number }; sort?: "value-asc" | "value-desc"; offset?: number; limit?: number; }
 const fraction = (s: string) => { const [i, f = ""] = s.split("."); return { numerator: BigInt(i + f), denominator: 10n ** BigInt(f.length) }; };
 export function searchOrderDetails(documents: readonly OrderDetailDocument[], options: OrderSearchOptions): { extractions: OrderDetailExtraction[]; rows: { sourceIndex: number; row: OrderDetailRow }[]; matched: number; filtered: number; excluded: { sourceIndex: number; rowKey: string; reason: string }[] } {
-    if (!Array.isArray(documents) || documents.length > 100 || !options) throw new Error("受注検索は100原本以下です");
+    if (!Array.isArray(documents) || !options) throw new Error("受注検索は100原本以下です");
+    const length = documents.length;
+    if (!Number.isSafeInteger(length) || length < 0 || length > 100) throw new Error("受注検索は100原本以下です");
     const p = period(options.period), { scope, role: requestedRole, metric, labelContains, condition, sort, offset = 0, limit = 100 } = options;
     if (!scopes.includes(scope) || !["detail", "subtotal", "reported-total"].includes(requestedRole) || !metrics.includes(metric) || labelContains !== undefined && (typeof labelContains !== "string" || !labelContains.trim() || labelContains.length > 1000) ||
         condition !== undefined && (!condition || typeof condition !== "object" || Array.isArray(condition) || !["gt", "gte", "lt", "lte", "eq"].includes(condition.operator) || !Number.isFinite(condition.value)) || sort !== undefined && !["value-asc", "value-desc"].includes(sort) || !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error("受注検索の条件が不正です");
-    const inputs = Array.from(documents, capture).sort((a, b) => a.selection.docID < b.selection.docID ? -1 : a.selection.docID > b.selection.docID ? 1 : 0);
+    const inputs = Array.from({ length }, (_, index) => {
+        if (!Object.hasOwn(documents, index)) throw new Error("疎配列の受注原本は使えません");
+        return capture(documents[index]);
+    }).sort((a, b) => a.selection.docID < b.selection.docID ? -1 : a.selection.docID > b.selection.docID ? 1 : 0);
     if (inputs.some(d => typeof d.xml !== "string") || inputs.reduce((sum, d) => sum + Buffer.byteLength(d.xml), 0) > 256 * 1024 * 1024 || new Set(inputs.map(d => d.selection.docID)).size !== inputs.length) throw new Error("受注原本の重複/合計上限を確認してください");
     const extractions: OrderDetailExtraction[] = [], rows: { sourceIndex: number; row: OrderDetailRow }[] = [], excluded: { sourceIndex: number; rowKey: string; reason: string }[] = [], issuers = new Set<string>();
     let filtered = 0, cells = 0, count = 0;

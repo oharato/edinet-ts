@@ -241,7 +241,17 @@ export class EdinetXbrlObject {
         return selectFinancialReportingBasis(this._docID, this._dataMap, this.contextMap, this.duplicateContextIds);
     }
 
-    /** IFRS・JPY・連結・明示期末の直接科目。単体・合算・通貨換算は未対応です。 */
+    /** 技術的な単体contextだけで前年比較を単体と認証しません。 */
+    private isCurrentStandaloneIfrsPeriod(period: MetricSelectionOptions["period"]): boolean {
+        if (typeof this._docID !== "string" || !this._docID.trim() || this._docID.length > 256 || /[\x00-\x1f\x7f]/.test(this._docID)) return false;
+        const basis = this.selectFinancialReportingBasis();
+        if (basis.status !== "selected" || basis.metadata.accountingStandard !== "IFRS" || basis.metadata.scope !== "NonConsolidated") return false;
+        const m = basis.metadata;
+        return period.instant !== undefined ? period.instant === m.instant && period.startDate === undefined && period.endDate === undefined :
+            period.startDate === m.period.startDate && period.endDate === m.period.endDate;
+    }
+
+    /** IFRS・JPYの直接科目。単体は原本DEIで確認した当期主範囲だけ。 */
     public selectIfrsBalanceSheetMetric(id: IfrsBalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<IfrsBalanceSheetMetricId> {
         if (!Object.prototype.hasOwnProperty.call(IFRS_BALANCE_SHEET_REGISTRY, id)) throw new Error("不正なIFRS貸借対照表IDです");
         // getterや呼出元の変更を後続の条件検証へ持ち込まず、入口で確認した範囲を固定します。
@@ -250,18 +260,18 @@ export class EdinetXbrlObject {
         const inputPeriod = options.period;
         const period = { instant: inputPeriod.instant, startDate: inputPeriod.startDate, endDate: inputPeriod.endDate } as MetricSelectionOptions["period"];
         if (accountingStandard !== "IFRS") return { metricId: id, status: "unsupported", reason: "unsupported-standard", evidence: [] };
-        if (scope !== "Consolidated") return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
+        if (scope !== "Consolidated" && (scope !== "NonConsolidated" || !this.isCurrentStandaloneIfrsPeriod(period))) return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
         // 不正なinstant/duration混在も消さずに共用の期間検証へ渡します。
         return selectDefinedMetricFact(IFRS_BALANCE_SHEET_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, { collapseIdenticalDuplicates: true });
     }
 
-    /** IFRS・連結・JPYの直接PL/CF。別範囲のタグから補完せず、原符号を保持します。 */
+    /** IFRS・JPYの直接PL/CF。単体は当期主範囲だけで、別範囲の補完はしません。 */
     public selectIfrsFinancialDetail(id: IfrsFinancialDetailMetricId, options: MetricSelectionOptions): FactSelectionResult<IfrsFinancialDetailMetricId> {
         if (!Object.hasOwn(IFRS_FINANCIAL_DETAIL_REGISTRY, id)) throw new Error("不正なIFRS財務明細IDです");
         const accountingStandard = options.accountingStandard, scope = options.scope, inputPeriod = options.period;
         const period = { instant: inputPeriod.instant, startDate: inputPeriod.startDate, endDate: inputPeriod.endDate } as MetricSelectionOptions["period"];
         if (accountingStandard !== "IFRS") return { metricId: id, status: "unsupported", reason: "unsupported-standard", evidence: [] };
-        if (scope !== "Consolidated") return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
+        if (scope !== "Consolidated" && (scope !== "NonConsolidated" || !this.isCurrentStandaloneIfrsPeriod(period))) return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
         return selectDefinedMetricFact(IFRS_FINANCIAL_DETAIL_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds,
             { collapseIdenticalDuplicates: true });
     }

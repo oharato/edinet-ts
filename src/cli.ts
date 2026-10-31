@@ -24,6 +24,7 @@ import { searchSegmentDetails } from "./segment-details";
 import { searchMainCustomerDetails } from "./main-customer-details";
 import { screenSubsidiaryHumanCapitalMetrics } from "./subsidiary-human-capital-metrics";
 import { Command } from "commander";
+import {registerDuckFinancialCommands} from "./duck-financial-cli";
 import { analyzeDocumentRelations } from "./document-relations";
 import { createCompanyProfile, CompanyProfileFieldId } from "./company-profile";
 import { screenCompanyDocuments, CompanyProfileOperator } from "./company-screening";
@@ -168,7 +169,7 @@ program.command("explain-document-relations")
 
 
 program.command("screen-ifrs-bs")
-    .description("同じ期末のIFRS連結・円の直接項目で、明示した会社を検索します")
+    .description("同じ期末のIFRS・同一主範囲・円の直接項目（単体は原本DEIの当期のみ）で、明示した会社を検索します")
     .requiredOption("--manifest <path>", "fileとIFRS metadataを持つJSON配列")
     .option("--metrics <ids>", "既定3項目に追加する直接項目ID（カンマ区切り）")
     .option("--conditions <json>", "直接項目のAND条件（追加項目は--metricsにも指定）", "[]")
@@ -192,7 +193,7 @@ program.command("screen-ifrs-bs")
             const result = screenIfrsBalanceSheetDocuments(documents, { metricIds: options.metrics === undefined ? undefined : options.metrics.split(",").map((id:string) => id.trim()), conditions: JSON.parse(options.conditions), sortBy: options.sortBy, order: options.order, offset: options.offset, limit: options.limit });
             console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
         } catch {
-            console.error("IFRS検索の入力を確認してください（同一期末・IFRS連結・JPYの明示一覧と有効な検索条件が必要です）");
+            console.error("IFRS検索の入力を確認してください（同一期末・IFRS同一主範囲・JPYの明示一覧と有効な検索条件が必要です）");
             process.exitCode = 1;
         }
     });
@@ -380,9 +381,13 @@ program.command("screen-details")
         } catch(error) { console.error(error instanceof Error?error.message:String(error));process.exitCode=1; }
     });
 
+function readShareAdjustments(file: string | undefined) {
+    return file === undefined ? undefined : JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(path.resolve(file), LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+}
+
 /** 両前年比CLIの読取り上限・入力形式を同じに保ちます。数値の検査は各APIが行います。 */
 function registerAnnualGrowthCommand(name:string,description:string,metric:string,screen:(pairs:any[],options:any)=>unknown,perShare=false):void {
-program.command(name)
+const command = program.command(name)
     .description(description)
     .requiredOption("--manifest <path>", "previous/currentにfileとmetadataを持つJSON配列")
     .option("--conditions <json>", perShare ? "operator/valueのAND条件" : `${metric}のAND条件`, "[]")
@@ -398,9 +403,10 @@ program.command(name)
                 const input=readRegularFile(path.resolve(path.dirname(manifestPath),entry.file),Math.min(LOCAL_IMPORT_LIMITS.sourceBytes,LOCAL_IMPORT_LIMITS.totalBytes-bytes));bytes+=input.bytes.byteLength;return {xml:new TextDecoder("utf-8",{fatal:true}).decode(input.bytes),metadata:entry.metadata,...(perShare?{shareBasis:entry.shareBasis}:{})};};
             const pairs=entries.map(pair=>{if(!pair||typeof pair!=="object"||Array.isArray(pair)||Object.keys(pair).some(key=>!["previous","current"].includes(key)))throw new Error("previous/currentを明示してください");return {previous:load(pair.previous),current:load(pair.current)};});
             for(const value of [options.offset,options.limit])if(value!==undefined&&!/^\d+$/.test(value))throw new Error("offset/limitは0以上の整数です");
-            console.log(JSON.stringify(screen(pairs,{conditions:JSON.parse(options.conditions),order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit)}),null,options.pretty?2:undefined));
+            console.log(JSON.stringify(screen(pairs,{conditions:JSON.parse(options.conditions),order:options.order,offset:Number(options.offset),limit:options.limit===undefined?undefined:Number(options.limit),...(options.shareAdjustments === undefined ? {} : {shareAdjustments:readShareAdjustments(options.shareAdjustments)})}),null,options.pretty?2:undefined));
         }catch(error){console.error(perShare?"1株当たり前年比の入力・株式基準・条件を確認してください（入力内容は非表示）":error instanceof Error?error.message:String(error));process.exitCode=1;}
     });
+if (perShare) command.option("--share-adjustments <path>", "企業コード別の出典付き分割換算optionを持つJSON");
 
 }
 registerAnnualGrowthCommand("screen-sales-growth","明示した前年/当年の12暦月売上高pairを前年比で検索します（1=100%）","netSalesGrowth",screenAnnualRevenueGrowth);
@@ -415,6 +421,7 @@ program.command("screen-cagr")
     .description("連続する年次原本の明示系列からCAGRを検索します（3年は4原値）")
     .requiredOption("--manifest <path>", "各社のfile/metadata配列を持つJSON二重配列")
     .requiredOption("--metric <id>", "netSalesCagr/operatingIncomeCagr/netIncomeCagr/earningsPerShareCagr/dividendPerShareCagr")
+    .option("--share-adjustments <path>", "EPS/配当用の企業コード別分割換算optionを持つJSON")
     .option("--conditions <json>", "operator/valueのAND条件", "[]")
     .option("--order <order>", "ascまたはdesc", "desc")
     .option("--offset <number>", "開始位置", "0")
@@ -436,7 +443,7 @@ program.command("screen-cagr")
                 });
             });
             for (const value of [options.offset, options.limit]) if (value !== undefined && !/^\d+$/.test(value)) throw new Error("ページ指定は0以上の整数です");
-            console.log(JSON.stringify(screenCagr(series, options.metric, { conditions: JSON.parse(options.conditions), order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit) }), null, options.pretty ? 2 : undefined));
+            console.log(JSON.stringify(screenCagr(series, options.metric, { conditions: JSON.parse(options.conditions), order: options.order, offset: Number(options.offset), limit: options.limit === undefined ? undefined : Number(options.limit), ...(options.shareAdjustments === undefined ? {} : { shareAdjustments: readShareAdjustments(options.shareAdjustments) }) }), null, options.pretty ? 2 : undefined));
         } catch {
             console.error("CAGR検索の原本一覧・項目・条件・期間を確認してください（入力内容は非表示）");
             process.exitCode = 1;
@@ -1281,7 +1288,7 @@ program.command("financial-reporting-basis")
     });
 
 program.command("screen-ifrs-details")
-    .description("IFRS連結JPYの直接PL/CF明細を同一期間/分類で検索します")
+    .description("IFRS同一主範囲JPYの直接PL/CF明細（単体は原本DEIの当期のみ）を同一期間/分類で検索します")
     .requiredOption("--manifest <path>", "file/metadataのJSON配列")
     .option("--metrics <csv>", "明示項目。省略時はPL5項目")
     .option("--conditions <json>", "metric/operator/valueのJSON配列", "[]")
@@ -1797,4 +1804,5 @@ const getCommand = program.command("get")
         }
     });
 
+registerDuckFinancialCommands(program);
 program.parse(process.argv);

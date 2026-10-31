@@ -75,7 +75,7 @@ describe('IFRS明細のsnapshot/検索',()=>{
   const result=screen(docs,{metricIds:['costOfSales']});expect(result.rows.map(r=>r.metadata.period.endDate)).toEqual([original,original]);
   const array=[doc()];array[Symbol.iterator]=function*(){yield doc('9999');};expect(screen(array).rows[0].metadata.secCode).toBe('10010');
  });
- it.each([{scope:'NonConsolidated'},{accountingStandard:'J-GAAP'},{currency:'USD'},{period:{instant:'2025-03-31'}},{periodType:'quarter'},{period:{startDate:'2024-04-01',endDate:'2025-02-30'}},{unknown:true}])('metadataの不整合を拒否する %j',changed=>{
+ it.each([{accountingStandard:'J-GAAP'},{currency:'USD'},{period:{instant:'2025-03-31'}},{periodType:'quarter'},{period:{startDate:'2024-04-01',endDate:'2025-02-30'}},{unknown:true}])('metadataの不整合を拒否する %j',changed=>{
   const d=doc();expect(()=>snapshot(d.xml,{...d.metadata,...changed} as never)).toThrow();
  });
 });

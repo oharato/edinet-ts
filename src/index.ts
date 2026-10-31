@@ -23,7 +23,8 @@ export * from "./balance-sheet-import";
 export * from "./balance-sheet-version-diff";
 
 export * from "./financial-detail-registry";
-export * from "./financial-detail-screening";
+export {createFinancialDetailSnapshot,screenFinancialDetailDocuments} from "./financial-detail-screening";
+export type {FinancialDetailMetadata,FinancialDetailDocument,FinancialDetailSnapshot,FinancialDetailCondition,FinancialDetailScreeningOptions,FinancialDetailDiagnostic,FinancialDetailScreeningResult} from "./financial-detail-screening";
 
 export * from "./annual-revenue-growth";
 export * from "./company-profile";
@@ -40,7 +41,8 @@ export * from "./annual-operating-income-growth";
 export * from "./document-relations";
 
 export * from "./ifrs-balance-sheet-registry";
-export * from "./ifrs-balance-sheet-screening";
+export {IFRS_BALANCE_SHEET_SCREENING_MAX_DOCUMENTS,IFRS_BALANCE_SHEET_SCREENING_MAX_CONDITIONS,createIfrsBalanceSheetSnapshot,screenIfrsBalanceSheetDocuments} from "./ifrs-balance-sheet-screening";
+export type {IfrsBalanceSheetMetadata,IfrsBalanceSheetDocument,IfrsBalanceSheetSnapshot,IfrsBalanceSheetCondition,IfrsBalanceSheetScreeningOptions,IfrsBalanceSheetDiagnostic,IfrsBalanceSheetScreeningResult} from "./ifrs-balance-sheet-screening";
 
 export type { ContextDimensionsTraceResult, ContextDimensionTraceCandidate, ContextDimensionEntryTrace, ContextDimensionTraceMap,
     DimensionQNameTrace, DimensionNamespaceBinding, DimensionTraceDiagnostic, DimensionTraceDiagnosticCode, TypedDimensionElementTrace } from "./context-dimension-traces";
@@ -50,6 +52,7 @@ export type { SubsidiaryHumanCapitalLabelMetadata, SubsidiaryHumanCapitalLabelDo
     SubsidiaryHumanCapitalLabelExtraction, SubsidiaryHumanCapitalLabelCondition, SubsidiaryHumanCapitalLabelSearchOptions, SubsidiaryHumanCapitalLabelSearchResult } from "./subsidiary-human-capital-labels";
 
 export * from "./annual-cagr";
+export * from "./share-split-adjustment";
 
 export * from "./annual-net-income-growth";
 export * from "./company-master";
@@ -118,13 +121,17 @@ export type {FinancialReportingBasis,FinancialReportingBasisField,ReportingBasis
 export {createAutomaticFinancialSnapshots} from "./automatic-financial-snapshots";
 export type {AutomaticFinancialSnapshotOptions,AutomaticFinancialSnapshots} from "./automatic-financial-snapshots";
 
+export {FINANCIAL_VERSION_POLICY,authenticateFinancialVersionEvidence,financialVersionEvidenceManifestSha256,readFinancialVersionProof,verifyFinancialVersionContext} from "./financial-version-selection";
+export type {FinancialVersionZipEvidence,FinancialVersionEvidenceInput,FinancialVersionEvidenceBundle,FinancialVersionOptions,AuthenticatedFinancialVersionContext,FinancialVersionRuntimeBinding,FinancialVersionHoldReason,FinancialVersionIdentity,FinancialVersionZipProof,FinancialVersionSourceProof,FinancialVersionDecision,FinancialVersionProof} from "./financial-version-selection";
+export {createSourceBackedObservedFinancialSnapshots} from "./financial-version-observed";
+export type {SourceBackedObservedFinancialSnapshots} from "./financial-version-observed";
 export {OBSERVED_FINANCIAL_SNAPSHOT_VERSION,createObservedFinancialSnapshots} from "./observed-financial-snapshots";
 export type {ObservedFinancialSource,ObservedFinancialSnapshotOptions,ObservedFinancialSnapshotRecord,ObservedFinancialSourceReason} from "./observed-financial-snapshots";
 
 export {ObservedFinancialArchive,OBSERVED_FINANCIAL_ARCHIVE_VERSION} from "./db/observed-financial-archive";
-export type {FinancialArchiveSourceTransferOptions,FinancialArchiveSourceTransferResult,FinancialSourceAcquisitionOptions,FinancialSourceAcquisitionItem,FinancialSourceAcquisitionPlan,FinancialSourceAcquisitionResult,ObservedFinancialArchiveOptions,ArchivedFinancialSnapshotOptions,ArchivedFinancialSnapshots} from "./db/observed-financial-archive";
+export type {FinancialArchiveSourceTransferOptions,FinancialArchiveSourceTransferResult,FinancialSourceAcquisitionOptions,FinancialSourceAcquisitionItem,FinancialSourceAcquisitionPlan,FinancialSourceAcquisitionResult,ObservedFinancialArchiveOptions,ArchivedFinancialSnapshotOptions,ArchivedFinancialSnapshots,SourceBackedArchivedFinancialSnapshotOptions,SourceBackedArchivedFinancialSnapshots} from "./db/observed-financial-archive";
 export {FinancialSearchIndex,FINANCIAL_SEARCH_INDEX_VERSION} from "./db/financial-search-index";
-export type {FinancialIndexQuality,FinancialIndexQualityState,FinancialIndexQualityCounts,FinancialIndexCohortQuality,FinancialIndexMetricId,FinancialIndexCohort,FinancialIndexSearchOptions,FinancialIndexRow,FinancialIndexDiagnostic,FinancialIndexSearchResult,FinancialIndexGeneration,FinancialIndexPopulation,FinancialIndexAssembly} from "./db/financial-search-index";
+export type {FinancialIndexQuality,FinancialIndexQualityState,FinancialIndexQualityCounts,FinancialIndexCohortQuality,FinancialIndexMetricId,FinancialIndexCohort,FinancialIndexSearchOptions,FinancialIndexRow,FinancialIndexDiagnostic,FinancialIndexSearchResult,FinancialIndexGeneration,FinancialIndexGenerationV1,FinancialIndexGenerationV2,FinancialIndexPopulation,FinancialIndexAssembly} from "./db/financial-search-index";
 
 export {FinancialIndexBuild,FINANCIAL_INDEX_BUILD_VERSION} from "./db/financial-index-build";
 export type {FinancialIndexBuildInput,FinancialIndexBuildPlan,FinancialIndexBuildTask,FinancialIndexBuildProgress} from "./db/financial-index-build";
@@ -153,10 +160,10 @@ export * from "./document-formats";
 export {recoverDedicatedSqliteSnapshot,SQLITE_RECOVERY_MAX_BYTES} from "./db/sqlite-recovery";
 export type {DedicatedSqliteRecoveryKind,DedicatedSqliteRecoveryOptions,DedicatedSqliteRecoveryResult} from "./db/sqlite-recovery";
 
-export {screenCompanyFinancials} from './company-financial-screening';
+export {screenCompanyFinancials,screenDuckCompanyFinancials} from './company-financial-screening';
 export type {CompanyFinancialScreeningOptions,CompanyFinancialScreeningRow,CompanyFinancialScreeningResult} from './company-financial-screening';
 
-export {compareCompanyFinancialsByIndustry} from "./company-industry-comparison";
+export {compareCompanyFinancialsByIndustry,compareDuckCompanyFinancialsByIndustry} from "./company-industry-comparison";
 export type {CompanyIndustryComparisonOptions,CompanyIndustryComparisonResult,CompanyIndustryGroup,IndustryMetricStatistics,IndustryExactValue} from "./company-industry-comparison";
 
 export {parseCorporateRegistryPublicationCalendar,planCorporateRegistryDifferences} from "./corporate-registry-calendar";
@@ -169,10 +176,30 @@ export type {CorporateRegistryChunkImport} from "./db/corporate-registry-block-s
 export {CorporateRegistryStore} from "./db/corporate-registry-store";
 export type {CorporateRegistryStoredFile,CorporateRegistryFileImport,CorporateRegistryStoredQuery,CorporateRegistryStoredDelivery,CorporateRegistryStoredStateResult} from "./db/corporate-registry-store";
 
+
+export {ParsedFinancialStore,PARSED_FINANCIAL_STORE_VERSION,parsedFinancialMappingVersions,parsedFinancialExtractionId} from "./db/parsed-financial-store";
+export type {ParsedFinancialIdentity,ParsedFinancialOutcome,ParsedFinancialExtraction} from "./db/parsed-financial-store";
+export {ParsedFinancialJob} from "./db/parsed-financial-job";
+export type {ParsedFinancialTask,ParsedFinancialJobInput,ParsedFinancialJobPlan,ParsedFinancialJobProgress} from "./db/parsed-financial-job";
+export {DuckFinancialIndexBuild} from "./db/duck-financial-index-build";
+export type {DuckFinancialConnection} from "./db/duck-financial-index-build";
+export {DuckFinancialSearchIndex} from "./db/duck-financial-search-index";
+export {DuckFinancialPublicationReader} from "./db/duck-financial-publication-reader";
+export type {FinancialIndexAsyncReader} from "./db/financial-index-publication";
+
+export {buildDuckFinancialCycle} from "./duck-financial-cycle";
+export type {DuckFinancialCycleInput,DuckFinancialBuiltCycle,DuckFinancialCycleResult} from "./duck-financial-cycle";
+
 export {linkCompanyMasterCorporateStates,linkCompanyMasterCorporateStreamStates} from "./company-corporate-state";
 export type {CompanyCorporateStreamStateResult,CompanyCorporateStateQuery,CompanyCorporateStateLinkReason,CompanyCorporateStateLink,CompanyCorporateStateResult} from "./company-corporate-state";
 
 export {reconstructCorporateRegistryStreamStates} from "./corporate-registry-stream-state";
 export type {CorporateRegistryStreamPart,CorporateRegistryStreamDelivery,CorporateRegistryStreamStateQuery,CorporateRegistryStreamStateResult} from "./corporate-registry-stream-state";
 
+export {recordDuckFinancialValueVerification,validateDuckFinancialValueVerification,activateVerifiedDuckFinancialPublication} from "./duck-financial-value-verification";
+export type {DuckFinancialVerificationInput,DuckFinancialVerificationChecks,DuckFinancialVerificationBinding,DuckFinancialVerificationRecord} from "./duck-financial-value-verification";
+
 export type { SubsidiaryHumanCapitalAutoNoteEvidence, SubsidiaryHumanCapitalNoteInterpretation } from "./subsidiary-human-capital-notes";
+
+export {LARGE_HOLDING_TRANSACTIONS_VERSION,extractLargeHoldingTransactions,searchLargeHoldingTransactions} from './large-holding-transactions';
+export type {LargeHoldingTransactionNumber,LargeHoldingTransactionRow,LargeHoldingTransactionSource,LargeHoldingTransactions,LargeHoldingTransactionSearchOptions} from './large-holding-transactions';

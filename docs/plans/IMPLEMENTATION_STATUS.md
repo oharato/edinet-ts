@@ -1,6 +1,38 @@
 # 全体ロードマップの実装状況
 
+## 混在基準の年額配当再構成（2026-10-31）
+
+期中の株式分割・併合で1株当たり配当の基準が変わる年を、確認済みの分割台帳から共通基準へ換算して合算する `reconstructAnnualDividendPerShare` を追加しました。各支払の原値・基準日・支払区分・観測時刻を保持し、`annualPeriod` 内の支払だけを扱います。分割の適用範囲・完全性・競合・銘柄・cutoffは既存の単独換算と同じ検査を通し、原値と台帳を書き換えません。
+
+全支払が `paid` のときだけ支払済み年額とし、`proposed` を含む場合は合計と内訳を返しつつ `paid: false` を維持します。`unknown`、期間外、重複ID、負値、安全範囲外の合計は採用しません。返却は各支払の換算分数と `totalPerShare` の正確分数を含み、価格・他社・全市場への接続は行いません。
+
+合成9ケースで、順方向/逆方向換算、3分割の非有限小数、予定配当、unavailable伝播、期間cutoff、重複ID・期間外・負値・疎配列・iterator/安全範囲の拒否を確認しました。関連2ファイル251テストと `tsc --noEmit` が成功しています。実原本・実支払系列による照合と評価指標APIへの入力接続は未確認です。使い方は[株式基準を確認したEPS・実績配当の成長率](../financial/PER_SHARE_GROWTH.md#異なる株式基準が混在する年額配当の再構成)を参照してください。
+
 [全体計画](EDINET_TS_ROADMAP.md)の全段階を対象に、実装・原本照合・配布・運用を進めています。部分実装や限定標本の検証だけで、その段階全体を完了とは扱いません。無償・既存データを優先します。
+
+## 大量保有報告の取引明細API（2026-10-31）
+
+固定7列の原本XBRLから取引表だけを読み、報告値の検索をする公開APIを追加しました。数量・割合・単価は明記された単位がないため、表示数値だけを倍率1で保持します。表示日の解析も、実取引日や表題の「最近60日」の認証には使いません。利用可能時刻は呼出元metadataに基づき、公式一覧観測の真正性は別工程です。親子/競合訂正を同時検索せず、全文再構成・holder identity・既存5指標は変更していません。
+
+実原本6件から83行/581セルを再生し、65件の空単価、タグ欠落/nil/blankを区別しました。親と訂正の取引数量を別々に保ち、保存済み旧6reportの全JSONは一致。独立原XML照合83行、PDF照合62行が一致し、W23P残21行はXMLのみ。修正後のroot APIは既存/新規2ファイル27テスト・公開型検査が成功しています。全体build、取引Store・CLI、全形式/全市場、法的全文再構成は残ります。証跡は `data/roadmap/large-holding-transactions-staged-20261031/parent-root-verification.json` と `data/roadmap/large-holding-transaction-domain-review-20261031/sdk-independent-comparison.json`。
+
+## 固定16入力のRAM統合と全原本検査（2026-10-31）
+
+停止済み16 SQLite入力を新しいRAM作業領域へ統合し、223,845観測・83,823 metadata書類・7,867原本を独立照合しました。原本が既存集合の部分集合であるpoolについても、別IDの83,828観測を省略せず転送しています。閉鎖後の全SQL列/body/id/hash/観測時刻と論理manifestを確認し、7,867圧縮原本のCRC・原文SHAを約18.9GBの展開ストリームで検証しました。元16入力の物理SHA/identityは前後不変、HTTP0、原文の新規ディスク保存0です。
+
+統合archiveは1,570,766,848 bytes、SHA `b5fbe460e6408948784ec16d5d715546a6b586a59f9bb587f446c7e7ca150a65`。固定736ソースから構築した258配布ファイルも全hash一致。親は閉鎖archiveの物理SHA/読取専用mode/identity、hot journal不在、全6工程のlog hashと閉鎖proofの結合を別途確認しました。証跡は `data/roadmap/tmpfs-union-phase1-preparation-rev5-20261031/phase1-result.json` と `parent-binding-check.json` です。最大専用割当2,898,927,616 bytes、子RSS346,632,192 bytes、最小MemAvailable3,996,893,184 bytesでした。
+
+書込みを専用tmpfs配下に制限するkernel Landlockと、通常ディスク34GiB＋64MiB余裕＋8MiB controlの独立したRAM専用方針を使っています。従来の36GiB/448MiB取得workflowは変更していません。先行失敗は消さず、rev3のstdin起動失敗、rev4の監視中atomic rename競合と専用領域の削除記録を保持しました。新しいrev5として最初から実行し、異常なI/Oや未説明のRSS欠落を無視していません。
+
+これは固定入力の統合閉包で、全市場の最新性や不足297親の解消、財務採用・financial-v2認証・公開切替を示しません。出力archiveはRAM上の揮発性成果物です。財務索引の構築は、実測archiveサイズに加えて別枠の親RSS・子RSS・索引/journal・host留保を再計上した次工程として進めます。
+
+## 固定736ソースの私有RAM配布候補と利用先確認（2026-10-31）
+
+全5,114ケースを確認した固定736ソースを私有commit `c532e839fc88a42056db10786551bffcf3235e6a` としてRAM上へ復元しました。独立した2リポジトリで全736ソース・modeを照合し、258配布ファイルのbuildと261ファイルのpackageを2回作成してbyte一致を確認。package SHAは `82a7fe1e34a8eb2c22be079bf9489f9c7d3dd63dce31ad39efe73a56e6fbb349` です。ESM/CJS・公開型・公開名・各プロファイル・native依存あり/なしの検証が成功しました。
+
+初回の利用先保存テストは、検証用コピーにGit情報がないため14件中2件が本来の容量検査へ到達せず失敗しました。原失敗を保持し、同じpackage・lock・成功済み40工程のhashを再確認した別の補完実行で、専用コピーだけにGit情報を付与しました。保存保護14件、stock-data回帰10ファイル63件、設備版3のinstalled ESM/CJS各12件・計24件が成功し、親も報告を独立確認しました。SDK・テスト・容量留保は変更していません。
+
+証跡は `data/roadmap/ram-only-private-candidate-worker-rev2-20261031/` と `ram-only-private-candidate-continuation-20261031/parent-independent-check.json`。最大割当は初回444,813,312 bytes、補完446,107,648 bytesで、両実行の専用作業領域は削除済みです。package/bundleはRAM上の揮発性成果物であり、耐久保存・正式配布・実vendor/サービス切替・全ロードマップの完了とは扱いません。固定後の別ソース変更も本候補へ含めません。
 
 ## 子会社人的資本の自動注記解釈の初期対応（2026-10-31）
 
@@ -14,6 +46,66 @@ Node 26.12.1で関連7ファイル171件・隔離build・公開型が成功し�
 
 人的資本では、custom iteratorで不正な指標・注記・書類・条件を隠せる問題を修正しました。4入口をlength一回固定・own index一回読取へ揃え、疎配列/不正件数/上限超過を拒否します。修正前は再現6件失敗、修正後は既存CLIを含む関連100件成功、iterator未参照のassertを強めた入力12件も再確認。公開d.tsはbyte不変です。実2原本37行・176値・52検索は修正前固定SDKと一致しました。歴史JSONでは後から追加された未検証表示だけを区別し、既存値と注記参照を保持しています。証跡は `data/roadmap/subsidiary-indexed-input-20261031/`。注記意味の自動解釈は未実装です。
 
+## 統合736ソースの全5,114テスト確認（2026-10-31）
+
+設備版3・旧Store読取互換、受注のindex捕捉、法人取込job、財務監査の一括読取と非有限値拒否を含む736ソースを固定しました。239ファイル・5,114件を容量条件ごとに分けて実行し、初回は5,109成功・5失敗・skip0でした。5失敗は34GiB留保が必要な管理DB復旧テストをRAM側へ分けた見落としです。同じソース・同じ30秒制限で当該ファイルの全8件をSSD上で補完し、すべて成功しました。容量検査やテストを緩めていません。
+
+元の5失敗を消さず、file/fullName/同名の出現順で重複名も保持して全5,114ケースを照合し、有効な成功5,114・失敗/skip0を親子で独立確認しました。一回の全体実行で全成功したとは扱いません。build・本体/公開型も成功し、2回のbuildの全258配布ファイルはbyte一致。固定ソース/基準SDK/元原本は不変、専用RAM/SSD scratchは削除済みです。初回の最大割当はRAM154,300,416・SSD36,753,408 bytesでした。
+
+固定入力SHAは `378928ca357d8a306830105eba3293589581a2c1b1c4f6777db6e177533ecead`。原full記録は `data/roadmap/post728-ram-full-verification-rev4-20261031/`、補完は `post728-managed-recovery-supplement-20261031/`、全ケース集約と親の独立照合は `post728-managed-recovery-aggregate-20261031/` に保持しています。本検証からrootのdist・Git index/refs・稼働世代は書き換えず、固定後の文書差分は別記しています。この統合版のpackage/installed/利用先検証は、冒頭の私有RAM候補で後続確認しました。耐久保存・正式配布・公開切替は未完了です。
+
+## 設備の追加形式と旧Store読取の保持（2026-10-31）
+
+弘電社S100YFSOの提出会社設備表は、日付行と3段見出し・11列・ソフトウエア列・従業員数「名」の形式で、旧版では未対応でした。確認した配置だけを版3へ追加し、表内先頭の日付と宣言を一致させ、データ開始行とmergedセル判定を見出し段数へ統一しました。既存の入力配列のindex捕捉は保持しています。実6行24項目（18数値・6ダッシュ）を独立XML/Decimalと既存PDF25ページで照合し、親でも画像を確認。旧96行の全JSONは不変です。
+
+Store版2は読取専用で旧projectionを使い、旧未対応表の0行も再解釈せず保持します。旧DBへの書込みと、hashを修復した新旧版混在を拒否し、新規Storeは版3を使います。readOnly getterは一度だけ捕捉し、互換形式判定と実際のopen modeが変わることを防ぎます。root反映後、関連3ファイル69テスト・本体型検査が成功。原XML/PDF・旧DBは不変、追加HTTP0です。証跡は `data/roadmap/facility-kodensha-staged-20261031/` と `facility-kodensha-rebased-20261031/`。同版の隔離build・公開型・既存CLIと全体回帰は上記で確認し、追加形式の実入力CLIと後続のinstalled検証は完了し、正式配布・利用先反映は残します。
+
+設備版3の実入力CLIもNode 26.12.1で確認しました。固定統合SDKを使い、S100YFSOの6行の保存・重複投入・8検索を実行し、保存検索はAPIと直接計算に一致。不正な宣言を拒否してDBを保持し、旧版2の未対応0行の読取と書込拒否も確認しました。原本・既存照合結果・固定配布物は前後hash不変です。13回のCLI呼出しと専用RAM scratchの削除を確認し、証跡を `data/roadmap/facility-v3-real-cli-20261031/` に保存しました。この直接distの検証に続き、同じ固定SDKから作成した261ファイルのpackageを、optional依存なし/nativeありの2環境へofflineで実インストールしました。両環境で全ファイルhash一致、実原本の13 CLI呼出し、CJS/ESM読込と公開型検査が成功。nativeではDuckDB v2.0.0の実SQLも成功しました。検証済みpackageを同一hashで保存し、最大約243MiBの専用RAM領域は削除。証跡は `data/roadmap/facility-v3-installed-20261031/completion.json`。これは設備版3のinstalled検証であり、統合SDK全機能・stock-data利用先・正式配布・全市場運用の完了とは扱いません。
+
+同じpackageをstock-data移行候補へ反映し、固定lock・offline/remote禁止・scripts無効で全依存を新規インストールしました。63回帰・型・保存保護14件が成功。元SDKも固定lockから新規インストールし直し、63回帰・型が成功、SDK本体全ファイルと元lockの復元一致を確認しています。SDK配下の追加optional依存は別途lockの版/integrityへ照合しました。原移行候補・packageは不変、最大約442MiBの専用RAM領域は削除済み。証跡は `data/roadmap/facility-v3-stock-fresh-install-20261031/completion.json`。先行する依存ツリー複製による回帰は `facility-v3-stock-consumer-20261031/` に保持します。正式stock-data/vendor・サービスの切替は行っていません。
+
+## 新取得leaf48原本の新版SDK再生（2026-10-31）
+
+固定717/c804のbasis4・observed8で全48原本を再生し、独立照合器v5のDEI/期間/原値検査を行いました。旧46解決・2保留から47解決・1保留へ進み、採用244→249値の差分5値は延長年度Q4のS100WXZQだけです。他47件の状態・値、全source SHAとavailableAt、解決原本のknownAtは保持。S100YMT4はraw解析が成功しても、公式parentとDEI訂正対象の不一致で観測系列入口が採用を止めます。
+
+既存8原本のQ4証跡を同一source/期間/knownAtで再利用し、残りを含む253回の新fact照合には保留原本の検査専用5factsも含むため、249採用値とは区別します。累計141,380,965 bytesを一原本ずつメモリで処理し、HTTP・DB clone/write・原XMLのディスク保存は0、元bank/旧分類/SDK/証跡は不変です。これはSQL世代・financial-v2認証・公開判定の代替ではありません。証跡は `data/roadmap/leaf48-current717-direct-replay-rev3-20261031/final-summary-sidecar.json`。
+
+## 固定SDK候補c804と独立照合・利用先回帰（2026-10-31）
+
+後続の法人registry・受注配列修正も含む728ソースを別途固定し、全233ファイル・5,067テストが一回の実行で成功しました（失敗/skipなし、2 workers、各30秒制限）。本体/公開型・buildも成功し、build前後と全体回帰後のsource manifest SHA `688ea57aed618d56413f6eeaed42acd97bc7ae1465141f12ac2a50bd4a838645` は不変です。証跡は `data/roadmap/roadmap-next-current-verification-20261031/summary.json`。この最新版の配布候補は準備段階で、以下の封印済みc804とは分けています。新候補の取得・build・pack・installed検証は容量留保の回復待ちです。
+
+728固定後にrootへ追加された監査projectionの1,000行読取/tuple INと法人原本取込jobは別検査です。Node 26.12.1で財務索引/訂正選択の3ファイル60テスト、取込jobの12テストと本体型検査が成功しました。固定版の全5,067テストに後続変更を含めたとは扱わず、新全体回帰・配布検証は残します。証跡は `data/roadmap/roadmap-post728-followup-verification-20261031/summary.json`。
+
+次候補向けの追加profileは、固定728のdistを直接参照するESM/CJS予行で成功しました。法人blockの取込/検索/読取専用再開/破損時不変、受注のindex捕捉/疎配列/件数超過拒否を確認。32MiB上限のtmpfsだけを使い、最大割当73,728 bytes、専用scratch削除と固定source不変を確認しました。package取得・インストールの代替検証ではありません。証跡は `data/roadmap/private-release-roadmap-next-candidate-20261031/source-profile-rehearsal-only.json`。
+
+単体IFRS/Q4、根拠付き訂正選択、平均総資産利益率の同値重複修正、独立照合器v5を含む717ソースを固定し、私有commit `c804a45fcf66f456e2050fc73b68b2a2f4d2748e`（親b6ad4046）へ保存しました。全227ファイル・5,017テストが成功し、唯一の30秒timeoutも同一ソース・同一制限での単独1件が20.4秒で成功。元full実行のexit1と補完記録を分けて保持し、全5,018件を確認しています。本体/公開型とbuildも成功しました。
+
+既知の訂正対象不整合8行・19値を明示的に除いた14,810行・38,565採用値/43,295factsを、旧照合器とv5で独立照合。7,405原本の値指紋が一致し、v5は全行のDEI/SQL属性と278訂正原本の来歴も検査しました。元世代report・index・archiveは変更せず、この限定subsetをSDK世代の認証とは扱いません。
+
+256配布ファイルは検証snapshotと2回のbuildで全byte一致。package259ファイルと両installed SDKも一致し、公開713名は旧638名を保持しています。ESM/CJS・厳密公開型・IFRS FY/HY/Q4/拒否境界・形式2 archive/index/build/公開拒否・分割/評価・実native DuckDB2とoptional依存なしの環境・利用先10ファイル63テスト/型/保存14テストが成功。package SHAは `e9578c32e6ea231c702b55295390c1d54faabd1835f04b96cad7a3bc5654daf4`。原本と既存稼働は保持しました。
+
+検証中にrootは法人registryの圧縮block保存commit `fa39e9c4` へ進みました。root不変とはせず差分を保存し、同変更14ファイルが本候補に含まれないこと、全717 Git blob/配布物/installedの固定source一致、私有処理のGit書込先が専用checkoutだけであることを別監査しました。公開・実利用先の切替・全体ロードマップは未完了です。証跡は `data/roadmap/private-release-roadmap-current-candidate-20261031/completion-summary.json`、`roadmap-final-v3-current-verification-20261031/`、`v5-excluded-lineage-compatibility-audit-rev2-plan-20261031/comparison-proof.json`。
+
+次工程の受注配列は、custom iteratorで不正indexを隠せる問題を、length一回固定・index捕捉へ修正しました。空/取得時throw iterator・疎配列・Proxy不正length・0/100/101境界を含む60テストと本体/公開型、親の既存CLI1件が成功し、rootへ反映済みです。c804には含めず、法人registryの後続変更と併せた最新版全体回帰は別に行います。証跡は `data/roadmap/order-indexed-capture-staged-20261031/`。
+
+受注の実7原本も修正直前717と修正後728で再生し、全結果JSONと8検索が厳密一致しました。歴史保存の52行・135数値・1ダッシュ・124欠損と既存の出典項目も一致。歴史保存にない原表外/直前テキストは追加項目としてpath/hashを保持し、全JSONが歴史保存と同一とは扱いません。原本・旧独立XML/PDF証跡・両固定SDKは前後hash不変で、新PDF解析やinstalled検証はしていません。証跡は `data/roadmap/order-real-fixed728-replay-20261031/summary.json`。
+
+## 平均総資産利益率の同値重複と独立照合の属性検査（2026-10-31）
+
+平均総資産利益率の共通入口へ、既存の完全一致fact圧縮を適用しました。実2社で原本中の同値重複により4/6算式が保留されていた状態から、重複を合算せず全6算式が計算可能になりました。独立XML/Fractionで原値・期首/期末残高・期間・単位を確認し、昇降順/ページ/条件検索15件が一致。異値・精度・context・通貨の競合は引き続き保留します。関連151テストと隔離build/公開型が成功。子環境の既存CAGR CLI1件は未確認であり、親環境の最終全体回帰へ含めます。証跡は `data/roadmap/average-assets-return-real-20261031/`。
+
+独立財務照合器v5は原DEIの基準・主連結区分・context・提出者/証券コード・当期日付の前後関係と、SQL行の全12属性を追加照合します。実原本で旧版が受け入れた基準/scope/日付・SQL属性の改変を新版が拒否し、既存の過去期値は維持。関連148テストが成功しました。日付形式と当期末≦提出時点も検査します。一般の過去期行を当期認証したとは扱わず、原本訂正系列の全根拠は形式2の別検証を維持します。検証器SHA変更により旧receiptは要再検証です。証跡は `data/roadmap/financial-values-v4-generic-review-20261031/`。両修正を反映した固定環境での最終全体回帰・配布/運用は残ります。
+
+## 訂正原本の根拠付き選択・48原本の取得・延長年度Q4（2026-10-31）
+
+公式観測と原ZIP/XMLを再検証した明示的な選択入口をarchive・索引・再開可能buildへ接続しました。元のmetadata判定は保持し、根拠付き選択は索引形式2へ分離。実3社4系列の8行・58採用値を独立Python/SQLで照合し、buildの計画・checkpoint・完了hashも確認しています。既存形式1の結果を維持し、形式2の公開切替はAPIでも拒否します。[使い方](../financial/FINANCIAL_VERSION_SELECTION.md)。
+
+既知の訂正leaf48原本は別計画への分割・実観測時刻の保持・容量留保を通して取得完了（要求48、一覧再取得/再試行0）。全2,008 ZIP memberと通常46原本の244採用factsを照合しました。訂正対象の食い違い1原本は保留。残る1原本S100WXZQは対象食い違いではなく延長年度のQ4であり、新しいbasis4/observed8で実quarter contextを確認して抽出可能になりました。旧保存先の分類やcheckpointは変更していません。
+
+Q4は年度途中の12ヶ月累計を年度決算へ読み替えず、年度末が当期末より後で、実際の3ヶ月quarter contextが一致する場合に限ります。実8原本の新抽出では16行・46採用値/57factsが一致し、元7原本の値・利用可能時刻は不変です。14/15/18ヶ月年度の境界、通常年度Q4・Q5の拒否、主YTD欠落時の部分利用を検証しました。根拠付き訂正選択の対象profileは従来のFY/HY・Q2のままです。
+
+Q4統合直前の固定684ファイルでは全215テストファイル・4,885成功/1環境依存skip、その1件も旧SDK実readerによる補完実行で成功。本体/配布公開型・buildも成功しました。Q4統合後の最新版全体回帰と新配布候補の検査は別途進行中であり、公開物・稼働世代は未切替です。証跡は `data/roadmap/financial-version-current-full-verification-20261031/`、`financial-version-archive-integration-20261031/`、`metadata-parent48-leaf-deferred8-plan-20261031/`、`Q4-extended-year-implementation-20261031/revision2/`。全市場照合・新世代構築・配布/運用は残ります。
+
 ## 法人番号ZIPの再開可能な圧縮Store取込（2026-10-31）
 
 全国取込の一回限りの実行処理を、保存済み署名検証receiptのSHA・DB・checkpointを指定する運用スクリプトへ整理しました。XMLはディスクへ展開せず、パート単位のtransactionとcheckpointで再開。既存パートの全記録監査、DB commit後/進捗保存前の再実行、上流の後検査失敗時のrollback、改変拒否を維持します。別観測を既存DBへ追加する初回は、明示した元DB hashと全記録監査を要求します。DB/checkpointのflock、34GiB留保、容量上限とsignal中断を接続しました。
@@ -23,6 +115,8 @@ Node 26.12.1で関連7ファイル171件・隔離build・公開型が成功し�
 Node 26.12.1で合成ZIPと実SQLiteの12テストが成功。部分取込→再開→完了後再実行、別観測追記、原本/checkpoint改変、破損DB、上流失敗、中断済みsignal、排他競合75、commitと進捗保存の間の再実行を確認。既存Storeの24テストも成功しています。容量境界はOSの空き容量応答を固定し、留保不足時にAPI/CLIともDB作成前に停止することも確認。実全国データでの本入口の完走・連続差分・定期起動と利用先反映は残ります。[取込手順](../companies/CORPORATE_REGISTRY.md#署名検証済みzipからパート単位で取り込む)。
 
 全国DBの別コピーでは、初期監査と第1パート531,397記録の再取込・DB不変確認まで完了。次の呼出しは第2パート途中でexit 1となり、元DB/コピー/ZIP/receiptのhash不変・journalなし・1パート完了のcheckpoint保持を確認しました。停止時の汎用CLI表示だけでは原因を特定できませんでしたが、停止後の再開は容量留保不足で拒否されることを再現しています。容量停止は後続修正で専用表示/APIコードへ分離。証跡は `data/roadmap/corporate-registry-archive-job-national-20261031/stop-audit.json`。全国再開・最終配送監査は未完了です。ZIP取込入口を含む固定ソースの全体回帰は、下の設備入力検査の修正と併せて完了しました。
+
+法人番号Storeも、同じ261ファイルの固定packageをoptional依存なしでoffline新規インストールして確認しました。公式55サンプルと実差分の56入力・7,389記録・221,670原値について、最新の旧形式/圧縮Storeの取込receipt・全検索が一致し、固定した旧SDKの保存済みDBとの全検索結果も一致。元XML・旧DB・旧固定SDK・packageは前後hash不変でした。原本/旧DBは保持し、最大約178MiBの専用RAM領域だけを削除しています。証跡は `data/roadmap/registry-installed-package-20261031/completion.json`。全国取込jobの再開・最終配送監査・連続実差分・定期運用は残ります。
 
 ## 法人番号の圧縮Storeと全国保存の検証（2026-10-31）
 
@@ -64,7 +158,6 @@ Node 26.12.1の隔離環境で全185ファイル/4,452テスト、本体/配布�
 
 設備APIの原本・表宣言・条件配列は、lengthを一度だけ固定し、各indexを検査する形へ修正しました。独自iteratorで不正要素を隠す2ケースを修正前に再現。疎配列・不正length・200/201件の境界を含む関連3ファイル58テスト、本体/公開型・build（226ファイル）が成功し、公開型定義も旧版とbyte一致しています。実4原本・96行・76検索の全結果が旧SDKと保存DBに一致し、原本と元DBもhash不変でした。証跡は `data/roadmap/facility-indexed-input-20261031/real-replay-proof.json`。この修正とZIP取込を含む固定ソース6ad08fbは、Node 26.12.1・1ワーカー・30秒制限で全194ファイル/4,564テストが成功（skipなし）。運用6ファイルは通常ディスク、残る188ファイルはローカルtmpfsを使用し、全536ソースと設定のhashを固定して検証しました。並行中の財務変更は含みません。
 
-
 PDF照合で、ミライトの海外表2行の基準日が前年12月31日なのに、既存の確認宣言が国内表と同じ3月31日だったと判明しました。数値は一致していたため初回のXML/SQL比較では検出できませんでした。抽出版を2へ上げ、直前本文または直前の一セル表の「年月日現在」と宣言の不一致/曖昧さを拒否。Storeでは一原本の宣言を日付ごとに分け、検索時に混在させません。旧形式DBは保持し、上書きせず新版DBを要求します。
 
 実4原本は6snapshotとなり、国内の3月31日は各47行、海外の12月31日は各1行に分離しました。PDF座標からSDKの値を使わず数値行と日付を先に抽出し、画像10ページの見出し/列/注記も確認。全96行の基準日と384項目（330数値・54ダッシュ）が独立Decimal/SQLまで一致しました。正しい宣言で76検索が直接検索と一致し、誤った旧宣言はAPI/CLIとも拒否。旧DBと拒否時の既存DBが不変であることも確認しました。証跡は `data/roadmap/facility-pdf-all-20261031/` と `facility-date-real-20261031/`。Node 26.12.1の隔離環境で全183ファイル/4,442テストが成功。最終の投入容量境界調整後にも関連5ファイル/120テスト、本体/配布公開型・build（220ファイル）が成功。全行の手動転記ではなく、確認済み4原本に限定した独立処理です。全形式・権利/物件同定・住所/地番・全市場の性能/運用は残ります。
@@ -81,6 +174,16 @@ Node 26.12.1の隔離環境で全183ファイル/4,438テスト、本体/配布�
 `LargeHoldingStore` と投入/検索CLIを追加。観測・原本hash/利用可能時刻・原値/十進値/根拠付き解析結果を専用SQLiteへ保存し、原XMLを再読込せず訂正版を選択します。原XML自体は外部保管を維持。未読込原本の後日補完、cutoff内の競合保留、原本不足時に旧版へ戻らない処理、全保存記録の整合性検査とSQL view、専用SQLite復旧形式を追加しました。
 
 Node 26.12.1の隔離環境で全181ファイル/4,431テスト、本体/配布公開型・build（218ファイル）が成功。保存済み6原本・11行で80検索の直接検索とのJSON結果一致を確認。独立PythonのXML/十進/SQL照合では55選択（採用43・非採用12）が一致し、原本とreadOnly元DBのhashも不変でした。加えて、実一覧の大量保有関連16,916観測を別Storeへ保存・再openし、上位12発行者×2時点の24検索で訂正系列と原本不足理由が一致しました。6原本の値照合は保存manifest由来の観測であり、公式の全観測履歴と結合した値の保証ではありません。全市場の保証でもありません。証跡は `data/roadmap/large-holding-store-real-20261031/`。全市場の性能・容量・移行運用、全文再構成・保有者同定・種類株式対応は残ります。[使い方](../disclosures/LARGE_HOLDING.md#store)。
+
+## 当期主範囲の単体IFRSと全体回帰（2026-10-31）
+
+原本DEIがIFRS・連結作成falseで、当期の主期間に一致する正規単体contextをBS/PL/CF抽出・自動snapshot・archive/cache・索引検索へ接続しました。単体snapshotはDEI根拠を保持し、連結と混在させません。前年の技術単体軸から経済的な単体範囲を推測せず、新profileは当期annual/ytdに限定します。quarterly分類・別期間・別主範囲は採用しません。mappingはIFRS BS4/明細3、observed7です。
+
+実3原本（2企業）の全33採用値・45factsを独立Pythonで照合し、既存連結/J-GAAP実4原本のJSONはbyte一致。Pythonにも当期主単体の検査を追加し、訂正対象の来歴検査を維持しました。旧品質テストの未対応期待を修正した固定628ファイルの環境で、全193ファイル/4,609テスト、本体/公開型、buildが成功しています。修正は品質テストのみで本体・distは初回buildと同一、全体実行後のsource hashも不変です。
+
+追加の訂正原本取得は40件計画中35要求で34通常保存/1隔離まで進み、次要求前の36GiB留保＋448MiB作業予約で停止しました。未要求5件への要求履歴・body/cache・DB行がないことを確認。取得済み35応答の全1,525 ZIP member、通常34原本の182採用facts、Q2/Q3の11期間を独立照合し、公式quarterと財務YTDを区別しました。元13入力のhashも不変です。新しい配布候補は準備済みですが容量gateで作成を保留。旧819社のobserved5世代へ新版を混在させず、稼働世代・公開物は切り替えていません。
+
+証跡は `data/roadmap/ifrs-current-v2-full-verification-20261031/summary.json`、`ifrs-standalone-current-python-verifier-20261031/summary.json`、`metadata-parent48-leaf-next40-plan-20261031/receipt.json`。限定した当期単体対応と回帰の完了であり、比較期・全市場照合・配布・運用の完了ではありません。
 
 ## SQLite全byteの圧縮保管・復元・退避監査（2026-10-31）
 
@@ -164,6 +267,8 @@ Node 26.12.1の隔離コピーで全170ファイル4,389テスト、build・本�
 
 隔離コピーのNode 26.12.1で全162ファイル4,315テスト、関連36テスト、build・本体/公開型・ESM/CJSが成功しました。並行中の分割換算とdataflow変更はこの検証範囲に含めません。実売上原価はJ-GAAP 1,556社・IFRS 144社の全1,700採用値を独立XMLで確認し、34業種の件数・分数統計とCLIも一致しました。実データの検証記録は `data/roadmap/industry-comparison-real-20261030/`、使い方・件数の意味は[企業マスターの業種比較](../companies/COMPANY_MASTER.md#industry-comparison)にあります。全指標・全期間/PDF照合、市場区分・法的履歴、配布物と稼働環境への反映は残工程です。
 
+追加の固定736 SDKによる実2社の複数指標照合では、同一年度・J-GAAP連結の3指標で共通2社、CF指標追加で採用1社・欠損除外1社となり、マスター200社の未収録198社を別に保持しました。上場限定も含む3検索・10指標統計・13返却値が原XMLと独立Fraction計算に一致。取得時刻不明の原本には今回の実検証時刻を保守的な利用可能時刻として使い、過去の利用可能性は認証しません。索引98,304 bytes・専用RAM278,528 bytesは削除済み、原本/runtime不変・HTTP0。証跡は `data/roadmap/industry-multimetric-real-20261031/summary.json`。全指標・全期間や公開切替の完了とは区別します。
+
 ## 企業属性と財務検索の追加（2026-10-30）
 
 `screenCompanyFinancials` と既存CLIの企業条件を追加しました。財務世代のcutoffでマスターを固定し、EDINETコードで結合して企業絞込後にページを切ります。同一時点のマスター競合・同じCSV hashの内容付替えを拒否し、入力の途中変化も防ぎます。
@@ -171,6 +276,38 @@ Node 26.12.1の隔離コピーで全170ファイル4,389テスト、build・本�
 隔離した変更範囲でNode 26.12.1のbuild・本体/公開型・ESM/CJSと全161ファイル4,303テストが成功しました。実建設業150社の同一期間・基準の売上原価76値を独立Python/SQLite/XMLで全件照合し、必須項目非採用16書類・CLIページも一致しました。後日取得した公式マスターが過去cutoffへ混入しないことも確認しました。記録は `data/roadmap/company-financial-real-20261030/`、使い方と制約は[企業マスター](../companies/COMPANY_MASTER.md#financial-screening)です。
 
 並行作業の分割換算・dataflow変更はこの隔離検証の対象外です。業種統計・市場区分・法的履歴、全市場/PDF照合、固定配布物と稼働環境への反映は残ります。
+
+## 分割台帳のCLI入力（2026-10-30）
+
+`screen-eps-growth` / `screen-dividend-growth` / `screen-cagr` に `--share-adjustments <path>` を追加しました。企業コード別の既存API optionをUTF-8通常ファイルから上限付きで読み、換算後の正確分数で検索します。台帳省略時の既定動作は維持し、未確認履歴は除外、売上・利益CAGRへの指定は拒否します。
+
+固定busy snapshotにCLI/source test/docの3ファイルだけを重ねた隔離コピーで、関連4ファイル52テスト・build・型検査が成功しました。EPS/支払済みDPSの前年比/CAGR、0.2との厳密な条件比較、原本/manifest/台帳不変、未確認履歴と不正入力の扱いを確認しています。証拠は `data/roadmap/share-split-cli-verification-20261030/`。合成CLI入力の検証であり、実1社の金額照合は既存の `share-split-real-20261030/` を別証拠とします。この後続CLI変更は現在再固定中のbusy-safe配布候補・v6b runtimeには含みません。
+
+## 分割台帳と評価指標の接続（2026-10-30）
+
+`ValuationInput.splitLedger` を追加し、PER・PBR・支払済み配当利回りと複数社検索へ同じ分割換算を接続しました。価格側で明示確認した株式基準へ財務の一株値だけを換算し、原財務selection・未調整終値を保持します。取引日/権利落ち日から基準を推定せず、観測cutoff・範囲不足・未来出典・銘柄違いの検査を維持します。計算・条件・順序は換算分数から行います。
+
+隔離コピーで関連4ファイル76テスト・build・型検査が成功。実エクシオS100W0NZの支払済みDPS原値120.00を60へ換算し、保存未調整終値1,680（2025-03-31）との比率1/28を独立Python XML/hash/Fraction処理で照合しました。保存価格の以前の基準確認宣言に依存する条件付き計算であり、価格の権利落ち履歴・全市場・新規PDF照合の保証ではありません。証拠は `data/roadmap/valuation-splits-{verification,real}-20261030/`。後続CLIと本変更を含む隔離全体回帰は174ファイル4,422テストがすべて成功し、固定579fileのsource manifestも前後一致しました。固定busy配布候補・v6b runtimeにはこれらの後続変更を混入していません。
+
+## busy修正を含む固定配布候補（2026-10-30）
+
+未公開private commit `6cb02f029135ff33dcb5fba8d707d0352ba42902`（親baf5a79）を作成しました。busy修正・法人再構成/calendar・業種比較などを含む固定snapshotで、全172ファイル4,408テスト、build・型検査が成功しています。213 dist fileは複数buildで全hash一致、216file/467,012bytesのtarball SHA-256は `6da133a4d7ce88f49139281a030898ff481774306c028e9d065d19afa6d0f598`。インストール後の全file hash・ESM/CJS・分割API・timeout5000・strict公開型、固定stock-data c473948コピーの63テスト・型・保存保護14件が成功しました。親からもpackage hash/file数と利用先63成功を再確認しています。
+
+`data/roadmap/private-release-busy-timeout-candidate-20261030/summary.json` が証拠です。旧候補・root refs・実consumer/vendor・サービスはこの工程から変更せず、private gitはclean/remoteなしです。後続のCLI台帳optionとvaluation splitLedgerは非包含で、別候補への再固定を並行準備しています。deployment/publication承認はfalseです。
+
+## CLI・評価指標を含む最新固定配布候補（2026-10-31）
+
+private commit `fc5021a8cc62bce1ec18c7f407b4a2f638bbc37b`（親6cb02f0）に後続CLI/valuationを含む固定579fileを保存しました。source実体のmanifestはSHA-256 `32369531cd6ef2dbfd8ac719f3073aeea0dfb8d824c46619229ba404a6e6f60f`。全174ファイル4,422テスト、build・型検査、2回buildのdist213file一致を確認。216file/467,444bytesのpackage SHA-256は `13ec768a6df6a5a0c809ae0ee74a23c1e24f8946630b3f75fc631b27b04015f9` です。
+
+インストール済みCLI4コマンド、ESM/CJSのEPS/BPS/DPS分割換算6ケース、strict `ValuationInput.splitLedger` 型、固定stock-data c473948コピーの63テスト・型・保存保護14件が成功しました。親でもtgz hash/file数と利用先成功logを確認。`data/roadmap/private-release-valuation-splits-candidate-20261030/summary.json` が証拠です。旧候補・root refs・実consumer/vendor・サービスは未変更で、公開/稼働切替承認はfalseのままです。
+
+## 訂正対象の来歴検査（2026-10-31）
+
+追加取得したS100YMYBは、公式一覧の親が有報S100W9HDなのにDEIは別種のS100XB4Kを訂正対象としていました。再要求せず原本・本文・両宣言を保存し、金融採用を保留しました。旧SDKがこの原本を採用することを隔離再現し、optional DEI対象を既存namespace/context/entity検査で捕捉するbasis3/observed6を追加。観測付き原本の明示対象が選択系列の厳密な祖先でなければ `correction-target-mismatch` とし、親へ戻りません。欠落・空欄の旧原本互換は維持します。単独basis/automatic入口は系列入力がないため系列認証保証外です。
+
+既採用282訂正原本の独立棚卸しでも、4原本・集約8行（会社別を含む物理保存では16行）に明示対象の衝突を発見し、新SDKで全4原本が保留になると実証しました。旧v5/v6b/runtime/索引は変更せず、次世代blockerへ保存しています。正式Python verifierも数値だけでなくrowとgenerationの選択系列・明示対象を結合するlineage-v2へ更新し、専用24テストが成功。SDK関連141テスト・型検査・実原本再生も成功。全体回帰は修正したfixtureとともに別snapshotで174ファイル4,441テストがすべて成功し、build・型検査・固定579fileのhash前後一致も確認しました。証跡は `correction-target-validation-20261031/`、`financial-verifier-lineage-20261031/`、`correction-target-v2-verification-20261031/` です。
+
+旧v5の固定v1原本照合は38,584採用値・43,314fact・7,409書類で全件一致し、index前後hashも不変でした。これは原値・context・単位等の照合であって訂正対象の正当性を保証せず、上記4原本のblockerを解消しません。`duplicates-v5-full-source-verification-20261030/summary.json` にscopeを区別して記録し、公開・build receiptフラグは変更していません。
 
 ## 現在地（2026-10-30確認）
 
@@ -180,7 +317,7 @@ Node 26.12.1の隔離コピーで全170ファイル4,389テスト、build・本�
 | 年次取得・索引 | 原本7,328件、未提供9件で取得監査済み。旧SDKで3,813社を処理し、3,759社・7,720行・19,175利用可能値を生成 | 修正版での再構築、全件の品質・独立照合 |
 | 半期の修正 | 日本基準/IFRSの実2原本で期間不一致を解消。追加調査では一覧と原本198組のうち191組で半期累計期間が完全一致し、照合処理を修正。限定再生で191件採用・不一致7件保留、独立XML照合も一致。4行・11値が独立XML処理とSQL索引で一致、欠損2件も区別 | PDF再照合、他の半期・業種への検証拡大 |
 | 日次候補 | 139,758観測の転送を照合。圧縮版も取得済み7,440件・未提供9件で完了receiptと再構築receiptを保存。3,812社の会社別索引構築が完了。利用可能値あり3,732社・14,436行・36,026値。品質条件は未達 | 期間不一致198書類・選択未解決587件等の調査、修正版再構築・独立照合・公開判定 |
-| 修正版の別候補 | `duplicates-v5-rebuild-20261030` の固定SDKで10社pilot成功、旧採用105値の原値一致。全3,812社を対象とする処理を開始し、21:19時点43社完了・失敗0を確認。元workerとnohup引継ぎsupervisorの排他・稼働を確認 | 完了後の全社品質集計と独立比較。進捗は候補内 `worker-status.json`・`supervisor-status.json` で再確認。公開未切替 |
+| 修正版の別候補 | `duplicates-v5-rebuild-20261030` の固定SDKで10社pilot成功、旧採用105値の原値一致。23:08に3,209社完了・602未処理・E34509失敗で停止。監査後23:37に元SDKを保持して再開し、23:55に全3,812社完了・失敗0。旧採用36,026原値を全維持 | 完了後の全社品質集計と独立比較。進捗は `duplicates-v5-recovery-20261030/recovery-status.json` とowner付きprocess handleで確認。稼働中DBのSQL比較は禁止。元supervisorの静的statusは生存根拠に使わない。公開未切替 |
 | 重複factの修正 | 旧候補の曖昧323値を実原本で再生し、完全一致317値（BS208・明細109）を採用。独立XML処理と一致。異値2・対象外通貨4は保留。辞書版を日本基準BS2/明細9・IFRS BS3/明細2へ更新 | 修正版による全社の別世代構築・品質比較、PDF検証・利用先配布 |
 | 容量対策 | 未使用の検証コピーを復元情報付きで圧縮保管。停止後の私有コピー2件も保持原本と照合して整理。83,828観測・7,328原本の圧縮転送と全宣言/展開byte列の独立照合が完了。DBは約17.48 GB→1.35 GB | 日次以降の保存整理・復旧運用 |
 | 次の運用環境 | 索引用の固定SDKで全社構築が完了。日次metadata/財務へIFRS BS辞書2・通知ルール3・100社処理の固定runtimeを設定。次の日次原本poolは7,445原本へ継承し、22検査・隔離コピーでの準備が成功 | 索引・品質判定、日次反復・停止/復旧検証 |
@@ -195,9 +332,48 @@ Node 26.12.1の隔離コピーで全170ファイル4,389テスト、build・本�
 - 旧候補の欠損1,426値は、タグ不在1,210値・nil 8値・当期の別scopeにだけ候補がある208値に分類しました。別scopeの値は流用しません。非対応12値はすべて通貨不適合です。これは索引JSONの証跡分類で、未開示と解析失敗の原本判定は別途必要です。`artifacts/selection-audit/missing-value-inventory-20261030.json` を参照してください。
 - 観測衝突18件と訂正末端複数16件を全件棚卸ししました。観測衝突18件はすべて同一観測時刻でperiodEnd・opeDateTime等が異なります。自動解決はしていません。`artifacts/selection-audit/correction-conflict-inventory-20261030.json` を参照してください。
 - 修正版を固定した別候補 `data/roadmap/duplicates-v5-rebuild-20261030/` の10社pilotは40行・失敗0で完了しました。旧採用105値の原値を独立Python/SQLite比較ですべて保持し、曖昧1値を採用、半期修正で10値分の記録を追加（採用6・欠損4）しています。pilot後は採用112値・欠損4値です。全社構築の完了・品質判定・公開は未実施です。
-- 訂正元補完のpilot10書類は公式一覧・提出日・発行体・原本SHA-256/gzip/XMLを照合し全件成功しました。保存済み93親・111観測の来歴を保った隔離入力へ保存しています。既存選択器で旧parent-missing11判断を再生すると、9系列が採用可能となり、1系列は2訂正枝のため保留に変わりました。全553判断の解消ではありません。`data/roadmap/missing-parent-pilot-20261030/network-run/` の `independent-proof.json`・`selection-replay.json` が証跡です。来歴確認済み親の残り88原本は追加100HTTP要求上限で取得を開始しました。
+- 訂正元補完のpilot10書類は公式一覧・提出日・発行体・原本SHA-256/gzip/XMLを照合し全件成功しました。保存済み93親・111観測の来歴を保った隔離入力へ保存しています。既存選択器で旧parent-missing11判断を再生すると、9系列が採用可能となり、1系列は2訂正枝のため保留に変わりました。全553判断の解消ではありません。`data/roadmap/missing-parent-pilot-20261030/network-run/` の `independent-proof.json`・`selection-replay.json` が証跡です。来歴確認済み親の残り88原本も保存し、計98親・315,949,391 bytesの原XMLを独立照合しました（追加要求89/100、再取得不要のcache回収1件を含む）。拡張入力で旧parent-missing103判断を再生し、訂正系列の統合後は93系列が採用可能・5系列が複数訂正枝のため保留です。未取得親は435件、未補完の旧parent-missing判断は450件です。これは書類選択の隔離再生であり、訂正金額の合成や全社候補への投入ではありません。追加証跡は `followup-independent-proof.json`・`followup-selection-replay.json`。
+
+追加40親を78HTTP要求で取得・公式一覧照合し、前98親と合わせた138原本・428,826,415 bytesを独立照合しました。304観測を実観測時刻・原本利用可能時刻とともに固定しています。旧parent-missing143判断の隔離再生では、共通親の統合後に133系列が採用可能・5系列が複数訂正枝のため保留となりました。未取得は395親（元一覧日判明98・未判明297）、未補完の旧判断は410件です。`data/roadmap/missing-parent-batch40-20261030/` の `completion-summary.json`・`combined138-input.json`・`combined138-selection-replay.json` を参照してください。138親を含む別の次世代archiveの準備を開始しています。稼働中の固定候補へは投入していません。 追加調査で、選択可能になった133訂正系列の最終訂正原本は旧poolに未保存と判明しました。親138原本の補完だけでは訂正後の財務値は取得できません。別候補で不足を再計画し、最終訂正原本の少量取得・親原本との差分検証を進めます。
+
+データフロー改善1〜3の統合検証は、ソースを固定した別コピーでNode 26.12.1のbuildと全162ファイル・4,306テストが成功しました。型検査も成功し、今回の実装ファイルは検証したコピーとhash一致を確認しています。記録は `data/roadmap/dataflow-improvements-verification-20261030/summary.json`、全体ログ・ソースmanifestも同ディレクトリです。実原本gateの3社・42採用値は `source-verification-gate-20261030/real-proof.json`、集約専用DBの全列一致は `aggregate-only-export-20261030/independent-sql-proof.json`、実1.40GB原本での接続再利用は `build-session-real-benchmark-20261030/summary.json` に記録しました。固定runtimeへの反映・正式切替は未実施です。
+
+配布・利用先の準備も進めました。検証済みdataflowコードのworktree snapshotから208ファイルの候補tarballを2回packし、SHA-256 `f84c1f08169efbd90426a14b4a3fd426714e925430e2344851e63333c37051b1` が一致しました。インストール後全208ファイルのhash・ESM/CJS・集約出力・reader再ロード・NodeNext公開型を確認。既存の検証用stock-data統合commit c473948の隔離コピーでは、辞書版期待値8→9だけを更新して63テスト・型検査・保存保護14テストが成功しました。記録は `data/roadmap/dataflow-release-candidate-20261030/{candidate.json,consumer-proof.json}`。候補はbase commitとsource snapshot hashで追跡する未コミット追加込みの検証用配布物で、新しいclean release commitではありません。実利用先の作業ツリー・正式vendor provenance・サービス・公開先は未変更です。後続の分割換算と企業マスターの追加変更はこの候補に含めていません。
+
+138親を含む隔離次世代archiveは完成しました。7,583原本・139,919観測、1,432,825,856 bytes、SHA-256 `addc82156fa7a6ca3f1300308e80f1b0b50b351846080d768ee4d914c39a248b`。全原本17,904,774,475展開bytesのSHA照合と観測/原本宣言のunion一致を確認し、3社pilotでは5レコードと58金額factを独立照合しました。旧候補・liveは変更していません。記録は `data/roadmap/missing-parent-next-generation138-20261030/completion-summary.json`。
+
+不足していた最終訂正原本133件は、10件pilot・100件・23件の別計画で全件取得しました（追加133HTTP要求、既存retry/rate/共有排他を維持）。10件の限定再生では標準保存projection58値が親/leafで採用維持22・原値変更34・両方欠損2、親採用からleaf欠損は0でした。一方、全10件のXBRLAmendmentFlagDEIはfalseでも7件で原値が変わり、親の為替差益が訂正で消えて為替差損が現れる反例も確認しました。flagだけの親値継承や消えた科目の自動合成は行いません。全133件の隔離SDK再生・次候補への投入を継続しています。`data/roadmap/correction-leaf-pilot-20261030/`・`correction-leaf-batch100-20261030/`・`correction-leaf-final23-20261030/` が証跡です。
+
+株式分割・併合の明示台帳による自動換算を、EPS/支払済みDPSの単一前年比/CAGRと複数社検索へ追加しました。既定APIは維持し、未確認台帳・範囲不足・銘柄誤帰属・未来観測・競合を比較不能として保持します。遡及済EPSの二重換算を防ぎ、DPS原支払額と比較用換算値を分け、正確分数でfilter/sortします。実エクシオS100W0NZでは12原値/12換算点・4算式と注記hash/1→2効力日を独立Pythonで照合しました。関連69テスト、型検査、固定sourceコピーで全165ファイル・4,350テストとbuildが成功。証跡は `data/roadmap/share-split-verification-20261030/summary.json` と `share-split-real-20261030/independent-proof.json`。台帳自動取得・価格基準/権利落ち履歴の自動判定・全市場検証は残ります（混在基準の年額DPSは後続で追加、冒頭を参照）。
+
+全133訂正leafの隔離再生も完了しました。266財務行・682 available/63 missing、unsupported/ambiguous/unsafeは0。親/leafの基準・scope・期間は133件一致し、標準745値は原値変更151・採用維持531・両方欠損63、親採用→leaf欠損0でした。変更がある34系列はすべてXBRLAmendmentFlag=falseです。このflagはXBRLのみの訂正区分であり、falseを金額不変の根拠にはできません（[訂正原本の区分](../pipeline/FINANCIAL_INDEX_BUILD.md#全件集約と旧世代)）。今回のprojection/corpusでは親fact合成は不要で、消えた科目の自動継承は引き続き行いません。新しい独立XML verifierでも全682採用値を原本・SQL数値・DEI・cutoffへ照合しました。`data/roadmap/correction-leaf-batch100-20261030/all133-summary.json` と同 `sdk-replay-all133/independent-values-proof.json` が証拠です。固定old metadata＋新sourceの隔離as-of検証であり、metadata freshness・最新市場状態を保証しません。
+
+138親と133leafの統合候補は7,716原本・139,919観測、1,462,407,168 bytes、SHA-256 `dc48c4996982fcefb4d4740d63ab2ad9dadff9eee6077d8f483b7452641b0269`。旧7,583 gzip blobの同一性と新133 raw412,067,498 bytesのhash、全観測/宣言unionを独立確認しました。3社pilotでは5→7レコード・不足原本2→0、74金額factを独立照合。`data/roadmap/next-generation-parent138-leaf133-20261030/completion-summary.json` を参照してください。旧pool・liveは未変更で、新候補の全社QAを別途準備しています。
+
+固定配布の候補を、共有rootとは独立したprivate git commit `baf5a79d9261d388bab0b22845e1760280dff0bd`（親7b8e854）にも保存しました。検証snapshotの非生成source/doc/package/lockを固定し、pyc3件は明示除外。private buildの全209 dist fileが検証snapshotと一致し、212file tarballのSHA-256は `4870c87161f0681aa9c1868142958f41aaea94105ce96daff0cae8379bd27424`。インストール後の全file hash・ESM/CJS・公開型・集約/reader・分割APIを確認し、隔離stock-data c473948コピーでも63テスト・型・保存保護14テストが成功しました。root HEAD/refs/remote・実利用先・サービスはこの工程から変更していません。`data/roadmap/private-release-candidate-20261030/` にsource tar・manifest・build/package/consumer証拠があります。未公開ローカル候補であり、以下のbusy timeout修正はこのcommit外のため、適用前に新runtimeへの再固定が必要です。
+
+v5のE34509失敗は、固定/最新SDKのfresh scratchで同じ2原本をmaterializeすると双方4行成功しました。別scratchでreaderのBEGINを保持するとCOMMITがSQLITE_BUSY(errcode5)で失敗し、同じ汎用失敗記録を保存、reader解除後のattempt2は成功することを再現しました。元例外は未保存なので実障害原因の断定はしません。
+
+停止中の元SDK/runtime/input/manifestを保持し、完了3,209 taskのpart SHA・来歴・全12,574行/35,387値の索引整合をreadOnly私有snapshotで監査しました。元archive/state/index SHAは前後不変で、E34509 attempt1以外の失敗・孤立世代はありません。`data/roadmap/duplicates-v5-recovery-20261030/audit-proof.json` が証拠です。baselineのcold copy完了後、親確認を得て23:37に別recovery workerを起動しました。pending602を先に処理し、pending0の時だけE34509を既存APIで1回（attempt2）再試行します。既知failedのattempt1保持だけを許容し、新失敗・再失敗・進捗なし・容量不足・STOPでbatch境界に停止します。元固定SDKへbusy timeout修正は入れていません。
+
+監視は新recoveryのJSONとauthoritative process handleを併用します。23:39:20時点でowner `/root/review` のsession `92497` をpollしrunningを確認しました。`launch-proof.json` と `process-status.json` に観測時刻・owner・handleを保存しています。JSONは最後の進捗記録であり、単独では生存の証明になりません。namespace PIDをhost PIDと扱わず、元supervisorの静的statusも生存根拠に使いません。稼働中の元DBへのSQL比較は行わず、必要な比較は停止時cold copyを使います。完了後は全社qualityを保存し、writerを閉じてから旧候補との独立比較を行い、結果を別recovery proofへ保存します。公開は切り替えません。
+
+最新sourceのDedicatedSqliteDatabase全4接続にはbounded `timeout:5000` を追加しました。自動retryやWAL移行はなく、親環境で新規busy3件・fingerprint/recovery保護を含む全38テストが成功（`/tmp/edinet-busy-timeout-targeted.log`）。短い読取解放後のcommit成功、約5秒での失敗/rollback/元DB保護/解放後再開を確認しています。全体回帰も別snapshotで172ファイル4,408テストがすべて成功し、build・型検査も成功しました。証拠は `data/roadmap/busy-timeout-verification-20261030/summary.json`。v6の旧pilot（10社40行、v5の112採用原値維持）は保持し、修正後SDKの別候補に再固定してから全社QAを開始します。旧v5 SDK/DB・公開先は未変更です。
 
 ## 残作業一覧（2026-10-30確認）
+
+busy-safe固定SDKの別候補 `duplicates-v6b-busy-safe-parent138-leaf133-qa-20261030` は10社pilotを36.15秒・40行・失敗0で完了し、停止時に取得したv5私有copyの112採用原値を全件保持しました。native接続4経路と実build session3接続のtimeout=5000、容量guardを確認。172ファイル4,408テスト成功の証拠と入力/runtime/worker manifestに束縛したauthorizationを保存し、owner `/root/selection` のsession `55778` で全3,812社QAを起動しました。`pilot-receipt.json`、`pilot-independent-comparison.json`、`full-run-authorization.json`、`launch-proof.json` が証拠です。新metadata freshness・最新市場状態・原本金額の全社照合・公開判定は未完了で、公開先は切り替えていません。
+
+
+v5復旧はowner `/root/review` のsession `92497` がterminal/exit0で完走しました。全3,812社・pending0/failed0、E34509はpending0後のattempt2で4行成功。14,818行・41,679値（available38,584/missing3,075/unsupported14/ambiguous6/unsafe0）です。旧採用36,026原値は全維持し、喪失・削除・原値競合0。半期追加で行・対象値も増えたため、欠損件数の単純比較で退行とは判断しません。旧曖昧323→6、期間不一致198→7は改善しましたが、選択未解決587・原本未提供9・基準等の保留22などは残ります。
+
+元writerを閉じworker.lock下でfinal indexをcold copyし、334,729,216bytes/SHA-256 `25659d2928fd2de7b98f2d0d926e4f83a0d5c685dd94726b95e3e40bf4af8e3c` を親でも再確認しました。`duplicates-v5-recovery-20261030/recovery-completion-proof.json`・`old-candidate-comparison.json`・`final-cold-copy-proof.json` が証拠です。この私有copyの全採用38,584値を `duplicates-v5-full-source-verification-20261030/` の固定Python v1で照合し、43,314fact/7,409書類が一致しました。これは訂正対象の系列認証を含まず、別に見つかった4原本の来歴blockerは残ります。全社原本照合・品質条件・metadata freshnessの確認が終わるまで検証済み/公開可とはしません。
+
+
+v6bは旧owner55778がSIGTERM/exit143となり、654社で停止した原state/indexを全part監査後、親owner66583から同固定runtimeで再開しました。次に36GiB容量保護で停止し、JSON最後818社の後にcommit済み1社を含む実819社・失敗0、3,270行/9,367値が冷コピー上の監査に合格しています。現在は再開待ちで、guard値や入力/runtimeは変更していません。孤立probeの元archiveとのbyte一致は確認できましたが、親hostのFD検査にpermission deniedがあり、削除せず保持しました。テストの一時領域解放後に容量を再確認してから再開します。`duplicates-v6b-stop-audit-20261031/` と `duplicates-v6b-reserve-stop-audit-20261031/` が証拠で、停止JSONを稼働根拠にはしません。
+
+追加した親10原本は独立hash/gzip/XML/元9入力不変の検証に合格し、累計148親・残385親（公式metadata既知88/日不明297）になりました。14旧parent-missing判断は6選択系列/4複数枝へ整理。選択leaf6は実要求6で5原本を検証でき、標準33値は原値維持21・両欠損12・親採用からの欠落0、残1原本S100YMYBは明示訂正対象矛盾で保留しました。新4複数枝の8leafも、rawZIP/313全member/cache/archiveを独立照合しましたが、4系列の同時入力はなお未解決です。提出回数2→3と添付全文の証拠・訂正範囲を分類し、5値一致だけを全文同一とせず、新取得はいずれも現在のv6bへ混入していません。`missing-parent-known98-next10-plan-20261030/`、`correction-leaf-next2-resume-20261031/`、`new4-correction-leaf8-zip-pilot-20261031/` に記録しています。
+
 
 残件を追うため、現状と次の作業を分けて記載します。以下の件数は確認済み候補の記録であり、修正版による全社再集計や現在の稼働状態を示すものではありません。更新時は、この一覧と後続の段階別詳細・実行順序を合わせて更新します。
 
@@ -205,7 +381,7 @@ Node 26.12.1の隔離コピーで全170ファイル4,389テスト、build・本�
 
 | 優先 | 残作業 | 現状 | 具体的な作業内容 |
 |---|---|---|---|
-| 最優先 | 半期の期間照合 | 旧候補で198書類が期間不一致。修正後の限定検証では191件一致、7件保留 | 保留7件の原本・期間を確認。PDFでも再照合し、他の半期書類・業種へ検証を広げる |
+| 最優先 | 半期の期間照合 | 旧候補で198書類が期間不一致。修正後の限定検証では191件一致、7件保留 | 保留7件はPDF/XBRL一致・公式一覧再取得でも不一致継続を確認。発生理由を調査し、他の半期書類・業種へ検証を広げる |
 | 最優先 | 財務値の選択問題 | 旧候補に選択未解決587件、選択不可109件、未解決原本22件 | 原因を分類し、科目・期間・連結範囲などの選択処理を修正。採用できないものは理由を保持する |
 | 最優先 | 欠損・曖昧値の調査 | 旧候補に値の欠損1,426件、未対応12件、曖昧323件。実原本再生では317件が完全一致、異値2件・対象外通貨4件を保留 | 未開示と解析失敗を原本で切り分け、対応可能な抽出処理を追加する |
 | 最優先 | 修正版での全社再構築 | 旧SDKでは3,812社の構築完了。半期修正版は別世代200社で区切り、重複修正を含む固定SDK候補を全体検証済み | 修正版を固定し、別世代で再構築。全社の索引・品質集計を作り直し、修正前後を比較する |
@@ -215,17 +391,31 @@ Node 26.12.1の隔離コピーで全170ファイル4,389テスト、build・本�
 | 高 | 配布・利用先への反映 | 過去の固定配布物と利用先の別作業環境は検証済み | 最新修正を固定配布物へ反映し、stock-dataのvendor/APIを更新。型・検索・値・保存保護・切戻しを確認する |
 | 継続 | 保存容量・復旧運用 | 原本poolの圧縮転送に加え、元DB全byteを保つgzip保管・FD監査・上書きしない復元を追加。元DBは保持 | 切戻し参照・利用中/検査不能を解消し、廃止対象だけを退避。大容量の復元/reopenと日次世代の整理・復旧を確認する |
 
+### データフロー改善（ponytailレビュー・実装と検証）
+
+ここでの「公開」は、構築した検索DBの世代を利用側が読む正式な世代として選ぶことです。インターネットやnpmへの公開ではありません。
+
+2026-10-30のコードレビューで確認した3件に実装を追加しました。以下では実装・検証結果と稼働環境への未反映を区別します。原本保管と検索DBの分離、原本のgzip圧縮・hash共有は維持します。
+
+| 順序・優先 | 対象 | レビュー時の問題 | 実装した内容 | 検証結果と残工程 |
+|---|---|---|---|---|
+| 1・最優先 | 原本照合を正式世代への切替条件へ接続 | `build-financial-cycle.mjs` は `financialValuesValidated: false` を返す一方、品質集計とmetadata条件を満たせば `activateBuiltFinancialCycle` で切替できる。現候補は品質未達で保留 | 正式入口 `activateBuiltFinancialCycle` で未検証を拒否。全採用直接値をPython標準処理で原本・SQL・DEI・cutoffへ照合し、候補の各指紋と検証記録を結合。切替前に再照合する。低level SDK/汎用CLIは従来の品質操作APIとして区別 | 関連テストで未検証/フラグのみ/別候補/改変記録を拒否、実際に異なる2世代の切替・旧検証記録による復帰を確認。実3社・6原本・42採用値の独立照合成功。全社/PDF照合・正式候補切替は残る |
+| 2・高 | 会社別・全社集約の重複保存 | `FinancialSearchIndex.combine` は会社別世代の財務行・値を全社世代へ再挿入し、両方を保持する | `FinancialSearchIndex.exportGenerationTo` で集約世代だけを空の別DBへ転送。元の構築DB/checkpointと旧読取DBは維持し、転送失敗はrollback | 専用7テスト成功。実全社DBは321,310,720→152,334,336 bytes（52.6%削減）。独立SQLで14,436行/37,787値の全列一致、品質/来歴一致、元DB不変、再開・reader再ロード・切戻し確認。実利用先への切替は未実施 |
+| 3・高 | バッチごとのDB全体コピー | `DedicatedSqliteDatabase` は既存DBを開くたびに検査用の私有コピーを作る。日次構築は最大100社で接続を閉じ、次の呼出しで再コピーする | `withFinancialBuildSession` で接続共有。CLIはmax-batches指定、日次は100社×10batch。会社checkpoint/入力・容量検査/排他/signal再開を維持 | 実SQLiteの3社fixture・2batchで検査コピー6→3回、原本不変とabort再開成功。実1.40GB原本・同じ2社×2batchでは65.98→32.02秒、検査copy4→1、累計copy2.80→1.40GB。peakはほぼ同じ1.40GB。原本/値/来歴/checkpoint一致。単発・実行順/OS cache/共有hostの影響あり。稼働固定runtimeには未反映 |
+
+根拠: [世代切替処理](../../scripts/roadmap/build-financial-cycle.mjs)、[集約処理](../../src/db/financial-search-index.ts)、[DBコピー](../../src/db/dedicated-sqlite.ts)。実容量と限定標本での速度測定は上表のとおり完了しました。稼働中の固定SDKへの適用は未実施です。
+
 ### 機能ごとの残作業
 
 直近の作業と並行して進める対象です。限定標本の照合済みを段階全体の完了とは扱いません。
 
 | 段階・対象 | 現状 | 残りの具体的な作業内容 |
 |---|---|---|
-| 1 基盤：訂正と時点管理 | 観測保存・訂正系列選択・cutoff検索・原本との接続を実装済み | 訂正を反映した財務値の合成と、実際の訂正事例全体の確認 |
+| 1 基盤：訂正と時点管理 | 観測保存・訂正系列選択・cutoff検索・原本との接続を実装済み | 訂正原本の直接採用133系列は照合済み。消えた科目の自動継承を避け、部分訂正形式ごとの再構成要否と実際の訂正事例全体を確認 |
 | 1 基盤：判定境界 | 基準・主範囲・当期判定を実装し、実10原本で限定検証済み | 外貨・US基準・特殊業種・変則期間などの境界を検証 |
-| 2 財務：科目の意味と重複 | 税引前・CF追加項目・IFRS明細を実装し、一部原本で照合済み | 有利子負債とリース負債の重複範囲を確認。その他BS/PL/CF項目と業種差への対応を拡大 |
+| 2 財務：科目の意味と重複 | 税引前・CF追加項目・IFRS明細を実装し、一部原本で照合済み | 既存4社2時点の追加調査では標準IBD陽性の1社2時点はリース別建て、他3社の包含は未確定。包含陽性標本と会社別定義を拡充し、その他BS/PL/CF・業種差への対応を拡大 |
 | 2 財務：全社への適用 | IFRSのBS追加5項目は抽出・API・CLI・cache・SQLまで接続済み | 新SDKで全社構築し、追加項目の採用・不在・誤選択を確認。利用先にも反映 |
-| 3 時系列：EPS・配当 | 前年比・CAGRを実装し、一部原本と算式を照合済み | 株式分割の自動換算を実装し、株式基準の異なる期間の比較を検証 |
+| 3 時系列：EPS・配当 | 前年比/CAGRに明示分割台帳の換算・企業別検索を追加。実1社12点/4算式を独立照合。混在基準の年額DPSは明示台帳から再構成するAPIを追加済み | 台帳自動取得、他社/全市場の照合、株価との日付連携 |
 | 3 時系列：収益性指標 | ROA・ROE・確認宣言付きROICを実装し、一部実例で照合済み | ROICに必要な全社の負債構成を確認し、他企業・他原本で検証 |
 | 4 企業マスター | 公式CSVの観測保存・時点検索・差分照合を実装済み | 市場情報、コード・名称・上廃の履歴を拡充。法的イベントと観測を区別し、業種比較の実原本検証を拡大 |
 | 5 人的資本 | 比率9項目・子会社表7指標を実装し、一部PDFと照合済み | 企業独自の拡張列に対応。注記から対象区分・算定方法・非該当理由を自動解釈 |
@@ -236,28 +426,32 @@ Node 26.12.1の隔離コピーで全170ファイル4,389テスト、build・本�
 | 7 保存対象の拡張 | 直接BS・明細の保存と固定世代SQL検索を実装済み | 比率・その他指標の保存を拡充し、全市場取得時の性能・容量を確認 |
 | 8 品質保証 | 母集団・基準・期間別の品質集計と独立照合あり | 全市場・全形式・各業種へ照合を拡大し、修正版による充足率を再集計 |
 | 9 配布・利用先 | 固定配布物・利用先の別作業環境で検証済み。実サービスは未切替 | 上の「配布・利用先への反映」に従い、最新修正の固定配布・回帰確認・実サービス切替を行う |
-| 10 株価・評価指標 | 保存株価の選択、条件付きPER/PBR/配当利回りを実装済み | 株式分割等による自動調整、価格の全市場検証、比較条件の検証を拡大 |
-| 10 法人情報 | 原記録Store・状態再構成・カレンダー・日別/期間取得に加え、実全国ZIP取得と全6XMLの署名/hashを確認済み | 全国全件DBの容量確保・取込、全585万記録/30原値・位置索引の独立照合と企業マスター結合は完了。圧縮Store単独の全体回帰は成功。並行中の財務変更との統合回帰、性能評価・連続差分・定期運用/配布反映とEDINET法人同一性の確認を進める |
+| 10 株価・評価指標 | 保存株価の選択、条件付きPER/PBR/配当利回りを実装済み | 明示台帳の財務換算は追加済み。価格基準/権利落ち履歴の自動判定、価格の全市場検証、比較条件の検証を拡大 |
+| 10 法人情報 | 原記録Store・状態再構成・カレンダー・日別/期間取得に加え、実全国ZIP取得と全6XMLの署名/hashを確認済み | 全国全件DBの容量確保・取込、全585万記録/30原値・位置索引の独立照合と企業マスター結合は完了。圧縮Store単独の全体回帰は成功。財務変更との統合回帰は冒頭の固定736ソースで確認済み。性能評価・全国取込jobの完走・連続差分・定期運用/正式配布反映とEDINET法人同一性の確認を進める |
 | 10 その他の外部補完 | 無償・既存データ優先の方針を整理済み | 短信・予想・IR/PDF・地価等の取得元と利用/保存条件を確認し、検証付きで追加。AI分析も残対象 |
 
 ## 段階ごとの残工程
 
 | 段階 | 残る成果物 | 状態・次の検証 |
 |---|---|---|
-| 1 基盤 | 基準/期間の判定、訂正履歴とcutoff、外貨/US/特殊業種境界 | DEI11項目と実contextによる基準/主範囲/当期の判定・既存snapshot接続を追加。実10原本で9件接続/IFRS単体1件停止。日別一覧の原観測保存とknownAt検索、cutoff付き訂正系列選択も追加。実2,402観測から635系列選択・親不明33件を保持。選択原本とDEI/hash/cutoffの接続を追加し、実2原本を自動抽出。種別/属性の消えた再観測で旧版へ戻らない選択・取下げ後の採用既知時刻も追加。財務値の訂正合成・全実例の確認は未完了 |
-| 2 財務 | 税引前の重複採用、CF3追加、IFRS追加明細・業種差・元書類照合 | 税引前とCF3はローカル実装済み。実5社20税引前・26CF採用、PDF12原値・XML/JSON80比較一致。IFRS専用PL5/CF12とsnapshot/API/CLIを追加。4社2期間136選択の87値/48不在/1nilをXML/PDF照合。IFRSのBS追加5項目（非流動資産・有利子負債/リース負債の流動/非流動）を抽出/API/CLI/自動snapshot/版付きcache/SQLへ接続。4社2期40選択の28採用/12不在を独立XML処理で確認し、PDF7ページの28原値・SQL当期14値/不在6件を照合。旧3項目世代の読取結果・byte不変と上書き拒否も確認。負債とリースの重複範囲、他BS/PL・CF/特殊業種、新SDKでの次の日次構築/全社検証・利用先への反映は未完了 |
-| 3 時系列 | 利益/EPS/配当前年比、CAGR、ROA/ROE、必要データ後のROIC等 | 親会社株主利益前年比・CAGR3種・平均資産利益率3種と検索をローカル実装、合成試験あり。計算ROEも追加し実2社10入力・2分数算式がPDF/独立処理と一致。根拠付きEPS/支払済み配当前年比・CAGRも追加し、実1社9原値/4算式/予定額除外が独立処理と一致。確認宣言付きROICと検索を追加し、実1社14入力・分数算式をPDF/独立XMLで照合。分割の自動換算/ROICの全社負債構成確認・他の実原本照合は未完了 |
+| 1 基盤 | 基準/期間の判定、訂正履歴とcutoff、外貨/US/特殊業種境界 | DEI11項目と実contextによる基準/主範囲/当期の判定・既存snapshot接続を追加。初期の実10原本では9件接続/IFRS単体1件停止。その後、当期主範囲の単体IFRSを追加し、実3原本33採用値を独立照合。延長年度Q4も実quarter contextを条件に対応した。日別一覧の原観測保存とknownAt検索、cutoff付き訂正系列選択も追加。実2,402観測から635系列選択・親不明33件を保持。選択原本とDEI/hash/cutoffの接続を追加し、実2原本を自動抽出。種別/属性の消えた再観測で旧版へ戻らない選択・取下げ後の採用既知時刻も追加。標準projectionの133系列では親fact合成が不要と確認。部分訂正形式ごとの再構成判断・全実例の確認は未完了 |
+| 2 財務 | 税引前の重複採用、CF3追加、IFRS追加明細・業種差・元書類照合 | 税引前とCF3はローカル実装済み。実5社20税引前・26CF採用、PDF12原値・XML/JSON80比較一致。IFRS専用PL5/CF12とsnapshot/API/CLIを追加。4社2期間136選択の87値/48不在/1nilをXML/PDF照合。その標本で未確認だったIFRS CF3タグも追加の3社6原本・当期/比較12期間で28値（減価償却単独8・親会社所有者向け配当8・社債/長期借入合算返済12）を公開selector/snapshotと独立XML/Decimalで照合。同6原本の実期間4集合で16複数社検索も確認し、32返却選択の原値/分数・件数・除外理由・順序が独立処理に一致。追加28値のPDFは未照合、HTTP0。単一検証XMLはtmpfsのみ/削除確認、複数社はメモリ入力のみ/新XMLfile0。証拠は `data/roadmap/ifrs-cashflow-three-tags-proof-20261031/`。IFRSのBS追加5項目（非流動資産・有利子負債/リース負債の流動/非流動）を抽出/API/CLI/自動snapshot/版付きcache/SQLへ接続。4社2期40選択の28採用/12不在を独立XML処理で確認し、PDF7ページの28原値・SQL当期14値/不在6件を照合。旧3項目世代の読取結果・byte不変と上書き拒否も確認。負債とリースの重複範囲、追加CF3タグのPDF、他BS/PL・CF/特殊業種、新SDKでの次の日次構築/全社検証・利用先への反映は未完了 |
+| 3 時系列 | 利益/EPS/配当前年比、CAGR、ROA/ROE、必要データ後のROIC等 | 親会社株主利益前年比・CAGR3種・平均資産利益率3種と検索をローカル実装、合成試験あり。計算ROEも追加し実2社10入力・2分数算式がPDF/独立処理と一致。根拠付きEPS/支払済み配当前年比・CAGRも追加し、実1社9原値/4算式/予定額除外が独立処理と一致。確認宣言付きROICと検索を追加し、実1社14入力・分数算式をPDF/独立XMLで照合。明示分割台帳の単一計算/複数社検索と実1社の独立照合を追加。台帳自動取得、価格への接続、ROICの全社負債構成・他原本照合は未完了。混在基準の年額DPSは明示台帳からの再構成APIを追加済み |
 | 4 企業マスター | 安定ID、コード/名称/上廃履歴、業種/市場、as-of検索と比較 | 公式CSV取得/解析とas-of検索に、同じ出典の二観測間の属性/行差分を追加。10月27日の11,433行→29日の11,432行の追加3/消失4/属性変更2が独立処理と一致。証券コード再利用でも別EDINETコードを結合せず、イベント日を推測しない。完全リストの観測Store・再open検索/差分を追加し、実2観測22,865行・8検索/9差分を独立照合。企業属性付き検索と、全指定指標を共通採用した企業集合の業種別分数統計を追加。市場/法的イベント履歴・比較の全市場/全指標検証は未完了 |
 | 5 人的資本 | 女性管理職・育休・賃金差、対象区分・比率単位 | 比率9項目を定義・労働者区分別にローカル追加。実2原本36選択中12採用。PDF/注記12値の独立照合が一致。子会社表7指標を追加し、既存2026有報2社37行・176値/71nil/12列なしをPDFと照合。育休方法と非該当理由は参照付き宣言で分離。企業拡張列/自動注記解釈は未完了 |
 | 6a 事業・関係先 | セグメント/顧客/受注/関係会社モデルと逆引き | 主要顧客/セグメントに続けて関係会社の区分・通貨・所有方向別の明細/API/CLI検索を追加。7原本385記載と親会社3原本のPDF17行/36数値を独立確認。受注/工事/繰越5指標の明細/API/CLI検索も追加し、7原本52行の135数値/1ダッシュをPDF照合。全形式/法人同定/関係履歴/自動期間・測定定義等は未完了 |
 | 6b 株主・ガバナンス | 株主分類/政策保有/役員・報酬・監査報酬の明細 | 監査報酬に続けて株主分類の人数/単元数/換算株数/割合とAPI/CLI検索を追加。7原本63記載・直接157数値/18ダッシュをPDF照合、株数換算50件を独立確認。大株主表と大量保有引用を分けた明細/検索も追加し、7原本121行242数値をPDF照合。一次大量保有の直接モデル/API/CLIも追加。6原本11行を原XMLと独立照合し、通常5原本はPDFも確認。一覧350/360の訂正自動選択と原本hash/cutoff検索を追加。全文再構成、政策保有の全形式/履歴、役員/報酬の全形式・人物同定/履歴、種類株式/保有者同定、永続索引の全市場性能・移行運用等は未完了 |
-| 6c 不動産・設備 | 物件原文・簿価・面積・所在地、検索 | 本文表に続けて、確認済み3形式の簿価3項目/土地面積と検索を追加。2社2年96行/384選択を独立確認、PDF14行52数値/4ダッシュ一致。原表付きStore/API/CLIとSQL viewを追加。所有/共有/賃借の自動判定、住所分離/地番、DBの全市場性能・移行運用は未完了 |
+| 6c 不動産・設備 | 物件原文・簿価・面積・所在地、検索 | 本文表に続けて、確認済み4形式（従来3形式と日付行付き11列）の簿価3項目/土地面積と検索を追加。2社2年96行/384選択を独立確認、PDF14行52数値/4ダッシュ一致。原表付きStore/API/CLIとSQL viewを追加。所有/共有/賃借の自動判定、住所分離/地番、DBの全市場性能・移行運用は未完了 |
 | 7 保存・更新 | 本番保存、差分/訂正/取下げ、再開、rollback、PL/CF等の保存 | 空の過去日を含む一覧完了証跡、日本時間の当日再取得、原観測/再開位置の保存をローカル実装。期間明細を含む専用世代Storeの計画・再開・完了・公開切替・旧世代復帰を追加。観測/原本と日本基準・IFRSの直接結果を専用アーカイブへ永続化し、会社/親子索引・版付き解析cacheを追加。直接BS/明細の固定世代SQL検索を別DBへ追加。母集団全件の会社別checkpoint/再開/世代集約を追加し、既存母集団3,813社を処理。不足原本の差分計画・一件ずつ取得/再開に続き、全社固定取得job・失敗履歴/試行数、日別backfillと原観測転送、品質条件付き公開catalog/期待値付き切替/旧候補復帰と、公開snapshotでの検索/読取再ロードを追加。固定SDK/自己検査を持つ専用サービスへ有限取得job/構築待機を引継ぎ、待機再起動も確認。停止hot journalの別候補復旧/全task監査と、日次metadataの別fork・予算/排他/固定時刻再開・定期起動を追加。実再boot・日次財務反復/復旧自動引継ぎ・比率/他指標・全市場実取得/本番規模は未完了 |
 | 8 品質・充足率 | 母集団・対象年度・取得/未開示/解析失敗/比較不能の集計 | 母集団/提出窓/取得状態/選択理由を分ける集計APIを追加。現在上場3,813社×過去2日窓の限定試算あり。固定SQL世代の全本文/値索引検査・母集団/書類/行/値と基準/期間cohort別の品質集計を追加。1,268原本の全取得世代2,526行/6,211採用値を独立SQL/XMLで照合。365日/83,828観測の一覧は全件取得/転送済み。年次7,337書類は原本7,328件/未提供9件で取得監査済み。日次7,449対象も取得済み7,440件/未提供9件。全市場・全形式/業種の品質と修正版による再構築は未完了 |
-| 9 配布・利用先 | 固定commit/hash、builder、stock-data vendor/API更新・回帰・rollback | 固定source 3cc4618・SHA-256再現・202ファイル検査を完了。利用先の別worktree c473948で63テスト/型/保存保護14件成功。公開財務exportをstatic buildへ接続。元作業ツリー/サービスは未切替 |
+| 9 配布・利用先 | 固定commit/hash、builder、stock-data vendor/API更新・回帰・rollback | 最新の封印済み私有候補はc804a45f（717 source/配布256 files/package259 files、公開713名）。2回のbuild・installed SDKのbyte一致、ESM/CJS/公開型、実native DuckDB2とoptional依存なしの検査、利用先63テスト/型/保存14テストが成功。後続728 sourceは全5,067テスト成功、配布候補の準備と直接distの追加profile予行まででinstalled検証は未実施。旧3cc4618の202配布ファイル検査は履歴として保持。公開財務exportをstatic buildへ接続済みだが、元作業ツリー/サービスは未切替 |
 | 10 外部補完 | 価格/分割/評価指標、短信/予想、IR/PDF、地価/法人、AI分析 | 無償・既存データ優先。取得元の利用/保存条件と検証・費用を明示。既存価格の観測cutoff・出来高・競合・古さ付き選択を追加、実2キャッシュを通信なしで検証。法人番号の公式XML原記録/観測cutoff付き番号検索とEDINET番号参照を追加。公式サンプル55ファイル/5,208件と、署名検証済みの実差分2,181件を照合。確認宣言付きの実績PER/PBR/支払済み配当利回りと比較APIを追加し、原本2社/保存株価の3算式・予定配当除外を独立照合。全件・差分再構成のAPI/CLIと限定サンプル照合を追加。保存した公式方針/祝日CSVで未作成日を確認する機能も追加。全国保存・全原値と対象法人状態の照合・企業結合は圧縮Storeで検証済み。連続実差分/取得から利用先までの運用接続/法人同一性/企業行動による自動調整/価格の全市場検証/他補完/AIは未完了。未検証データを通常財務値へ昇格させない |
 
 ## 次に進める順序
+
+上の「データフロー改善」の1〜3に実装と関連検証を追加しました。全体回帰・実原本での境界検証と性能測定を完了し、固定配布物へ反映します。これらを以下の再構築・世代切替・日次運用へ反映し、既存の品質調査も継続します。
+
+次の金融世代に使う固定16 SQLite入力を読み取り専用で再集計し、観測223,845件・metadata書類83,823件・source/content各7,867件、同ID異内容0を確認しました。旧poolの7,445原本がbaseと重複していても、別IDの83,828観測は省略できません。全16DBの物理SHAは調査前後で一致。これは入力内の閉包確認であり、metadata不足297件や全実世界の訂正兄弟・原ZIP根拠の充足を証明するものではありません。cutoffは実取得時刻を含む `2026-10-30T18:45:13.248Z`、旧3,812社の固定母集団・freshness falseを維持する計画です。tmpfsでもSDKの私有検査copyは必要で、推定RAM約7.5GB/保守的gate9GiBに対して実測約5.8GBのため、clone・新世代実行は未開始です。証跡は `data/roadmap/tmpfs-full-input-union-plan-20261031/`。容量留保や旧世代の入力指紋を緩めず、保存先・資源確保後に別世代を作ります。
 
 1. 完了した会社別索引の品質問題を調査し、修正版で別世代を再構築する。半期期間の照合は、事業年度または半期累計との開始日・終了日の完全一致に修正し、実191件を限定再生で採用できた。不一致7件は保留。以下は旧SDKによる完成候補の集計であり、修正後の全社集計ではない。母集団3,812社のうち利用可能値あり3,732社。期間不一致198書類、原本未提供9書類、選択未解決587件、選択不可109件、未解決原本22件、値の欠損1,426件・未対応12件・曖昧323件を区別して確認する。構築receiptは `status: built`、`publicationEligible: false`、`financialValuesValidated: false`。専用構築サービスは停止し、通常の財務timerはactive/waitingへ復帰した。
 2. 通知ルール3で残る未解決72件の参照先を追加照合する。自身の提出日時から13日分の確認候補を復元し、20書類を元一覧の実取得で確認した。以前の89件から27件が解決し、旧未解決の残り62件と新しく見つかった10件を保持している。日時だけで元一覧を確認したことにせず、親の日時も子から推定しない。新しい日次完了は165,557観測・取得予算200/256要求で監査済み。構築中の候補に凍結した旧metadata（未解決126件）と入力指紋は変更していない。追加観測を次の候補へ使う際は、対象書類・原本不足・容量を再計画する。

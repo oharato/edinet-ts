@@ -1,3 +1,4 @@
+import type { EdinetXbrlObject } from "./edinet-xbrl-object";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import type { FactSelectionResult, MetricSelectionOptions } from "./metric-selection";
 import { ComparisonOperator, SortOrder } from "./financial-options";
@@ -41,6 +42,11 @@ const cohortKey = (metadata: FinancialDetailMetadata) => JSON.stringify([metadat
 export function createFinancialDetailSnapshot(xml: string, metadata: FinancialDetailMetadata, metricIds?: readonly FinancialDetailMetricId[]): FinancialDetailSnapshot {
     const normalized = normalizeMetadata(metadata), selectedIds = projection(normalized, metricIds);
     const object = new EdinetXbrlParser().parse(xml, normalized.docID);
+    return createFinancialDetailSnapshotFromObject(object, normalized, selectedIds);
+}
+/** Internal parsed-object path; metadata/projection validation remains identical. */
+export function createFinancialDetailSnapshotFromObject(object: EdinetXbrlObject, metadata: FinancialDetailMetadata, metricIds?: readonly FinancialDetailMetricId[]): FinancialDetailSnapshot {
+    const normalized = normalizeMetadata(metadata), selectedIds = projection(normalized, metricIds);
     const selections: FinancialDetailSnapshot["selections"] = {};
     for (const id of selectedIds) selections[id] = object.selectFinancialDetail(id, {
         scope: normalized.scope, accountingStandard: normalized.accountingStandard, period: normalized.period as MetricSelectionOptions["period"]

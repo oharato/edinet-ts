@@ -120,6 +120,8 @@ node dist/cli.js get --help-types
 
 大量保有報告書の提出者と、保有対象の会社は別です。保有対象の証券コードで取得できるとは限りません。報告書の分類・比率・訂正版の扱いは[大量保有の明細API](docs/disclosures/LARGE_HOLDING.md)を参照してください。
 
+最近60日取引表は[原本限定取引API](docs/disclosures/LARGE_HOLDING_TRANSACTIONS.md)で別に読めます。数量・割合・単価の単位や、提供metadataの取得時刻を自動認証しません。
+
 プログラムから1社の書類を取得する例:
 
 ```ts
@@ -197,3 +199,35 @@ node dist/cli.js screen --file ./snapshots.json \
 ## ライセンス
 
 [Apache License 2.0](LICENSE)。Copyright (c) 2025 oharato / Copyright (c) 2018 Buffett Code。
+
+
+### SQLite取得・DuckDB検索の移行API
+
+原本・取得履歴と解析済み値はSQLite、検証済み検索世代はDuckDBへ保存する移行APIを追加しています。既存の同期APIも利用できます。
+
+```ts
+import {DuckFinancialSearchIndex} from "edinet-ts";
+
+const index = await DuckFinancialSearchIndex.open("data/search.duckdb");
+try {
+    console.log(await index.quality("listed-current"));
+} finally {
+    await index.close();
+}
+```
+
+`ParsedFinancialStore` / `ParsedFinancialJob` は版付き解析結果の保存・再開、`DuckFinancialIndexBuild` は固定入力からの候補構築、`DuckFinancialPublicationReader` はcatalog切替後の明示reloadに対応します。検索readerは初回に全件検査し、同じ私有snapshot内で監査結果を再利用します。
+
+DuckDB機能にはoptional依存 `@duckdb/node-api@2.0.0-r.1` が必要です。driverなしでも通常import・SQLite APIは利用できます。
+
+```sh
+edinet-ts duck-financial-index-quality --db data/search.duckdb --generation listed-current
+edinet-ts duck-financial-index-generation --db data/search.duckdb --generation listed-current
+edinet-ts screen-duck-financial-index --db data/search.duckdb --cohort cohort.json --metrics costOfSales
+edinet-ts duck-financial-publication-status --catalog data/publication.sqlite --db data/search.duckdb
+```
+
+[読取CLI](docs/pipeline/DUCK_FINANCIAL_CLI.md)、[非同期reader](docs/pipeline/DUCK_FINANCIAL_SEARCH_INDEX.md)、[独立原本照合gate](docs/pipeline/DUCK_FINANCIAL_VERIFICATION.md)、[移行計画・未完了事項](docs/plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)を参照してください。全社・日次・配布先移行の受入は継続中で、本番経路はまだ切り替えていません。
+
+
+固定原本からの作成は `edinet-ts build-duck-financial-cycle --config cycle.json --max-documents 100 --max-companies 100 --max-batches 10` で分割再開できます。共有の解析済みSQLiteを再利用し、候補には構築用の固定snapshotを保存します。出力先・共有Storeのflock排他と既存相当の容量余裕を要求します。構築だけではmetadata最新性や原本照合の合格にせず、正式切替は行いません。[設定と運用](docs/pipeline/DUCK_FINANCIAL_CYCLE.md)を参照してください。
