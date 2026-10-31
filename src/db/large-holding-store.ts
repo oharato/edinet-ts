@@ -6,6 +6,7 @@ import {parseReportedTableNumber} from '../reported-table-number';
 import {LARGE_HOLDING_REPORT_VERSION,LargeHoldingMetric,extractLargeHoldingReport,searchParsedLargeHoldingReports,type LargeHoldingMetadata,type LargeHoldingReport,type LargeHoldingSearchOptions} from '../large-holding-report';
 import {LARGE_HOLDING_VERSION_FIELDS,LARGE_HOLDING_VERSIONS_VERSION,selectLargeHoldingReportVersions,type LargeHoldingVersionObservation} from '../large-holding-versions';
 import type {ObservedLargeHoldingSource} from '../observed-large-holding';
+import {extractLargeHoldingTransactions,searchParsedLargeHoldingTransactions,validateStoredLargeHoldingTransactions,type LargeHoldingTransactions,type LargeHoldingTransactionSearchOptions} from '../large-holding-transactions';
 export const LARGE_HOLDING_STORE_VERSION='1';
 const format=`edinet-ts-large-holding-${LARGE_HOLDING_REPORT_VERSION}-${LARGE_HOLDING_VERSIONS_VERSION}-v1`;
 const schema={
@@ -30,7 +31,8 @@ const srcColumns=['id','doc_id','available_ms',text('body',8192),'sha256'].join(
 const snapshotColumns=['id','doc_id','source_sha256',text('metadata_body',16384),'body_status','duty_date','issuer_code',text('body',32*1024**2),'sha256'].join(',');
 function invalid():never{throw Error('大量保有Storeの観測・原本宣言・解析結果・索引を確認してください');}
 type Declaration=Omit<ObservedLargeHoldingSource,'xml'>;
-type ParsedBody={status:'parsed';report:Omit<LargeHoldingReport,'metadata'>}|{status:'source-not-loaded'|'source-parse-failed'};
+type TransactionBody={status:'parsed';report:Omit<LargeHoldingTransactions,'metadata'>}|{status:'source-too-large'|'source-parse-failed'};
+type ParsedBody={status:'parsed';report:Omit<LargeHoldingReport,'metadata'>;transactions?:TransactionBody}|{status:'source-not-loaded'|'source-parse-failed'};
 type Metadata=Omit<LargeHoldingMetadata,'knownAt'>;
 const sourceId=(s:Declaration)=>hash(canonical(s));
 const snapshotId=(m:Metadata,sha:string)=>hash(canonical([LARGE_HOLDING_REPORT_VERSION,m,sha]));
@@ -58,6 +60,7 @@ function projection(m:Metadata,body:ParsedBody){return {status:body.status,date:
 function validateReport(body:ParsedBody,sha:string,m:Metadata){
  if(!body||!['parsed','source-not-loaded','source-parse-failed'].includes(body.status))invalid();
  if(body.status!=='parsed'){if(Object.keys(body).length!==1)invalid();return;}
+ if(body.transactions!==undefined){const t=body.transactions;if(!t||!['parsed','source-too-large','source-parse-failed'].includes(t.status))invalid();if(t.status==='parsed'){validateStoredLargeHoldingTransactions(t.report,m.docID,sha,body.report.rows.filter(r=>r.role!=='reported-aggregate').map(r=>r.contextRef));if(t.report.status!==body.report.status)invalid();}else if(Object.keys(t).length!==1)invalid();}
  const r=body.report;if(!r||Object.hasOwn(r,'metadata')||r.version!==LARGE_HOLDING_REPORT_VERSION||r.inputXmlSha256!==sha||r.reconstruction!=='not-performed'||!['selected','unsupported'].includes(r.status)||!Array.isArray(r.rows)||r.rows.length>1000)invalid();
  if(r.issuer.declaredEdinetCode!==m.issuerEdinetCode||r.issuer.identity!=='not-established'||!['selected','unavailable'].includes(r.reportTotal.status)||new Set(r.rows.map(r=>r.rowKey)).size!==r.rows.length)invalid();
  if(r.reportTotal.status==='selected'){const key=r.reportTotal.rowKey,selected=r.rows.find(row=>row.rowKey===key);if(!selected||!['explicit-aggregate','single-holder-report'].includes(r.reportTotal.basis)||r.reportTotal.basis==='explicit-aggregate'&&selected.role!=='reported-aggregate'||r.reportTotal.basis==='single-holder-report'&&(r.rows.length!==1||r.cover.filerCount.status!=='selected'||r.cover.filerCount.safeNumber!==1))invalid();}
@@ -108,10 +111,17 @@ export class LargeHoldingStore extends DedicatedSqliteDatabase {
    count++;const existing=this.rows('SELECT '+snapshotColumns+' FROM holding_snapshots WHERE id=?',[plan.id])[0],previous=existing?this.decodeSnapshot(existing):undefined;
    if(previous&&canonical(previous.metadata)!==canonical(plan.identity))invalid();
    if(raws===undefined){if(!previous)invalid();continue;}
-   const xml=raws.get(plan.source.sourceSha256);if(previous&&previous.body.status!=='source-not-loaded')continue;
+   const xml=raws.get(plan.source.sourceSha256);if(previous&&previous.body.status!=='source-not-loaded'&&(previous.body.status!=='parsed'||previous.body.transactions!==undefined||xml===undefined))continue;
    let body:ParsedBody={status:'source-not-loaded'};
    if(xml!==undefined){try{const {metadata:_,...report}=extractLargeHoldingReport({xml,metadata:plan.metadata});body={status:'parsed',report};}catch{body={status:'source-parse-failed'};}materialized++;}
+   if(body.status==='parsed'&&xml!==undefined){
+    let transactions:TransactionBody={status:'source-too-large'};
+    if(Buffer.byteLength(xml)<=2*1024**2){try{const {metadata:_,...report}=extractLargeHoldingTransactions({xml,metadata:plan.metadata});transactions={status:'parsed',report};}catch{transactions={status:'source-parse-failed'};}}
+    if(previous?.body.status==='parsed'&&canonical(previous.body.report)!==canonical(body.report))invalid();
+    body={...body,transactions};
+   }
    if(previous&&body.status==='source-not-loaded')continue;
+   if(Buffer.byteLength(canonical(body))>32*1024**2)invalid();
    validateReport(body,plan.source.sourceSha256,plan.identity);const p=projection(plan.identity,body),values=[plan.id,docID,plan.source.sourceSha256,canonical(plan.identity),p.status,p.date,p.issuer,canonical(body)];
    this.run('INSERT INTO holding_snapshots VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET body_status=excluded.body_status,duty_date=excluded.duty_date,body=excluded.body,sha256=excluded.sha256',[...values,hash(canonical(values))]);
   }return {count,materialized};
@@ -155,6 +165,28 @@ export class LargeHoldingStore extends DedicatedSqliteDatabase {
     reports.push({...structuredClone(r),metadata:m});snapshotIds.push(key);
    }
    const result=searchParsedLargeHoldingReports(reports,q);return {...result,filtered:result.filtered+filteredReports.length,selection,unavailableSources,storage:{verification:'all-records',originalXmlStored:false,observationCount:obs.length,snapshotIds,sources:sourceDeclarations,filteredReports}};
+  });
+ }
+ searchTransactions(input:LargeHoldingTransactionSearchOptions){
+  const q=structuredClone(input);searchParsedLargeHoldingTransactions([],q);
+  return this.read(()=>{
+   this.verifyAll();const cutoff=timestamp(q.cutoff,true)!,obs=this.cohort(q.issuerEdinetCode,cutoff),selection=selectLargeHoldingReportVersions(obs,q.cutoff),reports:LargeHoldingTransactions[]=[],unavailableSources:{rootDocID:string;docID:string;reason:string}[]=[],snapshotIds:string[]=[];let bytes=0;
+   for(const chosen of selection.selected){
+    const docID=chosen.observation.document.docID,all=this.sources(docID),eligible=all.filter(s=>timestamp(s.availableAt,true)!<=cutoff),failed=(reason:string)=>unavailableSources.push({rootDocID:chosen.rootDocID,docID,reason});
+    if(!eligible.length){failed(all.length?'not-available-at-cutoff':'source-missing');continue;}
+    if(new Set(eligible.map(s=>canonical([s.sourceSha256,s.coverContextRef]))).size!==1){failed('conflicting-source-observations');continue;}
+    const source=eligible[0],m=metadata({observationId:chosen.observation.observationId,observedAt:chosen.observedAt,document:chosen.observation.document},source);if(!m)invalid();
+    const {knownAt:_,...identity}=m,key=snapshotId(identity,source.sourceSha256),row=this.rows('SELECT '+snapshotColumns+' FROM holding_snapshots WHERE id=?',[key])[0];if(!row)invalid();
+    if((bytes+=Buffer.byteLength(String(row.body)))>32*1024**2)throw Error('取引検索の解析結果は32MiB以下です');
+    const stored=this.decodeSnapshot(row);
+    if(stored.body.status!=='parsed'){failed(stored.body.status);continue;}
+    const transactions=stored.body.transactions;
+    if(!transactions){failed('transactions-not-materialized');continue;}
+    if(transactions.status!=='parsed'){failed(transactions.status);continue;}
+    reports.push({...structuredClone(transactions.report),metadata:m});snapshotIds.push(key);
+    if(reports.length>100)throw Error('取引検索は100原本以下です。発行者等で集合を分けてください');
+   }
+   return {...searchParsedLargeHoldingTransactions(reports,q),selection,unavailableSources,storage:{verification:'all-records' as const,originalXmlStored:false as const,observationCount:obs.length,snapshotIds}};
   });
  }
  audit(){return this.read(()=>{this.verifyAll();return {verification:'all-records' as const,observations:Number(this.rows('SELECT COUNT(*) n FROM holding_observations')[0].n),sources:Number(this.rows('SELECT COUNT(*) n FROM holding_sources')[0].n),snapshots:Number(this.rows('SELECT COUNT(*) n FROM holding_snapshots')[0].n),originalXmlStored:false as const};});}

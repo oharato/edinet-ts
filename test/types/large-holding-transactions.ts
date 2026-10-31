@@ -12,3 +12,11 @@ export const shares:'shares'=result.rows[0].quantity.unit;
 query.startDate='2025-04-23';
 // @ts-expect-error this is not a holdings metric projection
 query.metric='heldEquivalents';
+
+import {LargeHoldingStore} from 'edinet-ts';
+const transactionStore=new LargeHoldingStore(':memory:');
+const storedTransactions=transactionStore.searchTransactions({cutoff:'2026-10-29T00:00:00Z',action:'acquisition'});
+const storedOriginalXml:false=storedTransactions.storage.originalXmlStored;
+const storedMatched:number=storedTransactions.matched;
+transactionStore.close();
+void storedOriginalXml;void storedMatched;

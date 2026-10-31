@@ -16,6 +16,7 @@ import { FacilityDetailStore } from "./db/facility-detail-store";
 import { LargeHoldingStore } from "./db/large-holding-store";
 import { searchObservedLargeHoldingReports } from "./observed-large-holding";
 import { searchLargeHoldingReports } from "./large-holding-report";
+import { searchLargeHoldingTransactions } from "./large-holding-transactions";
 import { searchMajorShareholderDetails } from "./major-shareholder-details";
 import { searchShareholderCategories } from "./shareholder-categories";
 import { searchOrderDetails } from "./order-details";
@@ -623,6 +624,68 @@ program.command("screen-large-holdings")
             });
             console.log(JSON.stringify(searchLargeHoldingReports(documents, query), null, options.pretty ? 2 : undefined));
         } catch { console.error("一次大量保有の原本・一覧メタデータ・cutoff・訂正選択・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+    });
+
+program.command("search-large-holding-transactions-store")
+    .description("保存済み取引表を観測cutoff・訂正選択付きで検索します")
+    .requiredOption("--db <path>", "大量保有専用SQLite")
+    .requiredOption("--cutoff <datetime>", "timezone付きの観測cutoff")
+    .option("--reported-start-date <date>", "原表記載日の開始日（YYYY-MM-DD）")
+    .option("--reported-end-date <date>", "原表記載日の終了日（YYYY-MM-DD）")
+    .option("--instrument <kind>", "ordinary-sharesまたはshare-acquisition-rights")
+    .option("--market <kind>", "on-marketまたはoff-market")
+    .option("--action <kind>", "acquisitionまたはdisposal")
+    .option("--issuer-edinet-code <code>", "発行者EDINETコード")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数", "100")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        let store: LargeHoldingStore | undefined;
+        try {
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            store = new LargeHoldingStore(options.db, { readOnly: true });
+            const result = store.searchTransactions({ cutoff: options.cutoff, reportedStartDate: options.reportedStartDate, reportedEndDate: options.reportedEndDate,
+                instrument: options.instrument, market: options.market, action: options.action, issuerEdinetCode: options.issuerEdinetCode, offset: Number(options.offset), limit: Number(options.limit) });
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+        } catch { console.error("大量保有Store・取引解析結果・cutoff・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
+        finally { store?.close(); }
+    });
+
+program.command("screen-large-holding-transactions")
+    .description("一次大量保有の取引原表を検索します（訂正系列は事前選択が必要）")
+    .requiredOption("--manifest <path>", "file/metadataのJSON配列")
+    .requiredOption("--cutoff <datetime>", "timezone付きの観測cutoff")
+    .option("--reported-start-date <date>", "原表記載日の開始日（YYYY-MM-DD）")
+    .option("--reported-end-date <date>", "原表記載日の終了日（YYYY-MM-DD）")
+    .option("--instrument <kind>", "ordinary-sharesまたはshare-acquisition-rights")
+    .option("--market <kind>", "on-marketまたはoff-market")
+    .option("--action <kind>", "acquisitionまたはdisposal")
+    .option("--issuer-edinet-code <code>", "発行者EDINETコード")
+    .option("--offset <number>", "開始位置", "0")
+    .option("--limit <number>", "最大件数", "100")
+    .option("--pretty", "JSONを整形")
+    .action(options => {
+        try {
+            const manifest = path.resolve(options.manifest);
+            const entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readRegularFile(manifest, LOCAL_IMPORT_LIMITS.manifestBytes).bytes));
+            if (!Array.isArray(entries) || entries.length > 100) throw new Error();
+            for (const value of [options.offset, options.limit]) if (!/^\d+$/.test(value)) throw new Error();
+            // Reject aggregate size before decoding or parsing any source.
+            const files = entries.map(entry => {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry) || Object.keys(entry).some(k => !["file", "metadata"].includes(k)) || typeof entry.file !== "string" || !entry.file.trim()) throw new Error();
+                return path.resolve(path.dirname(manifest), entry.file);
+            });
+            assertRegularFileByteBudget(files);
+            let bytes = 0;
+            const documents = entries.map((entry, i) => {
+                const input = readRegularFile(files[i], Math.min(2 * 1024 * 1024, 32 * 1024 * 1024 - bytes));
+                bytes += input.bytes.byteLength;
+                return { xml: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(input.bytes), metadata: entry.metadata };
+            });
+            const result = searchLargeHoldingTransactions(documents, { cutoff: options.cutoff, reportedStartDate: options.reportedStartDate, reportedEndDate: options.reportedEndDate,
+                instrument: options.instrument, market: options.market, action: options.action, issuerEdinetCode: options.issuerEdinetCode, offset: Number(options.offset), limit: Number(options.limit) });
+            console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
+        } catch { console.error("大量保有取引の原本・メタデータ・cutoff・訂正系列・検索条件を確認してください（入力内容は非表示）"); process.exitCode = 1; }
     });
 
 program.command("plan-financial-index-build")
