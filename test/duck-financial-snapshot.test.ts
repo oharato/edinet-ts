@@ -2,7 +2,7 @@ import {it,expect,vi} from 'vitest';
 import {mkdtempSync,rmSync,readFileSync,readdirSync,symlinkSync,linkSync,writeFileSync,chmodSync,truncateSync} from 'node:fs';
 import {join} from 'node:path';import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
-import {DuckDBInstance,DuckDBResultReader} from '@duckdb/node-api';
+import {DuckDBInstance,DuckDBResult,DuckDBDataChunk} from '@duckdb/node-api';
 import {DuckFinancialSnapshot} from '../src/db/duck-financial-snapshot';
 import {DuckFinancialIndexBuild} from '../src/db/duck-financial-index-build';
 import {ObservedFinancialArchive} from '../src/db/observed-financial-archive';
@@ -66,10 +66,20 @@ it('準備済みSQLを再利用しても型変更・不足引数・失敗後の�
 }));
 
 it('結果は成功・整数検査失敗のどちらでも直ちに解放し、次のSQLを実行できる',()=>fixture(async path=>{
- const snapshot=await DuckFinancialSnapshot.open(path),close=vi.spyOn(DuckDBResultReader.prototype,'closeSync');
+ const snapshot=await DuckFinancialSnapshot.open(path),close=vi.spyOn(DuckDBResult.prototype,'closeSync');
  try{
   expect(await snapshot.rows('SELECT ?::VARCHAR AS value',['日本語😀'])).toEqual([{value:'日本語😀'}]);expect(close).toHaveBeenCalledTimes(1);
   await expect(snapshot.rows('SELECT ?::BIGINT AS unsafe',['9007199254740992'])).rejects.toThrow('Unsafe DuckDB integer');expect(close).toHaveBeenCalledTimes(2);
   expect(await snapshot.rows('SELECT ?::VARCHAR AS value',['again'])).toEqual([{value:'again'}]);expect(close).toHaveBeenCalledTimes(3);
  }finally{close.mockRestore();await snapshot.close()}
+}));
+
+it('取得済みチャンクを直ちに解放しても複数チャンクの順序・文字列・BLOB・リストを保つ',()=>fixture(async path=>{
+ const snapshot=await DuckFinancialSnapshot.open(path),db=await DuckDBInstance.create(':memory:'),connection=await db.connect(),sql="SELECT i::BIGINT AS ordinal, repeat('日本語😀',32)||i::VARCHAR AS text, encode('日本語'||i::VARCHAR) AS blob, [i::BIGINT,NULL] AS items FROM range(5001) t(i) ORDER BY i";
+ try{
+  const result=await connection.runAndReadAll(sql),expected=result.getRowObjects().map(row=>Object.fromEntries(Object.entries(row).map(([key,value])=>[key,typeof value==='bigint'?Number(value):value])));result.closeSync();
+  const reset=vi.spyOn(DuckDBDataChunk.prototype,'reset');let actual;
+  try{actual=await snapshot.rows(sql);expect(reset.mock.calls.length).toBeGreaterThanOrEqual(3)}finally{reset.mockRestore()}
+  await snapshot.close();expect(actual).toEqual(expected);expect(actual![5000].ordinal).toBe(5000);
+ }finally{await snapshot.close();connection.closeSync();db.closeSync()}
 }));

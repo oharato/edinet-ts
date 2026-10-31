@@ -6,8 +6,11 @@ import {createHash} from 'node:crypto';
 import type {BigIntStats} from 'node:fs';
 import type {DuckFinancialConnection} from './duck-financial-index-build';
 type NativeResult={closeSync():void;getRowObjects():Record<string,unknown>[];getColumns():unknown[][];deduplicatedColumnNames():string[];readonly currentRowCount:number;};
-interface NativeStatement {clearBindings():void;bind(values:any[]):void;runAndReadAll():Promise<NativeResult>;destroySync():void;}
-type NativeDuckConnection=Omit<DuckFinancialConnection,'runAndReadAll'> & {
+interface NativeChunk {getColumns():unknown[][];readonly rowCount:number;reset():void;}
+interface NativeQueryResult {deduplicatedColumnNames():string[];fetchChunk():Promise<NativeChunk|null>;closeSync():void;}
+interface NativeStatement {clearBindings():void;bind(values:any[]):void;run():Promise<NativeQueryResult>;destroySync():void;}
+type NativeDuckConnection=Omit<DuckFinancialConnection,'run'|'runAndReadAll'> & {
+ run(sql:string,values?:any[]):Promise<NativeQueryResult>;
  runAndReadAll(sql:string,values?:any[]):Promise<NativeResult>;
  prepare(sql:string):Promise<NativeStatement>;
  closeSync():void;
@@ -75,22 +78,28 @@ export class DuckFinancialSnapshot {
   }catch(error){try{connection?.closeSync()}finally{try{instance?.closeSync()}finally{await rm(directory,{recursive:true,force:true})}}throw error}
  }
  async snapshotSha256(){if(this.closed)throw Error('DuckDB snapshot is closed');if(identity(await inspect(this.file))!==this.fingerprint)throw Error('DuckDB snapshot changed');return this.digest}
- private async read(sql:string,args?:any[]):Promise<NativeResult>{
+ private async read(sql:string,args?:any[]):Promise<NativeQueryResult>{
   // Bound the retained plans; multi-statement SQL keeps the native execution path.
-  if(!args||sql.length>65536||sql.includes(';')||!/^\s*(SELECT|WITH)\b/i.test(sql))return this.connection.runAndReadAll(sql,args);
+  if(!args||sql.length>65536||sql.includes(';')||!/^\s*(SELECT|WITH)\b/i.test(sql))return this.connection.run(sql,args);
   let statement=this.statements.get(sql);
-  if(!statement){if(this.statements.size>=8)return this.connection.runAndReadAll(sql,args);statement=await this.connection.prepare(sql);this.statements.set(sql,statement)}
-  statement.clearBindings();statement.bind(args);return statement.runAndReadAll();
+  if(!statement){if(this.statements.size>=8)return this.connection.run(sql,args);statement=await this.connection.prepare(sql);this.statements.set(sql,statement)}
+  statement.clearBindings();statement.bind(args);return statement.run();
  }
  async rows(sql:string,args?:any[]){
   if(this.closed||this.closing)throw Error('DuckDB snapshot is closed');
   const task=this.pending.then(async()=>{
-   await this.snapshotSha256();const result=await this.read(sql,args);try{const columns=result.getColumns(),names=result.deduplicatedColumnNames(),count=result.currentRowCount;await this.snapshotSha256();
-   if(columns.length!==names.length||columns.some(column=>column.length!==count))throw Error('DuckDB result columns differ');
-   // Read each native column once; preserve native name deduplication and safe integer checks.
-   const rows=Array.from({length:count},()=>({} as Record<string,unknown>));
-   for(let column=0;column<columns.length;column++)for(let row=0;row<count;row++){let value=columns[column][row];if(typeof value==='bigint'){value=Number(value);if(!Number.isSafeInteger(value))throw Error('Unsafe DuckDB integer')}rows[row][names[column]]=value}
-   return rows;
+   await this.snapshotSha256();const result=await this.read(sql,args);
+   try{
+    const names=result.deduplicatedColumnNames(),rows:Record<string,unknown>[]=[];
+    for(;;){const chunk=await result.fetchChunk();if(!chunk)break;
+     try{
+      const count=chunk.rowCount;if(!count)break;
+      const columns=chunk.getColumns();if(columns.length!==names.length||columns.some(column=>column.length!==count))throw Error('DuckDB result columns differ');
+      const offset=rows.length;for(let row=0;row<count;row++)rows.push({});
+      for(let column=0;column<columns.length;column++)for(let row=0;row<count;row++){let value=columns[column][row];if(typeof value==='bigint'){value=Number(value);if(!Number.isSafeInteger(value))throw Error('Unsafe DuckDB integer')}rows[offset+row][names[column]]=value}
+     }finally{chunk.reset()}
+    }
+    await this.snapshotSha256();return rows;
    }finally{result.closeSync()}
   });
   this.pending=task.catch(()=>undefined);return task;
