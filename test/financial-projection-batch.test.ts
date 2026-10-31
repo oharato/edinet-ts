@@ -3,7 +3,7 @@ import {DuckDBInstance} from '@duckdb/node-api';
 import {Database} from '../src/db/node-sqlite';
 import {FinancialIndexReadQueries,financialIndexSqliteSchema,financialIndexValueColumns} from '../src/db/financial-search-index';
 
-it.each([{engine:'sqlite',limit:1000},{engine:'duckdb',limit:1000},{engine:'sqlite',limit:4096},{engine:'duckdb',limit:4096},{engine:'sqlite',limit:8192},{engine:'duckdb',limit:8192}] as const)('$engine: $limit 件の途中で同じ行の指標が分かれても欠落・重複・別世代混入がない',async ({engine,limit})=>{
+it.each([{engine:'sqlite',limit:1000},{engine:'duckdb',limit:1000},{engine:'sqlite',limit:4096},{engine:'duckdb',limit:4096},{engine:'sqlite',limit:16000},{engine:'duckdb',limit:16000}] as const)('$engine: $limit 件の途中で同じ行の指標が分かれても欠落・重複・別世代混入がない',async ({engine,limit})=>{
  const sqlite=engine==='sqlite'?new Database(':memory:'):undefined;
  const duck=engine==='duckdb'?await DuckDBInstance.create(':memory:',{threads:'1'}):undefined;
  const connection=await duck?.connect();
@@ -28,10 +28,10 @@ it.each([{engine:'sqlite',limit:1000},{engine:'duckdb',limit:1000},{engine:'sqli
  }finally{sqlite?.close();connection?.closeSync();duck?.closeSync()}
 },30000);
 
-it.each([1000,4096,8192] as const)('%i 件でも64 MiBの容量上限で本文読取キーを絞る',limit=>{
+it.each([1000,4096,16000] as const)('%i 件でも64 MiBの容量上限で本文読取キーを絞る',limit=>{
  const query=new FinancialIndexReadQueries(limit).projectionBatch('financial_values','g',financialIndexValueColumns),headers=Array.from({length:limit},(_,i)=>({row_id:i.toString(16).padStart(64,'0'),metric_id:'a',bytes:40*1024*1024}));
  query.next();const request=query.next(headers);expect(request.done).toBe(false);if(request.done)throw Error('Expected bounded read request');expect(request.value.args).toEqual(['g',headers[0].row_id,'a']);
  const row={row_id:headers[0].row_id,metric_id:'a'};expect(query.next([row])).toEqual({done:true,value:[row]});
 });
 
-it.each([0,-1,4097,8193,NaN,Infinity,"4096"])("不正なbatch件数 %s を拒否する",limit=>{expect(()=>new FinancialIndexReadQueries(limit as 1000)).toThrow()});
+it.each([0,-1,4097,16001,NaN,Infinity,"4096"])("不正なbatch件数 %s を拒否する",limit=>{expect(()=>new FinancialIndexReadQueries(limit as 1000)).toThrow()});

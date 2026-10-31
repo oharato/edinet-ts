@@ -369,8 +369,9 @@ export interface FinancialReadRequest {sql:string;args:SQLInputValue[];}
 export type FinancialReadQuery<T> = Generator<FinancialReadRequest,T,Record<string,unknown>[]>;
 /** Internal shared validation and SQL for sync SQLite and async DuckDB readers. */
 export class FinancialIndexReadQueries {
- constructor(private readonly projectionHeaderLimit:1000|4096|8192=1000){
-  if(projectionHeaderLimit!==1000&&projectionHeaderLimit!==4096&&projectionHeaderLimit!==8192)throw Error("Invalid financial projection batch size");
+ // 16,000 tuple keys use 32,001 bindings, below Node SQLite's 32,766 limit.
+ constructor(private readonly projectionHeaderLimit:1000|4096|16000=1000){
+  if(projectionHeaderLimit!==1000&&projectionHeaderLimit!==4096&&projectionHeaderLimit!==16000)throw Error("Invalid financial projection batch size");
  }
  private *rows(sql:string,args:SQLInputValue[]=[]):FinancialReadQuery<Record<string,unknown>[]>{return yield {sql,args};}
     *projectionBatch(table:"financial_rows"|"financial_values",generation:string,columns:readonly string[],after="",metric=""):FinancialReadQuery<Record<string,unknown>[]> {
