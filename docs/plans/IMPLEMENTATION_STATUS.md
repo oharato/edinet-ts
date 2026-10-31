@@ -6,7 +6,7 @@
 
 Node 26.12.1で関連7ファイル182件・隔離build・公開型が成功。9列形式の追加前は再現2件が失敗しました。実4原本68行の310数値・142 nil・24タグ不在を独立XML/Decimalで照合し、181自動宣言の原文参照と、うち70件の行別参照セルを別HTML parserでも検査しました。前年度の既存CLIはAPIと一致。2025年版の既定出力は不変、自動出力はルール版以外の値・根拠を保持し、原本変更/HTTPは0です。
 
-証跡は `data/roadmap/subsidiary-taxonomy-2024-20261031/`。前年度PDF照合・この変更を含む全体回帰/配布/利用先検証は残ります。以下の5,296件と最新package/consumer成功には、この後続変更を含めません。他形式・企業拡張・対象者範囲/FTE等の解釈も引き続き残工程です。[使い方](../disclosures/SUBSIDIARY_HUMAN_CAPITAL.md#metrics-auto-notes)。
+証跡は `data/roadmap/subsidiary-taxonomy-2024-20261031/`。前年度PDFの描画・独立転記照合も完了しました。エクシオ11/12/13ページ・ミライト15ページの31行で134数値・71ダッシュ・12タグ不在、非該当6件・算定方法74宣言が一致。同値の異なる算定列1件は保留し、元PDFのhash不変・HTTP0を確認しました。証跡は `data/roadmap/subsidiary-taxonomy-pdf-20261031/completion.json`。この変更を含む全体回帰/配布/利用先検証は残ります。以下の5,296件と最新package/consumer成功には、この後続変更を含めません。他形式・企業拡張・対象者範囲/FTE等の解釈も引き続き残工程です。[使い方](../disclosures/SUBSIDIARY_HUMAN_CAPITAL.md#metrics-auto-notes)。
 
 ## 自動注記を含む統合版の全体回帰と新規インストール検証（2026-10-31）
 
