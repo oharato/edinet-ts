@@ -5,10 +5,9 @@ import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import type { EdinetData } from "./edinet-xbrl-object";
 import type { EdinetContext } from "./edinet-context";
 import { identicalMetricFacts, toSafeMetricNumber, type FactSelectionEvidence, type SelectionReason } from "./metric-selection";
-import { selectSubsidiaryHumanCapitalLabels, type SubsidiaryHumanCapitalLabelMetadata, type SubsidiaryHumanCapitalLabelRow, type SubsidiaryHumanCapitalLabelTrace } from "./subsidiary-human-capital-labels";
+import { isSubsidiaryHumanCapitalNamespace, selectSubsidiaryHumanCapitalLabels, type SubsidiaryHumanCapitalLabelMetadata, type SubsidiaryHumanCapitalLabelRow, type SubsidiaryHumanCapitalLabelTrace } from "./subsidiary-human-capital-labels";
 import type { ContextDimensionsTraceResult } from "./context-dimension-traces";
 import { ComparisonOperator, SortOrder } from "./financial-options";
-const namespace = "http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2025-11-01/jpcrp_cor";
 export const SubsidiaryHumanCapitalMetricId = Object.freeze({ FemaleManagerRatio: "femaleManagerRatio",
     MaleChildcareLeaveAllRatio: "maleChildcareLeaveReportedAllRatio", MaleChildcareLeaveRegularRatio: "maleChildcareLeaveReportedRegularRatio", MaleChildcareLeaveNonRegularRatio: "maleChildcareLeaveReportedNonRegularRatio",
     GenderWageAllRatio: "genderWageAllRatio", GenderWageRegularRatio: "genderWageRegularRatio", GenderWageNonRegularRatio: "genderWageNonRegularRatio" } as const);
@@ -92,10 +91,10 @@ export function selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCap
     const byContext = new Map(selected.map(row => [row.candidates[0].contextRef, row])), byRow = new Map(selected.map(row => [row.rowKey, row]));
     const rowForContext = (id: string, context: EdinetContext | undefined) => {
         const direct = byContext.get(id); if (direct) return direct;
-        const trace = traces[traceRef(id)].trace, entries = trace.candidates[0]?.dimensions, entry = entries?.[0];
+        const trace = traces[traceRef(id)].trace, entries = trace.candidates[0]?.dimensions, entry = entries?.[0], namespace = entry?.kind === "explicit" ? entry.axis.namespaceURI : undefined;
         if (!context?.namespaceVerified || !context.periodValid || context.period.instant !== m.instant || context.period.startDate !== undefined || context.period.endDate !== undefined || !context.entity ||
             trace.status !== "resolved" || trace.candidates.length !== 1 || entries?.length !== 1 || entry?.kind !== "explicit" || entry.location !== "scenario" ||
-            entry.axis.status !== "resolved" || entry.member.status !== "resolved" || entry.axis.namespaceURI !== namespace || entry.axis.localName !== "SequentialNumbersAxis" || entry.member.namespaceURI !== namespace) return;
+            !isSubsidiaryHumanCapitalNamespace(namespace) || entry.axis.status !== "resolved" || entry.member.status !== "resolved" || entry.axis.localName !== "SequentialNumbersAxis" || entry.member.namespaceURI !== namespace) return;
         const dimensions = [{ axisNamespaceURI: namespace, axis: "SequentialNumbersAxis", memberNamespaceURI: namespace, member: entry.member.localName }];
         return byRow.get(hash(JSON.stringify([m.docID, context.entity.scheme, context.entity.identifier, m.instant, dimensions])));
     };
@@ -107,7 +106,8 @@ export function selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCap
         if (!selected.some(row => row.rowKey === rowKey) || !metrics.includes(metric) || !p || typeof p !== "object" || Object.keys(p).some(k => !["key", "contextRef", "rawSha256"].includes(k))) throw new Error("注記宣言の行/項目/原文参照が不正です");
         const proof = { key: p.key, contextRef: p.contextRef, rawSha256: p.rawSha256 };
         if (proof.key !== "jpcrp_cor:InformationAboutEmployeesTextBlock" || typeof proof.contextRef !== "string" || typeof proof.rawSha256 !== "string" || !/^[a-f0-9]{64}$/.test(proof.rawSha256)) throw new Error("注記の参照とhashが必要です");
-        const proofKey = JSON.stringify([proof.key, proof.contextRef]); let checked = proofChecks.get(proofKey);
+        const namespace = byRow.get(rowKey)?.dimensions?.[0]?.axisNamespaceURI;
+        const proofKey = JSON.stringify([proof.key, proof.contextRef, namespace]); let checked = proofChecks.get(proofKey);
         if (!checked) {
             const note = (facts.get(proof.key) ?? []).filter(f => f.contextRef === proof.contextRef), context = contexts.get(proof.contextRef);
             const valid = note.length === 1 && note[0].namespaceURI === namespace && !note[0].nil && !note[0].unitRef && typeof note[0].rawValue === "string" &&
@@ -142,7 +142,7 @@ export function selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCap
                 const reason = !context ? "unknown-context" : context.period.instant !== m.instant ? "period-mismatch" : "label-unavailable";
                 evidence.reason = !context ? "unknown-context" : context.period.instant !== m.instant ? "context-mismatch" : "unsupported-semantics"; orphanFacts++; diagnostics.push({ rowKey: null, metric, reason, evidence: [evidence] }); continue;
             }
-            if (key.split(":").length !== 2 || fact.namespaceURI !== namespace) evidence.reason = "unknown-namespace";
+            if (key.split(":").length !== 2 || fact.namespaceURI !== label.dimensions?.[0]?.axisNamespaceURI) evidence.reason = "unknown-namespace";
             else if (fact.nil) evidence.reason = "nil";
             else if (evidence.unit !== "xbrli:pure") evidence.reason = "unsupported-unit";
             else if (fact.rawValue === undefined) evidence.reason = "raw-unavailable";
