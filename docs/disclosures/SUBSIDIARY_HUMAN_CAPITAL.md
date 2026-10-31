@@ -188,13 +188,31 @@ flowchart LR
 
 DEIの年度開始日・年度末・当期末・FY、提出者、注記contextを確認します。育休方法の対応では原表の百分率とXBRL原値を十進分数で照合し、近似や推測の丸めを使いません。確認済みの文言から自動対応する方法は`ordinance-item1`・`ordinance-item2`・`womens-act`です。非該当は、nilセルの参照先に「対象となる従業員はおりません。」がある場合だけ付け、0へ変換しません。
 
-自動で付いた`declaration`/`disclosure`には`origin: "automatic-rule"`を付けます。`noteInterpretation.version` はルール版 `"2"` です。`noteInterpretation`は、参照した表・セル・注記本文・原文SHA-256を返します。検索では各`sources[].noteInterpretation`から辿れます。手動で意味を確認した宣言とは区別してください。
+自動で付いた`declaration`/`disclosure`には`origin: "automatic-rule"`を付けます。`noteInterpretation.version` はルール版 `"3"` です。`noteInterpretation`は、参照した表・セル・注記本文・原文SHA-256を返します。検索では各`sources[].noteInterpretation`から辿れます。手動で意味を確認した宣言とは区別してください。
+
+`noteInterpretation.definitions` は、確認済みの文言から読み取った集計定義です。各項目には行・指標・表・数値セル・注記番号・原文・原文hashが付きます。表の見出しから参照され、セルの百分率がXBRL原値と一致する場合だけ返します。
+
+| `definition.kind` | 読み取る定義 |
+|---|---|
+| `secondment-population` | 他社への出向者を含め、他社からの出向者を除く集計範囲 |
+| `wage-composition` | 賃金に含む例（基本給・超過労働の報酬・賞与）と除く例（退職手当・通勤手当）。例示を全項目の一覧とは扱いません |
+| `part-time-wage-basis` | 有期の嘱託社員・臨時雇用者・パートタイマーという対象区分と、パートタイマーはフルタイム換算せず実支給賃金を使うこと。正規雇用者には付けません |
+
+```ts
+const definitions = result.noteInterpretation?.definitions ?? [];
+const wageDefinitions = definitions.filter(d => d.metric === "genderWageAllRatio");
+console.log(wageDefinitions.map(d => ({ definition: d.definition, note: d.noteText })));
+```
+
+現在は保存済みミライト2年度の文言に対応しています。否定・追加説明・重複注記、親会社の表、数値/期間の不一致、nilには定義を付けません。空配列は「未確認」を表し、FTE調整済み・対象者なしを意味しません。定義による比率の補正や検索条件の自動変換はしないため、比較前に各書類の定義を確認してください。
+
+保存済み4原本では2原本の計116定義（出向範囲56・賃金構成36・パート算定24）を独立XML/Decimal/HTML処理で照合し、他2原本は0件でした。従来の数値・算定方法・非該当と既定モードの出力も維持しています。証跡は `data/roadmap/subsidiary-definitions-20261031/`。以下の全5,307件と配布・利用先の検証は、このルール版3の追加前の記録です。
 
 同値が異なる算定列にある場合、重複ラベル、未知の見出し・文言、対象期の不一致などは保留します。育休率は`reported/definition-unconfirmed`のまま比較から除外されます。DTSや原文の字面の検証済みという意味ではありません。
 
 `reportingPeriod`にはDEIの会計年度範囲を残します。自動指定した入力同士の育休・賃金比較では、開始日と終了日の一致も要求します。範囲を確認できない賃金比率は検索から除外します。期末時点の女性管理職比率は同じ期末で比較し、既定・手動モードの仕様は変えません。出向者範囲・FTE・賃金構成などの補正は行いません。
 
-実2原本37行では算定方法92宣言・非該当9宣言が既存の独立XML/PDF照合結果と一致しました。異なる算定列が同値の2件は保留し、既定/手動モードの返値は厳密に維持しています。証跡は `data/roadmap/subsidiary-auto-notes-20261031/`。 後続の前年度2原本31行を含む4原本68行は、独立XML/Decimalで310数値・142 nil・24タグ不在を照合しました。行別算定注記70件を含む181宣言の原文参照も確認し、前年度CLIはAPIと一致しています。既存2025年版の既定出力は不変、自動出力はルール版だけを更新し、値・根拠は保持しました。証跡は `data/roadmap/subsidiary-taxonomy-2024-20261031/`。前年度PDFもエクシオ11/12/13ページとミライト15ページを描画して確認し、独立転記した31行・134数値・71ダッシュ・12項目のタグ不在、非該当6件・算定方法74宣言が一致しました。ミライトの同値の異なる算定列1件は引き続き保留しています。元PDFのhashは不変、追加通信0です。証跡は `data/roadmap/subsidiary-taxonomy-pdf-20261031/completion.json`。最新版の全体回帰・配布/利用先反映は残ります。他形式・別文言・全市場の自動解釈は残工程です。
+実2原本37行では算定方法92宣言・非該当9宣言が既存の独立XML/PDF照合結果と一致しました。異なる算定列が同値の2件は保留し、既定/手動モードの返値は厳密に維持しています。証跡は `data/roadmap/subsidiary-auto-notes-20261031/`。 後続の前年度2原本31行を含む4原本68行は、独立XML/Decimalで310数値・142 nil・24タグ不在を照合しました。行別算定注記70件を含む181宣言の原文参照も確認し、前年度CLIはAPIと一致しています。既存2025年版の既定出力は不変、自動出力はルール版だけを更新し、値・根拠は保持しました。証跡は `data/roadmap/subsidiary-taxonomy-2024-20261031/`。前年度PDFもエクシオ11/12/13ページとミライト15ページを描画して確認し、独立転記した31行・134数値・71ダッシュ・12項目のタグ不在、非該当6件・算定方法74宣言が一致しました。ミライトの同値の異なる算定列1件は引き続き保留しています。元PDFのhashは不変、追加通信0です。証跡は `data/roadmap/subsidiary-taxonomy-pdf-20261031/completion.json`。後続検証でNode 26.12.1の全5,307テスト、新規インストール2環境、stock-data候補の64回帰・型・旧SDKへの切戻しが成功しました。ローカルCLIも検証済みdistへ更新しています。正式vendor・サービスへの反映や全市場対応は残ります。他形式・別文言・全市場の自動解釈は残工程です。
 
 <a id="metrics-検索とcli"></a>
 

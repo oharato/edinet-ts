@@ -82,3 +82,40 @@ describe('子会社注記の自動解釈',()=>{
  });
  it('末尾注記の取得は明示時だけで、先行表の注記と混ぜない',()=>{const raw='<p>前の文章</p><table><tr><td>1</td></tr></table><p>最後の注記</p>';expect(parseDisclosureTableFragment(raw)).not.toHaveProperty('trailingText');expect(parseDisclosureTableFragment(raw,true).trailingText).toBe('最後の注記');});
 });
+
+const populationDefinition='管理職に占める女性労働者の割合は当連結会計年度末時点、男性労働者の育児休業取得率及び労働者の男女の賃金の差異は当連結会計年度における実績を記載しており、集計対象には当社から他社への出向者を含み、他社から当社への出向者を除いております。';
+const wageDefinition='賃金は、基本給、超過労働に対する報酬、賞与等を含み、退職手当、通勤手当等を除いて算出しております。パート・有期労働者は、有期の嘱託社員、臨時雇用者、パートタイマーを対象とし、パートタイマーについてはフルタイム換算をせず実際に支給した賃金に基づき算出しております。';
+const definitionNotes=`<p>(注)1．${women}</p><p>2．${populationDefinition}</p><p>3．${ordinance}</p><p>4．${wageDefinition}</p>`;
+describe('原文参照付きの対象者・賃金定義',()=>{
+ it('出向者範囲・賃金の例示・パートタイマーだけの非FTE算定を区別して返す',()=>{
+  const d=doc('<p>連結子会社</p>'+dual()+definitionNotes),r=run(d),definitions=r.noteInterpretation!.definitions;
+  expect(r.noteInterpretation?.version).toBe('3');expect(definitions).toHaveLength(10);
+  expect(definitions.filter(d=>d.definition.kind==='secondment-population')).toHaveLength(5);
+  expect(definitions.filter(d=>d.definition.kind==='wage-composition')).toHaveLength(3);
+  expect(definitions.filter(d=>d.definition.kind==='part-time-wage-basis').map(d=>d.metric)).toEqual([M.GenderWageAllRatio,M.GenderWageNonRegularRatio]);
+  expect(definitions.find(d=>d.definition.kind==='part-time-wage-basis')).toMatchObject({noteNumber:4,noteText:wageDefinition,definition:{population:['有期の嘱託社員','臨時雇用者','パートタイマー'],partTimeBasis:'actual-paid-without-fte-adjustment'}});
+  expect(definitions.every(d=>d.proof.rawSha256===r.noteInterpretation!.proof!.rawSha256&&d.rowKey===r.rows[0].label.rowKey&&d.cellIndex>=0)).toBe(true);
+  const values=(e:ReturnType<typeof run>)=>e.rows.map(row=>Object.entries(row.selections).map(([id,s])=>({id,status:s!.status,raw:s!.raw})));
+  expect(values(r)).toEqual(values(run(doc('<p>連結子会社</p>'+dual()+dualNotes))));
+  expect(extract(d.xml,d.metadata).noteInterpretation).toBeUndefined();
+  expect(screen([{...d,annotations:'auto'}],M.GenderWageAllRatio).sources[0].noteInterpretation?.definitions).toHaveLength(10);
+ });
+ it.each(['negation','duplicate','unlinked','parent','value','period'])('%sの注記を確認済み定義へ昇格させない',kind=>{
+  let html='<p>連結子会社</p>'+dual()+definitionNotes;
+  if(kind==='negation')html=html.replace('換算をせず','換算をせずとは限らず');
+  if(kind==='duplicate')html+=`<p>4．${wageDefinition}</p>`;
+  if(kind==='unlinked')html=html.replace('(注1,2,4,5)','(注1)');
+  if(kind==='parent')html='<p>提出会社</p>'+dual()+definitionNotes;
+  if(kind==='value')html=html.replace('<td>75</td>','<td>74</td>').replace('<td>80</td>','<td>79</td>').replace('<td>60</td>','<td>59</td>');
+  const d=doc(html);if(kind==='period')d.xml=d.xml.replace('>2025-04-01</dei:CurrentFiscalYearStartDateDEI>','>2026-04-01</dei:CurrentFiscalYearStartDateDEI>');
+  const definitions=run(d).noteInterpretation!.definitions;
+  expect(definitions.filter(d=>d.metric.startsWith('genderWage')&&d.definition.kind!=='secondment-population')).toEqual([]);
+ });
+});
+
+it('nilの賃金セルには数値の定義を付けず、正規雇用者へパートの非FTE算定を広げない',()=>{
+ const d=doc('<p>連結子会社</p>'+dual().replace('<td>60</td>','<td>－</td>')+definitionNotes,true),r=run(d);
+ expect(r.rows[0].selections[M.GenderWageNonRegularRatio]?.reason).toBe('nil');
+ expect(r.noteInterpretation!.definitions.some(d=>d.metric===M.GenderWageNonRegularRatio)).toBe(false);
+ expect(r.noteInterpretation!.definitions.filter(d=>d.definition.kind==='part-time-wage-basis').map(d=>d.metric)).toEqual([M.GenderWageAllRatio]);
+});
