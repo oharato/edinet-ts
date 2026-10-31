@@ -4,6 +4,8 @@ import {Database} from './node-sqlite';
 import type {SQLInputValue} from 'node:sqlite';
 import {DuckFinancialSnapshot} from './duck-financial-snapshot';
 import {FinancialSearchIndex,financialIndexRowColumns,financialIndexValueColumns,financialIndexGenerationSha256,FinancialIndexReadQueries,type FinancialIndexGeneration,type FinancialIndexQuality,type FinancialReadQuery,type FinancialIndexCohort,type FinancialIndexSearchOptions} from './financial-search-index';
+const directValueColumns=['available','numeric_value','raw_text','metric_order'];
+const packedValueColumns=financialIndexValueColumns.filter(column=>!directValueColumns.includes(column));
 class VerifiedReadQueries extends FinancialIndexReadQueries {
  constructor(private report:FinancialIndexGeneration){super(16000)}
  *audit(id:string):FinancialReadQuery<FinancialIndexGeneration>{if(id!==this.report.id)throw new Error("世代が未収録です");return this.report}
@@ -34,21 +36,35 @@ export class DuckFinancialSearchIndex {
   const task=run();this.active.add(task);task.then(()=>this.active.delete(task),()=>this.active.delete(task));return task;
  }
  private async execute<T>(query:FinancialReadQuery<T>):Promise<T>{
-  let step=query.next();await this.snapshot.snapshotSha256();
+  let step=query.next(),packValues=false;await this.snapshot.snapshotSha256();
   while(!step.done){
    const request=step.value;let sql=request.sql.replace(/ INDEXED BY financial_metric_range/g,'').replace(/edinet_text_bytes\((\w+)\)/g,"strlen(coalesce($1,''))"),args:any[]=[...request.args];
+   const valueHeader=sql.startsWith('SELECT substr(row_id,1,65) AS row_id,substr(metric_id,1,257) AS metric_id,')&&sql.includes(' AS bytes FROM financial_values WHERE ');
+   // JSON escaping needs at most six bytes per source byte, plus fixed field names.
+   if(valueHeader)sql=sql.replace(' AS bytes FROM financial_values WHERE ',' AS bytes,6*bytes+256 AS _edinet_wire_bytes FROM financial_values WHERE ');
+   let packed=false;
    // Exact projection keys use lists to avoid thousands of native parameter bindings per batch.
    const projection=sql.match(/^SELECT ([a-z_,]+) FROM (financial_rows|financial_values) WHERE generation=\? AND (row_id|\(row_id,metric_id\)) IN \([?,()]+\) ORDER BY (row_id(?:,metric_id)?)$/);
    if(projection){
     const values=projection[2]==='financial_values',keys=args.slice(1),generation=args[0];
     if(projection[3]!== (values?'(row_id,metric_id)':'row_id')||projection[4]!== (values?'row_id,metric_id':'row_id')||!keys.length||keys.some(key=>typeof key!=='string')||values&&keys.length%2)throw Error('Invalid DuckDB projection keys');
     const {listValue}=await import('@duckdb/node-api'),ids=values?keys.filter((_key,i)=>i%2===0):keys,metrics=values?keys.filter((_key,i)=>i%2===1):[];
-    sql=`WITH wanted AS (SELECT unnest(?::VARCHAR[]) AS row_id${values?',unnest(?::VARCHAR[]) AS metric_id':''}) SELECT ${projection[1].split(',').map(column=>'r.'+column).join(',')} FROM ${projection[2]} r JOIN wanted k ON r.row_id=k.row_id${values?' AND r.metric_id=k.metric_id':''} WHERE r.generation=? ORDER BY ${projection[4].split(',').map(column=>'r.'+column).join(',')}`;
+    packed=values&&packValues&&projection[1]===financialIndexValueColumns.join(',');
+    const select=packed?`system.main.to_json(struct_pack(${packedValueColumns.map(column=>column+':=r.'+column).join(',')})) AS _edinet_metadata,${directValueColumns.map(column=>'r.'+column).join(',')}`:projection[1].split(',').map(column=>'r.'+column).join(',');
+    sql=`WITH wanted AS (SELECT unnest(?::VARCHAR[]) AS row_id${values?',unnest(?::VARCHAR[]) AS metric_id':''}) SELECT ${select} FROM ${projection[2]} r JOIN wanted k ON r.row_id=k.row_id${values?' AND r.metric_id=k.metric_id':''} WHERE r.generation=? ORDER BY ${projection[4].split(',').map(column=>'r.'+column).join(',')}`;
     args=[listValue(ids),...values?[listValue(metrics)]:[],generation];
    }
    // DuckDB uses LIMIT NULL for unlimited; SQLite uses -1.
    if(sql.endsWith('LIMIT ? OFFSET ?')&&args.at(-2)===-1)args[args.length-2]=null;
-   step=query.next(await this.snapshot.rows(sql,args as Parameters<DuckFinancialSnapshot['rows']>[1]));
+   let rows=await this.snapshot.rows(sql,args as Parameters<DuckFinancialSnapshot['rows']>[1]);
+   let wireBytes=0;packValues=valueHeader&&rows.every(row=>typeof row._edinet_wire_bytes==='number'&&Number.isSafeInteger(row._edinet_wire_bytes)&&row._edinet_wire_bytes>=0&&(wireBytes+=row._edinet_wire_bytes)<=64*1024*1024);
+   if(packed)rows=rows.map(row=>{
+    if(typeof row._edinet_metadata!=='string')throw Error('Invalid DuckDB value metadata');
+    const metadata=JSON.parse(row._edinet_metadata) as Record<string,unknown>;
+    if(!metadata||typeof metadata!=='object'||Array.isArray(metadata)||Object.keys(metadata).length!==packedValueColumns.length||packedValueColumns.some(column=>!Object.hasOwn(metadata,column)||metadata[column]!==null&&typeof metadata[column]!=='string'))throw Error('Invalid DuckDB value metadata');
+    return Object.fromEntries(financialIndexValueColumns.map(column=>[column,directValueColumns.includes(column)?row[column]:metadata[column]]));
+   });
+   step=query.next(rows);
   }
   await this.snapshot.snapshotSha256();return step.value;
  }
