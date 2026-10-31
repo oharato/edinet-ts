@@ -50,7 +50,7 @@ function text(nodes: OrderedNode[], excludeTables = false): string {
 function countNestedTables(nodes: OrderedNode[]): number {
     return nodes.reduce((n, node) => { const key = element(node); return n + (key === "table" ? 1 : 0) + (key ? countNestedTables(children(node, key)) : 0); }, 0);
 }
-function parseFragment(raw: string, biographicalTables = false): { tables: DisclosureTable[]; parsedText: string; outsideTableText: string } {
+function parseFragment(raw: string, biographicalTables = false, withTrailingText = false): { tables: DisclosureTable[]; parsedText: string; outsideTableText: string; trailingText?: string } {
     if (Buffer.byteLength(raw) > DISCLOSURE_TABLE_LIMITS.fragmentBytes) fail();
     const wrapped = `<fragment>${raw}</fragment>`;
     assertXmlInput(wrapped);
@@ -128,7 +128,7 @@ function parseFragment(raw: string, biographicalTables = false): { tables: Discl
         // 欠けた枠はnull。同じ結合セルの値を複製して合計しません。
         return { index, precedingText: preceding[index], cells, grid: grid.map(row => Array.from({ length: width }, (_, col) => row[col] ?? null)) };
     });
-    return { tables, parsedText: text(nodes).trim(), outsideTableText: text(nodes, true).trim() };
+    return { tables, parsedText: text(nodes).trim(), outsideTableText: text(nodes, true).trim(), ...(withTrailingText ? { trailingText: pendingText.trim() } : {}) };
 }
 /** @internal contextとfactの検査は既存parserの結果に限定します。 */
 export function selectDisclosureTables(docID: string, kind: DisclosureTableKind, contextRef: string, facts: ReadonlyMap<string, readonly EdinetData[]>,
@@ -194,4 +194,4 @@ export function searchDisclosureTableCells(documents: readonly DisclosureTableDo
 }
 
 /** 内部用: 保存本文を同じ安全制限で再検査します。 */
-export function parseDisclosureTableFragment(raw: string) { return parseFragment(raw); }
+export function parseDisclosureTableFragment(raw: string, withTrailingText = false) { return parseFragment(raw, false, withTrailingText); }

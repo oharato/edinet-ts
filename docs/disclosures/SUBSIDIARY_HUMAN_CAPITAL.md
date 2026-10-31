@@ -146,9 +146,9 @@ DTS/元の字面の検証はnot-performedです。
 
 rowKeyはラベル抽出または数値抽出の返値を使います。proofは同じ原本の従業員欄TextBlockで、hashはparserの`rawValue`のUTF-8 SHA-256です。
 
-APIは参照・namespace・entity・時点・一意性・hashを検査します。算出方法と注記の意味は呼出元が確認する宣言で、参照一致を意味の自動判定とは扱いません。
+APIは参照・namespace・entity・時点・一意性・hashを検査します。配列で指定する手動宣言では、算出方法と注記の意味は呼出元が確認します。参照一致を意味の自動判定とは扱いません。
 
-指標・注記・検索書類・条件は、実際のindexを持つ明示配列を渡してください。各配列のlengthと各indexは一度だけ読み、custom iteratorは使用しません。疎配列、不正な件数、指標7件・注記10,000件・書類100件・条件100件の上限超過を拒否します。iteratorで不正な注記や条件を隠しても、検査対象から外れません。
+指標・手動注記・検索書類・条件は、実際のindexを持つ明示配列を渡してください。各配列のlengthと各indexは一度だけ読み、custom iteratorは使用しません。疎配列、不正な件数、指標7件・注記10,000件・書類100件・条件100件の上限超過を拒否します。iteratorで不正な注記や条件を隠しても、検査対象から外れません。
 
 全/正規/非正規は個別に宣言します。
 
@@ -157,6 +157,44 @@ nilは0にしません。初期の`disclosure.state`は`unknown`です。
 原注記で分かる場合だけ、`{ kind:"unavailable", rowKey, metric, state:"not-applicable" または "not-disclosed", proof }`を付け、非該当と未開示を区別できます。nil以外への未記載宣言や、未知行・重複・不正hashは拒否します。
 
 完全一致の有効な重複factは証跡付きで採用します。異値・精度違い・nil混在は曖昧とし、負値・%文字列・未知単位等は採用しません。安全なnumberにできない原値は保持して検索から除外します。ラベルのない数値も診断へ残します。
+
+<a id="metrics-auto-notes"></a>
+
+### 注記を自動解釈する
+
+`annotations: "auto"` を明示すると、確認済みの表形式と注記文言を使って算定方法・非該当を解釈します。省略時と手動配列の動作は従来どおりです。
+
+```ts
+const result = extractSubsidiaryHumanCapitalMetrics(xml, metadata, undefined, "auto");
+console.log(result.noteInterpretation?.matched);    // 表・行・セル・注記番号・原文hash
+console.log(result.noteInterpretation?.unresolved); // 対応が一意にならなかった項目と理由
+
+const search = screenSubsidiaryHumanCapitalMetrics(
+  [{ xml, metadata, annotations: "auto" }],
+  "maleChildcareLeaveReportedAllRatio",
+  { childcareMethod: "ordinance-item2" },
+);
+```
+
+```mermaid
+flowchart LR
+  A[同じ原本のXBRLと従業員欄] --> B[対象期・行・列・注記番号を照合]
+  B --> C{一意に対応するか}
+  C -->|対応する| D[原値を保ち判定根拠を追加]
+  C -->|曖昧・未対応| E[育休方法を保留]
+```
+
+対象は2025-11-01版の子会社表で、育休の全/正規/非正規3区分を持つ8列形式と、異なる育休算定列が並ぶ7列形式です。同じ見出しが空の間隔で続く表は、その表群の後の注記へ結びます。親会社や以前の表の注記で補完しません。
+
+DEIの年度開始日・年度末・当期末・FY、提出者、注記contextを確認します。育休方法の対応では原表の百分率とXBRL原値を十進分数で照合し、近似や推測の丸めを使いません。確認済みの文言から自動対応する方法は`ordinance-item2`と`womens-act`です。非該当は、nilセルの参照先に「対象となる従業員はおりません。」がある場合だけ付け、0へ変換しません。
+
+自動で付いた`declaration`/`disclosure`には`origin: "automatic-rule"`を付けます。`noteInterpretation`はルール版、参照した表・セル・注記本文・原文SHA-256を返します。検索では各`sources[].noteInterpretation`から辿れます。手動で意味を確認した宣言とは区別してください。
+
+同値が異なる算定列にある場合、重複ラベル、未知の見出し・文言、対象期の不一致などは保留します。育休率は`reported/definition-unconfirmed`のまま比較から除外されます。DTSや原文の字面の検証済みという意味ではありません。
+
+`reportingPeriod`にはDEIの会計年度範囲を残します。自動指定した入力同士の育休・賃金比較では、開始日と終了日の一致も要求します。範囲を確認できない賃金比率は検索から除外します。期末時点の女性管理職比率は同じ期末で比較し、既定・手動モードの仕様は変えません。出向者範囲・FTE・賃金構成などの補正は行いません。
+
+実2原本37行では算定方法92宣言・非該当9宣言が既存の独立XML/PDF照合結果と一致しました。異なる算定列が同値の2件は保留し、既定/手動モードの返値は厳密に維持しています。証跡は `data/roadmap/subsidiary-auto-notes-20261031/`。他形式・別文言・全市場の自動解釈は残工程です。
 
 <a id="metrics-検索とcli"></a>
 
@@ -173,7 +211,7 @@ node dist/cli.js screen-subsidiary-human-capital --manifest files.json \
   --metric femaleManagerRatio --conditions '[{"operator":"gte","value":0.1}]'
 ```
 
-manifestは`[{file,metadata:{docID,instant,secCode?},annotations?:[...]}]`。育休の例は`--metric maleChildcareLeaveReportedAllRatio --childcare-method ordinance-item2`です。
+manifestは`[{file,metadata:{docID,instant,secCode?},annotations?}]`。`annotations`には手動宣言配列か`"auto"`を指定します。育休の例は`--metric maleChildcareLeaveReportedAllRatio --childcare-method ordinance-item2`です。
 
 最大100書類、検索集合のXML合計256MiB、ラベルと数値の全候補10,000件が上限です。入力の内容はエラーへ表示しません。
 

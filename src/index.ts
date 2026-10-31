@@ -71,7 +71,7 @@ export * from "./average-equity-return";
 export type { ShareBasis, ShareBasisProofKey, ShareBasisAssessment, PerShareAnnualDocument } from "./share-basis";
 
 export { SubsidiaryHumanCapitalMetricId, SUBSIDIARY_HUMAN_CAPITAL_METRICS_VERSION, extractSubsidiaryHumanCapitalMetrics, screenSubsidiaryHumanCapitalMetrics } from "./subsidiary-human-capital-metrics";
-export type { ChildcareCalculationMethod, SubsidiaryHumanCapitalNoteProof, SubsidiaryHumanCapitalAnnotation, SubsidiaryHumanCapitalMetricEvidence, SubsidiaryHumanCapitalMetricSelection, SubsidiaryHumanCapitalMetricRow, SubsidiaryHumanCapitalMetricDiagnostic, SubsidiaryHumanCapitalMetricsExtraction, SubsidiaryHumanCapitalMetricDocument, SubsidiaryHumanCapitalMetricsSearchOptions, SubsidiaryHumanCapitalMetricSearchRow } from "./subsidiary-human-capital-metrics";
+export type { ChildcareCalculationMethod, SubsidiaryHumanCapitalAnnotationInput, SubsidiaryHumanCapitalNoteProof, SubsidiaryHumanCapitalAnnotation, SubsidiaryHumanCapitalMetricEvidence, SubsidiaryHumanCapitalMetricSelection, SubsidiaryHumanCapitalMetricRow, SubsidiaryHumanCapitalMetricDiagnostic, SubsidiaryHumanCapitalMetricsExtraction, SubsidiaryHumanCapitalMetricDocument, SubsidiaryHumanCapitalMetricsSearchOptions, SubsidiaryHumanCapitalMetricSearchRow } from "./subsidiary-human-capital-metrics";
 
 export { DisclosureTableKind, DISCLOSURE_TABLE_LIMITS, extractDisclosureTables, searchDisclosureTableCells } from "./disclosure-tables";
 export type { DisclosureTableCell, DisclosureTable, DisclosureTableSource, DisclosureTableExtraction, DisclosureTableDocument, DisclosureTableCellMatch } from "./disclosure-tables";
@@ -174,3 +174,5 @@ export type {CompanyCorporateStreamStateResult,CompanyCorporateStateQuery,Compan
 
 export {reconstructCorporateRegistryStreamStates} from "./corporate-registry-stream-state";
 export type {CorporateRegistryStreamPart,CorporateRegistryStreamDelivery,CorporateRegistryStreamStateQuery,CorporateRegistryStreamStateResult} from "./corporate-registry-stream-state";
+
+export type { SubsidiaryHumanCapitalAutoNoteEvidence, SubsidiaryHumanCapitalNoteInterpretation } from "./subsidiary-human-capital-notes";

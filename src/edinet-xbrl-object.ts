@@ -2,7 +2,7 @@ import {selectFinancialReportingBasis,type FinancialReportingBasis} from "./fina
 import {IFRS_FINANCIAL_DETAIL_REGISTRY,type IfrsFinancialDetailMetricId} from "./ifrs-financial-detail-registry";
 import { selectLargeHoldingReport, type LargeHoldingMetadata, type LargeHoldingReport } from "./large-holding-report";
 import { selectDisclosureTables, type DisclosureTableKind, type DisclosureTableExtraction } from "./disclosure-tables";
-import { selectSubsidiaryHumanCapitalMetrics, type SubsidiaryHumanCapitalMetricId, type SubsidiaryHumanCapitalAnnotation, type SubsidiaryHumanCapitalMetricsExtraction } from "./subsidiary-human-capital-metrics";
+import { selectSubsidiaryHumanCapitalMetrics, type SubsidiaryHumanCapitalMetricId, type SubsidiaryHumanCapitalAnnotationInput, type SubsidiaryHumanCapitalMetricsExtraction } from "./subsidiary-human-capital-metrics";
 import { AUDIT_FEE_REGISTRY, type AuditFeeMetricId } from "./audit-fee-registry";
 import type { ContextDimensionTraceMap, ContextDimensionsTraceResult } from "./context-dimension-traces";
 import { IFRS_BALANCE_SHEET_REGISTRY, IfrsBalanceSheetMetricId } from "./ifrs-balance-sheet-registry";
@@ -297,8 +297,8 @@ export class EdinetXbrlObject {
         return result;
     }
 
-    public selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCapitalLabelMetadata, metricIds: readonly SubsidiaryHumanCapitalMetricId[], annotations: readonly SubsidiaryHumanCapitalAnnotation[] = []): SubsidiaryHumanCapitalMetricsExtraction {
-        return selectSubsidiaryHumanCapitalMetrics(metadata, metricIds, annotations, this._dataMap, this.contextMap, this.unitMap, id => this.traceContextDimensions(id), this._docID);
+    public selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCapitalLabelMetadata, metricIds: readonly SubsidiaryHumanCapitalMetricId[], annotations: SubsidiaryHumanCapitalAnnotationInput = []): SubsidiaryHumanCapitalMetricsExtraction {
+        return selectSubsidiaryHumanCapitalMetrics(metadata, metricIds, annotations, this._dataMap, this.contextMap, this.unitMap, id => this.traceContextDimensions(id), this._docID, annotations === "auto" && this._docID ? this.selectFinancialReportingBasis() : undefined);
     }
 
     private extractKeyMetrics(sources?: KeyMetricSources): KeyMetrics {

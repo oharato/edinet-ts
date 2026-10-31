@@ -1,3 +1,5 @@
+import {interpretSubsidiaryHumanCapitalNotes,type SubsidiaryHumanCapitalNoteInterpretation} from "./subsidiary-human-capital-notes";
+import type {FinancialReportingBasis} from "./financial-reporting-basis";
 import { createHash } from "node:crypto";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import type { EdinetData } from "./edinet-xbrl-object";
@@ -27,10 +29,11 @@ export interface SubsidiaryHumanCapitalNoteProof { key: "jpcrp_cor:InformationAb
 export type SubsidiaryHumanCapitalAnnotation = { rowKey: string; metric: SubsidiaryHumanCapitalMetricId; proof: SubsidiaryHumanCapitalNoteProof } & (
     { kind: "childcare-method"; method: ChildcareCalculationMethod } | { kind: "unavailable"; state: "not-applicable" | "not-disclosed" }
 );
+export type SubsidiaryHumanCapitalAnnotationInput = readonly SubsidiaryHumanCapitalAnnotation[] | "auto";
 export interface SubsidiaryHumanCapitalMetricEvidence extends FactSelectionEvidence { traceRef: number; }
 interface SelectionBase { metricId: SubsidiaryHumanCapitalMetricId; evidence: readonly SubsidiaryHumanCapitalMetricEvidence[];
-    declaration?: { kind: "childcare-method"; method: ChildcareCalculationMethod; proof: SubsidiaryHumanCapitalNoteProof; verification: "source-reference-matched" };
-    disclosure?: { state: "unknown" } | { state: "not-applicable" | "not-disclosed"; proof: SubsidiaryHumanCapitalNoteProof; verification: "source-reference-matched" }; }
+    declaration?: { kind: "childcare-method"; method: ChildcareCalculationMethod; proof: SubsidiaryHumanCapitalNoteProof; verification: "source-reference-matched"; origin?: "automatic-rule" };
+    disclosure?: { state: "unknown" } | { state: "not-applicable" | "not-disclosed"; proof: SubsidiaryHumanCapitalNoteProof; verification: "source-reference-matched"; origin?: "automatic-rule" }; }
 export type SubsidiaryHumanCapitalMetricSelection = SelectionBase & (
     { status: "selected"; reason: SelectionReason; raw: string; safeNumber?: number; source: SubsidiaryHumanCapitalMetricEvidence } |
     { status: "reported"; reason: "definition-unconfirmed"; raw: string; safeNumber?: number; source: SubsidiaryHumanCapitalMetricEvidence } |
@@ -41,11 +44,12 @@ export interface SubsidiaryHumanCapitalMetricDiagnostic { rowKey: string | null;
     reason: SelectionReason | "label-unavailable" | "period-mismatch" | "unsafe-number" | "definition-unconfirmed" | "different-childcare-method"; evidence: readonly SubsidiaryHumanCapitalMetricEvidence[]; }
 export interface SubsidiaryHumanCapitalMetricsExtraction {
     metadata: SubsidiaryHumanCapitalLabelMetadata; submitterEntity?: EdinetContext["entity"]; inputXmlSha256?: string;
+    noteInterpretation?: SubsidiaryHumanCapitalNoteInterpretation;
     dtsValidation: "not-performed"; originalLexicalValidation: "not-performed"; rows: SubsidiaryHumanCapitalMetricRow[]; traces: SubsidiaryHumanCapitalLabelTrace[];
     labelDiagnostics: ReturnType<typeof selectSubsidiaryHumanCapitalLabels>["diagnostics"]; diagnostics: SubsidiaryHumanCapitalMetricDiagnostic[];
     summary: { labels: number; selectedLabels: number; candidateFacts: number; comparableValues: number; reportedValues: number; unavailableValues: number; orphanFacts: number };
 }
-export interface SubsidiaryHumanCapitalMetricDocument { xml: string; metadata: SubsidiaryHumanCapitalLabelMetadata; annotations?: readonly SubsidiaryHumanCapitalAnnotation[]; }
+export interface SubsidiaryHumanCapitalMetricDocument { xml: string; metadata: SubsidiaryHumanCapitalLabelMetadata; annotations?: SubsidiaryHumanCapitalAnnotationInput; }
 const methods: readonly ChildcareCalculationMethod[] = ["ordinance-item1", "ordinance-item2", "womens-act"];
 const compareText = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -65,9 +69,23 @@ function requested(input: readonly SubsidiaryHumanCapitalMetricId[]): Subsidiary
 }
 /** @internal 表の専用タグと検証済み行ラベルだけを結び付けます。 */
 export function selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCapitalLabelMetadata, metricIds: readonly SubsidiaryHumanCapitalMetricId[],
-    annotations: readonly SubsidiaryHumanCapitalAnnotation[], facts: ReadonlyMap<string, readonly EdinetData[]>, contexts: ReadonlyMap<string, EdinetContext>,
-    units: ReadonlyMap<string, string>, traceContext: (id: string) => ContextDimensionsTraceResult, knownDocID = ""): SubsidiaryHumanCapitalMetricsExtraction {
+    annotations: SubsidiaryHumanCapitalAnnotationInput, facts: ReadonlyMap<string, readonly EdinetData[]>, contexts: ReadonlyMap<string, EdinetContext>,
+    units: ReadonlyMap<string, string>, traceContext: (id: string) => ContextDimensionsTraceResult, knownDocID = "", basis?: FinancialReportingBasis): SubsidiaryHumanCapitalMetricsExtraction {
     const metrics = requested(metricIds), labels = selectSubsidiaryHumanCapitalLabels(metadata, facts, contexts, traceContext, knownDocID), m = labels.metadata;
+    if (annotations === "auto") {
+        const preliminary = selectSubsidiaryHumanCapitalMetrics(m, metrics, [], facts, contexts, units, traceContext, knownDocID);
+        const inferred = interpretSubsidiaryHumanCapitalNotes(preliminary, facts.get("jpcrp_cor:InformationAboutEmployeesTextBlock") ?? [], basis);
+        const result = inferred.annotations.length ? selectSubsidiaryHumanCapitalMetrics(m, metrics, inferred.annotations, facts, contexts, units, traceContext, knownDocID) : preliminary;
+        const byRow = new Map(result.rows.map(row => [row.label.rowKey, row]));
+        for (const evidence of inferred.interpretation.matched) {
+            const selection = byRow.get(evidence.rowKey)?.selections[evidence.metric];
+            if (evidence.annotation.kind === "childcare-method" && selection?.declaration)
+                selection.declaration = { ...selection.declaration, origin: "automatic-rule" };
+            if (evidence.annotation.kind === "unavailable" && selection?.disclosure && selection.disclosure.state !== "unknown")
+                selection.disclosure = { ...selection.disclosure, origin: "automatic-rule" };
+        }
+        return { ...result, noteInterpretation: inferred.interpretation };
+    }
     const traces = [...labels.traces], traceIndexes = new Map(traces.map((t, index) => [t.contextRef, index]));
     const traceRef = (id: string) => { let index = traceIndexes.get(id); if (index === undefined) { index = traces.length; traces.push({ contextRef: id, trace: traceContext(id) }); traceIndexes.set(id, index); } return index; };
     const selected = labels.rows.filter((r): r is Extract<SubsidiaryHumanCapitalLabelRow, { status: "selected" }> => r.status === "selected");
@@ -169,7 +187,7 @@ export function selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCap
         summary: { labels: labels.rows.length, selectedLabels: selected.length, candidateFacts: candidates, comparableValues, reportedValues, unavailableValues, orphanFacts } });
 }
 export function extractSubsidiaryHumanCapitalMetrics(xml: string, metadata: SubsidiaryHumanCapitalLabelMetadata,
-    metricIds: readonly SubsidiaryHumanCapitalMetricId[] = ids, annotations: readonly SubsidiaryHumanCapitalAnnotation[] = []): SubsidiaryHumanCapitalMetricsExtraction {
+    metricIds: readonly SubsidiaryHumanCapitalMetricId[] = ids, annotations: SubsidiaryHumanCapitalAnnotationInput = []): SubsidiaryHumanCapitalMetricsExtraction {
     if (typeof xml !== "string") throw new Error("XML文字列が必要です");
     const object = new EdinetXbrlParser().parse(xml, metadata.docID), result = object.selectSubsidiaryHumanCapitalMetrics(metadata, metricIds, annotations);
     return { ...result, inputXmlSha256: hash(xml) };
@@ -198,20 +216,28 @@ export function screenSubsidiaryHumanCapitalMetrics(documents: readonly Subsidia
         if (totalCandidates > 10000) throw new Error("検索集合の表候補は10000件以下です");
         return result;
     });
-    const docs = new Set<string>(), entities = new Set<string>(); let instant: string | undefined;
+    const docs = new Set<string>(), entities = new Set<string>(); let instant: string | undefined, automaticPeriod: string | undefined;
     for (const e of extracted) { const identity = e.submitterEntity ? JSON.stringify([e.submitterEntity.scheme, e.submitterEntity.identifier]) : undefined;
         if (docs.has(e.metadata.docID) || identity && entities.has(identity) || instant !== undefined && instant !== e.metadata.instant) throw new Error("同じ提出者/書類の重複や期末混在は使えません");
         docs.add(e.metadata.docID); if (identity) entities.add(identity); instant = e.metadata.instant;
+        if (metric !== "femaleManagerRatio" && e.noteInterpretation?.reportingPeriod) {
+            const period = JSON.stringify(e.noteInterpretation.reportingPeriod);
+            if (automaticPeriod !== undefined && automaticPeriod !== period) throw new Error("自動解釈の会計年度範囲が異なる書類は比較できません");
+            automaticPeriod = period;
+        }
     }
     const diagnostics = extracted.flatMap(e => e.diagnostics.filter(d => d.metric === metric)), available: SubsidiaryHumanCapitalMetricSearchRow[] = []; let excludedRows = 0;
     for (const e of extracted) for (const row of e.rows) {
         const s = row.selections[metric];
         if (row.label.status !== "selected" || !s || s.status !== "selected" || s.safeNumber === undefined) { excludedRows++; continue; }
+        if (metric !== "femaleManagerRatio" && e.noteInterpretation && !e.noteInterpretation.reportingPeriod) {
+            excludedRows++; diagnostics.push({ rowKey: row.label.rowKey, metric, reason: "definition-unconfirmed", evidence: s.evidence }); continue;
+        }
         if (childcare(metric) && s.declaration?.method !== childcareMethod) { excludedRows++; diagnostics.push({ rowKey: row.label.rowKey, metric, reason: "different-childcare-method", evidence: s.evidence }); continue; }
         available.push({ ...row, label: row.label, inputXmlSha256: e.inputXmlSha256! });
     }
     const matches = available.filter(r => (labelContains === undefined || r.label.status === "selected" && r.label.parsedLabel.includes(labelContains)) && conditions.every(c => { const v = r.selections[metric]!.safeNumber!; return c.operator === "gt" ? v > c.value : c.operator === "gte" ? v >= c.value : c.operator === "lt" ? v < c.value : c.operator === "lte" ? v <= c.value : v === c.value; }));
     matches.sort((a, b) => (a.selections[metric]!.safeNumber! - b.selections[metric]!.safeNumber!) * (order === "asc" ? 1 : -1) || compareText(a.label.metadata.docID, b.label.metadata.docID) || compareText(a.label.rowKey ?? "", b.label.rowKey ?? ""));
     return { rows: matches.slice(offset, limit === undefined ? undefined : offset + limit), total: matches.length, excludedRows, filteredRows: available.length - matches.length,
-        diagnostics, labelDiagnostics: extracted.flatMap(e => e.labelDiagnostics), sources: extracted.map(e => ({ metadata: e.metadata, inputXmlSha256: e.inputXmlSha256!, traces: e.traces })), dtsValidation: "not-performed" as const, originalLexicalValidation: "not-performed" as const };
+        diagnostics, labelDiagnostics: extracted.flatMap(e => e.labelDiagnostics), sources: extracted.map(e => ({ metadata: e.metadata, inputXmlSha256: e.inputXmlSha256!, traces: e.traces, ...(e.noteInterpretation ? { noteInterpretation: e.noteInterpretation } : {}) })), dtsValidation: "not-performed" as const, originalLexicalValidation: "not-performed" as const };
 }
