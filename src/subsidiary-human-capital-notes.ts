@@ -12,13 +12,20 @@ export interface SubsidiaryHumanCapitalAutoNoteEvidence {
  annotation:SubsidiaryHumanCapitalAnnotation;
 }
 export interface SubsidiaryHumanCapitalNoteInterpretation {
- version:'2';status:'matched'|'unresolved';reason?:string;proof?:SubsidiaryHumanCapitalNoteProof;
+ version:'3';status:'matched'|'unresolved';reason?:string;proof?:SubsidiaryHumanCapitalNoteProof;
  reportingPeriod?:{startDate:string;endDate:string};
+ definitions:(Omit<SubsidiaryHumanCapitalAutoNoteEvidence,'annotation'|'referenceCellIndex'|'referenceCellText'>&{definition:
+  {kind:'secondment-population';outbound:'included';inbound:'excluded'}|
+  {kind:'wage-composition';includedExamples:readonly ['基本給','超過労働に対する報酬','賞与'];excludedExamples:readonly ['退職手当','通勤手当']}|
+  {kind:'part-time-wage-basis';population:readonly ['有期の嘱託社員','臨時雇用者','パートタイマー'];partTimeBasis:'actual-paid-without-fte-adjustment'}
+ })[];
  matched:SubsidiaryHumanCapitalAutoNoteEvidence[];
  unresolved:{rowKey:string;metric:SubsidiaryHumanCapitalMetricId;reason:string}[];
 }
 const normal=(s:string)=>s.normalize('NFKC').replace(/\s/g,'');
 const label=(s:string)=>s.replace(/[\r\n]/g,'').trim();
+const populationNote=normal('管理職に占める女性労働者の割合は当連結会計年度末時点、男性労働者の育児休業取得率及び労働者の男女の賃金の差異は当連結会計年度における実績を記載しており、集計対象には当社から他社への出向者を含み、他社から当社への出向者を除いております。');
+const wageNote=normal('賃金は、基本給、超過労働に対する報酬、賞与等を含み、退職手当、通勤手当等を除いて算出しております。パート・有期労働者は、有期の嘱託社員、臨時雇用者、パートタイマーを対象とし、パートタイマーについてはフルタイム換算をせず実際に支給した賃金に基づき算出しております。');
 const women=normal('「女性の職業生活における活躍の推進に関する法律」（平成27年法律第64号）の規定に基づき算出したものであります。');
 const ordinance=normal('「育児休業、介護休業等育児又は家族介護を行う労働者の福祉に関する法律」（平成3年法律第76号）の規定に基づき、「育児休業、介護休業等育児又は家族介護を行う労働者の福祉に関する法律施行規則」（平成3年労働省令第25号）');
 function method(text:string):ChildcareCalculationMethod|undefined {
@@ -63,7 +70,7 @@ function equalPercent(raw:string,text:string):boolean{
 }
 /** Internal: classify only the reviewed layouts and exact note sentences. Unknown links stay unconfirmed. */
 export function interpretSubsidiaryHumanCapitalNotes(base:SubsidiaryHumanCapitalMetricsExtraction,notes:readonly EdinetData[],basis:FinancialReportingBasis|undefined){
- const annotations:SubsidiaryHumanCapitalAnnotation[]=[],interpretation:SubsidiaryHumanCapitalNoteInterpretation={version:'2',status:'unresolved',matched:[],unresolved:[]};
+ const annotations:SubsidiaryHumanCapitalAnnotation[]=[],interpretation:SubsidiaryHumanCapitalNoteInterpretation={version:'3',status:'unresolved',definitions:[],matched:[],unresolved:[]};
  const unavailable=(reason:string)=>{interpretation.reason=reason;return{annotations,interpretation};};
  const note=notes[0];
  if(notes.length!==1||!isSubsidiaryHumanCapitalNamespace(note.namespaceURI)||note.nil||note.unitRef||typeof note.rawValue!=='string')return unavailable('note-unavailable');
@@ -98,8 +105,9 @@ export function interpretSubsidiaryHumanCapitalNotes(base:SubsidiaryHumanCapital
  }
  for(const r of base.rows){if(r.label.status!=='selected')continue;const key=label(r.label.parsedLabel),matches=located.get(key)??[];
   for(const [metricId,s]of Object.entries(r.selections)){
-   const metric=metricId as SubsidiaryHumanCapitalMetricId,isChild=metric.startsWith('maleChildcareLeave');if(!s||(s.reason!=='nil'&&!(isChild&&s.status==='reported')))continue;
-   const miss=(reason:string)=>interpretation.unresolved.push({rowKey:r.label.rowKey!,metric,reason});
+   const metric=metricId as SubsidiaryHumanCapitalMetricId,isChild=metric.startsWith('maleChildcareLeave');if(!s)continue;
+   const interpret=s.reason==='nil'||isChild&&s.status==='reported';if(!interpret&&s.status!=='selected')continue;
+   const miss=(reason:string)=>{if(interpret)interpretation.unresolved.push({rowKey:r.label.rowKey!,metric,reason});};
    if(labels.get(key)!==1||ambiguousLabels.has(key)||matches.length!==1){miss(matches.length?'ambiguous-row':'row-unmatched');continue;}
    const {table,row,kind,notes}=matches[0];
    const columns:Partial<Record<SubsidiaryHumanCapitalMetricId,number[]>>=kind==='row-method'?{femaleManagerRatio:[1],maleChildcareLeaveReportedAllRatio:[2],maleChildcareLeaveReportedRegularRatio:[3],maleChildcareLeaveReportedNonRegularRatio:[4],genderWageAllRatio:[6],genderWageRegularRatio:[7],genderWageNonRegularRatio:[8]}:kind==='split-workers'?{femaleManagerRatio:[1],maleChildcareLeaveReportedAllRatio:[2],maleChildcareLeaveReportedRegularRatio:[3],maleChildcareLeaveReportedNonRegularRatio:[4],genderWageAllRatio:[5],genderWageRegularRatio:[6],genderWageNonRegularRatio:[7]}:{femaleManagerRatio:[1],maleChildcareLeaveReportedAllRatio:[2,3],genderWageAllRatio:[4],genderWageRegularRatio:[5],genderWageNonRegularRatio:[6]};
@@ -111,6 +119,20 @@ export function interpretSubsidiaryHumanCapitalNotes(base:SubsidiaryHumanCapital
    if(candidates.length!==1){miss(candidates.length?'ambiguous-column':'value-unmatched');continue;}
    const {column,data,cellIndex}=candidates[0],methodReference=kind==='row-method'?cell(table,row,5):undefined;let found=false;
    const add=(annotation:SubsidiaryHumanCapitalAnnotation,noteNumber:number,noteText:string)=>{annotations.push(annotation);interpretation.matched.push({rowKey:r.label.rowKey!,metric,tableIndex:table.index,row,cellIndex,noteNumber,noteText,cellText:data.parsedText,...(annotation.kind==='childcare-method'&&methodReference?{referenceCellIndex:table.grid[row][5]!,referenceCellText:methodReference.parsedText}:{}),proof,annotation});found=true;};
+   if(s.status==='selected'||s.status==='reported'){
+    const headerRefs=[...new Set([0,1,2].flatMap(header=>references(cell(table,header,column)?.parsedText??'')))];
+    const definitions:SubsidiaryHumanCapitalNoteInterpretation['definitions']=[];
+    for(const id of headerRefs){const text=notes.get(id);if(text===undefined)continue;
+     const evidence={rowKey:r.label.rowKey!,metric,tableIndex:table.index,row,cellIndex,noteNumber:id,noteText:text,cellText:data.parsedText,proof};
+     if(normal(text)===populationNote)definitions.push({...evidence,definition:{kind:'secondment-population',outbound:'included',inbound:'excluded'}});
+     if(metric.startsWith('genderWage')&&normal(text)===wageNote){
+      definitions.push({...evidence,definition:{kind:'wage-composition',includedExamples:['基本給','超過労働に対する報酬','賞与'],excludedExamples:['退職手当','通勤手当']}});
+      if(metric!=='genderWageRegularRatio')definitions.push({...evidence,definition:{kind:'part-time-wage-basis',population:['有期の嘱託社員','臨時雇用者','パートタイマー'],partTimeBasis:'actual-paid-without-fte-adjustment'}});
+     }
+    }
+    interpretation.definitions.push(...definitions.filter(d=>definitions.filter(other=>other.definition.kind===d.definition.kind).length===1));
+   }
+   if(!interpret)continue;
    const refs=references(data.parsedText),nonapp=refs.filter(id=>notes.get(id)!==undefined&&normal(notes.get(id)!)==='対象となる従業員はおりません。');
    if(s.reason==='nil'&&nonapp.length===1)add({kind:'unavailable',rowKey:r.label.rowKey!,metric,state:'not-applicable',proof},nonapp[0],notes.get(nonapp[0])!);
    if(isChild&&!nonapp.length){
@@ -122,5 +144,5 @@ export function interpretSubsidiaryHumanCapitalNotes(base:SubsidiaryHumanCapital
    if(!found)miss('note-unmatched');
   }
  }
- interpretation.status=annotations.length?'matched':'unresolved';return{annotations,interpretation};
+ interpretation.status=annotations.length||interpretation.definitions.length?'matched':'unresolved';return{annotations,interpretation};
 }

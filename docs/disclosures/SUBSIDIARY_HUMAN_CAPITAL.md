@@ -188,7 +188,25 @@ flowchart LR
 
 DEIの年度開始日・年度末・当期末・FY、提出者、注記contextを確認します。育休方法の対応では原表の百分率とXBRL原値を十進分数で照合し、近似や推測の丸めを使いません。確認済みの文言から自動対応する方法は`ordinance-item1`・`ordinance-item2`・`womens-act`です。非該当は、nilセルの参照先に「対象となる従業員はおりません。」がある場合だけ付け、0へ変換しません。
 
-自動で付いた`declaration`/`disclosure`には`origin: "automatic-rule"`を付けます。`noteInterpretation.version` はルール版 `"2"` です。`noteInterpretation`は、参照した表・セル・注記本文・原文SHA-256を返します。検索では各`sources[].noteInterpretation`から辿れます。手動で意味を確認した宣言とは区別してください。
+自動で付いた`declaration`/`disclosure`には`origin: "automatic-rule"`を付けます。`noteInterpretation.version` はルール版 `"3"` です。`noteInterpretation`は、参照した表・セル・注記本文・原文SHA-256を返します。検索では各`sources[].noteInterpretation`から辿れます。手動で意味を確認した宣言とは区別してください。
+
+`noteInterpretation.definitions` は、確認済みの文言から読み取った集計定義です。各項目には行・指標・表・数値セル・注記番号・原文・原文hashが付きます。表の見出しから参照され、セルの百分率がXBRL原値と一致する場合だけ返します。
+
+| `definition.kind` | 読み取る定義 |
+|---|---|
+| `secondment-population` | 他社への出向者を含め、他社からの出向者を除く集計範囲 |
+| `wage-composition` | 賃金に含む例（基本給・超過労働の報酬・賞与）と除く例（退職手当・通勤手当）。例示を全項目の一覧とは扱いません |
+| `part-time-wage-basis` | 有期の嘱託社員・臨時雇用者・パートタイマーという対象区分と、パートタイマーはフルタイム換算せず実支給賃金を使うこと。正規雇用者には付けません |
+
+```ts
+const definitions = result.noteInterpretation?.definitions ?? [];
+const wageDefinitions = definitions.filter(d => d.metric === "genderWageAllRatio");
+console.log(wageDefinitions.map(d => ({ definition: d.definition, note: d.noteText })));
+```
+
+現在は保存済みミライト2年度の文言に対応しています。否定・追加説明・重複注記、親会社の表、数値/期間の不一致、nilには定義を付けません。空配列は「未確認」を表し、FTE調整済み・対象者なしを意味しません。定義による比率の補正や検索条件の自動変換はしないため、比較前に各書類の定義を確認してください。
+
+保存済み4原本では2原本の計116定義（出向範囲56・賃金構成36・パート算定24）を独立XML/Decimal/HTML処理で照合し、他2原本は0件でした。従来の数値・算定方法・非該当と既定モードの出力も維持しています。証跡は `data/roadmap/subsidiary-definitions-20261031/`。この追加を含むNode 26.12.1の全体回帰は全246ファイル・5,315件成功、build・公開型とroot CLIも確認済みです。以下の全5,307件と配布・利用先の検証は、ルール版3の追加前の記録です。
 
 同値が異なる算定列にある場合、重複ラベル、未知の見出し・文言、対象期の不一致などは保留します。育休率は`reported/definition-unconfirmed`のまま比較から除外されます。DTSや原文の字面の検証済みという意味ではありません。
 

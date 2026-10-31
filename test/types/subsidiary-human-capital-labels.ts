@@ -14,3 +14,14 @@ const automaticSearch=screenSubsidiaryHumanCapitalMetrics([{xml:'<synthetic/>',m
 const sourceEvidence:SubsidiaryHumanCapitalNoteInterpretation|undefined=automaticSearch.sources[0]?.noteInterpretation;
 // @ts-expect-error unsupported automatic mode
 const unsupportedMode:SubsidiaryHumanCapitalAnnotationInput='automatic';
+
+for(const evidence of automaticEvidence?.definitions??[]){
+ const sourceHash:string=evidence.proof.rawSha256;
+ if(evidence.definition.kind==='part-time-wage-basis'){
+  const basis:'actual-paid-without-fte-adjustment'=evidence.definition.partTimeBasis;
+  const category:'パートタイマー'=evidence.definition.population[2];void basis;void category;
+ }
+ if(evidence.definition.kind==='wage-composition'){const example:'基本給'=evidence.definition.includedExamples[0];void example;}
+ if(evidence.definition.kind==='secondment-population'){const included:'included'=evidence.definition.outbound;void included;}
+ void sourceHash;
+}
