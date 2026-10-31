@@ -5,7 +5,7 @@ import type {SQLInputValue} from 'node:sqlite';
 import {DuckFinancialSnapshot} from './duck-financial-snapshot';
 import {FinancialSearchIndex,financialIndexRowColumns,financialIndexValueColumns,financialIndexGenerationSha256,FinancialIndexReadQueries,type FinancialIndexGeneration,type FinancialIndexQuality,type FinancialReadQuery,type FinancialIndexCohort,type FinancialIndexSearchOptions} from './financial-search-index';
 class VerifiedReadQueries extends FinancialIndexReadQueries {
- constructor(private report:FinancialIndexGeneration){super(4096)}
+ constructor(private report:FinancialIndexGeneration){super(8192)}
  *audit(id:string):FinancialReadQuery<FinancialIndexGeneration>{if(id!==this.report.id)throw new Error("世代が未収録です");return this.report}
 }
 /** Internal async reader. Public exports and catalog integration follow after parity verification. */
@@ -21,7 +21,7 @@ export class DuckFinancialSearchIndex {
   try{
    const ids=await snapshot.rows('SELECT id FROM financial_generations'),id=String(ids[0].id);
    for(const table of ['financial_rows','financial_values'])if((await snapshot.rows(`SELECT generation FROM ${table} WHERE generation<>? LIMIT 1`,[id])).length)throw Error('DuckDB contains rows outside its generation');
-   const verified=await reader.execute(new FinancialIndexReadQueries(4096).auditSnapshot(id));reader.queries=new VerifiedReadQueries(verified.generation);
+   const verified=await reader.execute(new FinancialIndexReadQueries(8192).auditSnapshot(id));reader.queries=new VerifiedReadQueries(verified.generation);
    reader.verifiedQuality=verified.quality;return reader;
   }catch(error){await reader.close();throw error}
  }
@@ -36,7 +36,7 @@ export class DuckFinancialSearchIndex {
  private async execute<T>(query:FinancialReadQuery<T>):Promise<T>{
   let step=query.next();await this.snapshot.snapshotSha256();
   while(!step.done){
-   const request=step.value;let sql=request.sql.replace(/ INDEXED BY financial_metric_range/g,'').replace(/edinet_text_bytes\((\w+)\)/g,"octet_length(encode(coalesce($1,'')))"),args:any[]=[...request.args];
+   const request=step.value;let sql=request.sql.replace(/ INDEXED BY financial_metric_range/g,'').replace(/edinet_text_bytes\((\w+)\)/g,"strlen(coalesce($1,''))"),args:any[]=[...request.args];
    // Exact projection keys use lists to avoid thousands of native parameter bindings per batch.
    const projection=sql.match(/^SELECT ([a-z_,]+) FROM (financial_rows|financial_values) WHERE generation=\? AND (row_id|\(row_id,metric_id\)) IN \([?,()]+\) ORDER BY (row_id(?:,metric_id)?)$/);
    if(projection){
@@ -69,7 +69,7 @@ export class DuckFinancialSearchIndex {
     const generation=db.prepare('INSERT INTO financial_generations VALUES(?,?,?)');try{generation.run(report.id,canonical(report),financialIndexGenerationSha256(report))}finally{generation.close()}
     for(const table of ['financial_rows','financial_values'] as const){
      const columns=table==='financial_rows'?[...financialIndexRowColumns,'sha256','body']:[...financialIndexValueColumns],insert=db.prepare(`INSERT INTO ${table} VALUES(${columns.map(()=>'?').join(',')})`);let after='',metric='';
-     try{for(;;){options.signal?.throwIfAborted();const rows=await this.execute(new FinancialIndexReadQueries(4096).projectionBatch(table,report.id,columns,after,metric));if(!rows.length)break;for(const row of rows)insert.run(...columns.map(c=>row[c]) as SQLInputValue[]);const last=rows.at(-1)!;after=String(last.row_id);metric=String(last.metric_id??'')}}finally{insert.close()}
+     try{for(;;){options.signal?.throwIfAborted();const rows=await this.execute(new FinancialIndexReadQueries(8192).projectionBatch(table,report.id,columns,after,metric));if(!rows.length)break;for(const row of rows)insert.run(...columns.map(c=>row[c]) as SQLInputValue[]);const last=rows.at(-1)!;after=String(last.row_id);metric=String(last.metric_id??'')}}finally{insert.close()}
     }
     db.exec('COMMIT');
    }catch(error){try{db.exec('ROLLBACK')}catch{}throw error}finally{db.close()}

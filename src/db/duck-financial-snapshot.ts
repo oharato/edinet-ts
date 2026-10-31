@@ -5,7 +5,13 @@ import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import type {BigIntStats} from 'node:fs';
 import type {DuckFinancialConnection} from './duck-financial-index-build';
-type NativeDuckConnection=DuckFinancialConnection & {closeSync():void};
+type NativeResult={closeSync():void;getRowObjects():Record<string,unknown>[];getColumns():unknown[][];deduplicatedColumnNames():string[];readonly currentRowCount:number;};
+interface NativeStatement {clearBindings():void;bind(values:any[]):void;runAndReadAll():Promise<NativeResult>;destroySync():void;}
+type NativeDuckConnection=Omit<DuckFinancialConnection,'runAndReadAll'> & {
+ runAndReadAll(sql:string,values?:any[]):Promise<NativeResult>;
+ prepare(sql:string):Promise<NativeStatement>;
+ closeSync():void;
+};
 interface NativeDuckInstance {connect():Promise<NativeDuckConnection>;closeSync():void;}
 import {assertDuckFinancialEngine,duckFinancialBuildKind,duckFinancialBuildSchema} from './duck-financial-index-build';
 const identity=(s:BigIntStats)=>[s.dev,s.ino,s.size,s.mtimeNs,s.ctimeNs].join(':');
@@ -36,6 +42,7 @@ async function expected(){
 }
 /** Internal read-only private snapshot. Completion here is not a financial quality/publication gate. */
 export class DuckFinancialSnapshot {
+ private statements=new Map<string,NativeStatement>();
  private closed=false;
  private closing=false;
  private pending:Promise<unknown>=Promise.resolve();
@@ -68,18 +75,30 @@ export class DuckFinancialSnapshot {
   }catch(error){try{connection?.closeSync()}finally{try{instance?.closeSync()}finally{await rm(directory,{recursive:true,force:true})}}throw error}
  }
  async snapshotSha256(){if(this.closed)throw Error('DuckDB snapshot is closed');if(identity(await inspect(this.file))!==this.fingerprint)throw Error('DuckDB snapshot changed');return this.digest}
+ private async read(sql:string,args?:any[]):Promise<NativeResult>{
+  // Bound the retained plans; multi-statement SQL keeps the native execution path.
+  if(!args||sql.length>65536||sql.includes(';')||!/^\s*(SELECT|WITH)\b/i.test(sql))return this.connection.runAndReadAll(sql,args);
+  let statement=this.statements.get(sql);
+  if(!statement){if(this.statements.size>=8)return this.connection.runAndReadAll(sql,args);statement=await this.connection.prepare(sql);this.statements.set(sql,statement)}
+  statement.clearBindings();statement.bind(args);return statement.runAndReadAll();
+ }
  async rows(sql:string,args?:any[]){
   if(this.closed||this.closing)throw Error('DuckDB snapshot is closed');
   const task=this.pending.then(async()=>{
-   await this.snapshotSha256();const result=(await this.connection.runAndReadAll(sql,args)).getRowObjects();await this.snapshotSha256();
-   return result.map(row=>Object.fromEntries(Object.entries(row).map(([k,v])=>{if(typeof v==='bigint'){const n=Number(v);if(!Number.isSafeInteger(n))throw Error('Unsafe DuckDB integer');return [k,n]}return [k,v]})));
+   await this.snapshotSha256();const result=await this.read(sql,args);try{const columns=result.getColumns(),names=result.deduplicatedColumnNames(),count=result.currentRowCount;await this.snapshotSha256();
+   if(columns.length!==names.length||columns.some(column=>column.length!==count))throw Error('DuckDB result columns differ');
+   // Read each native column once; preserve native name deduplication and safe integer checks.
+   const rows=Array.from({length:count},()=>({} as Record<string,unknown>));
+   for(let column=0;column<columns.length;column++)for(let row=0;row<count;row++){let value=columns[column][row];if(typeof value==='bigint'){value=Number(value);if(!Number.isSafeInteger(value))throw Error('Unsafe DuckDB integer')}rows[row][names[column]]=value}
+   return rows;
+   }finally{result.closeSync()}
   });
   this.pending=task.catch(()=>undefined);return task;
  }
  close(){
   return this.closeTask??=(async()=>{
    this.closing=true;await this.pending;this.closed=true;
-   try{this.connection.closeSync()}finally{try{this.instance.closeSync()}finally{await rm(this.directory,{recursive:true,force:true})}}
+   try{for(const statement of this.statements.values())statement.destroySync();this.statements.clear()}finally{try{this.connection.closeSync()}finally{try{this.instance.closeSync()}finally{await rm(this.directory,{recursive:true,force:true})}}}
   })();
  }
 }

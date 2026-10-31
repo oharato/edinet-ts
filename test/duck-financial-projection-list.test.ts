@@ -14,3 +14,9 @@ it('リスト転記でも同一行の複数指標・途中cursor・本文がSQLi
   const last=expected.at(-1)!;expect(await (duck as any).execute(queries.projectionBatch(table,'all',columns,String(last.row_id),String(last.metric_id??'')))).toEqual([]);
  }
 }));
+
+it('UTF-8バイト容量はASCII・日本語・絵文字・結合文字・NUL・NULLをSQLite定義どおり数える',()=>fixture(async({duck})=>{
+ const values=['ascii','あ漢😀','e\u0301','\0','\\','',null],expected=values.map(value=>Buffer.byteLength(value??'','utf8'));
+ function* query():Generator<any,number[],any>{const rows=yield {sql:`WITH samples(payload) AS (VALUES ${values.map(()=>'(?)').join(',')}) SELECT edinet_text_bytes(payload) AS bytes FROM samples`,args:values};return rows.map((row:any)=>row.bytes);}
+ expect(await (duck as any).execute(query())).toEqual(expected);
+}));
