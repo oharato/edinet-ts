@@ -1,0 +1,39 @@
+name: Source checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Use declared npm version
+        run: npm install --global npm@12.2.1 --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check types
+        run: npx --no-install tsc --noEmit
+      - name: Check public API type examples
+        run: npx --no-install tsc --project test/types/tsconfig.json
+      # ESM integration tests build dist; run the complete suite on nuc7 instead.
+      - name: Run source tests
+        run: npm test -- --maxWorkers=1 --exclude test/esm-imports.test.ts
+      - name: Test local artifact publication safeguards
+        run: python3 scripts/test_artifact_store.py
