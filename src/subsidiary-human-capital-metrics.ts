@@ -49,9 +49,17 @@ export interface SubsidiaryHumanCapitalMetricDocument { xml: string; metadata: S
 const methods: readonly ChildcareCalculationMethod[] = ["ordinance-item1", "ordinance-item2", "womens-act"];
 const compareText = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
+function captureArray<T>(input: readonly T[], maximum: number): T[] {
+    if (!Array.isArray(input)) throw new Error("明示配列が必要です");
+    const length = input.length;
+    if (!Number.isSafeInteger(length) || length < 0 || length > maximum) throw new Error("配列の件数が不正です");
+    return Array.from({ length }, (_, index) => {
+        if (!Object.hasOwn(input, index)) throw new Error("疎配列は使えません");
+        return input[index];
+    });
+}
 function requested(input: readonly SubsidiaryHumanCapitalMetricId[]): SubsidiaryHumanCapitalMetricId[] {
-    if (!Array.isArray(input)) throw new Error("明示する子会社指標は配列です");
-    const captured = Array.from(input);
+    const captured = captureArray(input, Object.keys(tags).length);
     if (!captured.length || captured.some(id => !Object.hasOwn(tags, id)) || new Set(captured).size !== captured.length) throw new Error("子会社指標に空/未知/重複があります");
     return captured;
 }
@@ -73,9 +81,9 @@ export function selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCap
         const dimensions = [{ axisNamespaceURI: namespace, axis: "SequentialNumbersAxis", memberNamespaceURI: namespace, member: entry.member.localName }];
         return byRow.get(hash(JSON.stringify([m.docID, context.entity.scheme, context.entity.identifier, m.instant, dimensions])));
     };
-    if (!Array.isArray(annotations) || annotations.length > 10000) throw new Error("注記宣言は10000件以下の配列です");
+    const capturedAnnotations = captureArray(annotations, 10000);
     const declared = new Map<string, SubsidiaryHumanCapitalAnnotation>(), proofChecks = new Map<string, { valid: boolean; hash: string }>();
-    for (const input of Array.from(annotations)) {
+    for (const input of capturedAnnotations) {
         if (!input || typeof input !== "object" || Object.keys(input).some(k => !["kind", "rowKey", "metric", "method", "state", "proof"].includes(k))) throw new Error("注記宣言が不正です");
         const { kind, rowKey, metric, proof: p } = input;
         if (!selected.some(row => row.rowKey === rowKey) || !metrics.includes(metric) || !p || typeof p !== "object" || Object.keys(p).some(k => !["key", "contextRef", "rawSha256"].includes(k))) throw new Error("注記宣言の行/項目/原文参照が不正です");
@@ -173,14 +181,15 @@ export interface SubsidiaryHumanCapitalMetricsSearchOptions { conditions?: reado
     labelContains?: string; childcareMethod?: ChildcareCalculationMethod; order?: SortOrder; offset?: number; limit?: number; }
 export function screenSubsidiaryHumanCapitalMetrics(documents: readonly SubsidiaryHumanCapitalMetricDocument[], metric: SubsidiaryHumanCapitalMetricId, options: SubsidiaryHumanCapitalMetricsSearchOptions = {}) {
     requested([metric]);
-    if (!Array.isArray(documents) || documents.length > 100 || !options || typeof options !== "object" || Object.keys(options).some(k => !["conditions", "labelContains", "childcareMethod", "order", "offset", "limit"].includes(k))) throw new Error("子会社検索入力が不正です");
+    const capturedDocuments = captureArray(documents, 100);
+    if (!options || typeof options !== "object" || Object.keys(options).some(k => !["conditions", "labelContains", "childcareMethod", "order", "offset", "limit"].includes(k))) throw new Error("子会社検索入力が不正です");
     const { conditions: raw = [], labelContains, childcareMethod, order = "desc", offset = 0, limit } = options;
-    if (!Array.isArray(raw) || raw.length > 100 || labelContains !== undefined && (typeof labelContains !== "string" || !labelContains) ||
+    if (labelContains !== undefined && (typeof labelContains !== "string" || !labelContains) ||
         childcare(metric) && !methods.includes(childcareMethod!) || !childcare(metric) && childcareMethod !== undefined ||
         !Object.values(SortOrder).includes(order) || [offset, limit].some(n => n !== undefined && (!Number.isSafeInteger(n) || n < 0))) throw new Error("同じ育休定義・条件・順序・ページが必要です");
-    const conditions = Array.from(raw, c => { if (!c || Object.keys(c).some(k => !["operator", "value"].includes(k))) throw new Error("条件が不正です"); const { operator, value } = c; if (!Object.values(ComparisonOperator).includes(operator) || !Number.isFinite(value)) throw new Error("有限の比較条件が必要です"); return { operator, value }; });
+    const conditions = captureArray(raw, 100).map(c => { if (!c || Object.keys(c).some(k => !["operator", "value"].includes(k))) throw new Error("条件が不正です"); const { operator, value } = c; if (!Object.values(ComparisonOperator).includes(operator) || !Number.isFinite(value)) throw new Error("有限の比較条件が必要です"); return { operator, value }; });
     let totalBytes = 0, totalCandidates = 0;
-    const extracted = Array.from(documents, d => {
+    const extracted = capturedDocuments.map(d => {
         if (!d || typeof d !== "object" || Object.keys(d).some(k => !["xml", "metadata", "annotations"].includes(k))) throw new Error("xml/metadata/注記宣言が必要です");
         const { xml, metadata, annotations } = d;
         if (typeof xml !== "string" || (totalBytes += Buffer.byteLength(xml, "utf8")) > 256 * 1024 * 1024) throw new Error("検索集合のXMLは合計256MiB以下です");
