@@ -8,9 +8,10 @@ import type {DuckFinancialConnection} from './duck-financial-index-build';
 type NativeResult={closeSync():void;getRowObjects():Record<string,unknown>[];getColumns():unknown[][];deduplicatedColumnNames():string[];readonly currentRowCount:number;};
 interface NativeChunk {getColumns():unknown[][];readonly rowCount:number;reset():void;}
 interface NativeQueryResult {deduplicatedColumnNames():string[];fetchChunk():Promise<NativeChunk|null>;closeSync():void;}
-interface NativeStatement {clearBindings():void;bind(values:any[]):void;run():Promise<NativeQueryResult>;destroySync():void;}
+interface NativeStatement {clearBindings():void;bind(values:any[]):void;stream():Promise<NativeQueryResult>;destroySync():void;}
 type NativeDuckConnection=Omit<DuckFinancialConnection,'run'|'runAndReadAll'> & {
  run(sql:string,values?:any[]):Promise<NativeQueryResult>;
+ stream(sql:string,values?:any[]):Promise<NativeQueryResult>;
  runAndReadAll(sql:string,values?:any[]):Promise<NativeResult>;
  prepare(sql:string):Promise<NativeStatement>;
  closeSync():void;
@@ -80,10 +81,10 @@ export class DuckFinancialSnapshot {
  async snapshotSha256(){if(this.closed)throw Error('DuckDB snapshot is closed');if(identity(await inspect(this.file))!==this.fingerprint)throw Error('DuckDB snapshot changed');return this.digest}
  private async read(sql:string,args?:any[]):Promise<NativeQueryResult>{
   // Bound the retained plans; multi-statement SQL keeps the native execution path.
-  if(!args||sql.length>65536||sql.includes(';')||!/^\s*(SELECT|WITH)\b/i.test(sql))return this.connection.run(sql,args);
+  if(!args||sql.length>65536||sql.includes(';')||!/^\s*(SELECT|WITH)\b/i.test(sql))return this.connection.stream(sql,args);
   let statement=this.statements.get(sql);
-  if(!statement){if(this.statements.size>=8)return this.connection.run(sql,args);statement=await this.connection.prepare(sql);this.statements.set(sql,statement)}
-  statement.clearBindings();statement.bind(args);return statement.run();
+  if(!statement){if(this.statements.size>=8)return this.connection.stream(sql,args);statement=await this.connection.prepare(sql);this.statements.set(sql,statement)}
+  statement.clearBindings();statement.bind(args);return statement.stream();
  }
  async rows(sql:string,args?:any[]){
   if(this.closed||this.closing)throw Error('DuckDB snapshot is closed');
