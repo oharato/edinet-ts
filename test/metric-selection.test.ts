@@ -216,10 +216,10 @@ describe("指標辞書と厳密選択", () => {
         ),
       ),
     ).toMatchObject({ status: "unsupported", reason: "unknown-namespace" }));
-  it("US基準は未対応としJ-GAAPへfallbackしない", () =>
+  it("US基準はJ-GAAPへfallbackしない", () =>
     expect(select(instance(), { ...options, accountingStandard: "US-GAAP" })).toMatchObject({
-      status: "unsupported",
-      reason: "unsupported-standard",
+      status: "missing",
+      reason: "tag-absent",
     }));
   it("IFRSタグを明示基準のもとで選択する", () => {
     expect(

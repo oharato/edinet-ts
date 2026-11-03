@@ -17,6 +17,7 @@ import {
   type DocumentVersionObservation,
 } from "../src/index";
 import { Database } from "../src/db/node-sqlite";
+import { FINANCIAL_REPORTING_BASIS_VERSION } from "../src/financial/extraction/resolve-reporting-basis";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const query = { cutoff: "2026-10-28T00:00:00Z", extractorVersion: "test-1" };
 function observation(
@@ -601,7 +602,10 @@ it("訂正対象の祖先照合はcache hitでも再実行し、別系列への�
     ]);
     expect(first.cache).toEqual({ hits: 0, extracted: 1 });
     expect(second.cache).toEqual({ hits: 1, extracted: 0 });
-    expect(second.provenance.mappingVersions).toMatchObject({ basis: "4", observed: "8" });
+    expect(second.provenance.mappingVersions).toMatchObject({
+      basis: FINANCIAL_REPORTING_BASIS_VERSION,
+      observed: "8",
+    });
   } finally {
     db.close();
   }

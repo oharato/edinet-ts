@@ -196,10 +196,13 @@ export async function prepareFinancialCycle(
       "sourceArchivePath",
       "sourceArchiveSha256",
       "availableBy",
+      "retainLaterSourceCache",
       "outputDirectory",
       "input",
     ]) ||
     config.version !== 1 ||
+    (config.retainLaterSourceCache !== undefined &&
+      typeof config.retainLaterSourceCache !== "boolean") ||
     !/^[A-Za-z0-9_.-]{1,64}$/.test(config.sourceId) ||
     !Number.isSafeInteger(config.throughSequence) ||
     config.throughSequence < 0 ||
@@ -394,7 +397,7 @@ export async function prepareFinancialCycle(
       ensureSpace(directory);
       const transferred = pool.transferSourcesTo(target, {
         sourceArchiveSha256: config.sourceArchiveSha256,
-        availableBy: config.availableBy,
+        ...(config.retainLaterSourceCache ? {} : { availableBy: config.availableBy }),
         afterId: progress.afterSourceId,
         limit: 100,
       });

@@ -1,3 +1,4 @@
+import { FINANCIAL_REPORTING_BASIS_VERSION } from "../src/financial/extraction/resolve-reporting-basis";
 import { it, expect } from "vitest";
 import { createHash } from "node:crypto";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
@@ -58,7 +59,7 @@ const run = (raw = xml(), extra = {}) =>
 it("15ヶ月年度Q4を12ヶ月YTDとして保持し公式一覧の単四半期と照合する", () => {
   const r = basis(xml(), "A");
   expect(r).toMatchObject({
-    version: "4",
+    version: FINANCIAL_REPORTING_BASIS_VERSION,
     status: "selected",
     metadata: {
       reportingPeriodCode: "Q4",

@@ -90,10 +90,12 @@ export async function runDailyDuckFinancialCycle(
     };
   if (input.version === 2 && !existsSync(input.outputDirectory))
     mkdirSync(input.outputDirectory, { mode: 0o700 });
-  const prepared = await runDailyFinancialPreparation(
-    { ...input, version: 1, outputDirectory },
-    { signal, readUnitState, prepareOptions },
-  );
+  const prepared = await runDailyFinancialPreparation(input, {
+    signal,
+    readUnitState,
+    prepareOptions,
+    completionEngine: "duckdb",
+  });
   if (prepared.status !== "prepared") return prepared;
   if (signal?.aborted) return { status: "aborted", phase: "daily-duck-financial" };
   const snapshot = readJSONSnapshot(prepared.configPath),

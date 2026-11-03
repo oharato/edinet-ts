@@ -60,7 +60,8 @@ it("完了日より古い未完了候補を先に再開する", () =>
     mkdirSync(join(root, "2026-10-29"));
     m.prepare.mockResolvedValue({ status: "partial" });
     expect((await run({ ...config, version: 2 }, options)).status).toBe("partial");
-    expect(m.prepare.mock.calls[0][0].outputDirectory).toBe(join(root, "2026-10-28"));
+    expect(m.prepare.mock.calls[0][0].outputDirectory).toBe(root);
+    expect(m.prepare.mock.calls[0][1].completionEngine).toBe("duckdb");
   }));
 it("壊れた完了記録や不正な日付を飛ばして新しい候補を作らない", () =>
   fixture(async ({ root, config, options }) => {

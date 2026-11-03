@@ -4,17 +4,35 @@
 
 対象はリポジトリの現行コードです。実装済み・検証済み・配布済みは別の状態なので、利用する版は[実装状況](plans/IMPLEMENTATION_STATUS.md)で確認してください。
 
+## 誰の、何を解決するか
+
+対象は、EDINET原本を自分で確認・解析する開発者と、収集範囲を固定して企業比較や定期更新を行う利用者です。原本ごとの独自タグや期間・連結区分を区別し、値だけでなく採用理由と出典を追えることを目指します。
+
+主な利用目的は「保存済み1原本を通信なしで読む」「条件を揃えて値を選ぶ」「明示した複数社を検索する」「原本と解析結果を保持して更新・再開する」です。全市場データの同梱、未知の会計基準・形式への自動対応、訂正差分からの法的全文再構成、欠損の推測補完、投資判断の代行は現行の提供範囲に含めません。追加対象は[ロードマップ](plans/EDINET_TS_ROADMAP.md)で管理します。
+
+以下の受入条件は現行APIの契約です。関連テストはその条件を確認する入口であり、実データ全件や全形式で検証済みという意味ではありません。
+
+| 機能要件               | 受入条件                                                                                                  | 仕様・関連テスト                                                                                                                                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 保存済み原本の解析     | APIキーや通信なしでXMLを読み、値がない項目を0で作らない                                                   | [主要指標の規則](SPECIFICATIONS.md#32-主要指標抽出ロジック-getkeymetrics)、[XML解析テスト](../test/edinet-xbrl-parser.test.ts)・[範囲テスト](../test/key-metrics-scope.test.ts) |
+| 条件付き数値の選択     | 期間・基準・scope・単位を確認し、原値・根拠と不採用理由を返す                                             | [選択API](financial/METRIC_SELECTION.md)、[数値選択テスト](../test/metric-selection.test.ts)                                                                                    |
+| 原本の取得             | 対象書類のZIPを検査し、破損・危険な展開先・容量超過を成功扱いにしない                                     | [取得の保護](pipeline/DOWNLOAD_SAFETY.md)、[ZIP境界テスト](../test/zip-downloader-boundaries.test.ts)                                                                           |
+| 保存JSONの検索         | 明示されたsnapshot集合から銘柄ごとの最新書類を選んで条件・順序・件数を適用し、原本取得やXML再解析をしない | [JSON検索](financial/EDINET_DB_COMPARISON.md)、[検索テスト](../test/financial-screening.test.ts)                                                                                |
+| 解析結果の保存と再利用 | 原本hash・解析版・条件が同じ結果を再利用し、同一キーの異なる結果を拒否する                                | [解析済みStore](pipeline/PARSED_FINANCIAL_STORE.md)、[保存テスト](../test/parsed-financial-store.test.ts)                                                                       |
+| 世代構築と正式公開     | DuckDBの正式公開経路で候補指紋・原本照合記録を検査し、期待する直前候補と違う切替を拒否する                | [公開・照合](pipeline/DUCK_FINANCIAL_VERIFICATION.md)、[照合gateテスト](../test/duck-financial-verification.test.ts)                                                            |
+| 開示表・履歴の読取り   | APIごとの期間・単位・来歴と訂正選択を保ち、名称だけで法人や人物を結合しない                               | [領域別API](README.md)、例：[大量保有取引テスト](../test/large-holding-transactions-store.test.ts)                                                                              |
+
 ## 利用に必要なもの
 
 | 用途               | 必要なもの                                                                  |
 | ------------------ | --------------------------------------------------------------------------- |
-| 共通               | Node.js 26.12.1以上、npm 12.2.1以上。TypeScriptまたはJavaScriptから利用可能 |
+| 共通               | Node.js 26.13.0以上、npm 12.2.1以上。TypeScriptまたはJavaScriptから利用可能 |
 | 保存済み原本の解析 | XBRLファイル。APIキー・ネットワークは不要                                   |
 | EDINETからの取得   | APIキーと `api.edinet-fsa.go.jp` へのHTTPS接続                              |
 | 過去の書類の検索   | 取得対象期間の書類一覧DB                                                    |
 | 複数社の財務検索   | APIの入力形式に沿った保存データ集合                                         |
 
-環境・DB互換性の詳細は[実行環境](development/RUNTIME_AND_SQLITE.md)を参照してください。
+共通条件の正本は [`package.json`](../package.json) の `engines` / `packageManager` と [`.node-version`](../.node-version) です。環境・DB互換性の詳細は[実行環境](development/RUNTIME_AND_SQLITE.md)を参照してください。旧配布物の再現に使う版や年月日付き履歴は、その時点の条件を保持します。
 
 ## 機能を選ぶ
 
@@ -30,6 +48,18 @@
 | 取得結果を保存・公開する       | アーカイブ・索引構築・公開API           | 原観測・原本・抽出版を保持し、検索用の世代を構築する                       |
 
 専用APIは[ドキュメント案内](README.md)から選んでください。定数や型に会計基準名が存在することは、その基準の全項目に対応していることを意味しません。
+
+## 非機能要件と検証範囲
+
+| 項目               | 適用先・要求する条件                                                                                                                                            | 検証先・限界                                                                                                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 有限の入力         | XML解析入口はUTF-8換算64 MiBまで。ローカルBS取込のmanifestは2 MiB・100件以下、原本1件64 MiB・合計256 MiBまで                                                    | [入力実装](../src/xbrl/validate-xml-input.ts)、[取込上限](../src/pipeline/import-local-balance-sheets.ts)、[CLI境界](../test/xml-input-cli.test.ts)。全CLI共通の上限ではない              |
+| 数値精度           | 厳密選択・保存では原数値文字列と単位・精度を保持し、安全に数値化できない値を検索用の浮動小数へ無理に変換しない                                                  | [選択API](financial/METRIC_SELECTION.md)、[数値境界](../test/metric-selection.test.ts)。従来の主要指標のnumber返値に同じ精度保証を広げない                                                |
+| 再投入・再開       | 対応するStore/jobで入力・版を固定し、同一内容の再投入と停止後の再開を行う。異なる入力を同じ候補へ上書きしない                                                   | [解析job](../test/parsed-financial-job.test.ts)、[DuckDB復旧](../test/duck-financial-cycle-recovery.test.ts)。電源断・ディスク故障全般の保証ではない                                      |
+| 互換性             | 同期SQLite APIを維持し、DuckDBは別の非同期readerとして提供する。保存形式・hashを検査し、非互換なDBを黙って読むことはしない                                      | [実行環境](development/RUNTIME_AND_SQLITE.md)、[検索reader](pipeline/DUCK_FINANCIAL_SEARCH_INDEX.md)、[readerテスト](../test/duck-financial-search-index.test.ts)                         |
+| 通信と中断         | SDKのmaxRetriesは0以上の安全整数で指定。1取得は最大maxRetries+1通信（既定3なら初回を含め4通信）。指定したtimeoutとAbortSignalを処理し、caller中断で再試行しない | [通信テスト](../test/http-request-lifecycle.test.ts)。日次metadataのJST日次予算やflockは運用job固有で、全SDK共通の割当ではない                                                            |
+| 公開整合性         | 正式readerは検証済み世代を保持し、新候補の読込み失敗で既存snapshotを失わない。reloadと公開切替は明示操作                                                        | [reader契約](pipeline/DUCK_FINANCIAL_SEARCH_INDEX.md)、[公開readerテスト](../test/duck-financial-publication-reader.test.ts)                                                              |
+| 性能・メモリ・容量 | 有限件数・jobごとの容量/メモリ条件で測定し、原本と切戻し先を保持して進める                                                                                      | [受入記録](plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)、[保持条件](pipeline/DUCK_FINANCIAL_RETENTION.md)。固定hostの検索比率・実測RSSや34 GiB留保を、任意query・全環境のSLAへ読み替えない |
 
 ## 主要18指標
 

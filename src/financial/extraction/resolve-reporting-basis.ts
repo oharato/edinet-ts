@@ -6,7 +6,7 @@ import type {
   CompanyProfileReason,
 } from "../../companies/read-company-profile";
 import { EdinetXbrlParser } from "../../xbrl/parse-xbrl";
-export const FINANCIAL_REPORTING_BASIS_VERSION = "4";
+export const FINANCIAL_REPORTING_BASIS_VERSION = "5";
 const tags = {
   amendmentTargetDocID: "IdentificationOfDocumentSubjectToAmendmentDEI",
   edinetCode: "EDINETCodeDEI",
@@ -248,13 +248,15 @@ export function selectFinancialReportingBasis(
     issues.push({ reason: "invalid-consolidated-flag", field: "consolidated" });
   if (periodCode !== undefined && !["FY", "HY", "Q1", "Q2", "Q3", "Q4"].includes(periodCode))
     issues.push({ reason: "unsupported-period-code", field: "currentPeriodType" });
+  // 外国会社の日本基準様式も、同じissuer・実期間の検査と後段の通貨検査を通します。
   if (
     form !== undefined &&
     periodCode !== undefined &&
     !(periodCode === "FY"
-      ? form === "第三号様式"
+      ? form === "第三号様式" || (standard === "Japan GAAP" && form === "第八号様式")
       : periodCode === "HY"
-        ? ["第四号の三様式", "第五号様式"].includes(form)
+        ? ["第四号の三様式", "第五号様式"].includes(form) ||
+          (standard === "Japan GAAP" && form === "第九号の三様式")
         : form === "第四号の三様式")
   )
     issues.push({ reason: "unsupported-document-form", field: "documentType" });

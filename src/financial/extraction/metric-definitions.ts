@@ -59,23 +59,29 @@ const define = (
       keys.map((key) =>
         Object.freeze({
           key,
-          standard: key.includes("IFRS") ? ("IFRS" as const) : ("J-GAAP" as const),
+          standard: key.includes("USGAAP")
+            ? ("US-GAAP" as const)
+            : key.includes("IFRS")
+              ? ("IFRS" as const)
+              : ("J-GAAP" as const),
           supported: !(key.includes("IFRS") && (id === "netAssets" || id === "bookValuePerShare")),
         }),
       ),
     ),
     fallback: "ordered-tags-only-no-scope-period-currency-fallback",
   });
-/** 既存の候補タグを独立API向けに宣言。US-GAAP・企業拡張タグは未対応です。 */
+/** 既存の候補タグを独立API向けに宣言。US-GAAPは意味が一致する要約指標のみ。企業拡張タグは未対応です。 */
 export const METRIC_REGISTRY: Readonly<Record<MetricId, MetricDefinition>> = Object.freeze({
   netSales: define("netSales", "duration", "JPY", [
     "jppfs_cor:NetSales",
     "jpcrp_cor:NetSales",
     "jpcrp_cor:RevenueIFRSSummaryOfBusinessResults",
+    "jpcrp_cor:RevenuesUSGAAPSummaryOfBusinessResults",
   ]),
   operatingIncome: define("operatingIncome", "duration", "JPY", [
     "jppfs_cor:OperatingIncome",
     "jpcrp_cor:OperatingIncomeIFRSSummaryOfBusinessResults",
+    "jpcrp_cor:OperatingIncomeLossUSGAAPSummaryOfBusinessResults",
   ]),
   ordinaryIncome: define("ordinaryIncome", "duration", "JPY", ["jppfs_cor:OrdinaryIncome"]),
   netIncome: define("netIncome", "duration", "JPY", [
@@ -85,31 +91,37 @@ export const METRIC_REGISTRY: Readonly<Record<MetricId, MetricDefinition>> = Obj
   netAssets: define("netAssets", "instant", "JPY", [
     "jppfs_cor:NetAssets",
     "jpcrp_cor:EquityAttributableToOwnersOfParentIFRSSummaryOfBusinessResults",
+    "jpcrp_cor:EquityIncludingPortionAttributableToNonControllingInterestUSGAAPSummaryOfBusinessResults",
   ]),
   totalAssets: define("totalAssets", "instant", "JPY", [
     "jppfs_cor:Assets",
     "jpcrp_cor:TotalAssetsIFRSSummaryOfBusinessResults",
+    "jpcrp_cor:TotalAssetsUSGAAPSummaryOfBusinessResults",
   ]),
   operatingCashFlow: define("operatingCashFlow", "duration", "JPY", [
     "jppfs_cor:NetCashProvidedByUsedInOperatingActivities",
     "jpcrp_cor:NetCashProvidedByUsedInOperatingActivitiesSummaryOfBusinessResults",
     "jpcrp_cor:CashFlowsFromUsedInOperatingActivitiesIFRSSummaryOfBusinessResults",
+    "jpcrp_cor:CashFlowsFromUsedInOperatingActivitiesUSGAAPSummaryOfBusinessResults",
   ]),
   investingCashFlow: define("investingCashFlow", "duration", "JPY", [
     "jppfs_cor:NetCashProvidedByUsedInInvestmentActivities",
     "jppfs_cor:NetCashProvidedByUsedInInvestingActivities",
     "jpcrp_cor:NetCashProvidedByUsedInInvestingActivitiesSummaryOfBusinessResults",
     "jpcrp_cor:CashFlowsFromUsedInInvestingActivitiesIFRSSummaryOfBusinessResults",
+    "jpcrp_cor:CashFlowsFromUsedInInvestingActivitiesUSGAAPSummaryOfBusinessResults",
   ]),
   financingCashFlow: define("financingCashFlow", "duration", "JPY", [
     "jppfs_cor:NetCashProvidedByUsedInFinancingActivities",
     "jpcrp_cor:NetCashProvidedByUsedInFinancingActivitiesSummaryOfBusinessResults",
     "jpcrp_cor:CashFlowsFromUsedInFinancingActivitiesIFRSSummaryOfBusinessResults",
+    "jpcrp_cor:CashFlowsFromUsedInFinancingActivitiesUSGAAPSummaryOfBusinessResults",
   ]),
   cashAndEquivalents: define("cashAndEquivalents", "instant", "JPY", [
     "jppfs_cor:CashAndCashEquivalents",
     "jppfs_cor:CashAndCashEquivalentsEndOfPeriod",
     "jpcrp_cor:CashAndCashEquivalentsIFRSSummaryOfBusinessResults",
+    "jpcrp_cor:CashAndCashEquivalentsUSGAAPSummaryOfBusinessResults",
   ]),
   earningsPerShare: define("earningsPerShare", "duration", "JPY/share", [
     "jppfs_cor:BasicEarningsLossPerShare",
@@ -148,4 +160,4 @@ export const METRIC_REGISTRY: Readonly<Record<MetricId, MetricDefinition>> = Obj
     "jpcrp_cor:DividendPaidPerShareSummaryOfBusinessResults",
   ]),
 });
-export const METRIC_REGISTRY_VERSION = "1";
+export const METRIC_REGISTRY_VERSION = "2";

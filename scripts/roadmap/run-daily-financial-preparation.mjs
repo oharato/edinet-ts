@@ -1,17 +1,19 @@
 import {
+  completedDailyCycle,
+  prepareDailySourcePool,
+  dailySourceFileHash as snapshotHash,
+} from "./daily-source-pool.mjs";
+import {
   readFileSync,
   readdirSync,
   existsSync,
   mkdirSync,
   lstatSync,
   realpathSync,
-  statSync,
-  createReadStream,
   statfsSync,
 } from "node:fs";
 import { resolve, join, isAbsolute, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { EdinetRepository, queryCompanyMaster, EdinetXbrlDownloader } from "../../dist/index.js";
 import { canStartDailyMetadata, assertCompletedMetadataRun } from "./daily-metadata-control.mjs";
@@ -79,17 +81,6 @@ function directory(path) {
   if (!s.isDirectory() || s.isSymbolicLink() || realpathSync(path) !== path)
     throw Error("Normal preparation directory required");
 }
-async function snapshotHash(path, signal) {
-  const identity = () => {
-      const s = statSync(normalFile(path), { bigint: true });
-      return [s.dev, s.ino, s.size, s.mtimeNs, s.ctimeNs].join(":");
-    },
-    before = identity(),
-    h = createHash("sha256");
-  for await (const bytes of createReadStream(path, { signal })) h.update(bytes);
-  if (identity() !== before) throw Error("Source archive changed during fingerprinting");
-  return h.digest("hex");
-}
 const unitState = (unit) =>
   execFileSync(
     "/usr/bin/systemctl",
@@ -100,8 +91,10 @@ const unitState = (unit) =>
 /** 呼出元はoutputDirectory.lockと実metadata checkpoint.lockをこの順で保持します。 */
 export async function runDailyFinancialPreparation(
   input,
-  { signal, readUnitState = unitState, prepareOptions = {} } = {},
+  { signal, readUnitState = unitState, prepareOptions = {}, completionEngine = "sqlite" } = {},
 ) {
+  if (!["sqlite", "duckdb"].includes(completionEngine))
+    throw Error("Invalid daily completion engine");
   const s = settings(input),
     dailySnapshot = readJSONSnapshot(s.metadataConfigPath),
     daily = dailySnapshot.value;
@@ -132,7 +125,8 @@ export async function runDailyFinancialPreparation(
     })
   )
     return { status: "waiting-for-fixed-acquisition" };
-  let migratedSha256;
+  let migratedSha256,
+    retainLaterSourceCache = false;
   if (s.sourceArchiveMigrationPath !== undefined) {
     const proof = readJSONSnapshot(s.sourceArchiveMigrationPath),
       p = proof.value;
@@ -149,6 +143,7 @@ export async function runDailyFinancialPreparation(
     )
       throw Error("Source archive migration proof differs");
     migratedSha256 = p.outputSha256;
+    retainLaterSourceCache = p.kind === "daily-source-pool-v1";
   } else if (
     typeof summary.archivePath !== "string" ||
     resolve(summary.archivePath) !== s.sourceArchivePath
@@ -156,7 +151,7 @@ export async function runDailyFinancialPreparation(
     throw Error("Completed acquisition archive differs");
   if (s.version === 2) {
     const today = jstDate(Date.now());
-    let pending;
+    let pending, previousCycle;
     if (existsSync(s.outputDirectory)) {
       directory(s.outputDirectory);
       for (const day of readdirSync(s.outputDirectory).sort()) {
@@ -172,20 +167,13 @@ export async function runDailyFinancialPreparation(
         const handoff = join(cycle, "handoff.json");
         if (existsSync(handoff) && readJSONSnapshot(handoff).value?.body?.day !== day)
           throw Error("Daily cycle date differs from handoff");
-        const receipt = join(cycle, "candidate", "reconstructed", "build.json");
-        if (!existsSync(receipt)) {
+        const saved = completedDailyCycle(cycle, completionEngine);
+        if (!saved) {
           pending = day;
           break;
         }
-        const saved = readJSONSnapshot(receipt).value;
-        if (
-          saved.version !== 1 ||
-          saved.body?.status !== "built" ||
-          saved.body.inputSha256 !== saved.inputSha256 ||
-          saved.sha256 !== sha256(canonical([saved.inputSha256, saved.body]))
-        )
-          throw Error("Invalid completed daily cycle");
         if (day === today) return { status: "cycle-complete", day };
+        previousCycle = cycle;
       }
     }
     const day = pending ?? today;
@@ -199,10 +187,46 @@ export async function runDailyFinancialPreparation(
         return { status: "waiting-for-daily-metadata" };
     }
     if (!existsSync(s.outputDirectory)) mkdirSync(s.outputDirectory, { mode: 0o700 });
-    return runDailyFinancialPreparation(
-      { ...s, version: 1, outputDirectory: join(s.outputDirectory, day) },
-      { signal, readUnitState, prepareOptions },
-    );
+    const next = { ...s, version: 1, outputDirectory: join(s.outputDirectory, day) };
+    const oldHandoff = join(next.outputDirectory, "handoff.json");
+    // Existing same-day inputs keep their original seed. A pool is chosen only for a new handoff.
+    const frozenSource = existsSync(oldHandoff)
+      ? readJSONSnapshot(oldHandoff).value?.body?.config?.sourceArchivePath
+      : undefined;
+    if (previousCycle && frozenSource !== s.sourceArchivePath) {
+      const origin =
+        s.sourceArchiveMigrationPath === undefined
+          ? {
+              input: s.sourceArchivePath,
+              inputSha256: await snapshotHash(s.sourceArchivePath, signal),
+            }
+          : (() => {
+              const p = readJSONSnapshot(s.sourceArchiveMigrationPath).value;
+              return { input: p.input, inputSha256: p.inputSha256 };
+            })();
+      const pool = await prepareDailySourcePool(
+        {
+          basePath: s.sourceArchivePath,
+          baseSha256: migratedSha256 ?? origin.inputSha256,
+          previousCycle,
+          engine: completionEngine,
+          origin,
+        },
+        { signal, maxBatches: prepareOptions.maxSourcePages ?? 100 },
+      );
+      if (pool.status !== "source-pool-ready") return { ...pool, day };
+      if (frozenSource !== undefined && frozenSource !== pool.path)
+        throw Error("Frozen daily source pool differs");
+      next.sourceArchivePath = pool.path;
+      next.sourceArchiveMigrationPath = pool.proofPath;
+      next.sourceArchiveMigrationSha256 = pool.proofSha256;
+    }
+    return runDailyFinancialPreparation(next, {
+      signal,
+      readUnitState,
+      prepareOptions,
+      completionEngine,
+    });
   }
   const binding = sha256(
       canonical([s, dailySnapshot.sha256, sha256(readFileSync(fileURLToPath(import.meta.url)))]),
@@ -292,6 +316,7 @@ export async function runDailyFinancialPreparation(
       sourceArchivePath: s.sourceArchivePath,
       sourceArchiveSha256,
       availableBy: cutoff,
+      ...(retainLaterSourceCache ? { retainLaterSourceCache: true } : {}),
       outputDirectory: join(s.outputDirectory, "candidate"),
       input: {
         id: "daily-financial-" + today,
@@ -436,6 +461,7 @@ export function dailyFinancialFailureMessage(error) {
     [
       "Financial cycle preparation disk reserve",
       "Daily preparation disk reserve",
+      "Daily source pool disk reserve",
       "Financial build disk reserve",
       "Reconstruction disk reserve",
       "DuckDB financial cycle disk reserve",

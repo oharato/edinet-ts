@@ -15,7 +15,7 @@ flowchart LR
 
 `resolveFinancialReportingBasis(xml, docID)` は、DEIの宣言と実contextを照合して、会計基準・提出者・主たる財務範囲・当期の開始/終了日を返します。`createAutomaticFinancialSnapshots` はその結果を既存のBS/財務明細snapshotへ接続します。
 
-判定版は `FINANCIAL_REPORTING_BASIS_VERSION = "4"` です。
+判定版は `FINANCIAL_REPORTING_BASIS_VERSION = "5"` です。
 
 ## 読む宣言と整合性
 
@@ -40,6 +40,8 @@ nil/空欄/不在と不正値を分けます。単一の既知entityを必要と
 
 訂正対象 `IdentificationOfDocumentSubjectToAmendmentDEI` も任意項目として同じnamespace/context/entity検査で読み、選択時は `metadata.amendmentTargetDocID` に保持します。欠落・空欄は旧原本との互換を保ちますが、複数候補や不正contextはbasisを保留します。basis単独では訂正系列の正しさを認証しません。観測付き抽出では選択訂正の明示対象を系列の厳密な祖先と照合し、自分自身や系列外なら `correction-target-mismatch` で金融値を採用しません。
 
+版5では対応様式を追加したため解析キーが変わります。版4の保存済み結果は読取りを継続でき、新しい結果とは別キーで保持します。[互換テスト](../../test/financial-reporting-basis-legacy.test.ts)を参照してください。
+
 ## 基準・範囲・期間
 
 Japan GAAPはJ-GAAP、IFRSはIFRSとして確定します。US GAAP/JMIS/未知値を他基準へ切り替えません。連結作成フラグtrue/1を主範囲Consolidated、false/0をNonConsolidatedとして扱い、財務contextも実際のscope・次元・entityで照合します。
@@ -52,7 +54,7 @@ Japan GAAPはJ-GAAP、IFRSはIFRSとして確定します。US GAAP/JMIS/未知�
 
 年度開始≦当期末≦年度末、当期末≦DEIのinstantを確認します。FY以外は当期末が年度末より前であることを確認します。annualはFYの宣言に基づく分類で、12か月の保証ではありません。変則期間の元日付を保持し、単四半期や12か月へ換算しません。
 
-様式はFYの第三号、HYの第四号の三/第五号、Q1/Q2/Q3/Q4の第四号の三を対象とします。様式だけで期間を決めず、当期符号・各DEI日付・実contextと併せて検査します。
+様式はFYの第三号、HYの第四号の三/第五号、Q1/Q2/Q3/Q4の第四号の三を対象とします。Japan GAAPに限り、外国会社のFY第八号・HY第九号の三も対象です。issuer・実期間の検査は共通で、形式を認識しても、後段でUSDとJPYの候補が混在する値を任意に採用しません。様式だけで期間を決めず、当期符号・各DEI日付・実contextと併せて検査します。
 
 第五号様式の半期報告書の表紙は[金融庁の様式資料](https://www.fsa.go.jp/news/r7/shouken/20251126/01.pdf)でも確認しています。Q1/Q3・第五号の経路は現時点では合成検証までです。
 

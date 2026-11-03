@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { Help } from "commander";
+import { CliInputError, readCliJSON, cliInputMessage } from "./input-diagnostics";
 import { planCorporateRegistryDifferences } from "../companies/registry/publication-calendar";
 import { parseDocumentTimestamp } from "../edinet/parse-document-timestamp";
 import {
@@ -120,12 +122,31 @@ const program = new Command();
 program
   .name("edinet-ts")
   .description("EDINET XBRLファイルをダウンロードおよび解析するためのCLI")
-  .version(packageJson.version);
+  .version(packageJson.version)
+  .configureHelp({
+    visibleCommands(command) {
+      const rank = (name: string) =>
+        ["download", "get"].includes(name)
+          ? 0
+          : name === "parse"
+            ? 1
+            : /^(screen|search|compare)/.test(name)
+              ? 2
+              : 3;
+      return Help.prototype.visibleCommands
+        .call(this, command)
+        .sort((a, b) => rank(a.name()) - rank(b.name()));
+    },
+  })
+  .addHelpText(
+    "after",
+    "\n基本操作:\n  edinet-ts parse --file document.xbrl\n  edinet-ts get --ticker 7203 --pretty\n  edinet-ts screen --file snapshots.json\n詳細: edinet-ts <command> --help\n入力JSON例: https://github.com/oharato/edinet-ts/blob/main/docs/development/CLI_INPUT_EXAMPLES.md",
+  );
 
 program
   .command("download")
   .description("EDINET書類をダウンロードします")
-  .option("-t, --ticker <codes>", "証券コード（カンマ区切り、例: 7203,9984）")
+  .requiredOption("-t, --ticker <codes>", "証券コード（カンマ区切り、例: 7203,9984）")
   .option("-d, --date <date>", "対象日 (YYYY-MM-DD)。デフォルトは当日")
   .option(
     "--type <type>",
@@ -155,8 +176,9 @@ program
         } else {
           console.warn(`Not found: ${ticker}`);
         }
-      } catch (e: any) {
-        console.error(`Failed to download ${ticker}:`, e.message);
+      } catch {
+        console.error(`Failed to download ${ticker.trim()}: acquisition failed (details hidden).`);
+        process.exitCode = 1;
       }
     }
   });
@@ -3707,17 +3729,17 @@ program
   .option("--offset <number>", "開始位置", "0")
   .option("--limit <number>", "最大件数")
   .option("--pretty", "JSONを整形")
+  .addHelpText(
+    "after",
+    "\n最小manifest例: https://github.com/oharato/edinet-ts/blob/main/docs/development/CLI_INPUT_EXAMPLES.md#screen-bs",
+  )
   .action((options) => {
     try {
       const manifestPath = path.resolve(options.manifest);
-      const entries = JSON.parse(
-        new TextDecoder("utf-8", { fatal: true }).decode(
-          readRegularFile(manifestPath, LOCAL_IMPORT_LIMITS.manifestBytes).bytes,
-        ),
-      );
+      const entries = readCliJSON(manifestPath, "manifest", LOCAL_IMPORT_LIMITS.manifestBytes);
       if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries)
-        throw new Error("manifestは100件以下の配列です");
-      const files = entries.map((entry) => {
+        throw new CliInputError("manifest：100件以下の配列が必要です");
+      const files = entries.map((entry, index) => {
         if (
           !entry ||
           typeof entry !== "object" ||
@@ -3729,7 +3751,14 @@ program
               !["secCode", "docID", "file", "instant", "scope", "accountingStandard"].includes(key),
           )
         )
-          throw new Error("不正なmanifest項目です");
+          throw new CliInputError(`manifestの${index + 1}件目：fileまたは項目名が不正です`);
+        if (
+          typeof entry.instant !== "string" ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(entry.instant) ||
+          !Number.isFinite(Date.parse(entry.instant)) ||
+          new Date(entry.instant).toISOString().slice(0, 10) !== entry.instant
+        )
+          throw new CliInputError(`manifestの${index + 1}件目：instantが不正です`);
         return path.resolve(path.dirname(manifestPath), entry.file);
       });
       assertRegularFileByteBudget(files);
@@ -3762,7 +3791,12 @@ program
       });
       console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
     } catch (error) {
-      console.error(error instanceof Error ? error.message : String(error));
+      console.error(
+        cliInputMessage(
+          error,
+          "財務検索の原本・metadata・検索条件を確認してください（詳細は非表示）",
+        ),
+      );
       process.exitCode = 1;
     }
   });
@@ -3834,9 +3868,16 @@ program
 const getCommand = program
   .command("get")
   .description("EDINET書類をダウンロードし、即座に解析します")
-  .option("-t, --ticker <code>", "証券コード (例: 7203)")
+  .option(
+    "-t, --ticker <code>",
+    "証券コード。ローカルDBを優先し、なければ最新書類を検索 (例: 7203)",
+  )
   .option("-d, --date <date>", "対象日 (YYYY-MM-DD)。デフォルトは当日")
-  .option("-l, --lookback <days>", "対象日に見つからない場合に遡る日数 (デフォルト: 90)", "90")
+  .option(
+    "-l, --lookback <days>",
+    "tickerのAPI最新検索で遡る日数。ローカルDB検索には適用しません (既定: 90)",
+    "90",
+  )
   .option(
     "--type <type>",
     "書類種別 (例: Annual, registration-statement/030, securities-notice/010)。既定: Annual",
@@ -3852,6 +3893,11 @@ const getCommand = program
     if (options.helpTypes) {
       console.log(generateFullHelpMarkdown());
       process.exit(0);
+    }
+    if (options.ticker !== undefined && options.date !== undefined) {
+      console.error("getの--tickerと--dateは併用できません。最新検索か日付検索を選んでください。");
+      process.exitCode = 1;
+      return;
     }
     // デフォルトを ./downloads にすることでキャッシュを効かせる
     const saveDir = options.saveDir || "./downloads";
@@ -3957,15 +4003,18 @@ const getCommand = program
           };
           results.push(output);
         } catch (e: any) {
-          // console.error(`Failed to process ${doc.docID}:`, e.message);
+          console.error(
+            `Failed to process ${doc.docID}: acquisition or parsing failed (details hidden).`,
+          );
+          process.exitCode = 1;
         }
       }
 
       // 配列として一括出力
       console.log(options.pretty ? JSON.stringify(results, null, 2) : JSON.stringify(results));
-    } catch (e: any) {
-      console.error("Error:", e.message);
-      process.exit(1);
+    } catch {
+      console.error("書類検索・取得に失敗しました（詳細は非表示）。");
+      process.exitCode = 1;
     }
   });
 
