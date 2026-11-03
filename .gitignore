@@ -16,3 +16,4 @@ data/
 # Logs and OS files
 *.log
 .DS_Store
+.opencode/
