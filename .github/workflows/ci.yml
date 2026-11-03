@@ -30,9 +30,14 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Check types
         run: npx --no-install tsc --noEmit
+      - name: Compile SDK for API and CLI checks
+        run: |
+          npm run prepare-financial-verifier
+          npx --no-install tsc
+          npm run add-js-extensions
       - name: Check public API type examples
         run: npx --no-install tsc --project test/types/tsconfig.json
-      # ESM integration tests build dist; run the complete suite on nuc7 instead.
+      # ESM integration tests rebuild the package; exercise distribution builds on nuc7.
       - name: Run source tests
         run: npm test -- --maxWorkers=1 --exclude test/esm-imports.test.ts
       - name: Test local artifact publication safeguards

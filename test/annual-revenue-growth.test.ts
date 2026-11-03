@@ -102,7 +102,7 @@ it("screen-sales-growth CLIの明示pair/相対原本/JSON/原本保護",()=>{
  const dir=mkdtempSync(join(tmpdir(),"sales-growth-cli-"));try{
   const p=pair();writeFileSync(join(dir,"prior.xbrl"),p.previous.xml);writeFileSync(join(dir,"current.xbrl"),p.current.xml);writeFileSync(join(dir,"files.json"),JSON.stringify([{previous:{file:"prior.xbrl",metadata:p.previous.metadata},current:{file:"current.xbrl",metadata:p.current.metadata}}]));
   const args=["--import",resolve("node_modules/tsx/dist/loader.mjs"),resolve("src/cli.ts"),"screen-sales-growth","--manifest",join(dir,"files.json")];
-  const result=spawnSync(process.execPath,args,{cwd:"/tmp",encoding:"utf8"});expect(result.status,result.stderr).toBe(0);expect(JSON.parse(result.stdout).rows[0].exact).toEqual({numerator:"1",denominator:"5"});expect(readFileSync(join(dir,"prior.xbrl"),"utf8")).toBe(p.previous.xml);
+  const result=spawnSync(process.execPath,args,{cwd:"/tmp",encoding:"utf8"});expect(result.error).toBeUndefined();expect(result.status,result.stderr).toBe(0);expect(JSON.parse(result.stdout).rows[0].exact).toEqual({numerator:"1",denominator:"5"});expect(readFileSync(join(dir,"prior.xbrl"),"utf8")).toBe(p.previous.xml);
   expect(spawnSync(process.execPath,[...args,"--conditions",'[{"metric":"wrong","operator":"eq","value":0}]'],{cwd:"/tmp",encoding:"utf8"}).status).toBe(1);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

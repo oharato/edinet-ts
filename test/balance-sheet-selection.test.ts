@@ -84,7 +84,7 @@ describe("J-GAAP BS直接factの正規化", () => {
             expect(select(fact("1", "", key.replace("jppfs_cor:", "extension:")))).toMatchObject({ status: "unsupported", reason: "unknown-namespace" });
             expect(parse(instance(f(), context()).replace("http://disclosure.edinet-fsa.go.jp/taxonomy/jppfs/2024-11-01/jppfs_cor", "https://example.test/fake")).selectBalanceSheetMetric(definition.id, options)).toMatchObject({ status: "unsupported", reason: "unknown-namespace" });
         });
-        it.each(["120.00", "99"])("重複factは同値/異値とも曖昧: %s", raw => expect(select(f() + f(raw))).toMatchObject({ status: "ambiguous", reason: "multiple-facts" }));
+        it.each(["120.00", "99"])("重複factは完全一致だけ採用する: %s", raw => expect(select(f() + f(raw))).toMatchObject(raw === "120.00" ? { status: "selected", reason: "selected-identical-duplicates" } : { status: "ambiguous", reason: "multiple-facts" }));
         it("別contextの同一期末も曖昧、重複context IDも曖昧", () => {
             expect(select(f() + f("99", "", "copy"), context() + context("copy"))).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
             expect(select(f(), context() + context())).toMatchObject({ status: "ambiguous", reason: "duplicate-context" });
@@ -109,13 +109,13 @@ describe("J-GAAP BS直接factの正規化", () => {
             }
         }
     });
-    it("保存原本の同一context負債総額の重複も曖昧として来歴を残す", () => {
+    it("保存原本の同一context負債総額の完全一致重複を来歴付きで採用する", () => {
         const object = parse(readFileSync(new URL("./test_data/3031_raccoon.xbrl", import.meta.url), "utf8"));
         const ctx = object.findContexts({ type: "Instant", scope: "Consolidated" }).find(c => c.id === "CurrentYearInstant")!;
         const originals = object.getDataList("jppfs_cor:Liabilities").filter(f => f.contextRef === ctx.id);
         expect(originals.length).toBeGreaterThan(1);
         const result = object.selectBalanceSheetMetric("totalLiabilities", { ...options, period: { instant: ctx.period.instant! } });
-        expect(result).toMatchObject({ status: "ambiguous", reason: "multiple-facts" });
+        expect(result).toMatchObject({ status: "selected", reason: "selected-identical-duplicates" });
         expect(result.evidence.filter(e => e.contextRef === ctx.id).map(e => e.raw)).toEqual(originals.map(f => f.rawValue));
         expect(result.evidence.some(e => e.reason === "unsupported-dimensions")).toBe(true);
     });

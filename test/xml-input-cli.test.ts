@@ -36,6 +36,15 @@ describe("screen-bsの有限読取り", () => {
         if (kind === "manifest-bytes" || kind === "source-bytes") expect(String(result.stderr)).toContain("byte上限");
         if (kind === "doctype") expect(String(result.stderr)).toContain("DOCTYPE");
     }));
+    it("合計上限超過は先頭の不正XMLを解析する前に拒否する", () => fixture((dir, run) => {
+        writeFileSync(join(dir, "source.xbrl"), "<broken PRIVATE_SOURCE");
+        const large = join(dir, "large.xbrl"), fd = openSync(large, "w");
+        try { ftruncateSync(fd, LOCAL_IMPORT_LIMITS.sourceBytes); } finally { closeSync(fd); }
+        writeFileSync(join(dir, "manifest.json"), JSON.stringify([entry, ...Array.from({ length: 4 }, (_, i) => ({ ...entry, file: "large.xbrl", secCode: String(2000 + i), docID: `LARGE${i}` }))]));
+        const result = run(); expect(result.error).toBeUndefined(); expect(result.status).toBe(1);
+        expect(result.stdout).toBe(""); expect(String(result.stderr)).toContain("byte上限"); expect(String(result.stderr)).not.toContain("PRIVATE_SOURCE");
+        expect(readFileSync(join(dir, "source.xbrl"), "utf8")).toBe("<broken PRIVATE_SOURCE");
+    }));
     it("各原本が上限内でも合計256MiB超を拒否", () => fixture((dir, run) => {
         // 合成XML1件を5回指定。4件分はちょうど合計上限、5件目は読取り前に拒否します。
         const prefix = '<x><!--', suffix = '--></x>', length = LOCAL_IMPORT_LIMITS.sourceBytes;

@@ -1,0 +1,4 @@
+import {CORPORATE_REGISTRY_FIELDS as fields,type CorporateRegistrySource} from '../../src/corporate-registry';
+export const registryStreamSource:CorporateRegistrySource={sourceUrl:'https://example.test/registry.zip',observedAt:'2026-10-30T00:00:00Z',dataDate:'2026-10-29',kind:'diff',purpose:'sample'};
+export const registryStreamRow=(patch:Record<string,string>={})=>{const values:Record<string,string>={sequenceNumber:'1',corporateNumber:'1010001001202',process:'11',correct:'0',updateDate:'2026-10-29',changeDate:'2026-10-20',name:'日本 &amp; 会社',kind:'301',assignmentDate:'2015-10-05',latest:'1',hihyoji:'0',...patch};return '<corporation>'+fields.map(k=>'<'+k+'>'+(values[k]??'')+'</'+k+'>').join('')+'</corporation>';};
+export const registryStreamXml=(rows=registryStreamRow())=>'<?xml version="1.0" encoding="UTF-8"?>\n<corporations>'+rows+'</corporations>\n';

@@ -1,0 +1,19 @@
+import {it,expect} from 'vitest';import {join} from 'node:path';import {writeFileSync} from 'node:fs';
+import {FinancialIndexPublication,type FinancialIndexPublicationPolicy} from '../src/db/financial-index-publication';import {DuckFinancialPublicationReader} from '../src/db/duck-financial-publication-reader';import {duckFinancialReaderFixture as fixture} from './fixtures/duck-financial-reader';
+const policy:FinancialIndexPublicationPolicy={minimumCompaniesWithUsableValues:4,maxUnavailableSources:0,maxUnresolvedSelections:0,maxUnavailableSelections:0,maxUnresolvedRecords:0,maxUnavailableGroups:0,maxDuplicateCohortIdentifiers:0,maxUnavailableValues:100};
+const cohort={group:'details',accountingStandard:'J-GAAP',scope:'Consolidated',currency:'JPY',period:{startDate:'2025-04-01',endDate:'2026-03-31'},periodType:'annual'} as const,options={metricIds:['costOfSales']} as const;
+it('catalog切替後も明示reloadまで旧snapshotを保持し、失敗でも失わない',()=>fixture(async({duck,dir,path})=>{
+ const catalog=new FinancialIndexPublication(join(dir,'catalog.sqlite'));let reader:DuckFinancialPublicationReader|undefined;
+ try{
+  await catalog.prepareAsync('old',duck,'all',policy);await catalog.activateAsync('old',duck,{expectedActive:null});reader=await DuckFinancialPublicationReader.open(catalog,path);const before=await reader.screen(cohort,options);await catalog.prepareAsync('new',duck,'all',policy);await catalog.activateAsync('new',duck,{expectedActive:'old'});expect(reader.publication().id).toBe('old');
+  const broken=join(dir,'broken.duckdb');writeFileSync(broken,'bad');await expect(reader.reload(catalog,broken)).rejects.toThrow();expect(reader.publication().id).toBe('old');expect(await reader.screen(cohort,options)).toEqual(before);expect((await reader.reload(catalog,path)).id).toBe('new');
+  await catalog.activateAsync('old',duck,{expectedActive:'new'});await reader.reload(catalog,path);expect(reader.publication().id).toBe('old');expect((await reader.quality()).rows).toBe(8);expect((await reader.generation()).id).toBe('all');
+ }finally{await reader?.close();catalog.close()}
+}));
+it('activeなしと世代差異を拒否し、現在のreaderを維持する',()=>fixture(async({duck,sqlite,dir,path})=>{
+ const active=new FinancialIndexPublication(join(dir,'active.sqlite')),empty=new FinancialIndexPublication(join(dir,'empty.sqlite'));let reader:DuckFinancialPublicationReader|undefined;
+ try{await expect(DuckFinancialPublicationReader.open(empty,path)).rejects.toThrow('no active');await active.prepareAsync('old',duck,'all',policy);await active.activateAsync('old',duck,{expectedActive:null});reader=await DuckFinancialPublicationReader.open(active,path);await expect(reader.reload(empty,path)).rejects.toThrow('no active');expect((await reader.screen(cohort,options)).total).toBe(1);active.prepare('different',sqlite,'all',policy);active.activate('different',sqlite,{expectedActive:'old'});await expect(reader.reload(active,path)).rejects.toThrow('一致');expect(reader.publication().id).toBe('old');await expect(reader.screen({...cohort,generation:'other'} as any,options)).rejects.toThrow('active publication')}finally{await reader?.close();active.close();empty.close()}
+}));
+it('reloadの二重実行を拒否し、reload/検索中のcloseを安全に完了する',()=>fixture(async({duck,dir,path})=>{
+ const catalog=new FinancialIndexPublication(join(dir,'catalog.sqlite'));try{await catalog.prepareAsync('old',duck,'all',policy);await catalog.activateAsync('old',duck,{expectedActive:null});const reader=await DuckFinancialPublicationReader.open(catalog,path);const reading=reader.screen(cohort,options),reload=reader.reload(catalog,path);await expect(reader.reload(catalog,path)).rejects.toThrow('running');const closed=reader.close();await expect(reload).rejects.toThrow('closed');expect((await reading).total).toBe(1);await closed;await reader.close();await expect(reader.quality()).rejects.toThrow('closed')}finally{catalog.close()}
+}));

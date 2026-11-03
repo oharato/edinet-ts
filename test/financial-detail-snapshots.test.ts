@@ -18,7 +18,7 @@ function xml(value = "120", options: { scope?: "Consolidated" | "NonConsolidated
 const snapshot = (value = "120", metadata = meta(), metricIds?: readonly FinancialDetailMetricId[], options: Parameters<typeof xml>[1] = {}) => createFinancialDetailSnapshot(xml(value, options), metadata, metricIds);
 
 describe("保存財務snapshotの正当なXML出力JSONを受理", () => {
-    it.each(ids)("全15科目の%sをJSON往復し、出典とrawを保持", id => {
+    it.each(ids)("全対応科目の%sをJSON往復し、出典とrawを保持", id => {
         const row = snapshot("120.00", meta(FINANCIAL_DETAIL_REGISTRY[id].periodType), [id]);
         expect(json(normalizeFinancialDetailSnapshot(json(row)))).toEqual(json(row));
         expect(json(normalizeFinancialDetailSnapshot(row))).toEqual(json(row));

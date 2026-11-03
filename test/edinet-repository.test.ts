@@ -54,6 +54,37 @@ describe("Node標準SQLiteへの書類DB移行", () => {
         repo.insertDocument(doc("NEW"), "2024-06-25");
         expect(repo.findDocuments({ secCode: "01230" }).map(row => row.docID)).toEqual(["NEW", "OLD"]);
     });
+    it("0件の過去一覧を再open後も完了と区別し、単独挿入は完了としない", () => {
+        const file = temporaryPath(), writer = repository(file);
+        writer.saveDocumentList([], "2024-06-25");
+        writer.insertDocument(doc("PARTIAL"), "2024-06-26");
+        expect(writer.hasCompleteListForDate("2024-06-25")).toBe(true);
+        expect(writer.hasMetadataForDate("2024-06-25")).toBe(false);
+        expect(writer.hasCompleteListForDate("2024-06-26")).toBe(false);
+        writer.close();
+        expect(repository(file, { readOnly: true }).hasCompleteListForDate("2024-06-25")).toBe(true);
+    });
+    it("一覧保存に失敗した日は完了証跡を残さない", () => {
+        const file = temporaryPath(), repo = repository(file), admin = new Database(file);
+        admin.exec(`CREATE TRIGGER fail_list BEFORE INSERT ON documents WHEN NEW.doc_id='BAD' BEGIN SELECT RAISE(ABORT,'synthetic failure'); END;`);
+        admin.close();
+        expect(() => repo.saveDocumentList([doc("GOOD"), doc("BAD")], "2024-06-25")).toThrow();
+        expect(repo.findDocuments({})).toEqual([]);
+        expect(repo.hasCompleteListForDate("2024-06-25")).toBe(false);
+        repo.saveDocumentList([], "2024-06-25");
+        expect(repo.hasCompleteListForDate("2024-06-25")).toBe(true);
+    });
+    it("再取得した同書類の原観測を上書きせず、knownAtと再開位置で読む", () => {
+        const repo = repository();
+        repo.saveDocumentList([doc("A", { filerName: "旧名" })], "2024-06-25");
+        repo.saveDocumentList([doc("A", { filerName: "新名" })], "2024-06-25");
+        const rows = repo.getDocumentObservations({ docID: "A" });
+        expect(rows.map(row => row.document.filerName)).toEqual(["旧名", "新名"]);
+        expect(repo.getDocumentObservations({ afterSequence: rows[0].sequence })).toEqual([rows[1]]);
+        expect(repo.getDocumentObservations({ knownAt: "2000-01-01T00:00:00Z" })).toEqual([]);
+        expect(repo.findDocuments({})[0].filerName).toBe("旧名");
+        expect(() => repo.getDocumentObservations({ limit: 10001 })).toThrow();
+    });
     it("batchは同一transaction、重複IDは従来どおりIGNORE", () => {
         const repo = repository();
         repo.insertBatch([doc("A"), doc("B"), doc("A", { filerName: "上書きしない" })], "2024-06-25");

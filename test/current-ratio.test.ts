@@ -33,7 +33,7 @@ describe("流動比率の計算", () => {
     it.each([["absent", "2"], ["1", "nil"]])("欠損%s / %sは0で補わない", (a, b) => expect(calculateCurrentRatio(row(a, b))).toMatchObject({ status: "unavailable", reason: "missing-input" }));
     it.each([["9007199254740993", "9007199254740993"], ["0.10000000000000001", "1"]])("不安全な入力は商が小さくても計算しない", (a, b) => expect(calculateCurrentRatio(row(a, b))).toMatchObject({ status: "unavailable", reason: "unsafe-input" }));
     it("候補が重複した入力と外貨を別理由で残す", () => {
-        const ambiguous = createBalanceSheetSnapshot(instance(fact("1", "", keys[0]) + fact("1", "", keys[0]) + fact("2", "", keys[1]), context()), meta);
+        const ambiguous = createBalanceSheetSnapshot(instance(fact("1", "", keys[0]) + fact("3", "", keys[0]) + fact("2", "", keys[1]), context()), meta);
         expect(calculateCurrentRatio(ambiguous)).toMatchObject({ status: "unavailable", reason: "ambiguous-input", inputs: { currentAssets: { status: "ambiguous" } } });
         const usd = createBalanceSheetSnapshot(xml().replace("iso4217:JPY", "iso4217:USD"), meta);
         expect(calculateCurrentRatio(usd)).toMatchObject({ status: "unavailable", reason: "unsupported-input", inputs: { currentAssets: { reason: "unsupported-unit" } } });

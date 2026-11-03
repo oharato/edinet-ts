@@ -112,13 +112,24 @@ export function screenAnnualGrowth<Id extends string>(pairs:readonly AnnualCoreP
     if(settings.order!==undefined&&!Object.values(SortOrder).includes(settings.order))throw new Error("不正な並べ替え順です");
     for(const value of [settings.offset,settings.limit])if(value!==undefined&&(!Number.isSafeInteger(value)||value<0))throw new Error("offset/limitは0以上の安全な整数です");
     const captured=capturePairs(pairs);
-    const normalized=captured.map(pair=>({previous:pair.previous.metadata,current:pair.current.metadata}));
-    const cohort=(meta:FinancialDetailMetadata)=>[meta.scope,meta.accountingStandard,meta.currency,meta.periodType,meta.period.instant,meta.period.startDate,meta.period.endDate];
-    const keys=new Set<string>(),owners=new Map<string,string>();
-    for(const meta of normalized){
-        if(keys.has(meta.current.secCode))throw new Error("同じ企業の複数pair候補を自動選択しません");keys.add(meta.current.secCode);
-        for(const source of [meta.previous,meta.current]){const owner=owners.get(source.docID);if(owner!==undefined&&owner!==source.secCode)throw new Error("同じ書類IDを別の企業へ再使用しません");owners.set(source.docID,source.secCode);}
-        if(JSON.stringify([cohort(meta.previous),cohort(meta.current)])!==JSON.stringify([cohort(normalized[0].previous),cohort(normalized[0].current)]))throw new Error("企業間で両期間/分類/範囲/基準/通貨が混在しています");
+    const cohort = (meta: FinancialDetailMetadata) => [
+        meta.scope, meta.accountingStandard, meta.currency, meta.periodType,
+        meta.period.instant, meta.period.startDate, meta.period.endDate,
+    ];
+    const keys = new Set<string>(), owners = new Map<string, string>();
+    let expectedCohort: string | undefined;
+    for (const pair of captured) {
+        const previous = pair.previous.metadata, current = pair.current.metadata;
+        if (keys.has(current.secCode)) throw new Error("同じ企業の複数pair候補を自動選択しません");
+        keys.add(current.secCode);
+        for (const source of [previous, current]) {
+            const owner = owners.get(source.docID);
+            if (owner !== undefined && owner !== source.secCode) throw new Error("同じ書類IDを別の企業へ再使用しません");
+            owners.set(source.docID, source.secCode);
+        }
+        const pairCohort = JSON.stringify([cohort(previous), cohort(current)]);
+        expectedCohort ??= pairCohort;
+        if (pairCohort !== expectedCohort) throw new Error("企業間で両期間/分類/範囲/基準/通貨が混在しています");
     }
     const rows:AnnualCoreScreeningResult<Id>["rows"]=[],excluded:AnnualCoreScreeningResult<Id>["excluded"]=[],reasonCounts:AnnualCoreScreeningResult<Id>["reasonCounts"]={};let filteredRows=0;
     for(const pair of captured){const result=calculateCaptured(pair,definition);

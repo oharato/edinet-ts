@@ -1,0 +1,4 @@
+import{it,expect}from'vitest';import{assertXmlInput}from'../src/xml-input';
+it('参照のない多数の兄弟tagで後方全体のampersand検索を繰り返さない',()=>{const xml='<root>'+'<row>plain</row>'.repeat(2000)+'</root>',original=String.prototype.indexOf;let scans=0;try{String.prototype.indexOf=function(search:string,from=0){if(search==='&'&&String(this)===xml)scans+=xml.length-from;return original.call(this,search,from);};assertXmlInput(xml);}finally{String.prototype.indexOf=original;}expect(scans).toBeLessThan(xml.length*10);});
+it.each(['<r>&amp;</r>','<r a="&quot;">&#x1F600;&#128512;</r>','<r><!-- &bad; --><![CDATA[&bad;]]><a>&lt;</a></r>'])('区間ごとの正当な参照を受理 %s',xml=>expect(()=>assertXmlInput(xml)).not.toThrow());
+it.each(['<r>&amp<a/>;</r>','<r a="&amp"/>','<r>&#0;</r>','<r>&unknown;</r>','<r>&amp</r>'])('区間外のsemicolonや不正参照を拒否 %s',xml=>expect(()=>assertXmlInput(xml)).toThrow());

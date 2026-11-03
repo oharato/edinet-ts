@@ -42,16 +42,17 @@ const runner=resolve("scripts/verify-offline-financial-flow.ts"),loader=resolve(
 const launch=(path:string)=>spawnSync(process.execPath,["--import",loader,runner,"--config",path,"--source-cli"],{cwd:"/tmp",encoding:"utf8",timeout:120000});
 
 describe("明示入力だけのオフライン財務end-to-end検証",()=>{
+    // source CLIを9回起動する統合試験。全suite中の変換/起動負荷を含め30秒を上限にします。
     it("2社2時点でimport→再open検索→同コード版変更→diff、再実行安全性と元入力不変",()=>fixture((dir,paths)=>{
         const before=hashes(dir),result=verifyOfflineFinancialFlow(paths.config,{sourceCli:true});
         expect(result).toMatchObject({passed:true,snapshots:4,companies:2,instants:2,queriesPerOpen:6,queryChecks:18,cliChecks:9,
             selectionCounts:{selected:12,missing:0,unsupported:0,ambiguous:0},ratioCounts:{calculated:4},comparedDiffs:4,incomparableDiffs:0,sameParserReparse:true,performanceMeasured:false,cliMode:"source"});
         expect(result.declaredCoverage).toEqual({columns:{current:0,prior:0,synthetic:4,unknown:0},filingYears:[],externalReferencesVerified:false});
         expect(hashes(dir)).toEqual(before);
-    }));
+    }),30000);
     it("欠損行を0扱いせず、検索除外・diff比較不可を明示集計する",()=>fixture((_dir,paths)=>{
         const result=verifyOfflineFinancialFlow(paths.config,{sourceCli:true});expect(result).toMatchObject({passed:true,selectionCounts:{selected:9,missing:3},ratioCounts:{calculated:3,"missing-input":1},comparedDiffs:3,incomparableDiffs:1});
-    },true));
+    },true),30000);
     it("公開runnerの失敗stdout/stderrへ原本・実値・期待値を漏らさない",()=>fixture((dir,paths,data)=>{
         data.expectations[0].metrics.currentAssets.raw="987654321098765";data.save();const before=hashes(dir),result=launch(paths.config);
         expect(result.status).toBe(1);expect(result.stdout).toBe("");expect(result.stderr).toContain("金額は出力しません");

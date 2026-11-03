@@ -52,14 +52,12 @@ export class EdinetInfoSeeder {
             const dateStr = current.format("YYYY-MM-DD");
             let status: SeedingStatus = "processed";
 
-            if (this.options.skipExisting && repo.hasMetadataForDate(dateStr)) {
+            if (this.options.skipExisting && repo.hasCompleteListForDate(dateStr)) {
                 status = "skipped";
             } else {
                 try {
                     const docs = await downloader.search(dateStr);
-                    if (docs.length > 0) {
-                        repo.insertBatch(docs, dateStr);
-                    }
+                    repo.saveDocumentList(docs, dateStr);
                 } catch (e) {
                     status = "error";
                     if (this.options.onError) {

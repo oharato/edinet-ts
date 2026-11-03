@@ -16,8 +16,8 @@ const facades: Edinet[] = [];
 const fetchedDates: string[] = [];
 
 function isoDaysAgo(days: number): string {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
+    const date = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    date.setUTCDate(date.getUTCDate() - days);
     return date.toISOString().split("T")[0];
 }
 
@@ -56,7 +56,8 @@ function seededFacade(entries: { doc: EdinetDocument; submitDate: string }[], co
     directories.push(dir);
     const dbPath = join(dir, "metadata.db");
     const repo = new EdinetRepository(dbPath);
-    for (const entry of entries) repo.insertDocument(entry.doc, entry.submitDate);
+    for (const date of new Set(entries.map(entry => entry.submitDate)))
+        repo.saveDocumentList(entries.filter(entry => entry.submitDate === date).map(entry => entry.doc), date);
     repo.close();
     const facade = new Edinet({ dbPath, apiKey: "synthetic-key", enableRateLimit: false, ...config });
     facades.push(facade);
@@ -124,11 +125,11 @@ describe("Edinet facadeの横断検索（DBキャッシュ補完）", () => {
         fetchedDates.length = 0;
         const again = await facade.findDocumentsByType(EdinetDocumentType.TenderOfferStatement, 2);
         expect(again.map(row => row.docID)).toEqual(["A1"]);
-        // 書類があった日は再取得しない（0件の日は取得済みを記録できないため再取得する）
+        // 閉じた日は0件でも再取得せず、当日は更新される可能性があるので再取得する
         expect(fetchedDates).not.toContain(targetDate);
-        expect(fetchedDates).toContain(isoDaysAgo(0));
+        expect(fetchedDates).toEqual([isoDaysAgo(0)]);
     });
-    it("対象期間の全日がDBにあればAPIを叩かない", async () => {
+    it("過去の日は完了証跡で省略するが、当日は再取得する", async () => {
         mockFetch(new Map());
         const facade = seededFacade([
             { doc: doc("S0", { docTypeCode: "240" }), submitDate: isoDaysAgo(0) },
@@ -137,7 +138,22 @@ describe("Edinet facadeの横断検索（DBキャッシュ補完）", () => {
         ]);
         const hits = await facade.findDocumentsByType(EdinetDocumentType.TenderOfferStatement, 2);
         expect(hits.map(row => row.docID).sort()).toEqual(["S0", "S1", "S2"]);
-        expect(fetchedDates).toEqual([]);
+        expect(fetchedDates).toEqual([isoDaysAgo(0)]);
+    });
+    it("日本時間の日付境界と当日の再取得、0件過去日の省略を保つ", async () => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        try {
+            vi.setSystemTime(new Date("2026-10-27T15:30:00Z")); mockFetch(new Map());
+            const facade = seededFacade([]);
+            await facade.findDocumentsByType("240", 1);
+            expect(fetchedDates).toEqual(["2026-10-27", "2026-10-28"]);
+            fetchedDates.length = 0; await facade.findDocumentsByType("240", 1);
+            expect(fetchedDates).toEqual(["2026-10-28"]);
+        } finally { vi.useRealTimers(); }
+    });
+    it.each([-1, 0.5, NaN])("不正日数%sで取得しない", async days => {
+        mockFetch(new Map()); const facade = seededFacade([]);
+        await expect(facade.findDocumentsByFiler("合成", days)).rejects.toThrow(); expect(fetchedDates).toEqual([]);
     });
     it("findDocumentsByFilerもDBに無い日を補ってから検索する", async () => {
         mockFetch(new Map([[isoDaysAgo(1), [apiDoc("B1", { filerName: "APIファンド" })]]]));

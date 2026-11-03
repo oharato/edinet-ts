@@ -56,8 +56,8 @@ export const LARGE_SHAREHOLDING_INFO_DOC: TypeDocumentation = {
         fields: [
             { key: "filerName", japaneseLabel: "提出者名 (氏名又は名称)", type: "string (optional)" },
             { key: "issuerName", japaneseLabel: "発行者名 (氏名又は名称)", type: "string (optional)" },
-            { key: "holdingRatio", japaneseLabel: "保有割合 (%)", type: "number (optional)" },
-            { key: "prevHoldingRatio", japaneseLabel: "直前報告書における保有割合 (%)", type: "number (optional)" },
+            { key: "holdingRatio", japaneseLabel: "先頭factの原値（単位/集計範囲未検証）。pure単位では0〜1です。", type: "number (optional)" },
+            { key: "prevHoldingRatio", japaneseLabel: "先頭factの直前報告原値（単位/集計範囲未検証）。", type: "number (optional)" },
             { key: "jointHoldersCount", japaneseLabel: "共同保有者の数", type: "number (optional)" }
         ]
     };

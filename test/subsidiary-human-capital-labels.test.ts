@@ -107,7 +107,7 @@ describe("人的資本表に記載された解析済み会社ラベル", () => {
     it.each(["namespace", "version", "unit", "period", "context", "entity", "context-alias"])("%s不足/不一致を採用しない", kind => {
         let input = xml();
         if (kind === "namespace") input = xml(label("会社", "row1", 'xmlns:jpcrp_cor="urn:fake"'));
-        if (kind === "version") input = input.replaceAll("2025-11-01", "2024-11-01");
+        if (kind === "version") input = input.replaceAll("2025-11-01", "2023-11-01");
         if (kind === "unit") input = xml(label("会社", "row1", 'unitRef="money"'));
         if (kind === "period") input = xml(label(), context("row1", 1, { date: "2025-03-31" }));
         if (kind === "context") input = xml(label("会社", "missing"));

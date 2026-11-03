@@ -9,7 +9,11 @@ function fixture(action:(dir:string,run:(args?:string[],command?:string)=>Return
   const rows=[{code:"1001",prior:"100",now:"120"},{code:"1002",prior:"200",now:"220"}].map(({code,prior,now})=>{
    const point=(year:number,value:string)=>{const period={startDate:`${year-1}-04-01`,endDate:`${year}-03-31`};const xml=instance(fact(value,"","jppfs_cor:OperatingIncome")+fact(value,"","jppfs_cor:NetSales"),`<xbrli:context id="current"><xbrli:entity><xbrli:identifier scheme="synthetic">${code}</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>${period.startDate}</xbrli:startDate><xbrli:endDate>${period.endDate}</xbrli:endDate></xbrli:period></xbrli:context>`);const file=`${code}-${year}.xbrl`;writeFileSync(join(dir,file),xml);return{file,metadata:{secCode:code,docID:`SYNTHETIC-${code}-${year}`,scope:"Consolidated",accountingStandard:"J-GAAP",currency:"JPY",periodType:"annual",period}};};return{previous:point(2024,prior),current:point(2025,now)};
   });writeFileSync(join(dir,"pairs.json"),JSON.stringify(rows));
-  const run=(args:string[]=[],command="screen-operating-income-growth")=>spawnSync(process.execPath,["--import",resolve("node_modules/tsx/dist/loader.mjs"),resolve("src/cli.ts"),command,"--manifest",join(dir,"pairs.json"),...args],{cwd:"/tmp",encoding:"utf8"});action(dir,run,rows);
+  const run=(args:string[]=[],command="screen-operating-income-growth")=>{
+   const result=spawnSync(process.execPath,["--import",resolve("node_modules/tsx/dist/loader.mjs"),resolve("src/cli.ts"),command,"--manifest",join(dir,"pairs.json"),...args],{cwd:"/tmp",encoding:"utf8"});
+   expect(result.error).toBeUndefined();
+   return result;
+  };action(dir,run,rows);
  }finally{rmSync(dir,{recursive:true,force:true});}
 }
 describe("営業利益前年比CLI",()=>{
@@ -25,8 +29,14 @@ describe("営業利益前年比CLI",()=>{
   const prior=join(dir,rows[0].previous.file);writeFileSync(prior,readFileSync(prior,"utf8").replace(/>100</g,">0<"));const current=join(dir,rows[1].current.file);writeFileSync(current,readFileSync(current,"utf8").replace(/<jppfs_cor:OperatingIncome[^>]*>[^<]*<\/jppfs_cor:OperatingIncome>/g,""));
   const r=run();expect(r.status,String(r.stderr)).toBe(0);const out=JSON.parse(String(r.stdout));expect(out.total).toBe(0);expect(out.excludedRows).toBe(2);expect(out.reasonCounts["zero-base"]).toBe(1);expect(out.reasonCounts["unavailable-input"]).toBe(1);
  }));
- it("異なるmetric・不正設定・件数/UTF8境界を終了1にする",()=>fixture((dir,run,rows)=>{
-  expect(run(["--conditions",JSON.stringify([{metric:"netSalesGrowth",operator:"gte",value:0}])]).status).toBe(1);expect(run(["--offset","-1"]).status).toBe(1);expect(run(["--order","unknown"]).status).toBe(1);
+ it.each([
+  ["--conditions",JSON.stringify([{metric:"netSalesGrowth",operator:"gte",value:0}])],
+  ["--offset","-1"],
+  ["--order","unknown"],
+ ])("不正設定 %s %s を終了1にする",(...args)=>fixture((_dir,run)=>{
+  expect(run(args).status).toBe(1);
+ }));
+ it("件数/UTF8境界を終了1にする",()=>fixture((dir,run,rows)=>{
   writeFileSync(join(dir,"pairs.json"),JSON.stringify(Array(101).fill(rows[0])));const oversized=run();expect(oversized.status).toBe(1);expect(String(oversized.stderr)).toContain("100");writeFileSync(join(dir,"pairs.json"),Buffer.from([0xff]));expect(run().status).toBe(1);
  }));
 });

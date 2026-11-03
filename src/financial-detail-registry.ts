@@ -9,13 +9,17 @@ export const FinancialDetailMetricId = Object.freeze({
     DepreciationOperatingCashFlow: "depreciationOperatingCashFlow",
     PropertyPlantEquipmentPurchaseCashFlow: "propertyPlantEquipmentPurchaseCashFlow",
     PropertyPlantEquipmentAndIntangiblesPurchaseCashFlow: "propertyPlantEquipmentAndIntangiblesPurchaseCashFlow",
+    IncomeTaxesPaidCashFlow: "incomeTaxesPaidCashFlow", CashDividendsPaidCashFlow: "cashDividendsPaidCashFlow",
+    LongTermLoansRepaymentCashFlow: "longTermLoansRepaymentCashFlow",
     ShortTermLoansPayable: "shortTermLoansPayable",
+    CommercialPapers: "commercialPapers", ShortTermBondsPayable: "shortTermBondsPayable",
     CurrentPortionOfLongTermLoansPayable: "currentPortionOfLongTermLoansPayable",
     LongTermLoansPayable: "longTermLoansPayable",
     CurrentPortionOfBonds: "currentPortionOfBonds",
     BondsPayable: "bondsPayable",
     LeaseObligationsCL: "leaseObligationsCL",
-    LeaseObligationsNCL: "leaseObligationsNCL"
+    LeaseObligationsNCL: "leaseObligationsNCL",
+    ShareholdersEquity: "shareholdersEquity", ValuationAndTranslationAdjustments: "valuationAndTranslationAdjustments"
 } as const);
 export type FinancialDetailMetricId = typeof FinancialDetailMetricId[keyof typeof FinancialDetailMetricId];
 const define = (id: FinancialDetailMetricId, tag: string, periodType: "instant" | "duration"): MetricDefinition<FinancialDetailMetricId> => Object.freeze({
@@ -41,12 +45,19 @@ export const FINANCIAL_DETAIL_REGISTRY: Readonly<Record<FinancialDetailMetricId,
     depreciationOperatingCashFlow: define("depreciationOperatingCashFlow", "DepreciationAndAmortizationOpeCF", "duration"),
     propertyPlantEquipmentPurchaseCashFlow: define("propertyPlantEquipmentPurchaseCashFlow", "PurchaseOfPropertyPlantAndEquipmentInvCF", "duration"),
     propertyPlantEquipmentAndIntangiblesPurchaseCashFlow: define("propertyPlantEquipmentAndIntangiblesPurchaseCashFlow", "PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF", "duration"),
+    incomeTaxesPaidCashFlow: define("incomeTaxesPaidCashFlow", "IncomeTaxesPaidOpeCF", "duration"),
+    cashDividendsPaidCashFlow: define("cashDividendsPaidCashFlow", "CashDividendsPaidFinCF", "duration"),
+    longTermLoansRepaymentCashFlow: define("longTermLoansRepaymentCashFlow", "RepaymentOfLongTermLoansPayableFinCF", "duration"),
+    commercialPapers: define("commercialPapers", "CommercialPapersLiabilities", "instant"),
+    shortTermBondsPayable: define("shortTermBondsPayable", "ShortTermBondsPayable", "instant"),
     shortTermLoansPayable: define("shortTermLoansPayable", "ShortTermLoansPayable", "instant"),
     currentPortionOfLongTermLoansPayable: define("currentPortionOfLongTermLoansPayable", "CurrentPortionOfLongTermLoansPayable", "instant"),
     longTermLoansPayable: define("longTermLoansPayable", "LongTermLoansPayable", "instant"),
     currentPortionOfBonds: define("currentPortionOfBonds", "CurrentPortionOfBonds", "instant"),
     bondsPayable: define("bondsPayable", "BondsPayable", "instant"),
     leaseObligationsCL: define("leaseObligationsCL", "LeaseObligationsCL", "instant"),
-    leaseObligationsNCL: define("leaseObligationsNCL", "LeaseObligationsNCL", "instant")
+    leaseObligationsNCL: define("leaseObligationsNCL", "LeaseObligationsNCL", "instant"),
+    shareholdersEquity: define("shareholdersEquity", "ShareholdersEquity", "instant"),
+    valuationAndTranslationAdjustments: define("valuationAndTranslationAdjustments", "ValuationAndTranslationAdjustments", "instant")
 });
-export const FINANCIAL_DETAIL_REGISTRY_VERSION = "4";
+export const FINANCIAL_DETAIL_REGISTRY_VERSION = "9";

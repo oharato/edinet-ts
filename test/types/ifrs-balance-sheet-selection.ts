@@ -10,7 +10,7 @@ const candidate: string = IFRS_BALANCE_SHEET_REGISTRY.currentLiabilities.candida
 const version: string = IFRS_BALANCE_SHEET_REGISTRY_VERSION;
 void candidate; void version; void select;
 function invalid(object: EdinetXbrlObject) {
-    // @ts-expect-error IFRS直接3項目以外のIDは指定できない
+    // @ts-expect-error IFRS直接項目以外のIDは指定できない
     object.selectIfrsBalanceSheetMetric("netSales", { accountingStandard: "IFRS", scope: "Consolidated", period: { instant: "2026-03-31" } });
 }
 void invalid;

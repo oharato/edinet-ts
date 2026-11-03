@@ -6,3 +6,24 @@ screenAnnualRevenueGrowth([pair],{conditions:[{metric:AnnualGrowthMetricId.NetSa
 screenAnnualRevenueGrowth([pair],{conditions:[{metric:"earningsPerShareGrowth",operator:"gte",value:0.2}]});
 // @ts-expect-error 年次分類は明示的なannual
 const wrong:AnnualRevenuePair={previous:{...pair.previous,metadata:{...pair.previous.metadata,periodType:"ytd"}},current:pair.current};
+
+import {calculateCagr,screenCagr,CagrMetricId} from "../../src/index";
+calculateCagr([pair.previous,pair.current],CagrMetricId.NetSales);
+screenCagr([[pair.previous,pair.current]],CagrMetricId.OperatingIncome,{conditions:[{operator:"gte",value:0.1}]});
+// @ts-expect-error 分割確認のないEPSはCAGRへ混ぜない
+calculateCagr([pair.previous,pair.current],"earningsPerShareCagr");
+
+import { calculateAverageEquityReturn, screenAverageEquityReturn, type AverageEquityReturnInput } from "../../src/index";
+declare const equityInput: AverageEquityReturnInput;
+const equity = calculateAverageEquityReturn(equityInput);
+if (equity.status === "calculated") { const numerator: string = equity.openingEquity.numerator; void numerator; }
+screenAverageEquityReturn([equityInput], { conditions: [{ operator: "gte", value: 0.1 }] });
+
+import { calculatePerShareGrowth, screenPerShareGrowth, PerShareGrowthMetricId, type PerShareAnnualPair } from "../../src/index";
+declare const perSharePair: PerShareAnnualPair;
+calculateCagr([perSharePair.previous, perSharePair.current], CagrMetricId.EarningsPerShare);
+screenCagr([[perSharePair.previous, perSharePair.current]], CagrMetricId.DividendPerShare);
+calculatePerShareGrowth(perSharePair, PerShareGrowthMetricId.EarningsPerShare);
+screenPerShareGrowth([perSharePair], PerShareGrowthMetricId.DividendPerShare);
+// @ts-expect-error 株式基準を持たない従来pairはEPSへ渡さない
+calculatePerShareGrowth(pair, PerShareGrowthMetricId.EarningsPerShare);

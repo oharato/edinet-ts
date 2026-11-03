@@ -47,3 +47,44 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 
 - **`src/utils/type-doc-defs.ts`**: 自動生成されます。**手動で編集しないでください。**
 - **`src/utils/type-doc-helpers.ts`**: ヘルパー関数群です。こちらは手動で管理される静的なファイルです。
+
+## 固定年次取得の実行補助
+
+`roadmap/acquisition-batch-control.mjs` は固定runtimeの取得scriptが使う補助です。単体ではDBや通信を開きません。既存SDKの上限100件と同じ取得順のprefixを使い、20件単位の停止判定・3試行上限、本文取得前後の32GiB+2GiB空き容量確認を保ちます。キャッシュ即時返却時も停止signalを処理するためevent loopへ制御を返します。
+
+固定runtimeへのコピー、全ファイルmanifest、実行scriptの指紋とunitの引継ぎは [専用サービス](../docs/pipeline/ROADMAP_RUNTIME.md)を参照してください。稼働runtime内のファイルを直接更新する運用は行いません。
+
+`isSourceReady` は構築待機側が使う検査です。現在のsystemd unit PID・期待する取得scriptのSHA-256・固定計画・正確なscript argvが一致した場合だけ、新workerの初期summaryと認めます。古いsummaryや同名に似たパスを起動完了の証拠として使いません。
+
+## 日次metadata収集
+
+`roadmap/daily-metadata-control.mjs` と `roadmap/run-daily-metadata.mjs` は別metadata forkの観測を追記する運用補助です。`roadmap/daily-metadata-notices.mjs` は保存通知から既知の過去一覧日を追加し、通知cursor/identity/対象日と不明通知を保持します。固定年次計画が完了して取得unitが停止するまでAPI通信せず、当日probe・JST日次256要求・再開checkpoint・flock・34GiB容量余裕を使います。秘密値を出力せず、既存年次アーカイブや公開SDKは変更しません。固定runtime/configと定期起動の条件は [書類同期](../docs/pipeline/FINANCIAL_DOCUMENT_SYNC.md#専用日次収集の運用補助)を参照してください。
+
+## 再構築済みの日次財務索引
+
+`roadmap/build-prepared-financial-cycle.mjs` は、固定済みの再構築候補を1〜100社ずつ構築する入口です。`--max-batches`（既定1、上限100）で複数batchのarchive/state/index接続を共有できます。日次入口は100社×10batchを上限にします。同じ入力指紋と会社別checkpointを使い、各batch前に容量・入力を再確認し、中断時は会社単位の残件から再開します。呼出元で全batch終了まで排他を保持し、`--locked` を指定します。[構築手順](../docs/pipeline/FINANCIAL_INDEX_BUILD.md#再構築済みの日次候補をまとめて構築する)のロック順序・完了判定を確認してください。
+
+`roadmap/verify-built-financial-cycle.mjs --config /absolute/path/config.json --locked` は構築済み候補の全採用直接値を独立Python処理で原本照合し、候補に結び付いた検証記録を保存します。候補の排他が必要です。品質条件だけでは正式切替できず、`activateBuiltFinancialCycle` でこの記録を再照合します。[原本照合と正式切替](../docs/pipeline/FINANCIAL_INDEX_PUBLICATION.md#正式な日次候補の原本照合)を参照してください。
+
+## 全体テスト
+
+`.node-version` の Node 26.12.1 と `package.json` の npm 12.2.1 を使用し、リポジトリ直下で実行します。バージョン管理ツールの設定だけでなく、`node --version` と `npm --version` の出力も確認してください。
+
+```sh
+npm run build
+npx --no-install tsc --noEmit
+npx --no-install tsc --project test/types/tsconfig.json
+npm test -- --maxWorkers=1 --testTimeout=30000
+python3 scripts/test_artifact_store.py
+```
+
+`data/` と `artifacts/` の固定配布物には過去のソースとテストが含まれるため、`npm test` が既定で現在のソースの検証から除外します。`test/` 以下はESM・CLI・SQLiteを含めて実行します。ESMテストが古い `dist/` を参照しないよう、先にビルドしてください。
+
+運用テストは34GiBの留保に加え、DB/検査コピー用の空き容量を確認します。小さなtmpfsを `TMPDIR` にすると容量保護で停止するため、運用テストには十分な空きのある通常のローカルディスクを使用してください。留保値やtimeoutを緩めず、固定ソース・一時領域・対象件数と失敗した実行も記録します。
+
+CLIテストは子プロセスを起動します。`spawnSync` の `error.code` が `EPERM` なら、実行環境の子プロセス制限を確認してください。終了状態だけで成功と判断せず、子プロセス起動を許可した環境で再実行します。
+
+取得済み日次候補を解析済みSQLite・検索DuckDBへ接続する排他付きコマンドは `roadmap/run-acquired-duck-financial-cycle.mjs`。引数・再開・終了コードは [DuckDB構築仕様](../docs/pipeline/DUCK_FINANCIAL_CYCLE.md) を参照する。
+日次準備から原本取得・DuckDB構築までの一括実行は `roadmap/run-daily-duck-financial-cycle.mjs`（排他・provider設定・再開を含む）。既存SQLite日次経路とは別コマンドで、正式切替は明示した別工程。
+
+署名検証済み法人番号ZIPを圧縮Storeへ取り込む入口は `roadmap/import-corporate-registry-archive.mjs`。receiptのSHA固定、パート単位checkpoint、DB全記録監査付き再開、排他と34GiB留保を使います。引数・追記・終了コードは [法人番号の取込手順](../docs/companies/CORPORATE_REGISTRY.md#署名検証済みzipからパート単位で取り込む) を参照してください。

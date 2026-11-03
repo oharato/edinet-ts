@@ -1,9 +1,15 @@
+import {selectFinancialReportingBasis,type FinancialReportingBasis} from "./financial-reporting-basis";
+import {IFRS_FINANCIAL_DETAIL_REGISTRY,type IfrsFinancialDetailMetricId} from "./ifrs-financial-detail-registry";
+import { selectLargeHoldingReport, type LargeHoldingMetadata, type LargeHoldingReport } from "./large-holding-report";
+import { selectDisclosureTables, type DisclosureTableKind, type DisclosureTableExtraction } from "./disclosure-tables";
+import { selectSubsidiaryHumanCapitalMetrics, type SubsidiaryHumanCapitalMetricId, type SubsidiaryHumanCapitalAnnotationInput, type SubsidiaryHumanCapitalMetricsExtraction } from "./subsidiary-human-capital-metrics";
+import { AUDIT_FEE_REGISTRY, type AuditFeeMetricId } from "./audit-fee-registry";
 import type { ContextDimensionTraceMap, ContextDimensionsTraceResult } from "./context-dimension-traces";
 import { IFRS_BALANCE_SHEET_REGISTRY, IfrsBalanceSheetMetricId } from "./ifrs-balance-sheet-registry";
 import { WORKFORCE_REGISTRY, WorkforceMetricId } from "./workforce-registry";
 import { FINANCIAL_DETAIL_REGISTRY, FinancialDetailMetricId } from "./financial-detail-registry";
 import { BALANCE_SHEET_REGISTRY, BalanceSheetMetricId } from "./balance-sheet-registry";
-import { selectDefinedMetricFact, selectMetricFact, MetricSelectionOptions, FactSelectionResult } from "./metric-selection";
+import { selectDefinedMetricFact, selectMetricFact, MetricSelectionOptions, FactSelectionResult, type MetricFactBehavior } from "./metric-selection";
 import { MetricId } from "./metric-registry";
 import { EdinetDataUtil } from "./edinet-data-util";
 import type { ConsolidationScope } from "./financial-options";
@@ -98,6 +104,11 @@ export class EdinetXbrlObject {
         const unsupported = candidates.some(candidate => candidate.diagnostics.length || candidate.dimensions.some(entry => entry.diagnostics.length));
         return structuredClone({ contextId, status: duplicate ? "ambiguous" : !candidates.length ? "missing" : unsupported ? "unsupported" : "resolved",
             dtsValidation: "not-performed", originalLexicalValidation: "not-performed", candidates, diagnostics });
+    }
+
+    /** 指定した本文表のセルと出典を返します。単位や表の意味の確定とは別です。 */
+    public selectDisclosureTables(kind: DisclosureTableKind, contextRef: string): DisclosureTableExtraction {
+        return selectDisclosureTables(this._docID, kind, contextRef, this._dataMap, this.contextMap, this.duplicateContextIds, ref => this.traceContextDimensions(ref));
     }
 
     /** 元のXMLを保持しない読み取り専用の会社情報。XML hash付き入口はcreateCompanyProfileです。 */
@@ -216,16 +227,31 @@ export class EdinetXbrlObject {
     }
 
     /** 明示した会計基準・期間・scopeだけを対象に、理由と原値を返します。 */
-    public selectMetric(id: MetricId, options: MetricSelectionOptions): FactSelectionResult {
-        return selectMetricFact(id, options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+    public selectMetric(id: MetricId, options: MetricSelectionOptions, behavior: MetricFactBehavior = {}): FactSelectionResult {
+        return selectMetricFact(id, options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, behavior);
     }
 
     /** J-GAAP・JPY・明示した時点/scopeのBS直接factを正規化します。 */
     public selectBalanceSheetMetric(id: BalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<BalanceSheetMetricId> {
-        return selectDefinedMetricFact(BALANCE_SHEET_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        return selectDefinedMetricFact(BALANCE_SHEET_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, { collapseIdenticalDuplicates: true });
     }
 
-    /** IFRS・JPY・連結・明示期末の直接3科目。単体・合算・通貨換算は未対応です。 */
+    /** DEIとcontextから、推測で補わず財務の基準・当期の範囲を確定します。 */
+    public selectFinancialReportingBasis(): FinancialReportingBasis {
+        return selectFinancialReportingBasis(this._docID, this._dataMap, this.contextMap, this.duplicateContextIds);
+    }
+
+    /** 技術的な単体contextだけで前年比較を単体と認証しません。 */
+    private isCurrentStandaloneIfrsPeriod(period: MetricSelectionOptions["period"]): boolean {
+        if (typeof this._docID !== "string" || !this._docID.trim() || this._docID.length > 256 || /[\x00-\x1f\x7f]/.test(this._docID)) return false;
+        const basis = this.selectFinancialReportingBasis();
+        if (basis.status !== "selected" || basis.metadata.accountingStandard !== "IFRS" || basis.metadata.scope !== "NonConsolidated") return false;
+        const m = basis.metadata;
+        return period.instant !== undefined ? period.instant === m.instant && period.startDate === undefined && period.endDate === undefined :
+            period.startDate === m.period.startDate && period.endDate === m.period.endDate;
+    }
+
+    /** IFRS・JPYの直接科目。単体は原本DEIで確認した当期主範囲だけ。 */
     public selectIfrsBalanceSheetMetric(id: IfrsBalanceSheetMetricId, options: MetricSelectionOptions): FactSelectionResult<IfrsBalanceSheetMetricId> {
         if (!Object.prototype.hasOwnProperty.call(IFRS_BALANCE_SHEET_REGISTRY, id)) throw new Error("不正なIFRS貸借対照表IDです");
         // getterや呼出元の変更を後続の条件検証へ持ち込まず、入口で確認した範囲を固定します。
@@ -234,21 +260,33 @@ export class EdinetXbrlObject {
         const inputPeriod = options.period;
         const period = { instant: inputPeriod.instant, startDate: inputPeriod.startDate, endDate: inputPeriod.endDate } as MetricSelectionOptions["period"];
         if (accountingStandard !== "IFRS") return { metricId: id, status: "unsupported", reason: "unsupported-standard", evidence: [] };
-        if (scope !== "Consolidated") return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
+        if (scope !== "Consolidated" && (scope !== "NonConsolidated" || !this.isCurrentStandaloneIfrsPeriod(period))) return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
         // 不正なinstant/duration混在も消さずに共用の期間検証へ渡します。
-        return selectDefinedMetricFact(IFRS_BALANCE_SHEET_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        return selectDefinedMetricFact(IFRS_BALANCE_SHEET_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, { collapseIdenticalDuplicates: true });
+    }
+
+    /** IFRS・JPYの直接PL/CF。単体は当期主範囲だけで、別範囲の補完はしません。 */
+    public selectIfrsFinancialDetail(id: IfrsFinancialDetailMetricId, options: MetricSelectionOptions): FactSelectionResult<IfrsFinancialDetailMetricId> {
+        if (!Object.hasOwn(IFRS_FINANCIAL_DETAIL_REGISTRY, id)) throw new Error("不正なIFRS財務明細IDです");
+        const accountingStandard = options.accountingStandard, scope = options.scope, inputPeriod = options.period;
+        const period = { instant: inputPeriod.instant, startDate: inputPeriod.startDate, endDate: inputPeriod.endDate } as MetricSelectionOptions["period"];
+        if (accountingStandard !== "IFRS") return { metricId: id, status: "unsupported", reason: "unsupported-standard", evidence: [] };
+        if (scope !== "Consolidated" && (scope !== "NonConsolidated" || !this.isCurrentStandaloneIfrsPeriod(period))) return { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] };
+        return selectDefinedMetricFact(IFRS_FINANCIAL_DETAIL_REGISTRY[id], { accountingStandard, scope, period }, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds,
+            { collapseIdenticalDuplicates: true });
     }
 
     /** 一般事業J-GAAPの直接5科目。現預金/同等物・内訳を混同しません。 */
     public selectFinancialDetail(id: FinancialDetailMetricId, options: MetricSelectionOptions): FactSelectionResult<FinancialDetailMetricId> {
         if (!Object.prototype.hasOwnProperty.call(FINANCIAL_DETAIL_REGISTRY, id)) throw new Error("不正な財務明細IDです");
-        return selectDefinedMetricFact(FINANCIAL_DETAIL_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        return selectDefinedMetricFact(FINANCIAL_DETAIL_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds,
+            { collapseIdenticalDuplicates: true });
     }
 
     /** 人的資本は提出会社単体のみ。負値は原値をevidenceへ残し不採用とします。 */
     public selectWorkforceMetric<Id extends WorkforceMetricId>(id: Id, options: MetricSelectionOptions): FactSelectionResult<Id> {
         if (!Object.prototype.hasOwnProperty.call(WORKFORCE_REGISTRY, id)) throw new Error("不正な人的資本IDです");
-        // 人的資本だけ、完全に同一の重複factを1件として採用します（財務等の選択は従来どおり厳密）。
+        // 人的資本は完全に同一の重複factを1件として採用します。
         const result = selectDefinedMetricFact<Id>(WORKFORCE_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, { collapseIdenticalDuplicates: true });
         // numberへ変換する前に符号を検証。-0/-0.0はゼロとして保持します。
         if (options.scope !== "NonConsolidated" || result.status === "selected" && /^-/.test(result.raw) && /[1-9]/.test(result.raw)) {
@@ -256,6 +294,21 @@ export class EdinetXbrlObject {
                 evidence: result.evidence.map(item => item.reason === "selected" || item.reason === "selected-raw-only" || item.reason === "selected-identical-duplicates" ? { ...item, reason: "unsupported-semantics" } : item) };
         }
         return result;
+    }
+
+    /** 報酬の対象主体はタグで区別し、contextの連結/単体scopeとは混同しません。 */
+    public selectAuditFeeMetric(id: AuditFeeMetricId, options: MetricSelectionOptions): FactSelectionResult<AuditFeeMetricId> {
+        if (!Object.hasOwn(AUDIT_FEE_REGISTRY, id)) throw new Error("不正な監査報酬IDです");
+        const result = selectDefinedMetricFact(AUDIT_FEE_REGISTRY[id], options, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds);
+        if (result.status === "selected" && /^-/.test(result.raw) && /[1-9]/.test(result.raw)) return {
+            metricId: id, status: "unsupported", reason: "unsupported-semantics",
+            evidence: result.evidence.map(item => item.reason === "selected" || item.reason === "selected-raw-only" ? { ...item, reason: "unsupported-semantics" } : item)
+        };
+        return result;
+    }
+
+    public selectSubsidiaryHumanCapitalMetrics(metadata: SubsidiaryHumanCapitalLabelMetadata, metricIds: readonly SubsidiaryHumanCapitalMetricId[], annotations: SubsidiaryHumanCapitalAnnotationInput = []): SubsidiaryHumanCapitalMetricsExtraction {
+        return selectSubsidiaryHumanCapitalMetrics(metadata, metricIds, annotations, this._dataMap, this.contextMap, this.unitMap, id => this.traceContextDimensions(id), this._docID, annotations === "auto" && this._docID ? this.selectFinancialReportingBasis() : undefined);
     }
 
     private extractKeyMetrics(sources?: KeyMetricSources): KeyMetrics {
@@ -585,9 +638,15 @@ export class EdinetXbrlObject {
         });
     }
 
+    /** 明示メタデータと原fact・単位・次元出典を照合する一次大量保有の選択。 */
+    public selectLargeHoldingReport(metadata: LargeHoldingMetadata): LargeHoldingReport {
+        if (this._docID && metadata?.docID !== this._docID) throw new Error("大量保有の書類IDが解析対象と一致しません");
+        return selectLargeHoldingReport(metadata, this._dataMap, this.contextMap, this.unitMap, this.duplicateContextIds, ref => this.traceContextDimensions(ref));
+    }
+
     /**
-     * 大量保有報告書（変更報告書、訂正報告書を含む）から主要な情報を抽出します。
-     * ネームスペースは `jplvh_cor` を使用します。
+     * 互換用の簡易getter。先頭factの原値で、集計範囲・単位・訂正は検証しません。
+     * 厳密な一次明細にはselectLargeHoldingReportを使ってください。
      */
     public getLargeShareholdingInfo(): LargeShareholdingInfo {
         // ヘルパー: コンテキストを問わず、最初に見つかった値を返す
@@ -716,9 +775,9 @@ export interface LargeShareholdingInfo {
     filerName?: string;
     /** 発行者名 (氏名又は名称) */
     issuerName?: string;
-    /** 保有割合 (%) */
+    /** 先頭factの原値（単位/集計範囲未検証）。pure単位では0〜1です。 */
     holdingRatio?: number;
-    /** 直前報告書における保有割合 (%) */
+    /** 先頭factの直前報告原値（単位/集計範囲未検証）。 */
     prevHoldingRatio?: number;
     /** 共同保有者の数 */
     jointHoldersCount?: number;
@@ -760,7 +819,7 @@ export interface ShareholderInfo {
     name: string;
     /** 所有株式数 */
     numberOfShares?: number;
-    /** 持株比率 (%) */
+    /** 原タグの数値（単位未検証）。pure単位では0〜1で、百分率は100倍です。 */
     ownershipRatio?: number;
 }
 

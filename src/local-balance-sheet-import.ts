@@ -36,6 +36,19 @@ export function readRegularFile(file: string, maxBytes: number): LocalFile {
         return { path: fs.realpathSync(file), identity: identity(stat), bytes: buffer.subarray(0, length) };
     } finally { fs.closeSync(fd); }
 }
+/** 内部用。本文の解析前に拒否するための事前検査。実読取りの検査は省略しません。 */
+export function assertRegularFileByteBudget(files: readonly string[]): void {
+    let total = 0n;
+    for (const file of files) {
+        const fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
+        try {
+            const stat = fs.fstatSync(fd, { bigint: true });
+            if (!stat.isFile()) throw new Error("指定入力は通常のファイルである必要があります");
+            total += stat.size;
+            if (stat.size > BigInt(LOCAL_IMPORT_LIMITS.sourceBytes) || total > BigInt(LOCAL_IMPORT_LIMITS.totalBytes)) throw new Error("入力ファイルがbyte上限を超えています");
+        } finally { fs.closeSync(fd); }
+    }
+}
 function lstat(file: string): fs.Stats | undefined {
     try { return fs.lstatSync(file); } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
@@ -91,6 +104,7 @@ export function runLocalBalanceSheetImport(options: LocalBalanceSheetImportOptio
     // Metadata/版/重複を原本読取前に既存APIで検査。実ファイルには書き込みません。
     const validation = new BalanceSheetSqliteStore(":memory:");
     try { planBalanceSheetImport(validation, sources); } finally { validation.close(); }
+    assertRegularFileByteBudget(files);
     let bytesRead = 0;
     for (let i = 0; i < files.length; i++) {
         const file = readRegularFile(files[i], Math.min(LOCAL_IMPORT_LIMITS.sourceBytes, LOCAL_IMPORT_LIMITS.totalBytes - bytesRead));

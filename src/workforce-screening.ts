@@ -47,10 +47,10 @@ export function createWorkforceSnapshot(xml: string, metadata: WorkforceMetadata
     const selections: WorkforceSnapshot["selections"] = {
         averageAnnualSalary: object.selectWorkforceMetric(WorkforceMetricId.AverageAnnualSalary, options)
     };
-    if (requested.includes(WorkforceMetricId.AverageAgeYears)) selections.averageAgeYears = object.selectWorkforceMetric(WorkforceMetricId.AverageAgeYears, options);
-    if (requested.includes(WorkforceMetricId.AverageLengthOfServiceYears)) selections.averageLengthOfServiceYears = object.selectWorkforceMetric(WorkforceMetricId.AverageLengthOfServiceYears, options);
-    if (requested.includes(WorkforceMetricId.NumberOfEmployees)) selections.numberOfEmployees = object.selectWorkforceMetric(WorkforceMetricId.NumberOfEmployees, options);
-    if (requested.includes(WorkforceMetricId.AverageNumberOfTemporaryEmployees)) selections.averageNumberOfTemporaryEmployees = object.selectWorkforceMetric(WorkforceMetricId.AverageNumberOfTemporaryEmployees, options);
+    for (const id of Object.values(WorkforceMetricId)) {
+        if (id !== WorkforceMetricId.AverageAnnualSalary && requested.includes(id))
+            Object.assign(selections, { [id]: object.selectWorkforceMetric(id, options) });
+    }
     return { metadata: normalized, selections };
 }
 /** 明示した複数社をメモリ検索。各社のentity整合を確認し、同一entityの別コード使用を拒否します。 */

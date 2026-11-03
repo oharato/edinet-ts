@@ -13,3 +13,6 @@ dist/
 
 # Local Python build tools
 __pycache__/
+
+# Generated SDK copy of the independent verifier
+src/assets/verify-financial-values.py

@@ -30,26 +30,31 @@ function findJsFiles(dir, fileList = []) {
 /**
  * Add .js extension to relative imports/exports in a file
  */
+function withJsExtension(importPath) {
+    if (importPath === '.' || importPath === '..') return importPath + '/index.js';
+    return importPath.endsWith('/') ? importPath + 'index.js' : importPath + '.js';
+}
+
 function addJsExtensions(filePath) {
     let content = fs.readFileSync(filePath, 'utf8');
     let modified = false;
     
     // Handle dynamic imports import("./path") separately for clarity
-    content = content.replace(/import\s*\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g, (match, importPath) => {
+    content = content.replace(/import\s*\(\s*['"](\.\.?(?:\/[^'"]*)?)['"]\s*\)/g, (match, importPath) => {
         if (importPath.endsWith('.js') || importPath.endsWith('.json')) {
             return match;
         }
         modified = true;
-        return match.replace(importPath, importPath + '.js');
+        return match.replace(importPath, withJsExtension(importPath));
     });
     
     // Handle regular import/export statements with from clause
-    content = content.replace(/from\s+['"](\.\.?\/[^'"]+)['"]/g, (match, importPath) => {
+    content = content.replace(/from\s+['"](\.\.?(?:\/[^'"]*)?)['"]/g, (match, importPath) => {
         if (importPath.endsWith('.js') || importPath.endsWith('.json')) {
             return match;
         }
         modified = true;
-        return match.replace(importPath, importPath + '.js');
+        return match.replace(importPath, withJsExtension(importPath));
     });
     
     if (modified) {
