@@ -928,6 +928,14 @@ DBと一時コピーのfilesystemごとに34 GiBを留保し、stage・SQLite jo
 
 境界検証は[差分適用テスト](../../test/corporate-registry-difference-application.test.ts)を参照してください。実差分・全国DBでの検証、定期起動、正式利用先への反映は別々の証拠として記録します。
 
+### 2026-11-03の実1公表日で確認した範囲
+
+上の新CLIを、保存済み全国6パート5,850,621記録と11月2日差分2,346記録で実行しました。署名の再検査・取込・全記録監査・checkpoint切替が通信0、約565秒で完了し、元入力14点は不変でした。最大観測RSS 723,443,712 bytes、最小空き37,206,454,272 bytes、最小MemAvailable 3,500,195,840 bytesで保護条件内です。同じ実CLIの再実行は約10秒、追加適用0でDB/checkpointのhashも一致しました。
+
+先行の独立SAX照合では差分全70,380原値、8番号の11月3日時点/cutoff前/不足日、EDINET企業マスター6行を確認しました。CLIのcheckpoint内verificationは最終適用日をasOfにします。未作成日を含む別asOfの検索は、保持したmanifestとカレンダーを使う再構成APIで行います。
+
+これは1実公表日の検証です。合成2公表日の再開テストが成功しても、実2公表日や定期serviceを運転済みにはしません。証跡は `data/roadmap/corporate-registry-continuous-differences-20261103/summary.json` と `final-proof-sha256.json` に保存しました。
+
 ## 全国DBの保存量を減らすための予備測定
 
 以下は圧縮Storeを実装する前の測定記録です。現在の使い方と確認範囲は[原値を圧縮して保存する](#原値を圧縮して保存する)を参照してください。

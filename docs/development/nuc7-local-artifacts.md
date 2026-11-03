@@ -21,6 +21,16 @@ node scripts/build-local.mts --output "$OUT" --current
 
 以下の `--current` を付けない手順は、旧3cc4618版の再現条件を残したものです。旧版のtoolchainと期待hashを現行版へ書き換えていません。
 
+## 正式stock-dataへの反映記録（2026-11-03）
+
+固定SDK 3d511d1は[stock-data PR #14](https://github.com/oharato/stock-data/pull/14)でmainへ統合し、正式ローカルcheckoutのvendor/lock/provenance・installed SDKも更新しました。配布328ファイルと48依存の固定lock一致、正式側の型と56回帰、旧SDK一式への限定切戻しと新版復帰を確認しています。旧tgz・元依存ツリー・sourceは保持し、利用者変更6ファイルは不変です。
+
+保持storeの新世代は `edinet-local-artifacts-roadmap/generations/20261103T104214Z-3d511d1-bd0ec69b`、旧世代 `20261029T144841Z-060153c7` へのrollbackと新版復帰も実施しました。正式サービスのNode/npmとpublisherが使う配布物は専用drop-inへ揃え、元unitを保持しています。大容量のstatic buildや予定運転を実行したことは意味しません。stock-data独自の既存Python builderは別リポジトリの機能で、edinet-tsのbuild/実行依存ではありません。
+
+旧版へ戻す場合は、SDKだけでなくpackage/lock/provenance・依存ツリー・対応Nodeを一緒に戻します。旧unitに記録されたNode24.13.0は現在のhostにないため、drop-inを単に削除してそのパスへ戻してはいけません。保持済み依存の限定確認では、利用可能なNode24.22.1を使いました。正式の切戻し手順と元設定は `data/production/stock-data-sdk-20261103/` に保存しています。
+
+配布物のclean installを検証後に依存ツリー全体を同一filesystemで移設し、正式側で再検査しました。正式位置でfresh `npm ci` を実行したとは記録しません。GitHub CIはbase側の別機能も含む131件成功で、正式ローカル最小更新の56件とは確認範囲が異なります。
+
 ## 固定入力と実行
 
 `node scripts/build-local.mts` は、実行時の作業ブランチではなく、明示的に固定されたsource `3cc4618e5fa8d3e35604e15dc49c31f9f35ebdd7` とlockfileを一時checkoutしてbuildする。期待する配布物SHA-256は `69e50093645fdd38a31c46c5b676e7efe32b523033e37def135c3d5b657d7a94`。
