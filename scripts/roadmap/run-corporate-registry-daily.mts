@@ -335,7 +335,8 @@ function signalOwned(tree: ReturnType<typeof processTree>, signal: NodeJS.Signal
   }
 }
 function captureProbes(tree: ReturnType<typeof processTree>, found: Map<string, any>) {
-  const temporary = fs.realpathSync(tmpdir());
+  const temporary = fs.realpathSync(tmpdir()),
+    deferred = new Set<number>();
   for (const p of tree)
     try {
       for (const fd of fs.readdirSync(`/proc/${p.pid}/fd`))
@@ -359,11 +360,15 @@ function captureProbes(tree: ReturnType<typeof processTree>, found: Map<string, 
           )
             found.set(file, { path: file, dev: s.dev, ino: s.ino });
         } catch (e: any) {
-          if (!["ENOENT", "ESRCH"].includes(e.code)) throw e;
+          if (e.code === "EACCES") deferred.add(p.pid);
+          else if (!["ENOENT", "ESRCH"].includes(e.code)) throw e;
         }
     } catch (e: any) {
-      if (!["ENOENT", "ESRCH"].includes(e.code)) throw e;
+      if (e.code === "EACCES") deferred.add(p.pid);
+      else if (!["ENOENT", "ESRCH"].includes(e.code)) throw e;
     }
+  // exec can briefly deny FD discovery; resource/PID checks still run and unknown probes stay untouched.
+  return [...deferred];
 }
 async function cleanProbes(c: CorporateRegistryDailyConfig, job: any, records: any[]) {
   const results: any[] = [];
@@ -676,7 +681,7 @@ async function monitor(
           if (now) assert.equal(now.start, info.start, "Worker PID reused");
         }
         const tree = processTree(child.pid);
-        captureProbes(tree, probes);
+        const probeCaptureDeferredPids = captureProbes(tree, probes);
         const r = resources(c.root, child.pid);
         r.rssBytes = tree.reduce((sum, p) => sum + resources(c.root, p.pid).rssBytes, 0);
         assert(r.rssBytes <= 1024 ** 3, "Worker tree RSS limit");
@@ -684,7 +689,10 @@ async function monitor(
           ...pending,
           execution: info ? { ...info, children: tree, probes: [...probes.values()] } : null,
         });
-        samples.push(r);
+        samples.push({
+          ...r,
+          ...(probeCaptureDeferredPids.length ? { probeCaptureDeferredPids } : {}),
+        });
         assert(performance.now() - started < DEADLINE, "Daily deadline");
       } catch (e: any) {
         stopped = "resource-or-time-limit";

@@ -1,6 +1,7 @@
 import { it, expect, vi, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { CorporateRegistryBlockStore } from "../src/db/corporate-registry-block-store";
@@ -361,12 +362,72 @@ it.each(["query.json", "baseline.json", "job.json", "pending.json"])(
     );
     expect(stopped).toBe(true);
     vi.mocked(fs.renameSync).mockImplementation(native.renameSync);
-    const r = await run(f.configPath, { targetThrough: "2026-10-26", acquire: true });
-    expect(r.status).toBe("accepted");
-    expect(f.requests()).toHaveLength(2);
+    try {
+      const r = await run(f.configPath, { targetThrough: "2026-10-26", acquire: true });
+      expect(r.status).toBe("accepted");
+      expect(f.requests()).toHaveLength(2);
+    } catch (error) {
+      const jobs = path.join(f.root, "jobs"),
+        reports = [];
+      for (const id of fs.readdirSync(jobs))
+        for (const name of fs.readdirSync(path.join(jobs, id)).filter((n) => /^worker-/.test(n))) {
+          const r = JSON.parse(fs.readFileSync(path.join(jobs, id, name), "utf8"));
+          reports.push({
+            id,
+            name,
+            exit: r.exit,
+            stopped: r.stopped,
+            stopDetail: r.stopDetail,
+            samples: r.samples?.slice(-2),
+            stderr: r.stderr?.slice(-4096),
+            stdout: r.stdout?.slice(-2048),
+          });
+        }
+      const dir = fs.mkdtempSync(path.join(tmpdir(), "corporate-daily-init-failure-")),
+        evidence = {
+          case: name,
+          error: String(error),
+          meminfo: fs.readFileSync("/proc/meminfo", "utf8"),
+          reports,
+        };
+      fs.writeFileSync(path.join(dir, "diagnostics.json"), JSON.stringify(evidence, null, 2), {
+        mode: 0o600,
+      });
+      console.error("Daily initialization failure evidence", dir, JSON.stringify(evidence));
+      throw error;
+    }
   },
   30000,
 );
+it("exec遷移のFD探索EACCESは資源検査を続けて次sampleへ延期する", async () => {
+  const f = await fixture(),
+    readDirectory = fs.readdirSync;
+  let injected = false;
+  vi.spyOn(fs, "readdirSync").mockImplementation(((p: any, options: any) => {
+    if (!injected && /^\/proc\/\d+\/fd$/.test(String(p))) {
+      injected = true;
+      throw Object.assign(Error("injected exec FD access transition"), { code: "EACCES" });
+    }
+    return readDirectory(p, options);
+  }) as typeof fs.readdirSync);
+  const result = await run(f.configPath, { targetThrough: "2026-10-26", acquire: true });
+  expect(injected).toBe(true);
+  expect(result.status).toBe("accepted");
+  expect(f.requests()).toHaveLength(2);
+  const dir = path.join(f.root, "jobs", result.jobId),
+    reports = fs
+      .readdirSync(dir)
+      .filter((n) => /^worker-/.test(n))
+      .map((n) => JSON.parse(fs.readFileSync(path.join(dir, n), "utf8")));
+  const sample = reports.flatMap((r) => r.samples).find((s) => s.probeCaptureDeferredPids?.length);
+  expect(sample).toBeDefined();
+  expect(sample.memAvailableBytes).toBeGreaterThanOrEqual(2 * 1024 ** 3);
+  expect(sample.rssBytes).toBeLessThanOrEqual(1024 ** 3);
+  expect(
+    sample.volumes.every((v: any) => BigInt(v.freeBytes) > 34n * 1024n ** 3n + 64n * 1024n ** 2n),
+  ).toBe(true);
+  expect(reports.every((r) => !r.stopped)).toBe(true);
+}, 30000);
 it("未封印collectionの未知内容は上書き/削除せず停止する", async () => {
   const f = await fixture(),
     native = await vi.importActual<typeof import("node:fs")>("node:fs");
