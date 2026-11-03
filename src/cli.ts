@@ -113,6 +113,86 @@ program
   });
 
 /**
+ * 2b. import-archive コマンド: 既存の archive.sqlite から有報を一括ロード
+ */
+program
+  .command("import-archive")
+  .description("既存の archive.sqlite（有報原本アーカイブ）からDuckDBへ一括ロードします")
+  .option(
+    "--archive <path>",
+    "archive.sqlite のパス",
+    "/home/oharato/workspace/edinet-ts/data/production/duck-financial/daily/2026-11-03/candidate/archive.sqlite"
+  )
+  .option("--db <path>", "DuckDBファイルの保存先", "./data/screening.duckdb")
+  .option("-l, --limit <number>", "処理する書類の上限件数 (テスト用)", parseInt)
+  .action(async (options) => {
+    const archivePath = resolve(process.cwd(), options.archive);
+    const dbPath = resolve(process.cwd(), options.db);
+
+    console.log(`Loading from archive: ${archivePath}`);
+    console.log(`Target DuckDB:       ${dbPath}`);
+
+    const { DatabaseSync } = await import("node:sqlite");
+    const { gunzipSync } = await import("node:zlib");
+
+    const sqlite = new DatabaseSync(archivePath, { readOnly: true });
+    const store = new FinancialStore(dbPath);
+    await store.init();
+
+    const parser = new XbrlParser();
+    const extractor = new FinancialExtractor();
+
+    const limitClause = options.limit ? `LIMIT ${options.limit}` : "";
+    const query = `
+      SELECT DISTINCT
+        s.doc_id,
+        c.xml
+      FROM archive_sources s
+      JOIN archive_observations o ON s.doc_id = o.doc_id
+      JOIN archive_contents c ON json_extract(s.body, '$.sourceSha256') = c.sha256
+      WHERE json_extract(o.body, '$.document.docTypeCode') = '120'
+      ORDER BY s.doc_id
+      ${limitClause};
+    `;
+
+    const rows = sqlite.prepare(query).all() as Array<{ doc_id: string; xml: Buffer }>;
+    console.log(`Found ${rows.length} annual reports (code 120) with XBRL content.\n`);
+
+    let successCount = 0;
+    const startTime = Date.now();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        const xmlContent = gunzipSync(row.xml).toString("utf8");
+        const doc = parser.parse(xmlContent);
+        const comparison = extractor.extract(doc);
+        await store.insert(comparison);
+        successCount++;
+
+        if (i % 50 === 0 || i === rows.length - 1) {
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          const name =
+            comparison.metadata.companyName.length > 14
+              ? comparison.metadata.companyName.slice(0, 13) + "…"
+              : comparison.metadata.companyName;
+          process.stdout.write(
+            `\rProgress: [${i + 1}/${rows.length}] (${elapsed}s) - Last: ${name.padEnd(16)}`
+          );
+        }
+      } catch (e: any) {
+        // スキップ
+      }
+    }
+
+    const totalSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(
+      `\n\nDone! Successfully imported ${successCount} companies into DuckDB in ${totalSeconds}s.`
+    );
+    store.close();
+  });
+
+/**
  * 3. screen コマンド: DuckDBから条件検索して表示
  */
 const screenCmd = program
