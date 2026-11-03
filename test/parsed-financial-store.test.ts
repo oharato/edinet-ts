@@ -64,6 +64,47 @@ function rows(path: string, query: string) {
   }
 }
 describe("ParsedFinancialStore", () => {
+  it.each(["US-GAAP", "unknown-standard"])(
+    "%sの解決結果をJ-GAAP辞書へ流さず、既存データと未挿入状態を保つ",
+    (standard) =>
+      withStore((s, path) => {
+        const existing = extraction(),
+          existingId = s.put(existing).id,
+          unsupported = clean(extraction({}, "UNSUPPORTED")),
+          result = unsupported.outcome.result;
+        result.accountingStandard = standard;
+        result.basis.metadata.accountingStandard = standard;
+        for (const group of ["balanceSheet", "details"] as const) {
+          const snapshot = result[group].snapshot;
+          ("metadata" in snapshot ? snapshot.metadata : snapshot).accountingStandard = standard;
+        }
+        const rejectedId = parsedFinancialExtractionId(unsupported.identity);
+        expect(() => s.put(unsupported)).toThrow("未対応の会計基準");
+        expect(s.get(rejectedId)).toBeUndefined();
+        for (const [table, column] of [
+          ["parsed_extractions", "id"],
+          ["parsed_rows", "extraction"],
+          ["parsed_values", "extraction"],
+        ])
+          expect(rows(path, `SELECT * FROM ${table} WHERE ${column}='${rejectedId}'`)).toEqual([]);
+        expect(s.get(existingId)).toEqual(clean(existing));
+        expect(s.put(extraction({}, "AFTER-REJECTION")).inserted).toBe(true);
+      }),
+  );
+  it("全groupが保留でも未知の解決済み基準を保存しない", () =>
+    withStore((s, path) => {
+      const unsupported = clean(extraction());
+      unsupported.outcome.result.accountingStandard = "US-GAAP";
+      unsupported.outcome.result.basis.metadata.accountingStandard = "US-GAAP";
+      for (const group of ["balanceSheet", "details"])
+        unsupported.outcome.result[group] = {
+          status: "unavailable",
+          reason: "current-period-context-absent",
+        };
+      expect(() => s.put(unsupported)).toThrow("未対応の会計基準");
+      for (const table of ["parsed_extractions", "parsed_rows", "parsed_values"])
+        expect(rows(path, `SELECT * FROM ${table}`)).toEqual([]);
+    }));
   it.each(["Japan GAAP", "IFRS"])("保存した%sの原値・証跡・期間をXMLなしで再読取", (standard) =>
     withStore((s, path) => {
       const input = extraction({ standard }),

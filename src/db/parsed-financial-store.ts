@@ -38,6 +38,16 @@ export const parsedFinancialMappingVersions = () => ({
   ifrsBalanceSheet: IFRS_BALANCE_SHEET_REGISTRY_VERSION,
   ifrsDetails: IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION,
 });
+function projectionRegistries(standard: unknown) {
+  switch (standard) {
+    case "J-GAAP":
+      return { balanceSheet: BALANCE_SHEET_REGISTRY, details: FINANCIAL_DETAIL_REGISTRY };
+    case "IFRS":
+      return { balanceSheet: IFRS_BALANCE_SHEET_REGISTRY, details: IFRS_FINANCIAL_DETAIL_REGISTRY };
+    default:
+      throw new Error("未対応の会計基準を解析済みStoreへ保存できません");
+  }
+}
 export interface ParsedFinancialIdentity {
   docID: string;
   sourceSha256: string;
@@ -207,6 +217,7 @@ function prepare(input: ParsedFinancialExtraction) {
         !basis.securityCode
       )
         throw new Error("確定した財務基準が必要です");
+      const registries = projectionRegistries(basis.accountingStandard);
       for (const group of ["balanceSheet", "details"] as const) {
         const item = result[group];
         if (item.status === "unavailable") {
@@ -270,14 +281,7 @@ function prepare(input: ParsedFinancialExtraction) {
           body,
         ];
         rows.push([...row, sha(canonical(row))]);
-        const registry =
-          group === "balanceSheet"
-            ? basis.accountingStandard === "IFRS"
-              ? IFRS_BALANCE_SHEET_REGISTRY
-              : BALANCE_SHEET_REGISTRY
-            : basis.accountingStandard === "IFRS"
-              ? IFRS_FINANCIAL_DETAIL_REGISTRY
-              : FINANCIAL_DETAIL_REGISTRY;
+        const registry = registries[group];
         const selections = snapshot.selections as Record<string, FactSelectionResult<string>>;
         if (!Object.keys(selections).length) throw new Error("指標選択がありません");
         if (
