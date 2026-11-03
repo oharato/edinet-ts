@@ -1,4 +1,4 @@
-/** 既存の固定commitと配布物hashを再現する。現在のHEADを公開する処理ではない。 */
+/** 明示した現行版、または旧固定版の配布物hashを再現する。作業中のHEADは使わない。 */
 import {
   chmodSync,
   closeSync,
@@ -16,15 +16,21 @@ import { execFileSync } from "node:child_process";
 import { parseArgs } from "node:util";
 import { activate, archive, digest, files, locked, publish, run } from "./local-artifact-store.mts";
 
-const PIN = "3cc4618e5fa8d3e35604e15dc49c31f9f35ebdd7";
-const EXPECTED = "69e50093645fdd38a31c46c5b676e7efe32b523033e37def135c3d5b657d7a94";
 const { values } = parseArgs({
   options: {
     output: { type: "string" },
     rollback: { type: "string" },
+    current: { type: "boolean" },
     "dry-run": { type: "boolean" },
   },
 });
+const PIN = values.current
+  ? "3d511d1aa3c894185ab574300f342d07551dffd7"
+  : "3cc4618e5fa8d3e35604e15dc49c31f9f35ebdd7";
+const EXPECTED = values.current
+  ? "d8781379697f57e81683e4952db226f33ad395d493fd9333a25eea0d98271140"
+  : "69e50093645fdd38a31c46c5b676e7efe32b523033e37def135c3d5b657d7a94";
+const NODE = values.current ? "v26.13.0" : "v26.12.1";
 if (!values.output) throw Error("--output is required");
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), ".."),
   root = resolve(values.output);
@@ -38,6 +44,9 @@ if (values["dry-run"]) {
   console.log(
     JSON.stringify({
       sourceCommit: PIN,
+      expectedArtifactSha256: EXPECTED,
+      node: NODE,
+      npm: "12.2.1",
       output: root,
       network: "offline npm cache only",
       fetchData: false,
@@ -47,8 +56,8 @@ if (values["dry-run"]) {
 } else {
   const version = (command: string) =>
     execFileSync(command, ["--version"], { encoding: "utf8" }).trim();
-  if (!values.rollback && (version("node") !== "v26.12.1" || version("npm") !== "12.2.1"))
-    throw Error("Use the pinned Node v26.12.1 and npm 12.2.1 toolchain");
+  if (!values.rollback && (version("node") !== NODE || version("npm") !== "12.2.1"))
+    throw Error(`Use the pinned Node ${NODE} and npm 12.2.1 toolchain`);
   const mask = process.umask(0o077);
   try {
     locked(root, () => {
@@ -57,8 +66,9 @@ if (values["dry-run"]) {
         return;
       }
       const space = statfsSync(root, { bigint: true });
-      if (space.bavail * space.bsize < 2n * 1024n ** 3n)
-        throw Error("At least 2 GiB of free space required");
+      const requiredGiB = values.current ? 36n : 2n;
+      if (space.bavail * space.bsize < requiredGiB * 1024n ** 3n)
+        throw Error(`At least ${requiredGiB} GiB of free space required`);
       const name =
         new Date()
           .toISOString()

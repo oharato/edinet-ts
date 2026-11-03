@@ -2,8 +2,24 @@
 
 固定したソースからローカル配布物を作り、検査・保持・切替を行う手順です。配布物を作れたことと、利用先へ切り替わったことを別々に確認します。
 
-状態: 現行の保存方針。更新日: 2026-10-30。[ADR 0001](../adr/0001-local-distribution.md) を参照。
+状態: 現行の保存方針。更新日: 2026-11-03。[ADR 0001](../adr/0001-local-distribution.md) を参照。
 GitHubの保存量を増やさず、固定sourceからローカルで配布物を再現する。既存の公開物は削除しない。手動workflowもtag・release・npm/GitHub Packages公開は行わない。
+
+## 2026-11-03の固定版を再現する
+
+現行SDKの固定sourceは `3d511d1aa3c894185ab574300f342d07551dffd7`、配布物SHA-256は `d8781379697f57e81683e4952db226f33ad395d493fd9333a25eea0d98271140` です。Node 26.13.0 / npm 12.2.1で、明示的に `--current` を付けます。作業中のHEADを使う指定ではありません。
+
+```sh
+OUT=/absolute/private/path/edinet-ts-artifacts
+node scripts/build-local.mts --output "$OUT" --current --dry-run
+node scripts/build-local.mts --output "$OUT" --current
+```
+
+空き容量は34 GiBの留保と作業用2 GiBを合わせて36 GiB以上が必要です。クリーン固定checkout、offline依存導入、build、全テスト、期待hash確認、保持世代への切替は従来と同じです。テストやhash検査が失敗した場合はcurrentを変更しません。rollbackはどちらの固定版も既存の `--rollback` を使います。
+
+配布物作成の限定検証では328メンバー・652,514 bytesで、固定sourceのclean buildと検証済みdist 325ファイルがbyte一致しました。テスト済み951fbffと3d511d1はGit treeが完全に同一で、261ファイル・5,523件成功・1件skip、ESM4件成功の証拠をその同一性とともに保持しています。これは配布物の検証であり、正式stock-dataへのvendor反映やruntime切替とは別です。証跡は `data/roadmap/fixed-artifact-3d511d1-20261103/` に保存しました。
+
+以下の `--current` を付けない手順は、旧3cc4618版の再現条件を残したものです。旧版のtoolchainと期待hashを現行版へ書き換えていません。
 
 ## 固定入力と実行
 
