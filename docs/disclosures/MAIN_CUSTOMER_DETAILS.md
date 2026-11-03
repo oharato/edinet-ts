@@ -9,18 +9,29 @@
 ## 入力と出典
 
 ```ts
-import { extractMainCustomerDetails, searchMainCustomerDetails, DisclosureTableKind } from "edinet-ts";
+import {
+  extractMainCustomerDetails,
+  searchMainCustomerDetails,
+  DisclosureTableKind,
+} from "edinet-ts";
 const document = {
   xml: savedXml,
-  selection: { docID: "SAMPLE", kind: DisclosureTableKind.MainCustomers, contextRef: "CurrentYearDuration" },
+  selection: {
+    docID: "SAMPLE",
+    kind: DisclosureTableKind.MainCustomers,
+    contextRef: "CurrentYearDuration",
+  },
   accountingStandard: "J-GAAP" as const,
   scope: "Consolidated" as const,
-  proof: { rawSha256: reviewedFragmentHash }
+  proof: { rawSha256: reviewedFragmentHash },
 };
 const detail = extractMainCustomerDetails(document);
 const matches = searchMainCustomerDetails([document], {
-  period: { startDate: "2025-04-01", endDate: "2026-03-31" }, scope: "Consolidated",
-  customerContains: "顧客名", revenue: { operator: "gte", value: 60_000_000_000 }, sort: "revenue-desc"
+  period: { startDate: "2025-04-01", endDate: "2026-03-31" },
+  scope: "Consolidated",
+  customerContains: "顧客名",
+  revenue: { operator: "gte", value: 60_000_000_000 },
+  sort: "revenue-desc",
 });
 ```
 

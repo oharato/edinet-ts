@@ -1,63 +1,425 @@
-import{mkdtempSync,rmSync,readFileSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';import{it,expect,vi}from'vitest';
-import{EdinetRepository}from'../src/db/edinet-repository';import{ObservedFinancialArchive,backfillFinancialDocumentLists,archiveFinancialDocumentObservations}from'../src/index';import type{EdinetDocument}from'../src/edinet-xbrl-downloader';
-const doc=(docID:string):EdinetDocument=>({docID,docDescription:'fixture',docTypeCode:'120',docInfoEditStatus:0,withdrawalStatus:'0',disclosureStatus:'0',edinetCode:'E12345',secCode:'10010',periodStart:'2025-04-01',periodEnd:'2026-03-31',submitDateTime:'2026-06-24 10:00'});
-async function fixture(fn:(s:ReturnType<typeof setup>)=>Promise<void>){const s=setup();try{await fn(s)}finally{s.close();vi.useRealTimers();}}
-function setup(){const dir=mkdtempSync(join(tmpdir(),'financial-document-sync-')),metadataPath=join(dir,'metadata.sqlite'),archivePath=join(dir,'archive.sqlite'),repo=new EdinetRepository(metadataPath),archive=new ObservedFinancialArchive(archivePath);return{dir,metadataPath,archivePath,repo,archive,close(){try{repo.close();}catch{}archive.close();rmSync(dir,{recursive:true,force:true})}}}
-it('空の日も完了証跡を保存し、日別取得後に原観測を転送・再投入する',()=>fixture(async s=>{
- const f=vi.fn(async(date:string)=>date==='2026-06-24'?[]:[doc('A')]);let r=await backfillFinancialDocumentLists(s.repo,f,{startDate:'2026-06-24',endDate:'2026-06-25'});expect(r.complete).toBe(true);expect(r.days.map(d=>d.documents)).toEqual([0,1]);expect(s.repo.getLastObservationSequence()).toBe(1);r=await backfillFinancialDocumentLists(s.repo,f,{startDate:'2026-06-24',endDate:'2026-06-25'});expect(r.days.every(d=>d.status==='cached')).toBe(true);expect(f).toHaveBeenCalledTimes(2);
- const moved=archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'test'});expect(moved).toMatchObject({insertedObservations:1,complete:true,nextAfterSequence:1});const stored=s.archive.observation('metadata:test:1')!;expect(stored.document.docID).toBe('A');expect(Date.parse(stored.observedAt)).toBeGreaterThan(Date.parse('2026-06-25'));expect(archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'test'}).insertedObservations).toBe(0);
-}));
-it('失敗日を秘匿してcursorで後続を処理し、再巡回で失敗だけ取り直す',()=>fixture(async s=>{
- let fail=true;const f=vi.fn(async(date:string)=>{if(date==='2026-06-24'&&fail)throw Error('SECRET');return[]});const q={startDate:'2026-06-24',endDate:'2026-06-26',maxDays:1};let r=await backfillFinancialDocumentLists(s.repo,f,q);expect(r).toMatchObject({complete:false,remainingDates:2,nextAfterDate:'2026-06-24'});expect(JSON.stringify(r)).not.toContain('SECRET');r=await backfillFinancialDocumentLists(s.repo,f,{...q,afterDate:r.nextAfterDate,maxDays:2});expect(r.remainingDates).toBe(0);expect(r.complete).toBe(false);fail=false;r=await backfillFinancialDocumentLists(s.repo,f,{...q,maxDays:3});expect(r.complete).toBe(true);expect(f).toHaveBeenCalledTimes(4);
-}));
-it('当日の一覧は翌日以降に再取得してから完了にする',()=>fixture(async s=>{
- vi.useFakeTimers();vi.setSystemTime(new Date('2026-06-24T01:00:00Z'));const q={startDate:'2026-06-24',endDate:'2026-06-24'},f=vi.fn(async()=>[]);expect((await backfillFinancialDocumentLists(s.repo,f,q)).complete).toBe(false);vi.setSystemTime(new Date('2026-06-24T15:00:00Z'));expect((await backfillFinancialDocumentLists(s.repo,f,q)).complete).toBe(true);await backfillFinancialDocumentLists(s.repo,f,q);expect(f).toHaveBeenCalledTimes(2);
-}));
-it('受信中の中断で完了証跡や原観測を保存しない',()=>fixture(async s=>{
- const c=new AbortController();const r=await backfillFinancialDocumentLists(s.repo,async()=>{c.abort();return[doc('A')]},{startDate:'2026-06-24',endDate:'2026-06-25',signal:c.signal});expect(r).toMatchObject({aborted:true,remainingDates:2});expect(s.repo.getLastObservationSequence()).toBe(0);expect(s.repo.hasCompleteListForDate('2026-06-24')).toBe(false);
-}));
-it('batchとcursorで転送し、別DB/namespaceへcursorを流用しない',()=>fixture(async s=>{
- s.repo.saveDocumentList(['A','B','C','D','E'].map(doc),'2026-06-24');let r=archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'repo',pageSize:2,maxPages:1});expect(r).toMatchObject({complete:false,nextAfterSequence:2,readObservations:2});r=archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'repo',afterSequence:r.nextAfterSequence,pageSize:2});expect(r).toMatchObject({complete:true,insertedObservations:3,nextAfterSequence:5});const other=new ObservedFinancialArchive(':memory:');try{expect(()=>archiveFinancialDocumentObservations(s.repo,other,{sourceId:'repo',afterSequence:2})).toThrow('保存観測');}finally{other.close();}expect(()=>archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'other',afterSequence:2})).toThrow('保存観測');expect(()=>archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'repo',afterSequence:6})).toThrow('末尾');
-}));
-it('取得元ごとのnamespaceで同じsequenceの観測を分ける',()=>fixture(async s=>{
- s.repo.saveDocumentList([doc('A')],'2026-06-24');archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'one'});const other=new EdinetRepository(':memory:');try{other.saveDocumentList([doc('B')],'2026-06-24');archiveFinancialDocumentObservations(other,s.archive,{sourceId:'two'});expect(s.archive.observation('metadata:two:1')!.document.docID).toBe('B');expect(()=>archiveFinancialDocumentObservations(other,s.archive,{sourceId:'one'})).toThrow('同じ観測ID');}finally{other.close();}
-}));
-it('転送中に増えた観測は開始時の末尾より先なので次の巡回へ回す',()=>fixture(async s=>{
- s.repo.saveDocumentList([doc('A')],'2026-06-24');const original=s.repo.getDocumentObservations.bind(s.repo);let once=true;s.repo.getDocumentObservations=(q)=>{if(once){once=false;s.repo.saveDocumentList([doc('B')],'2026-06-25');}return original(q);};const first=archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'repo'});expect(first).toMatchObject({throughSequence:1,nextAfterSequence:1,insertedObservations:1,complete:true});expect(s.archive.observation('metadata:repo:2')).toBeUndefined();expect(archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'repo',afterSequence:1}).insertedObservations).toBe(1);
-}));
-it('二つ目のbatchが失敗しても最初のcommitを残して再投入できる',()=>fixture(async s=>{
- s.repo.saveDocumentList(['A','B','C'].map(doc),'2026-06-24');const original=s.archive.append.bind(s.archive);let calls=0;s.archive.append=(...args)=>{if(args[0].length&&++calls===2)throw Error('storage');return original(...args);};expect(()=>archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'repo',pageSize:1})).toThrow('storage');s.archive.append=original;expect(s.archive.observation('metadata:repo:1')).toBeDefined();expect(archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'repo'})).toMatchObject({insertedObservations:2,complete:true});
-}));
-it('readOnlyメタデータから転送しても元ファイルは不変で、補完通信は禁止する',()=>fixture(async s=>{
- s.repo.saveDocumentList([doc('A')],'2026-06-24');s.repo.close();const before=readFileSync(s.metadataPath),ro=new EdinetRepository(s.metadataPath,{readOnly:true});try{expect(archiveFinancialDocumentObservations(ro,s.archive,{sourceId:'repo'}).complete).toBe(true);const f=vi.fn(async()=>[]);await expect(backfillFinancialDocumentLists(ro,f,{startDate:'2026-06-24',endDate:'2026-06-24'})).rejects.toThrow('書込');expect(f).not.toHaveBeenCalled();}finally{ro.close();}expect(readFileSync(s.metadataPath)).toEqual(before);
-}));
-it('不正な範囲・batch指定を通信/転送前に拒否する',()=>fixture(async s=>{
- const f=vi.fn(async()=>[]),base={startDate:'2026-06-24',endDate:'2026-06-25'};for(const q of [{...base,endDate:'2099-01-01'},{...base,startDate:'bad'},{...base,maxDays:0},{...base,afterDate:'2026-06-23'},{...base,other:1}])await expect(backfillFinancialDocumentLists(s.repo,f,q as never)).rejects.toThrow();for(const q of [{sourceId:''},{sourceId:'repo',pageSize:1001},{sourceId:'repo',maxPages:0},{sourceId:'repo',other:true}])expect(()=>archiveFinancialDocumentObservations(s.repo,s.archive,q as never)).toThrow();expect(f).not.toHaveBeenCalled();
-}));
-it('同じ再観測開始時刻で分割再開し、完了済みの古い一覧も履歴を保って更新する',()=>fixture(async s=>{
- vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-06-26T00:00:00Z'));s.repo.saveDocumentList([doc('A')],'2026-06-24');s.repo.saveDocumentList([doc('B')],'2026-06-25');const q={startDate:'2026-06-24',endDate:'2026-06-25',refreshAfter:'2026-06-26T01:00:00Z',maxDays:1};vi.setSystemTime(new Date(q.refreshAfter));
- const f=vi.fn(async(date:string)=>[{...doc(date==='2026-06-24'?'A':'B'),withdrawalStatus:'2'}]);const first=await backfillFinancialDocumentLists(s.repo,f,q);expect(first).toMatchObject({complete:false,nextAfterDate:'2026-06-24',remainingDates:1,days:[{status:'fetched',closed:true}]});expect(s.repo.hasCompleteListForDate('2026-06-25')).toBe(true);expect(s.repo.hasCompleteListForDate('2026-06-25',q.refreshAfter)).toBe(false);
- const second=await backfillFinancialDocumentLists(s.repo,f,{...q,afterDate:first.nextAfterDate});expect(second.complete).toBe(true);expect(f).toHaveBeenCalledTimes(2);expect(s.repo.getLastObservationSequence()).toBe(4);
- const replay=await backfillFinancialDocumentLists(s.repo,f,q);expect(replay.days.map(d=>d.status)).toEqual(['cached','cached']);expect(f).toHaveBeenCalledTimes(2);expect(s.repo.getLastObservationSequence()).toBe(4);
- expect(s.repo.getDocumentObservations({docID:'A'}).map(o=>[o.observedAt,o.document.withdrawalStatus])).toEqual([['2026-06-26T00:00:00.000Z','0'],['2026-06-26T01:00:00.000Z','2']]);
- expect(s.repo.hasCompleteListForDate('2026-06-24','2026-06-26T10:00:00+09:00')).toBe(true);expect(s.repo.hasCompleteListForDate('2026-06-24','2026-06-26T01:00:00.001Z')).toBe(false);
-}));
-it('再観測失敗を古い完了証跡で成功にせず、同じ開始時刻で失敗日だけ取り直す',()=>fixture(async s=>{
- vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-06-26T00:00:00Z'));for(const day of ['2026-06-24','2026-06-25'])s.repo.saveDocumentList([doc(day)],day);vi.setSystemTime(new Date('2026-06-26T01:00:00Z'));let failed=true;const f=vi.fn(async(date:string)=>{if(date==='2026-06-24'&&failed)throw Error('SECRET');return[doc(date)]}),q={startDate:'2026-06-24',endDate:'2026-06-25',refreshAfter:'2026-06-26T01:00:00Z'};
- const first=await backfillFinancialDocumentLists(s.repo,f,q);expect(first).toMatchObject({complete:false,remainingDates:0,days:[{status:'failed',closed:false},{status:'fetched',closed:true}]});expect(JSON.stringify(first)).not.toContain('SECRET');expect(s.repo.getLastObservationSequence()).toBe(3);
- failed=false;const next=await backfillFinancialDocumentLists(s.repo,f,q);expect(next).toMatchObject({complete:true,days:[{status:'fetched'},{status:'cached'}]});expect(f).toHaveBeenCalledTimes(3);expect(s.repo.getLastObservationSequence()).toBe(4);
-}));
-it('空の一覧も再観測証跡を更新し、翌実行の新しい開始時刻で再取得する',()=>fixture(async s=>{
- vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-06-26T00:00:00Z'));s.repo.saveDocumentList([],'2026-06-24');vi.setSystemTime(new Date('2026-06-26T01:00:00Z'));const f=vi.fn(async()=>[]),q={startDate:'2026-06-24',endDate:'2026-06-24',refreshAfter:'2026-06-26T01:00:00Z'};expect((await backfillFinancialDocumentLists(s.repo,f,q)).complete).toBe(true);expect(s.repo.getLastObservationSequence()).toBe(0);vi.setSystemTime(new Date('2026-06-27T01:00:00Z'));expect((await backfillFinancialDocumentLists(s.repo,f,{...q,refreshAfter:'2026-06-27T01:00:00Z'})).days[0].status).toBe('fetched');expect(f).toHaveBeenCalledTimes(2);
- for(const refreshAfter of ['SECRET','2026-06-27T01:00:00','2099-01-01T00:00:00Z'])await expect(backfillFinancialDocumentLists(s.repo,f,{...q,refreshAfter})).rejects.toThrow();expect(()=>s.repo.hasCompleteListForDate(q.startDate,'bad')).toThrow();
-}));
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { it, expect, vi } from "vitest";
+import { EdinetRepository } from "../src/db/edinet-repository";
+import {
+  ObservedFinancialArchive,
+  backfillFinancialDocumentLists,
+  archiveFinancialDocumentObservations,
+} from "../src/index";
+import type { EdinetDocument } from "../src/edinet-xbrl-downloader";
+const doc = (docID: string): EdinetDocument => ({
+  docID,
+  docDescription: "fixture",
+  docTypeCode: "120",
+  docInfoEditStatus: 0,
+  withdrawalStatus: "0",
+  disclosureStatus: "0",
+  edinetCode: "E12345",
+  secCode: "10010",
+  periodStart: "2025-04-01",
+  periodEnd: "2026-03-31",
+  submitDateTime: "2026-06-24 10:00",
+});
+async function fixture(fn: (s: ReturnType<typeof setup>) => Promise<void>) {
+  const s = setup();
+  try {
+    await fn(s);
+  } finally {
+    s.close();
+    vi.useRealTimers();
+  }
+}
+function setup() {
+  const dir = mkdtempSync(join(tmpdir(), "financial-document-sync-")),
+    metadataPath = join(dir, "metadata.sqlite"),
+    archivePath = join(dir, "archive.sqlite"),
+    repo = new EdinetRepository(metadataPath),
+    archive = new ObservedFinancialArchive(archivePath);
+  return {
+    dir,
+    metadataPath,
+    archivePath,
+    repo,
+    archive,
+    close() {
+      try {
+        repo.close();
+      } catch {}
+      archive.close();
+      rmSync(dir, { recursive: true, force: true });
+    },
+  };
+}
+it("空の日も完了証跡を保存し、日別取得後に原観測を転送・再投入する", () =>
+  fixture(async (s) => {
+    const f = vi.fn(async (date: string) => (date === "2026-06-24" ? [] : [doc("A")]));
+    let r = await backfillFinancialDocumentLists(s.repo, f, {
+      startDate: "2026-06-24",
+      endDate: "2026-06-25",
+    });
+    expect(r.complete).toBe(true);
+    expect(r.days.map((d) => d.documents)).toEqual([0, 1]);
+    expect(s.repo.getLastObservationSequence()).toBe(1);
+    r = await backfillFinancialDocumentLists(s.repo, f, {
+      startDate: "2026-06-24",
+      endDate: "2026-06-25",
+    });
+    expect(r.days.every((d) => d.status === "cached")).toBe(true);
+    expect(f).toHaveBeenCalledTimes(2);
+    const moved = archiveFinancialDocumentObservations(s.repo, s.archive, { sourceId: "test" });
+    expect(moved).toMatchObject({ insertedObservations: 1, complete: true, nextAfterSequence: 1 });
+    const stored = s.archive.observation("metadata:test:1")!;
+    expect(stored.document.docID).toBe("A");
+    expect(Date.parse(stored.observedAt)).toBeGreaterThan(Date.parse("2026-06-25"));
+    expect(
+      archiveFinancialDocumentObservations(s.repo, s.archive, { sourceId: "test" })
+        .insertedObservations,
+    ).toBe(0);
+  }));
+it("失敗日を秘匿してcursorで後続を処理し、再巡回で失敗だけ取り直す", () =>
+  fixture(async (s) => {
+    let fail = true;
+    const f = vi.fn(async (date: string) => {
+      if (date === "2026-06-24" && fail) throw Error("SECRET");
+      return [];
+    });
+    const q = { startDate: "2026-06-24", endDate: "2026-06-26", maxDays: 1 };
+    let r = await backfillFinancialDocumentLists(s.repo, f, q);
+    expect(r).toMatchObject({ complete: false, remainingDates: 2, nextAfterDate: "2026-06-24" });
+    expect(JSON.stringify(r)).not.toContain("SECRET");
+    r = await backfillFinancialDocumentLists(s.repo, f, {
+      ...q,
+      afterDate: r.nextAfterDate,
+      maxDays: 2,
+    });
+    expect(r.remainingDates).toBe(0);
+    expect(r.complete).toBe(false);
+    fail = false;
+    r = await backfillFinancialDocumentLists(s.repo, f, { ...q, maxDays: 3 });
+    expect(r.complete).toBe(true);
+    expect(f).toHaveBeenCalledTimes(4);
+  }));
+it("当日の一覧は翌日以降に再取得してから完了にする", () =>
+  fixture(async (s) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-24T01:00:00Z"));
+    const q = { startDate: "2026-06-24", endDate: "2026-06-24" },
+      f = vi.fn(async () => []);
+    expect((await backfillFinancialDocumentLists(s.repo, f, q)).complete).toBe(false);
+    vi.setSystemTime(new Date("2026-06-24T15:00:00Z"));
+    expect((await backfillFinancialDocumentLists(s.repo, f, q)).complete).toBe(true);
+    await backfillFinancialDocumentLists(s.repo, f, q);
+    expect(f).toHaveBeenCalledTimes(2);
+  }));
+it("受信中の中断で完了証跡や原観測を保存しない", () =>
+  fixture(async (s) => {
+    const c = new AbortController();
+    const r = await backfillFinancialDocumentLists(
+      s.repo,
+      async () => {
+        c.abort();
+        return [doc("A")];
+      },
+      { startDate: "2026-06-24", endDate: "2026-06-25", signal: c.signal },
+    );
+    expect(r).toMatchObject({ aborted: true, remainingDates: 2 });
+    expect(s.repo.getLastObservationSequence()).toBe(0);
+    expect(s.repo.hasCompleteListForDate("2026-06-24")).toBe(false);
+  }));
+it("batchとcursorで転送し、別DB/namespaceへcursorを流用しない", () =>
+  fixture(async (s) => {
+    s.repo.saveDocumentList(["A", "B", "C", "D", "E"].map(doc), "2026-06-24");
+    let r = archiveFinancialDocumentObservations(s.repo, s.archive, {
+      sourceId: "repo",
+      pageSize: 2,
+      maxPages: 1,
+    });
+    expect(r).toMatchObject({ complete: false, nextAfterSequence: 2, readObservations: 2 });
+    r = archiveFinancialDocumentObservations(s.repo, s.archive, {
+      sourceId: "repo",
+      afterSequence: r.nextAfterSequence,
+      pageSize: 2,
+    });
+    expect(r).toMatchObject({ complete: true, insertedObservations: 3, nextAfterSequence: 5 });
+    const other = new ObservedFinancialArchive(":memory:");
+    try {
+      expect(() =>
+        archiveFinancialDocumentObservations(s.repo, other, { sourceId: "repo", afterSequence: 2 }),
+      ).toThrow("保存観測");
+    } finally {
+      other.close();
+    }
+    expect(() =>
+      archiveFinancialDocumentObservations(s.repo, s.archive, {
+        sourceId: "other",
+        afterSequence: 2,
+      }),
+    ).toThrow("保存観測");
+    expect(() =>
+      archiveFinancialDocumentObservations(s.repo, s.archive, {
+        sourceId: "repo",
+        afterSequence: 6,
+      }),
+    ).toThrow("末尾");
+  }));
+it("取得元ごとのnamespaceで同じsequenceの観測を分ける", () =>
+  fixture(async (s) => {
+    s.repo.saveDocumentList([doc("A")], "2026-06-24");
+    archiveFinancialDocumentObservations(s.repo, s.archive, { sourceId: "one" });
+    const other = new EdinetRepository(":memory:");
+    try {
+      other.saveDocumentList([doc("B")], "2026-06-24");
+      archiveFinancialDocumentObservations(other, s.archive, { sourceId: "two" });
+      expect(s.archive.observation("metadata:two:1")!.document.docID).toBe("B");
+      expect(() =>
+        archiveFinancialDocumentObservations(other, s.archive, { sourceId: "one" }),
+      ).toThrow("同じ観測ID");
+    } finally {
+      other.close();
+    }
+  }));
+it("転送中に増えた観測は開始時の末尾より先なので次の巡回へ回す", () =>
+  fixture(async (s) => {
+    s.repo.saveDocumentList([doc("A")], "2026-06-24");
+    const original = s.repo.getDocumentObservations.bind(s.repo);
+    let once = true;
+    s.repo.getDocumentObservations = (q) => {
+      if (once) {
+        once = false;
+        s.repo.saveDocumentList([doc("B")], "2026-06-25");
+      }
+      return original(q);
+    };
+    const first = archiveFinancialDocumentObservations(s.repo, s.archive, { sourceId: "repo" });
+    expect(first).toMatchObject({
+      throughSequence: 1,
+      nextAfterSequence: 1,
+      insertedObservations: 1,
+      complete: true,
+    });
+    expect(s.archive.observation("metadata:repo:2")).toBeUndefined();
+    expect(
+      archiveFinancialDocumentObservations(s.repo, s.archive, {
+        sourceId: "repo",
+        afterSequence: 1,
+      }).insertedObservations,
+    ).toBe(1);
+  }));
+it("二つ目のbatchが失敗しても最初のcommitを残して再投入できる", () =>
+  fixture(async (s) => {
+    s.repo.saveDocumentList(["A", "B", "C"].map(doc), "2026-06-24");
+    const original = s.archive.append.bind(s.archive);
+    let calls = 0;
+    s.archive.append = (...args) => {
+      if (args[0].length && ++calls === 2) throw Error("storage");
+      return original(...args);
+    };
+    expect(() =>
+      archiveFinancialDocumentObservations(s.repo, s.archive, { sourceId: "repo", pageSize: 1 }),
+    ).toThrow("storage");
+    s.archive.append = original;
+    expect(s.archive.observation("metadata:repo:1")).toBeDefined();
+    expect(
+      archiveFinancialDocumentObservations(s.repo, s.archive, { sourceId: "repo" }),
+    ).toMatchObject({ insertedObservations: 2, complete: true });
+  }));
+it("readOnlyメタデータから転送しても元ファイルは不変で、補完通信は禁止する", () =>
+  fixture(async (s) => {
+    s.repo.saveDocumentList([doc("A")], "2026-06-24");
+    s.repo.close();
+    const before = readFileSync(s.metadataPath),
+      ro = new EdinetRepository(s.metadataPath, { readOnly: true });
+    try {
+      expect(
+        archiveFinancialDocumentObservations(ro, s.archive, { sourceId: "repo" }).complete,
+      ).toBe(true);
+      const f = vi.fn(async () => []);
+      await expect(
+        backfillFinancialDocumentLists(ro, f, { startDate: "2026-06-24", endDate: "2026-06-24" }),
+      ).rejects.toThrow("書込");
+      expect(f).not.toHaveBeenCalled();
+    } finally {
+      ro.close();
+    }
+    expect(readFileSync(s.metadataPath)).toEqual(before);
+  }));
+it("不正な範囲・batch指定を通信/転送前に拒否する", () =>
+  fixture(async (s) => {
+    const f = vi.fn(async () => []),
+      base = { startDate: "2026-06-24", endDate: "2026-06-25" };
+    for (const q of [
+      { ...base, endDate: "2099-01-01" },
+      { ...base, startDate: "bad" },
+      { ...base, maxDays: 0 },
+      { ...base, afterDate: "2026-06-23" },
+      { ...base, other: 1 },
+    ])
+      await expect(backfillFinancialDocumentLists(s.repo, f, q as never)).rejects.toThrow();
+    for (const q of [
+      { sourceId: "" },
+      { sourceId: "repo", pageSize: 1001 },
+      { sourceId: "repo", maxPages: 0 },
+      { sourceId: "repo", other: true },
+    ])
+      expect(() => archiveFinancialDocumentObservations(s.repo, s.archive, q as never)).toThrow();
+    expect(f).not.toHaveBeenCalled();
+  }));
+it("同じ再観測開始時刻で分割再開し、完了済みの古い一覧も履歴を保って更新する", () =>
+  fixture(async (s) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-26T00:00:00Z"));
+    s.repo.saveDocumentList([doc("A")], "2026-06-24");
+    s.repo.saveDocumentList([doc("B")], "2026-06-25");
+    const q = {
+      startDate: "2026-06-24",
+      endDate: "2026-06-25",
+      refreshAfter: "2026-06-26T01:00:00Z",
+      maxDays: 1,
+    };
+    vi.setSystemTime(new Date(q.refreshAfter));
+    const f = vi.fn(async (date: string) => [
+      { ...doc(date === "2026-06-24" ? "A" : "B"), withdrawalStatus: "2" },
+    ]);
+    const first = await backfillFinancialDocumentLists(s.repo, f, q);
+    expect(first).toMatchObject({
+      complete: false,
+      nextAfterDate: "2026-06-24",
+      remainingDates: 1,
+      days: [{ status: "fetched", closed: true }],
+    });
+    expect(s.repo.hasCompleteListForDate("2026-06-25")).toBe(true);
+    expect(s.repo.hasCompleteListForDate("2026-06-25", q.refreshAfter)).toBe(false);
+    const second = await backfillFinancialDocumentLists(s.repo, f, {
+      ...q,
+      afterDate: first.nextAfterDate,
+    });
+    expect(second.complete).toBe(true);
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(s.repo.getLastObservationSequence()).toBe(4);
+    const replay = await backfillFinancialDocumentLists(s.repo, f, q);
+    expect(replay.days.map((d) => d.status)).toEqual(["cached", "cached"]);
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(s.repo.getLastObservationSequence()).toBe(4);
+    expect(
+      s.repo
+        .getDocumentObservations({ docID: "A" })
+        .map((o) => [o.observedAt, o.document.withdrawalStatus]),
+    ).toEqual([
+      ["2026-06-26T00:00:00.000Z", "0"],
+      ["2026-06-26T01:00:00.000Z", "2"],
+    ]);
+    expect(s.repo.hasCompleteListForDate("2026-06-24", "2026-06-26T10:00:00+09:00")).toBe(true);
+    expect(s.repo.hasCompleteListForDate("2026-06-24", "2026-06-26T01:00:00.001Z")).toBe(false);
+  }));
+it("再観測失敗を古い完了証跡で成功にせず、同じ開始時刻で失敗日だけ取り直す", () =>
+  fixture(async (s) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-26T00:00:00Z"));
+    for (const day of ["2026-06-24", "2026-06-25"]) s.repo.saveDocumentList([doc(day)], day);
+    vi.setSystemTime(new Date("2026-06-26T01:00:00Z"));
+    let failed = true;
+    const f = vi.fn(async (date: string) => {
+        if (date === "2026-06-24" && failed) throw Error("SECRET");
+        return [doc(date)];
+      }),
+      q = { startDate: "2026-06-24", endDate: "2026-06-25", refreshAfter: "2026-06-26T01:00:00Z" };
+    const first = await backfillFinancialDocumentLists(s.repo, f, q);
+    expect(first).toMatchObject({
+      complete: false,
+      remainingDates: 0,
+      days: [
+        { status: "failed", closed: false },
+        { status: "fetched", closed: true },
+      ],
+    });
+    expect(JSON.stringify(first)).not.toContain("SECRET");
+    expect(s.repo.getLastObservationSequence()).toBe(3);
+    failed = false;
+    const next = await backfillFinancialDocumentLists(s.repo, f, q);
+    expect(next).toMatchObject({
+      complete: true,
+      days: [{ status: "fetched" }, { status: "cached" }],
+    });
+    expect(f).toHaveBeenCalledTimes(3);
+    expect(s.repo.getLastObservationSequence()).toBe(4);
+  }));
+it("空の一覧も再観測証跡を更新し、翌実行の新しい開始時刻で再取得する", () =>
+  fixture(async (s) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-26T00:00:00Z"));
+    s.repo.saveDocumentList([], "2026-06-24");
+    vi.setSystemTime(new Date("2026-06-26T01:00:00Z"));
+    const f = vi.fn(async () => []),
+      q = { startDate: "2026-06-24", endDate: "2026-06-24", refreshAfter: "2026-06-26T01:00:00Z" };
+    expect((await backfillFinancialDocumentLists(s.repo, f, q)).complete).toBe(true);
+    expect(s.repo.getLastObservationSequence()).toBe(0);
+    vi.setSystemTime(new Date("2026-06-27T01:00:00Z"));
+    expect(
+      (
+        await backfillFinancialDocumentLists(s.repo, f, {
+          ...q,
+          refreshAfter: "2026-06-27T01:00:00Z",
+        })
+      ).days[0].status,
+    ).toBe("fetched");
+    expect(f).toHaveBeenCalledTimes(2);
+    for (const refreshAfter of ["SECRET", "2026-06-27T01:00:00", "2099-01-01T00:00:00Z"])
+      await expect(
+        backfillFinancialDocumentLists(s.repo, f, { ...q, refreshAfter }),
+      ).rejects.toThrow();
+    expect(() => s.repo.hasCompleteListForDate(q.startDate, "bad")).toThrow();
+  }));
 
-it('計画で固定した末尾より後の既存/追加原観測を、分割再開で混ぜない',()=>fixture(async s=>{
- s.repo.saveDocumentList(['A','B','C'].map(doc),'2026-06-24');const options={sourceId:'fixed',throughSequence:2,pageSize:1,maxPages:1};
- const first=archiveFinancialDocumentObservations(s.repo,s.archive,options);expect(first).toMatchObject({complete:false,throughSequence:2,nextAfterSequence:1});s.repo.saveDocumentList([doc('D')],'2026-06-25');
- const last=archiveFinancialDocumentObservations(s.repo,s.archive,{...options,afterSequence:1});expect(last).toMatchObject({complete:true,throughSequence:2,nextAfterSequence:2,insertedObservations:1});expect(s.archive.observation('metadata:fixed:3')).toBeUndefined();expect(s.archive.observation('metadata:fixed:4')).toBeUndefined();expect(archiveFinancialDocumentObservations(s.repo,s.archive,{...options,maxPages:10}).insertedObservations).toBe(0);
-}));
-it('固定末尾0と不正な末尾を扱い、cursorが上限を超えた場合も書込前に止める',()=>fixture(async s=>{
- s.repo.saveDocumentList([doc('A')],'2026-06-24');expect(archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'zero',throughSequence:0})).toMatchObject({complete:true,readObservations:0,throughSequence:0});const append=vi.spyOn(s.archive,'append');
- for(const throughSequence of [-1,2,1.5,NaN,null])expect(()=>archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'fixed',throughSequence} as never)).toThrow();expect(()=>archiveFinancialDocumentObservations(s.repo,s.archive,{sourceId:'fixed',throughSequence:0,afterSequence:1})).toThrow();expect(append).not.toHaveBeenCalled();append.mockRestore();
-}));
+it("計画で固定した末尾より後の既存/追加原観測を、分割再開で混ぜない", () =>
+  fixture(async (s) => {
+    s.repo.saveDocumentList(["A", "B", "C"].map(doc), "2026-06-24");
+    const options = { sourceId: "fixed", throughSequence: 2, pageSize: 1, maxPages: 1 };
+    const first = archiveFinancialDocumentObservations(s.repo, s.archive, options);
+    expect(first).toMatchObject({ complete: false, throughSequence: 2, nextAfterSequence: 1 });
+    s.repo.saveDocumentList([doc("D")], "2026-06-25");
+    const last = archiveFinancialDocumentObservations(s.repo, s.archive, {
+      ...options,
+      afterSequence: 1,
+    });
+    expect(last).toMatchObject({
+      complete: true,
+      throughSequence: 2,
+      nextAfterSequence: 2,
+      insertedObservations: 1,
+    });
+    expect(s.archive.observation("metadata:fixed:3")).toBeUndefined();
+    expect(s.archive.observation("metadata:fixed:4")).toBeUndefined();
+    expect(
+      archiveFinancialDocumentObservations(s.repo, s.archive, { ...options, maxPages: 10 })
+        .insertedObservations,
+    ).toBe(0);
+  }));
+it("固定末尾0と不正な末尾を扱い、cursorが上限を超えた場合も書込前に止める", () =>
+  fixture(async (s) => {
+    s.repo.saveDocumentList([doc("A")], "2026-06-24");
+    expect(
+      archiveFinancialDocumentObservations(s.repo, s.archive, {
+        sourceId: "zero",
+        throughSequence: 0,
+      }),
+    ).toMatchObject({ complete: true, readObservations: 0, throughSequence: 0 });
+    const append = vi.spyOn(s.archive, "append");
+    for (const throughSequence of [-1, 2, 1.5, NaN, null])
+      expect(() =>
+        archiveFinancialDocumentObservations(s.repo, s.archive, {
+          sourceId: "fixed",
+          throughSequence,
+        } as never),
+      ).toThrow();
+    expect(() =>
+      archiveFinancialDocumentObservations(s.repo, s.archive, {
+        sourceId: "fixed",
+        throughSequence: 0,
+        afterSequence: 1,
+      }),
+    ).toThrow();
+    expect(append).not.toHaveBeenCalled();
+    append.mockRestore();
+  }));

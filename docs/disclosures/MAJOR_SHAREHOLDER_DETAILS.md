@@ -9,16 +9,28 @@
 ## 入力と出典
 
 ```ts
-import { DisclosureTableKind, extractMajorShareholderDetails, searchMajorShareholderDetails } from "edinet-ts";
+import {
+  DisclosureTableKind,
+  extractMajorShareholderDetails,
+  searchMajorShareholderDetails,
+} from "edinet-ts";
 const document = {
   xml: savedXml,
-  selection: { docID: "SAMPLE", kind: DisclosureTableKind.MajorShareholders, contextRef: "FilingDateInstant" },
-  tables: [{ tableIndex: reviewedTableIndex, rawSha256: reviewedFragmentHash }]
+  selection: {
+    docID: "SAMPLE",
+    kind: DisclosureTableKind.MajorShareholders,
+    contextRef: "FilingDateInstant",
+  },
+  tables: [{ tableIndex: reviewedTableIndex, rawSha256: reviewedFragmentHash }],
 };
 const detail = extractMajorShareholderDetails(document);
 const matches = searchMajorShareholderDetails([document], {
-  kind: "major-shareholders-table", date: { basis: "holding-as-of", value: "2026-03-31" },
-  role: "named", metric: "holdingPercent", condition: { operator: "gte", value: 5 }, sort: "value-desc"
+  kind: "major-shareholders-table",
+  date: { basis: "holding-as-of", value: "2026-03-31" },
+  role: "named",
+  metric: "holdingPercent",
+  condition: { operator: "gte", value: 5 },
+  sort: "value-desc",
 });
 ```
 
@@ -30,10 +42,10 @@ const matches = searchMajorShareholderDetails([document], {
 
 ## 2種類の表・数値・分母
 
-| kind | 数の見出し | reportedCountの単位 | 割合の分母 |
-|---|---|---|---|
-| major-shareholders-table | 所有株式数（株/千株） | shares | issued-shares-excluding-treasury |
-| large-holding-reference | 保有株券等/保有株式等の数（株/千株） | reported-holding-equivalents | large-holding-definition-unconfirmed |
+| kind                     | 数の見出し                           | reportedCountの単位          | 割合の分母                           |
+| ------------------------ | ------------------------------------ | ---------------------------- | ------------------------------------ |
+| major-shareholders-table | 所有株式数（株/千株）                | shares                       | issued-shares-excluding-treasury     |
+| large-holding-reference  | 保有株券等/保有株式等の数（株/千株） | reported-holding-equivalents | large-holding-definition-unconfirmed |
 
 大株主表の割合は「発行済株式（自己株式を除く。）の総数に対する所有株式数の割合」という見出しを照合します。
 

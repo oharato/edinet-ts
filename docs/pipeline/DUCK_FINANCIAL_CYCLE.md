@@ -126,5 +126,4 @@ node scripts/roadmap/run-daily-duck-financial-cycle.mjs \
 
 Linux flockを子で親から継承したfdに適用し、親がfdを閉じるまで保持する。正常終了・例外・SIGKILLでfdが閉じればOSがロックを解放する。競合75、中断2、その他失敗1。構築の部分完了・取得の待機/一時停止はJSONで返し、同じコマンドで再開する。照合と正式切替は前述の取得済み候補コマンドで明示実行する。既存の日次SQLiteコマンドやサービス登録は変更しない。
 
-
 実運用設定のguard summaryに相対`archivePath`が残る場合、既存のmigration proof検査は元workspaceを基準に解決する。SDKを別directoryに置いていても、元workspaceをcwdにしてCLIの絶対パスを指定する。cwdの異なるパスを同じ原本と推測して受け入れない。2026-10-31の実設定ではmetadata未完了のため`waiting-for-daily-metadata`となり、取得/構築を開始していない。証跡は`data/benchmarks/duck-financial-unified-daily-20261031/`。

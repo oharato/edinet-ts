@@ -4,17 +4,17 @@
 
 ## 計画と再開の契約
 
-| 項目 | 契約 |
-|---|---|
-| 固定入力 | 停止済みアーカイブの物理SHA-256、解析対象の書類ID・原本SHA-256・取得時刻・解析キー |
-| 対象件数 | 1〜100,000件、計画JSONは64 MiB以下。同じ解析キーの重複を拒否 |
-| 計画保存 | 専用SQLiteの `parsed_job_plans` へcanonical JSONとhashを保存。同じjob IDの入力変更を拒否 |
-| 時刻 | 取得時刻はtimezone必須、UTCへ正規化。解析キーには含めず、原本観測との対応を計画に保持 |
-| 完了の保存 | 別の可変checkpointを重複保存せず、解析済みStoreの原本単位transactionを完了の唯一の根拠とする |
-| 再開 | 固定した解析キーでStoreを読む。保存済みなら再解析しない。原本保存後にjobが停止しても同じキーから再開 |
-| 読取・保存の障害 | 原本の欠落・破損・指紋違い・DB保存失敗は例外。解析失敗としてキャッシュせず、未保存キーはpendingのまま |
-| XML解析の失敗 | `parse-failed` / `projection-failed` をStoreへ保存。失敗も同じキーで再利用し、修正は新解析版の別jobで行う |
-| 版の変更 | 実行時のbasis/対応表版が計画と異なれば拒否。解析版とsource commitは呼出側が固定runtimeの証跡に結合する |
+| 項目             | 契約                                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| 固定入力         | 停止済みアーカイブの物理SHA-256、解析対象の書類ID・原本SHA-256・取得時刻・解析キー                        |
+| 対象件数         | 1〜100,000件、計画JSONは64 MiB以下。同じ解析キーの重複を拒否                                              |
+| 計画保存         | 専用SQLiteの `parsed_job_plans` へcanonical JSONとhashを保存。同じjob IDの入力変更を拒否                  |
+| 時刻             | 取得時刻はtimezone必須、UTCへ正規化。解析キーには含めず、原本観測との対応を計画に保持                     |
+| 完了の保存       | 別の可変checkpointを重複保存せず、解析済みStoreの原本単位transactionを完了の唯一の根拠とする              |
+| 再開             | 固定した解析キーでStoreを読む。保存済みなら再解析しない。原本保存後にjobが停止しても同じキーから再開      |
+| 読取・保存の障害 | 原本の欠落・破損・指紋違い・DB保存失敗は例外。解析失敗としてキャッシュせず、未保存キーはpendingのまま     |
+| XML解析の失敗    | `parse-failed` / `projection-failed` をStoreへ保存。失敗も同じキーで再利用し、修正は新解析版の別jobで行う |
+| 版の変更         | 実行時のbasis/対応表版が計画と異なれば拒否。解析版とsource commitは呼出側が固定runtimeの証跡に結合する    |
 
 `pending` はStoreに結果がないキー数、`completed` は結果を返した解析数、`failed` は解析失敗数。`unresolved` はcompletedの内数。`finished` はpending=0のみを表し、全値が利用可能・原本金額照合済み・正式切替可能を意味しない。
 
@@ -32,11 +32,11 @@
 
 ```ts
 const plan = job.begin({
-  id: 'parse-fixed-input',
+  id: "parse-fixed-input",
   archiveSha256: archive.snapshotSha256(),
-  tasks: [{identity, availableAt}],
+  tasks: [{ identity, availableAt }],
 });
-await job.runNext(plan.id, archive, parsedStore, {limit: 100, signal});
+await job.runNext(plan.id, archive, parsedStore, { limit: 100, signal });
 job.progress(plan.id, parsedStore);
 ```
 

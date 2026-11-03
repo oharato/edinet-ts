@@ -1,16 +1,156 @@
-import{mkdtempSync,rmSync,readFileSync,existsSync}from'node:fs';import{tmpdir}from'node:os';import{join,resolve}from'node:path';import{spawnSync}from'node:child_process';import{it,expect}from'vitest';
-import{EdinetRepository}from'../src/db/edinet-repository';import{ObservedFinancialArchive}from'../src/index';
-it('CLIで一覧cacheを再利用し、cursor転送・再投入・秘匿エラーを扱う',()=>{
- const dir=mkdtempSync(join(tmpdir(),'financial-document-sync-cli-'));try{
-  const metadata=join(dir,'metadata.sqlite'),archivePath=join(dir,'archive.sqlite'),repo=new EdinetRepository(metadata);repo.saveDocumentList(['A','B'].map(docID=>({docID,docDescription:'fixture',docTypeCode:'120',docInfoEditStatus:0,secCode:'10010',edinetCode:'E12345',withdrawalStatus:'0',disclosureStatus:'0',periodStart:'2025-04-01',periodEnd:'2026-03-31',submitDateTime:'2026-06-24 10:00'})),'2026-06-24');repo.close();const before=readFileSync(metadata);
-  const base=['--import',resolve('node_modules/tsx/dist/loader.mjs'),resolve('src/cli.ts')],run=(args:string[])=>spawnSync(process.execPath,[...base,...args],{cwd:'/tmp',encoding:'utf8',maxBuffer:8*1024*1024});
-  const cached=run(['backfill-financial-document-lists','--metadata',metadata,'--start-date','2026-06-24','--end-date','2026-06-24']);expect(cached.status,cached.stderr).toBe(0);expect(JSON.parse(cached.stdout)).toMatchObject({complete:true,days:[{status:'cached'}]});
-  const freshCached=run(['backfill-financial-document-lists','--metadata',metadata,'--start-date','2026-06-24','--end-date','2026-06-24','--refresh-after','2000-01-01T09:00:00+09:00']);expect(freshCached.status,freshCached.stderr).toBe(0);expect(JSON.parse(freshCached.stdout)).toMatchObject({refreshAfter:'2000-01-01T00:00:00.000Z',complete:true,days:[{status:'cached'}]});
-  const invalidRefresh=run(['backfill-financial-document-lists','--metadata',metadata,'--start-date','2026-06-24','--end-date','2026-06-24','--refresh-after','SECRET']);expect(invalidRefresh.status).toBe(1);expect(invalidRefresh.stderr).not.toContain('SECRET');
-  const command=['archive-financial-document-observations','--metadata',metadata,'--archive',archivePath,'--source-id','fixture','--page-size','1','--max-pages','1'];const first=run(command);expect(first.status,first.stderr).toBe(0);expect(JSON.parse(first.stdout)).toMatchObject({complete:false,nextAfterSequence:1,insertedObservations:1});const second=run([...command,'--after-sequence','1']);expect(second.status,second.stderr).toBe(0);expect(JSON.parse(second.stdout)).toMatchObject({complete:true,nextAfterSequence:2});const replay=run([...command,'--max-pages','20']);expect(replay.status).toBe(0);expect(JSON.parse(replay.stdout)).toMatchObject({complete:true,insertedObservations:0});expect(readFileSync(metadata)).toEqual(before);
-  const bounded=join(dir,'bounded.sqlite'),bound=run([...command,'--archive',bounded,'--through-sequence','1']);expect(bound.status,bound.stderr).toBe(0);expect(JSON.parse(bound.stdout)).toMatchObject({complete:true,throughSequence:1,nextAfterSequence:1,insertedObservations:1});const boundedArchive=new ObservedFinancialArchive(bounded,{readOnly:true});try{expect(boundedArchive.observation('metadata:fixture:2')).toBeUndefined()}finally{boundedArchive.close()}
-  const invalidBound=join(dir,'invalid-bound.sqlite');for(const through of ['SECRET','3']){const bad=run([...command,'--archive',invalidBound,'--through-sequence',through]);expect(bad.status).toBe(1);expect(bad.stderr).not.toContain('SECRET');expect(existsSync(invalidBound)).toBe(false)}
-  const a=new ObservedFinancialArchive(archivePath,{readOnly:true});try{expect(a.observation('metadata:fixture:1')!.document.docID).toBe('A');expect(a.observation('metadata:fixture:2')!.document.docID).toBe('B');}finally{a.close();}
-  const invalid=run([...command,'--source-id','SECRET/value']);expect(invalid.status).toBe(1);expect(invalid.stderr).not.toContain('SECRET');const badDate=run(['backfill-financial-document-lists','--metadata',metadata,'--start-date','SECRET','--end-date','2026-06-24']);expect(badDate.status).toBe(1);expect(badDate.stderr).not.toContain('SECRET');
- }finally{rmSync(dir,{recursive:true,force:true});}
-},30000);
+import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { it, expect } from "vitest";
+import { EdinetRepository } from "../src/db/edinet-repository";
+import { ObservedFinancialArchive } from "../src/index";
+it("CLIで一覧cacheを再利用し、cursor転送・再投入・秘匿エラーを扱う", () => {
+  const dir = mkdtempSync(join(tmpdir(), "financial-document-sync-cli-"));
+  try {
+    const metadata = join(dir, "metadata.sqlite"),
+      archivePath = join(dir, "archive.sqlite"),
+      repo = new EdinetRepository(metadata);
+    repo.saveDocumentList(
+      ["A", "B"].map((docID) => ({
+        docID,
+        docDescription: "fixture",
+        docTypeCode: "120",
+        docInfoEditStatus: 0,
+        secCode: "10010",
+        edinetCode: "E12345",
+        withdrawalStatus: "0",
+        disclosureStatus: "0",
+        periodStart: "2025-04-01",
+        periodEnd: "2026-03-31",
+        submitDateTime: "2026-06-24 10:00",
+      })),
+      "2026-06-24",
+    );
+    repo.close();
+    const before = readFileSync(metadata);
+    const base = ["--import", resolve("node_modules/tsx/dist/loader.mjs"), resolve("src/cli.ts")],
+      run = (args: string[]) =>
+        spawnSync(process.execPath, [...base, ...args], {
+          cwd: "/tmp",
+          encoding: "utf8",
+          maxBuffer: 8 * 1024 * 1024,
+        });
+    const cached = run([
+      "backfill-financial-document-lists",
+      "--metadata",
+      metadata,
+      "--start-date",
+      "2026-06-24",
+      "--end-date",
+      "2026-06-24",
+    ]);
+    expect(cached.status, cached.stderr).toBe(0);
+    expect(JSON.parse(cached.stdout)).toMatchObject({
+      complete: true,
+      days: [{ status: "cached" }],
+    });
+    const freshCached = run([
+      "backfill-financial-document-lists",
+      "--metadata",
+      metadata,
+      "--start-date",
+      "2026-06-24",
+      "--end-date",
+      "2026-06-24",
+      "--refresh-after",
+      "2000-01-01T09:00:00+09:00",
+    ]);
+    expect(freshCached.status, freshCached.stderr).toBe(0);
+    expect(JSON.parse(freshCached.stdout)).toMatchObject({
+      refreshAfter: "2000-01-01T00:00:00.000Z",
+      complete: true,
+      days: [{ status: "cached" }],
+    });
+    const invalidRefresh = run([
+      "backfill-financial-document-lists",
+      "--metadata",
+      metadata,
+      "--start-date",
+      "2026-06-24",
+      "--end-date",
+      "2026-06-24",
+      "--refresh-after",
+      "SECRET",
+    ]);
+    expect(invalidRefresh.status).toBe(1);
+    expect(invalidRefresh.stderr).not.toContain("SECRET");
+    const command = [
+      "archive-financial-document-observations",
+      "--metadata",
+      metadata,
+      "--archive",
+      archivePath,
+      "--source-id",
+      "fixture",
+      "--page-size",
+      "1",
+      "--max-pages",
+      "1",
+    ];
+    const first = run(command);
+    expect(first.status, first.stderr).toBe(0);
+    expect(JSON.parse(first.stdout)).toMatchObject({
+      complete: false,
+      nextAfterSequence: 1,
+      insertedObservations: 1,
+    });
+    const second = run([...command, "--after-sequence", "1"]);
+    expect(second.status, second.stderr).toBe(0);
+    expect(JSON.parse(second.stdout)).toMatchObject({ complete: true, nextAfterSequence: 2 });
+    const replay = run([...command, "--max-pages", "20"]);
+    expect(replay.status).toBe(0);
+    expect(JSON.parse(replay.stdout)).toMatchObject({ complete: true, insertedObservations: 0 });
+    expect(readFileSync(metadata)).toEqual(before);
+    const bounded = join(dir, "bounded.sqlite"),
+      bound = run([...command, "--archive", bounded, "--through-sequence", "1"]);
+    expect(bound.status, bound.stderr).toBe(0);
+    expect(JSON.parse(bound.stdout)).toMatchObject({
+      complete: true,
+      throughSequence: 1,
+      nextAfterSequence: 1,
+      insertedObservations: 1,
+    });
+    const boundedArchive = new ObservedFinancialArchive(bounded, { readOnly: true });
+    try {
+      expect(boundedArchive.observation("metadata:fixture:2")).toBeUndefined();
+    } finally {
+      boundedArchive.close();
+    }
+    const invalidBound = join(dir, "invalid-bound.sqlite");
+    for (const through of ["SECRET", "3"]) {
+      const bad = run([...command, "--archive", invalidBound, "--through-sequence", through]);
+      expect(bad.status).toBe(1);
+      expect(bad.stderr).not.toContain("SECRET");
+      expect(existsSync(invalidBound)).toBe(false);
+    }
+    const a = new ObservedFinancialArchive(archivePath, { readOnly: true });
+    try {
+      expect(a.observation("metadata:fixture:1")!.document.docID).toBe("A");
+      expect(a.observation("metadata:fixture:2")!.document.docID).toBe("B");
+    } finally {
+      a.close();
+    }
+    const invalid = run([...command, "--source-id", "SECRET/value"]);
+    expect(invalid.status).toBe(1);
+    expect(invalid.stderr).not.toContain("SECRET");
+    const badDate = run([
+      "backfill-financial-document-lists",
+      "--metadata",
+      metadata,
+      "--start-date",
+      "SECRET",
+      "--end-date",
+      "2026-06-24",
+    ]);
+    expect(badDate.status).toBe(1);
+    expect(badDate.stderr).not.toContain("SECRET");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 30000);

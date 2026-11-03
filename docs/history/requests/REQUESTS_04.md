@@ -6,7 +6,7 @@ SQLite（`better-sqlite3`）を軸にした、TypeScript製EDINETライブラリ
 
 「メタデータ（検索用インデックス）はローカルDB、実データ（XBRL）は都度APIから取得」という**ハイブリッド構成**で進めます。
 
------
+---
 
 ### プロジェクト構成図
 
@@ -26,7 +26,7 @@ edinet-ts/
 └── tsconfig.json
 ```
 
------
+---
 
 ### Phase 1: 依存ライブラリの選定
 
@@ -37,12 +37,12 @@ npm install better-sqlite3 axios adm-zip fast-xml-parser p-queue dotenv
 npm install -D typescript @types/node @types/better-sqlite3 @types/adm-zip
 ```
 
-  * **better-sqlite3**: Node.jsで最速・同期処理可能なSQLiteドライバ。
-  * **p-queue**: レートリミット（1秒1回など）の制御を簡単にするため。
-  * **fast-xml-parser**: XBRL(XML)をJSオブジェクトに変換。
-  * **adm-zip**: ZIP解凍用。
+- **better-sqlite3**: Node.jsで最速・同期処理可能なSQLiteドライバ。
+- **p-queue**: レートリミット（1秒1回など）の制御を簡単にするため。
+- **fast-xml-parser**: XBRL(XML)をJSオブジェクトに変換。
+- **adm-zip**: ZIP解凍用。
 
------
+---
 
 ### Phase 2: データベース設計 (Cache Layer)
 
@@ -68,9 +68,9 @@ CREATE INDEX IF NOT EXISTS idx_sec_code ON documents(sec_code);
 CREATE INDEX IF NOT EXISTS idx_submit_date ON documents(submit_date);
 ```
 
-  * **ポイント**: `sec_code` はEDINET独自の5桁（例: 72030）で保存します。ユーザーが入力する4桁（7203）との変換はTypeScript側で行います。
+- **ポイント**: `sec_code` はEDINET独自の5桁（例: 72030）で保存します。ユーザーが入力する4桁（7203）との変換はTypeScript側で行います。
 
------
+---
 
 ### Phase 3: APIクライアントの実装 (Fetch Layer)
 
@@ -78,13 +78,13 @@ APIを叩く部分です。ここで**レートリミット**を強制します�
 
 **ファイル:** `src/api/client.ts`
 
-  * **機能:**
-      * APIキーの管理。
-      * `/documents.json` (一覧) の取得。
-      * `/documents/{id}` (ZIP) の取得。
-      * **重要:** `p-queue` を使い、`interval: 1000, concurrency: 1` を設定して、ユーザーがループで叩いてもサーバーを攻撃しないように制御します。
+- **機能:**
+  - APIキーの管理。
+  - `/documents.json` (一覧) の取得。
+  - `/documents/{id}` (ZIP) の取得。
+  - **重要:** `p-queue` を使い、`interval: 1000, concurrency: 1` を設定して、ユーザーがループで叩いてもサーバーを攻撃しないように制御します。
 
------
+---
 
 ### Phase 4: XBRLパーサーの実装 (Logic Layer)
 
@@ -92,19 +92,19 @@ APIを叩く部分です。ここで**レートリミット**を強制します�
 
 **ファイル:** `src/parser/xbrl.ts`
 
-  * **ステップ:**
-    1.  `adm-zip` でZIPを展開。
-    2.  `PublicDoc/*.xbrl` を探す。
-    3.  `fast-xml-parser` でJSON化。
-    4.  **重要:** コンテキスト(`contextRef`)の判定ロジックを実装。
-          * `CurrentYearConsolidatedDuration` (当期・連結・期間) を特定するヘルパー関数を作る。
-    5.  以下のタグをマッピングして `FinancialMetrics` オブジェクトを返す。
-          * `NetSales` (売上高)
-          * `OperatingIncome` (営業利益)
-          * `OrdinaryIncome` (経常利益)
-          * `ProfitAttributableToOwnersOfParent` (純利益)
+- **ステップ:**
+  1.  `adm-zip` でZIPを展開。
+  2.  `PublicDoc/*.xbrl` を探す。
+  3.  `fast-xml-parser` でJSON化。
+  4.  **重要:** コンテキスト(`contextRef`)の判定ロジックを実装。
+      - `CurrentYearConsolidatedDuration` (当期・連結・期間) を特定するヘルパー関数を作る。
+  5.  以下のタグをマッピングして `FinancialMetrics` オブジェクトを返す。
+      - `NetSales` (売上高)
+      - `OperatingIncome` (営業利益)
+      - `OrdinaryIncome` (経常利益)
+      - `ProfitAttributableToOwnersOfParent` (純利益)
 
------
+---
 
 ### Phase 5: 統合とファサード (User Interface)
 
@@ -129,8 +129,8 @@ export class Edinet {
     // 2. DBから該当する有報(120)のdocIDリストを取得
     const docs = this.db.findDocuments({
       secCode: edinetCode,
-      docTypeCode: '120', // 有価証券報告書
-      limit: years
+      docTypeCode: "120", // 有価証券報告書
+      limit: years,
     });
 
     // 3. ループして詳細を取得
@@ -140,7 +140,7 @@ export class Edinet {
       const metrics = await this.fetchAndParseXbrl(doc.doc_id);
       results.push({
         period: doc.period_end,
-        metrics: metrics
+        metrics: metrics,
       });
     }
     return results;
@@ -148,7 +148,7 @@ export class Edinet {
 }
 ```
 
------
+---
 
 ### Phase 6: 初期データ投入スクリプト (Seeding)
 
@@ -156,13 +156,13 @@ export class Edinet {
 
 **ファイル:** `scripts/seed.ts`
 
-  * **処理:**
-      * `dayjs` 等で過去5年分の「日付リスト」を作成。
-      * ループで API `/documents.json` を叩く。
-      * 取得したJSONを SQLite に `INSERT`。
-      * **注意:** 1秒1回制限を守ると、5年分（約1200日）の取得には **約20分** かかります。「進捗バー（cli-progress）」を表示してユーザーを安心させましょう。
+- **処理:**
+  - `dayjs` 等で過去5年分の「日付リスト」を作成。
+  - ループで API `/documents.json` を叩く。
+  - 取得したJSONを SQLite に `INSERT`。
+  - **注意:** 1秒1回制限を守ると、5年分（約1200日）の取得には **約20分** かかります。「進捗バー（cli-progress）」を表示してユーザーを安心させましょう。
 
------
+---
 
 ### 開発の進め方（ロードマップ）
 

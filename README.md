@@ -6,14 +6,14 @@ EDINETの開示書類から、財務数値や会社情報を読み取るTypeScri
 
 ## 何をしたいですか？
 
-| 目的 | 使う機能 | 次に読むところ |
-|---|---|---|
-| 手元の書類から売上や利益を読む | `EdinetXbrlParser` | [最小の利用例](#保存済みの書類を読む) |
-| 期間・連結区分を指定し、採用理由も確認する | `selectMetric()` | [条件を指定して値を選ぶ](#条件を指定して値を選ぶ) |
-| EDINETから書類を取得する | `EdinetXbrlDownloader`、CLI `get` / `download` | [書類を取得する](#書類を取得する) |
-| 保存済みの複数社を条件で探す | `screenFinancialSnapshots()`、CLI `screen` | [保存済みの値を検索する](#保存済みの値を検索する) |
-| 会社情報・株主・役員・人的資本を読む | 分野別の明細API | [ドキュメント一覧](docs/README.md) |
-| 原本の収集から検索データの公開まで運用する | アーカイブ・索引構築・公開API | [保存・公開の工程](docs/pipeline/DOCUMENT_PIPELINE.md) |
+| 目的                                       | 使う機能                                       | 次に読むところ                                         |
+| ------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------ |
+| 手元の書類から売上や利益を読む             | `EdinetXbrlParser`                             | [最小の利用例](#保存済みの書類を読む)                  |
+| 期間・連結区分を指定し、採用理由も確認する | `selectMetric()`                               | [条件を指定して値を選ぶ](#条件を指定して値を選ぶ)      |
+| EDINETから書類を取得する                   | `EdinetXbrlDownloader`、CLI `get` / `download` | [書類を取得する](#書類を取得する)                      |
+| 保存済みの複数社を条件で探す               | `screenFinancialSnapshots()`、CLI `screen`     | [保存済みの値を検索する](#保存済みの値を検索する)      |
+| 会社情報・株主・役員・人的資本を読む       | 分野別の明細API                                | [ドキュメント一覧](docs/README.md)                     |
+| 原本の収集から検索データの公開まで運用する | アーカイブ・索引構築・公開API                  | [保存・公開の工程](docs/pipeline/DOCUMENT_PIPELINE.md) |
 
 ```mermaid
 flowchart LR
@@ -60,7 +60,7 @@ const xml = readFileSync("./report.xbrl", "utf8");
 const document = new EdinetXbrlParser().parse(xml);
 const metrics = document.getKeyMetrics();
 
-console.log(metrics.netSales);        // 売上高。取得できない場合はundefined
+console.log(metrics.netSales); // 売上高。取得できない場合はundefined
 console.log(metrics.operatingIncome); // 営業利益
 console.log(document.getQualitativeInfo().businessRisks); // 事業等のリスク
 ```
@@ -84,17 +84,17 @@ import { EdinetXbrlParser } from "edinet-ts";
 const xml = readFileSync("./report.xbrl", "utf8");
 const document = new EdinetXbrlParser().parse(xml);
 const result = document.selectMetric("netSales", {
-    accountingStandard: "J-GAAP",
-    scope: "Consolidated",
-    period: { startDate: "2024-04-01", endDate: "2025-03-31" },
+  accountingStandard: "J-GAAP",
+  scope: "Consolidated",
+  period: { startDate: "2024-04-01", endDate: "2025-03-31" },
 });
 
 if (result.status === "selected") {
-    console.log(result.raw);        // 精度を保った数値文字列
-    console.log(result.safeNumber); // 安全に数値化できる場合だけ設定
-    console.log(result.source);    // 採用したタグ・期間・単位など
+  console.log(result.raw); // 精度を保った数値文字列
+  console.log(result.safeNumber); // 安全に数値化できる場合だけ設定
+  console.log(result.source); // 採用したタグ・期間・単位など
 } else {
-    console.log(result.status, result.reason);
+  console.log(result.status, result.reason);
 }
 ```
 
@@ -128,8 +128,8 @@ node dist/cli.js get --help-types
 import { EdinetXbrlDownloader } from "edinet-ts";
 
 const downloader = new EdinetXbrlDownloader({
-    apiKey: process.env.EDINET_API_KEY,
-    enableRateLimit: true,
+  apiKey: process.env.EDINET_API_KEY,
+  enableRateLimit: true,
 });
 const path = await downloader.downloadByTicker("7203", "./downloads");
 console.log(path); // 見つからなければnull
@@ -153,12 +153,12 @@ import { Edinet } from "edinet-ts";
 
 const edinet = new Edinet({ apiKey: process.env.EDINET_API_KEY });
 try {
-    const history = await edinet.getFinancialHistory("7203", 5);
-    for (const item of history) {
-        console.log(item.periodEnd, item.metrics.netSales);
-    }
+  const history = await edinet.getFinancialHistory("7203", 5);
+  for (const item of history) {
+    console.log(item.periodEnd, item.metrics.netSales);
+  }
 } finally {
-    edinet.close();
+  edinet.close();
 }
 ```
 
@@ -200,19 +200,18 @@ node dist/cli.js screen --file ./snapshots.json \
 
 [Apache License 2.0](LICENSE)。Copyright (c) 2025 oharato / Copyright (c) 2018 Buffett Code。
 
-
 ### SQLite取得・DuckDB検索の移行API
 
 原本・取得履歴と解析済み値はSQLite、検証済み検索世代はDuckDBへ保存する移行APIを追加しています。既存の同期APIも利用できます。
 
 ```ts
-import {DuckFinancialSearchIndex} from "edinet-ts";
+import { DuckFinancialSearchIndex } from "edinet-ts";
 
 const index = await DuckFinancialSearchIndex.open("data/search.duckdb");
 try {
-    console.log(await index.quality("listed-current"));
+  console.log(await index.quality("listed-current"));
 } finally {
-    await index.close();
+  await index.close();
 }
 ```
 
@@ -228,6 +227,5 @@ edinet-ts duck-financial-publication-status --catalog data/publication.sqlite --
 ```
 
 [読取CLI](docs/pipeline/DUCK_FINANCIAL_CLI.md)、[非同期reader](docs/pipeline/DUCK_FINANCIAL_SEARCH_INDEX.md)、[独立原本照合gate](docs/pipeline/DUCK_FINANCIAL_VERIFICATION.md)、[移行計画・未完了事項](docs/plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)を参照してください。全社・日次・配布先移行の受入は継続中で、本番経路はまだ切り替えていません。
-
 
 固定原本からの作成は `edinet-ts build-duck-financial-cycle --config cycle.json --max-documents 100 --max-companies 100 --max-batches 10` で分割再開できます。共有の解析済みSQLiteを再利用し、候補には構築用の固定snapshotを保存します。出力先・共有Storeのflock排他と既存相当の容量余裕を要求します。構築だけではmetadata最新性や原本照合の合格にせず、正式切替は行いません。[設定と運用](docs/pipeline/DUCK_FINANCIAL_CYCLE.md)を参照してください。

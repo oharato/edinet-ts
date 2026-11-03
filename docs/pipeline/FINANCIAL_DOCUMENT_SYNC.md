@@ -4,10 +4,10 @@
 
 ## 二つの完了を分ける
 
-| 工程 | 完了の意味 | 再開位置 |
-|---|---|---|
+| 工程           | 完了の意味                                           | 再開位置                                                              |
+| -------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
 | 日別一覧の取得 | 指定範囲の全日について、日が閉じた後の取得証跡がある | `nextAfterDate`。前方に失敗日がある場合は、巡回後にcursorなしで再試行 |
-| 原観測の転送 | 固定した最終sequenceまで転送した | `nextAfterSequence`。同じ転送元・転送先・上限を使う |
+| 原観測の転送   | 固定した最終sequenceまで転送した                     | `nextAfterSequence`。同じ転送元・転送先・上限を使う                   |
 
 終了コード0だけで完了とは判断せず、返却された `complete` を確認してください。取得・転送が完了しても、原本の取得や財務値の検査は別に必要です。
 
@@ -16,15 +16,21 @@
 ## 日別の補完と再巡回
 
 ```ts
-import {EdinetRepository, EdinetXbrlDownloader, backfillFinancialDocumentLists} from "edinet-ts";
+import { EdinetRepository, EdinetXbrlDownloader, backfillFinancialDocumentLists } from "edinet-ts";
 
 const repository = new EdinetRepository("data/daily.sqlite");
-const downloader = new EdinetXbrlDownloader({requestTimeoutMs: 60_000});
+const downloader = new EdinetXbrlDownloader({ requestTimeoutMs: 60_000 });
 try {
-  const lists = await backfillFinancialDocumentLists(repository,
-    (date, request) => downloader.search(date, undefined, request), {
-      startDate: "2026-06-01", endDate: "2026-06-30", maxDays: 20, signal
-    });
+  const lists = await backfillFinancialDocumentLists(
+    repository,
+    (date, request) => downloader.search(date, undefined, request),
+    {
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+      maxDays: 20,
+      signal,
+    },
+  );
   console.log(lists.complete, lists.days, lists.nextAfterDate);
 } finally {
   repository.close();
@@ -52,13 +58,20 @@ signal中断時は受信後でも保存せず、すでにcommitした日を維�
 ## 原観測を安定IDで転送する
 
 ```ts
-import {EdinetRepository, ObservedFinancialArchive, archiveFinancialDocumentObservations} from "edinet-ts";
+import {
+  EdinetRepository,
+  ObservedFinancialArchive,
+  archiveFinancialDocumentObservations,
+} from "edinet-ts";
 
-const repository = new EdinetRepository("data/daily.sqlite", {readOnly: true});
+const repository = new EdinetRepository("data/daily.sqlite", { readOnly: true });
 const archive = new ObservedFinancialArchive("data/financial.sqlite");
 try {
   const result = archiveFinancialDocumentObservations(repository, archive, {
-    sourceId: "daily-production-1", afterSequence: 0, pageSize: 1000, maxPages: 20
+    sourceId: "daily-production-1",
+    afterSequence: 0,
+    pageSize: 1000,
+    maxPages: 20,
   });
   // result.nextAfterSequence を、同じ取得元/転送先への次回cursorに使います。
 } finally {
@@ -131,7 +144,12 @@ source/builtの4,209件転送とキャッシュだけの一覧再巡回、CLI2�
 ```ts
 const refreshAfter = new Date().toISOString(); // この実行の状態として永続化
 const page = await backfillFinancialDocumentLists(repository, fetchList, {
-  startDate, endDate, refreshAfter, maxDays: 20, afterDate, signal,
+  startDate,
+  endDate,
+  refreshAfter,
+  maxDays: 20,
+  afterDate,
+  signal,
 });
 // 次page/失敗再試行にも同じrefreshAfterを渡す
 ```
@@ -215,7 +233,11 @@ const throughSequence = repository.getLastObservationSequence();
 let afterSequence = 0;
 do {
   const page = archiveFinancialDocumentObservations(repository, candidateArchive, {
-    sourceId, throughSequence, afterSequence, pageSize: 1000, maxPages: 20
+    sourceId,
+    throughSequence,
+    afterSequence,
+    pageSize: 1000,
+    maxPages: 20,
   });
   afterSequence = page.nextAfterSequence; // 原本commit後に永続化
   if (page.complete) break;
@@ -233,7 +255,6 @@ edinet-ts archive-financial-document-observations --metadata data/daily.sqlite \
 候補の再作成には、少なくともsourceId・throughSequence・原本availableBy・書類選択cutoff・母集団・SDK/Node/SQLiteの固定版・観測pageSize・期待する観測指紋/候補指紋を保持します。原観測転送、原本転送、FinancialSourceJob.beginを順に実行して入力を封じ、取得後の別cutoff/候補から構築へ進みます。
 
 これらの境界を使う日次財務runnerは実装済みです。raw pool/候補の保存寿命管理と、品質を満たした公開までの反復運用は引き続き残ります。稼働版と検証範囲は[実装状況](../plans/IMPLEMENTATION_STATUS.md)で確認してください。
-
 
 ## 日次の原本poolを引き継ぐ
 

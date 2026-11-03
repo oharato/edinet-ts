@@ -9,21 +9,21 @@
 
 上の基準日と、以下の初期比較表は当時の記録です。調査後の追加状況を、当時の記録として以下に残します。EDINET DBの認証APIとの実測照合は引き続き未実施です。保存JSONの`screen`の21指標は維持し、新APIを同じ21項目へ無理に混ぜていません。
 
-| 分野 | 1社から読める情報 | 複数社の検索 | 状態・範囲 |
-|---|---|---|---|
-| IFRS直接BS3 | 連結JPY・指定期末の流動資産/流動負債/負債合計を専用APIで読む（#55でmain） | 本変更で同一期末の明示原本集合を検索/CLI。日本基準向けStoreへ混在させない | 公式2018/2025版を基にした合成検証。実IFRS原本・PDFは未検証。既存18指標のIFRS要約候補とは別 |
-| BS3・流動比率 | 流動資産/流動負債/負債合計、分数で計算する流動比率 | 原本のメモリ検索と専用SQLite試作で条件・順序・ページ | main完了。日本基準/円/同一期末・範囲。保存/差分/再解析比較と有限品質runnerもmain |
-| 追加財務5項目 | 固定資産/固定負債/現金及び預金、売上原価/販管費 | 時点項目と期間項目を分けた明示集合の検索 | #37でmain。原XML20項目突合、独立PDF照合は未実施 |
-| 売上高前年比 | 連続12暦月の前年/当年から算出 | 正確な分数で条件・順序・ページ | #38でmain。実2社は候補重複で不可、別保存fixture1社の算術を確認。実複数社ランキングは未検証 |
-| 営業利益前年比 | 連続12暦月の営業利益から算出、前期正値のみ | 別APIで分数条件・順序・ページ | #51でmain。実2社単体4原値/2算式/16検索一致、連結2組は曖昧で除外。PDF/2025別提出原本は未確認 |
-| CF明細3項目 | 営業CF調整の減価償却費、有形固定資産取得支出、有形・無形合計取得支出 | 必要な項目を明示して検索 | #39でmain。実2社2期間で8原値一致、合計支出4対象は欠損。合算・代用なし |
-| 直接財務の保存JSON | 上記15項目の原値/採否/出典の内部整合を検査 | XML版と同じ条件/順序/ページ/診断 | #45でmain。原本真正性は認証せず、未記録項目は設定エラー |
-| 直接財務3項目のSQLite保存 | 固定資産・固定負債・現金及び預金の原値/採否/出典/版を保持 | 同じ時点・範囲・版のSQL条件/順序/件数/ページとTS再検査 |  #46でmainの試験API。全件検査する小規模設計。全1,493テスト成功、実8snapshot/180検索一致。200行試験ではJSON検索より遅い |
-| 借入/社債/リース7残高 | 各直接タグの残高。合計は作らない | 期末項目を明示して検索 | #42でmain。実56組中34採用、残りは欠損理由保持。PDF独立照合は未実施 |
-| 会社情報6項目 | 会社名、EDINET/証券コード、会計基準名、当期開始/終了 | #43で会社名/コード/決算月検索もmain。企業履歴はまだない | #40でmain。出典・原文・項目間整合性。業種/市場のマスターや公式コード認証は未実装 |
-| 平均年間給与 | 提出会社単体のJPY原値と出典 | 同一期末・範囲の明示集合で条件・順序・ページ | #41でmain。注記の対象社員/賞与等を自動推定せず、従業員数と混ぜない |
-| 年齢・勤続年数 | 提出会社単体の年タグ原値と出典 | 同一期末・範囲の明示集合で条件・順序・ページ | #44でmain。XBRL pureと人向けyearsを区別し、月換算や注記を推測しない |
-| 従業員数 | `jpcrp_cor:NumberOfEmployees`の単体・全社・指定期末の原値と出典 | 明示した項目だけ、同じ期末・範囲で条件・順序・ページ | #53でmainへ統合済み。pure/peopleを区別し、整数化や対象者の推定をしない。最新2026年列は同値重複で曖昧。原XMLの過去年列4対象・独立期待値28検索は一致、PDF/当時提出原本は未確認 |
+| 分野                      | 1社から読める情報                                                         | 複数社の検索                                                              | 状態・範囲                                                                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IFRS直接BS3               | 連結JPY・指定期末の流動資産/流動負債/負債合計を専用APIで読む（#55でmain） | 本変更で同一期末の明示原本集合を検索/CLI。日本基準向けStoreへ混在させない | 公式2018/2025版を基にした合成検証。実IFRS原本・PDFは未検証。既存18指標のIFRS要約候補とは別                                                                                   |
+| BS3・流動比率             | 流動資産/流動負債/負債合計、分数で計算する流動比率                        | 原本のメモリ検索と専用SQLite試作で条件・順序・ページ                      | main完了。日本基準/円/同一期末・範囲。保存/差分/再解析比較と有限品質runnerもmain                                                                                             |
+| 追加財務5項目             | 固定資産/固定負債/現金及び預金、売上原価/販管費                           | 時点項目と期間項目を分けた明示集合の検索                                  | #37でmain。原XML20項目突合、独立PDF照合は未実施                                                                                                                              |
+| 売上高前年比              | 連続12暦月の前年/当年から算出                                             | 正確な分数で条件・順序・ページ                                            | #38でmain。実2社は候補重複で不可、別保存fixture1社の算術を確認。実複数社ランキングは未検証                                                                                   |
+| 営業利益前年比            | 連続12暦月の営業利益から算出、前期正値のみ                                | 別APIで分数条件・順序・ページ                                             | #51でmain。実2社単体4原値/2算式/16検索一致、連結2組は曖昧で除外。PDF/2025別提出原本は未確認                                                                                  |
+| CF明細3項目               | 営業CF調整の減価償却費、有形固定資産取得支出、有形・無形合計取得支出      | 必要な項目を明示して検索                                                  | #39でmain。実2社2期間で8原値一致、合計支出4対象は欠損。合算・代用なし                                                                                                        |
+| 直接財務の保存JSON        | 上記15項目の原値/採否/出典の内部整合を検査                                | XML版と同じ条件/順序/ページ/診断                                          | #45でmain。原本真正性は認証せず、未記録項目は設定エラー                                                                                                                      |
+| 直接財務3項目のSQLite保存 | 固定資産・固定負債・現金及び預金の原値/採否/出典/版を保持                 | 同じ時点・範囲・版のSQL条件/順序/件数/ページとTS再検査                    | #46でmainの試験API。全件検査する小規模設計。全1,493テスト成功、実8snapshot/180検索一致。200行試験ではJSON検索より遅い                                                        |
+| 借入/社債/リース7残高     | 各直接タグの残高。合計は作らない                                          | 期末項目を明示して検索                                                    | #42でmain。実56組中34採用、残りは欠損理由保持。PDF独立照合は未実施                                                                                                           |
+| 会社情報6項目             | 会社名、EDINET/証券コード、会計基準名、当期開始/終了                      | #43で会社名/コード/決算月検索もmain。企業履歴はまだない                   | #40でmain。出典・原文・項目間整合性。業種/市場のマスターや公式コード認証は未実装                                                                                             |
+| 平均年間給与              | 提出会社単体のJPY原値と出典                                               | 同一期末・範囲の明示集合で条件・順序・ページ                              | #41でmain。注記の対象社員/賞与等を自動推定せず、従業員数と混ぜない                                                                                                           |
+| 年齢・勤続年数            | 提出会社単体の年タグ原値と出典                                            | 同一期末・範囲の明示集合で条件・順序・ページ                              | #44でmain。XBRL pureと人向けyearsを区別し、月換算や注記を推測しない                                                                                                          |
+| 従業員数                  | `jpcrp_cor:NumberOfEmployees`の単体・全社・指定期末の原値と出典           | 明示した項目だけ、同じ期末・範囲で条件・順序・ページ                      | #53でmainへ統合済み。pure/peopleを区別し、整数化や対象者の推定をしない。最新2026年列は同値重複で曖昧。原XMLの過去年列4対象・独立期待値28検索は一致、PDF/当時提出原本は未確認 |
 
 どの検索も、全市場のデータが自動で揃う機能ではありません。2025年別提出XBRLの追加取得は未完了で、2026年有報の前年列と区別します。
 
@@ -43,36 +43,36 @@ EDINET DB は正規化済みの財務データサービス、edinet-ts はロー
 
 分類: **既存可能**=公開APIで抽出できる、**生データあり/未正規化**=保存XBRLにあれば低レベルAPIで読めるが専用の正規化出力がない、**未取得**=当ライブラリに取得基盤がない、**追加計算**=元データに加え定義・計算が必要。複数分類は併存する。
 
-| 情報群 | EDINET DB の主なAPI/内容 | edinet-ts 調査時の状態 | 今回/次段階 |
-|---|---|---|---|
-| 会社情報 | companies/detail/profile: コード、名称、業種、会計基準、所在地等 | **既存可能**: `getCommonMetadata()` の書類ID・名称・EDINETコード・タイトル・提出日。DBは証券コード・提出者名等。**生データあり/未正規化**: DEI、表紙。外部企業マスター/現行市場区分等は**未取得** | 業種/市場を財務指標だけから推測しない |
-| PL/BS/CF | financials: 売上・利益、流動/固定資産、負債、借入、費用、CF等 | **既存可能**: `getKeyMetrics()` 18項目。`getJppfsCor()`（1849型プロパティ）/`getJpcrpCor()`（2416）と raw APIで追加タグ取得。負債・流動資産等は**生データあり/未正規化** | IFRS独自タグの欠損あり。型プロパティ数を正常取得できる指標数として数えない |
-| 年次時系列 | financials `years`、ratios | **既存可能**: `getFinancialHistory(ticker, years, docType)`。DB書類を期間末降順に選び、各XBRLを取得/解析。低レベル `getData` のCurrent/Prior1Year/Prior2Yearもあり | historyの`years`は実装上書類件数で、完全な年数/訂正統合の保証なし。キャッシュ欠損時はネットワーク取得し得る |
-| 四半期/半期 | quarterly=YTD、quarterly_standalone=差分計算、earnings=短信/予想 | **既存可能**: 140/160の書類解析・定性テキスト。**追加計算**: YTD差分による単四半期。**未取得**: 短信/IR PDF・予想データ | 年次、半期累計、単四半期を混在させない。前期欠損を0としない |
-| 指標 | ratios/analysis: 利益率、ROA/ROIC、成長率/CAGR、評価スコア等 | **既存可能**: XBRL掲載のROE・自己資本比率・PER・配当性向・EPS/BPS等。多くは**追加計算** | 今回: 営業利益率・純利益率・FCF。平均資産/自己資本を要するROA/ROE、CAGRは次段階 |
-| 株価/分割調整 | ratios: PBR/時価総額/EV等、調整後EPS/BPS/配当 | 掲載PERを除き、株価・分割履歴は**未取得**。**追加計算**も必要 | 別データ源の設計が先。EDINET DBの株価由来値も有報期末基準でリアルタイムではない |
-| 定性情報 | text-blocks/text-analysis | **既存可能**: `getQualitativeInfo()` の11種類（方針、リスク、経営分析、事業、沿革、R&D、ガバナンス、業績概要、資金流動性、重要契約、従業員）。HTML除去あり | 全文検索インデックス・テーマ分析/分類はなし |
-| 大株主/大量保有 | major-shareholders=有報トップ10、shareholders=大量保有、shareholder-categories | **既存可能**: `getMajorShareholders()` の名称/株数/比率。`getLargeShareholdingInfo()` の提出者/発行者/保有割合/前回割合。分類別株主や共同保有人数は未正規化 | 大株主の個別取得と、保有者からの逆引きを分ける |
-| 人的資本 | workforce、年収、年齢、女性管理職、男女賃金差、育休 | 従業員数/年齢/年収/女性役員/管理職/賃金差等の標準タグ定義あり。**生データあり/未正規化**。従業員テキストは既存可能 | 平均年収等は提出会社単体と連結従業員を区別。単位と欠損理由を付けて抽出する段階が必要 |
-| ガバナンス | governance-summary/directors/director-compensation/audit-fees | 定性テキストと標準タグは取得可能、役員明細/報酬/監査報酬の統一構造は**生データあり/未正規化** | 取締役だけ/監査役含む、就任予定/当期を区別 |
-| ESG | GHG scope1/2/3 | jpcrpにGHGタグ定義あり。保存XBRLに存在する場合はraw取得可、専用出力は**未正規化** | 境界・期間・排出単位を揃える。本文由来の推測を構造化値に代用しない |
-| セグメント/受注/費用/顧客/関係会社 | segments/expenses/order-backlog/main-customers/subsidiaries/parents/related-party-transactions | raw/contextで値・TextBlock取得は可能。専用明細・会社名照合・グラフは**未正規化**。外部法人/LEI補完は**未取得** | context次元・注記表の正規化が必要 |
-| 政策保有株 | cross-shareholdings | 注記タグ/表があればraw取得可能、銘柄別正規化・履歴は**未正規化** | issuer名の品質管理、非上場との区別が必要 |
-| 不動産/設備 | real-estate/facilities、土地・建物・含み益・公示地価 | BSの土地/建物等はtyped/raw取得可能、物件表は未正規化。地価・住所照合は**未取得** | 地価評価や物件結合には追加データ源が必要 |
-| 履歴/開示差分/IR | history/changes/disclosures、IR sections/KPI | 書類メタデータの一覧と沿革テキストは既存可能。項目差分・イベント分類・PDF IRは**追加計算/未取得** | EDINET DBのIR機能もpreview。`ir/kpis`は公式に現在全404との記載があり、提供を保証しない |
+| 情報群                             | EDINET DB の主なAPI/内容                                                                       | edinet-ts 調査時の状態                                                                                                                                                                            | 今回/次段階                                                                                                 |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 会社情報                           | companies/detail/profile: コード、名称、業種、会計基準、所在地等                               | **既存可能**: `getCommonMetadata()` の書類ID・名称・EDINETコード・タイトル・提出日。DBは証券コード・提出者名等。**生データあり/未正規化**: DEI、表紙。外部企業マスター/現行市場区分等は**未取得** | 業種/市場を財務指標だけから推測しない                                                                       |
+| PL/BS/CF                           | financials: 売上・利益、流動/固定資産、負債、借入、費用、CF等                                  | **既存可能**: `getKeyMetrics()` 18項目。`getJppfsCor()`（1849型プロパティ）/`getJpcrpCor()`（2416）と raw APIで追加タグ取得。負債・流動資産等は**生データあり/未正規化**                          | IFRS独自タグの欠損あり。型プロパティ数を正常取得できる指標数として数えない                                  |
+| 年次時系列                         | financials `years`、ratios                                                                     | **既存可能**: `getFinancialHistory(ticker, years, docType)`。DB書類を期間末降順に選び、各XBRLを取得/解析。低レベル `getData` のCurrent/Prior1Year/Prior2Yearもあり                                | historyの`years`は実装上書類件数で、完全な年数/訂正統合の保証なし。キャッシュ欠損時はネットワーク取得し得る |
+| 四半期/半期                        | quarterly=YTD、quarterly_standalone=差分計算、earnings=短信/予想                               | **既存可能**: 140/160の書類解析・定性テキスト。**追加計算**: YTD差分による単四半期。**未取得**: 短信/IR PDF・予想データ                                                                           | 年次、半期累計、単四半期を混在させない。前期欠損を0としない                                                 |
+| 指標                               | ratios/analysis: 利益率、ROA/ROIC、成長率/CAGR、評価スコア等                                   | **既存可能**: XBRL掲載のROE・自己資本比率・PER・配当性向・EPS/BPS等。多くは**追加計算**                                                                                                           | 今回: 営業利益率・純利益率・FCF。平均資産/自己資本を要するROA/ROE、CAGRは次段階                             |
+| 株価/分割調整                      | ratios: PBR/時価総額/EV等、調整後EPS/BPS/配当                                                  | 掲載PERを除き、株価・分割履歴は**未取得**。**追加計算**も必要                                                                                                                                     | 別データ源の設計が先。EDINET DBの株価由来値も有報期末基準でリアルタイムではない                             |
+| 定性情報                           | text-blocks/text-analysis                                                                      | **既存可能**: `getQualitativeInfo()` の11種類（方針、リスク、経営分析、事業、沿革、R&D、ガバナンス、業績概要、資金流動性、重要契約、従業員）。HTML除去あり                                        | 全文検索インデックス・テーマ分析/分類はなし                                                                 |
+| 大株主/大量保有                    | major-shareholders=有報トップ10、shareholders=大量保有、shareholder-categories                 | **既存可能**: `getMajorShareholders()` の名称/株数/比率。`getLargeShareholdingInfo()` の提出者/発行者/保有割合/前回割合。分類別株主や共同保有人数は未正規化                                       | 大株主の個別取得と、保有者からの逆引きを分ける                                                              |
+| 人的資本                           | workforce、年収、年齢、女性管理職、男女賃金差、育休                                            | 従業員数/年齢/年収/女性役員/管理職/賃金差等の標準タグ定義あり。**生データあり/未正規化**。従業員テキストは既存可能                                                                                | 平均年収等は提出会社単体と連結従業員を区別。単位と欠損理由を付けて抽出する段階が必要                        |
+| ガバナンス                         | governance-summary/directors/director-compensation/audit-fees                                  | 定性テキストと標準タグは取得可能、役員明細/報酬/監査報酬の統一構造は**生データあり/未正規化**                                                                                                     | 取締役だけ/監査役含む、就任予定/当期を区別                                                                  |
+| ESG                                | GHG scope1/2/3                                                                                 | jpcrpにGHGタグ定義あり。保存XBRLに存在する場合はraw取得可、専用出力は**未正規化**                                                                                                                 | 境界・期間・排出単位を揃える。本文由来の推測を構造化値に代用しない                                          |
+| セグメント/受注/費用/顧客/関係会社 | segments/expenses/order-backlog/main-customers/subsidiaries/parents/related-party-transactions | raw/contextで値・TextBlock取得は可能。専用明細・会社名照合・グラフは**未正規化**。外部法人/LEI補完は**未取得**                                                                                    | context次元・注記表の正規化が必要                                                                           |
+| 政策保有株                         | cross-shareholdings                                                                            | 注記タグ/表があればraw取得可能、銘柄別正規化・履歴は**未正規化**                                                                                                                                  | issuer名の品質管理、非上場との区別が必要                                                                    |
+| 不動産/設備                        | real-estate/facilities、土地・建物・含み益・公示地価                                           | BSの土地/建物等はtyped/raw取得可能、物件表は未正規化。地価・住所照合は**未取得**                                                                                                                  | 地価評価や物件結合には追加データ源が必要                                                                    |
+| 履歴/開示差分/IR                   | history/changes/disclosures、IR sections/KPI                                                   | 書類メタデータの一覧と沿革テキストは既存可能。項目差分・イベント分類・PDF IRは**追加計算/未取得**                                                                                                 | EDINET DBのIR機能もpreview。`ir/kpis`は公式に現在全404との記載があり、提供を保証しない                      |
 
 ## 軸2: 複数銘柄の検索・条件・並べ替え
 
-| 検索項目 | EDINET DB | edinet-ts 調査時 | 今回の改善後 |
-|---|---|---|---|
-| 企業名/証券コード/書類種別/提出日 | search/companies、events等 | `EdinetRepository.findDocuments`: 証券コード完全一致、提出者部分一致、書類種別、提出日の上下限、limit。`period_end DESC`固定。filerNameはSQL LIKEで `%`/`_` がワイルドカード | 既存仕様を保持 |
-| 売上/利益/資産/CF/EPS/配当等 | screener + rankings | 財務条件は未対応。DBに財務列なし | 保存済みsnapshotの主要18項目すべてにAND条件・昇降順・ページング |
-| 営業利益率/純利益率/FCF | screener + rankings | 追加計算が必要 | 3指標を計算し、同じ条件/並べ替えに利用 |
-| 成長率/CAGR/ROA/ROIC/効率/負債 | screener + rankings（対応集合は別） | タグ抽出または複数期間から追加計算が必要 | 未実装。平均残高や期の連続性が必要 |
-| 業種/市場/会計基準/決算月 | screener/companies | 専用の企業マスター/検索APIなし | 未実装。財務snapshotはこの情報を補完しない |
-| 人的資本/GHG/ガバナンス/不動産/関係先件数 | screener、専用詳細API | 生データの有無と正規化が必要。財務DB検索はない | 未実装。全項目横断検索できるとは扱わない |
-| 顧客名/子会社名/大量保有者逆引き | main-customers/search、subsidiaries/search、shareholders/search/history等 | 提出者名検索はあるが、顧客/子会社/保有先逆引きとは異なる | 明細インデックスが必要 |
-| 業種比較/開示差分/イベント | industry-benchmarks/disclosures/search/events | 書類種別イベント検索のみ、比較・差分は未対応 | 別段階 |
+| 検索項目                                  | EDINET DB                                                                 | edinet-ts 調査時                                                                                                                                                             | 今回の改善後                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 企業名/証券コード/書類種別/提出日         | search/companies、events等                                                | `EdinetRepository.findDocuments`: 証券コード完全一致、提出者部分一致、書類種別、提出日の上下限、limit。`period_end DESC`固定。filerNameはSQL LIKEで `%`/`_` がワイルドカード | 既存仕様を保持                                                  |
+| 売上/利益/資産/CF/EPS/配当等              | screener + rankings                                                       | 財務条件は未対応。DBに財務列なし                                                                                                                                             | 保存済みsnapshotの主要18項目すべてにAND条件・昇降順・ページング |
+| 営業利益率/純利益率/FCF                   | screener + rankings                                                       | 追加計算が必要                                                                                                                                                               | 3指標を計算し、同じ条件/並べ替えに利用                          |
+| 成長率/CAGR/ROA/ROIC/効率/負債            | screener + rankings（対応集合は別）                                       | タグ抽出または複数期間から追加計算が必要                                                                                                                                     | 未実装。平均残高や期の連続性が必要                              |
+| 業種/市場/会計基準/決算月                 | screener/companies                                                        | 専用の企業マスター/検索APIなし                                                                                                                                               | 未実装。財務snapshotはこの情報を補完しない                      |
+| 人的資本/GHG/ガバナンス/不動産/関係先件数 | screener、専用詳細API                                                     | 生データの有無と正規化が必要。財務DB検索はない                                                                                                                               | 未実装。全項目横断検索できるとは扱わない                        |
+| 顧客名/子会社名/大量保有者逆引き          | main-customers/search、subsidiaries/search、shareholders/search/history等 | 提出者名検索はあるが、顧客/子会社/保有先逆引きとは異なる                                                                                                                     | 明細インデックスが必要                                          |
+| 業種比較/開示差分/イベント                | industry-benchmarks/disclosures/search/events                             | 書類種別イベント検索のみ、比較・差分は未対応                                                                                                                                 | 別段階                                                          |
 
 今回の検索対象は**呼び出し側が渡した集合**のみ。全市場のデータ充足率・更新頻度・抽出品質は保証しない。DB全件を勝手に再取得・再解析する機能は追加していない。
 
@@ -104,29 +104,29 @@ D=対象期間のフロー、I=期末、S=有報掲載サマリー。数値は�
 
 財務金額を百万円、年収を万円、率を百分率で扱うEDINET DB UIとは区別する。
 
-| edinet-ts項目 | 意味/単位 | 期間 | ソース・式 |
-|---|---|---|---|
-| netSales | 売上高/収益・円 | D | KeyMetrics、J-GAAP/IFRSサマリー |
-| operatingIncome | 営業利益・円 | D | KeyMetrics、標準/IFRSタグ。IFRS独自タグは欠損し得る |
-| ordinaryIncome | 経常利益・円 | D | KeyMetrics、J-GAAP。IFRSでは通常未定義 |
-| netIncome | 親会社帰属利益・円 | D | KeyMetrics、J-GAAP/IFRS |
-| netAssets | 純資産/IFRS親会社持分・円 | I | KeyMetrics、会計基準で意味差あり |
-| totalAssets | 総資産・円 | I | KeyMetrics、J-GAAP/IFRS |
-| operatingCashFlow | 営業CF・円 | D | KeyMetrics、J-GAAP/IFRS |
-| investingCashFlow | 投資CF・円 | D | 同上 |
-| financingCashFlow | 財務CF・円 | D | 同上 |
-| cashAndEquivalents | 現金同等物・円 | I | KeyMetrics。現預金BS勘定とは別 |
-| earningsPerShare | EPS・円/株 | D/S | KeyMetrics、分割調整の統一なし |
-| bookValuePerShare | BPS・円/株 | I/S | 同上 |
-| equityToTotalAssetsRatio | 自己資本比率・小数 | I/S | 掲載値、純資産から再計算しない |
-| rateOfReturnOnEquity | ROE・小数 | D/S | 掲載値。平均自己資本からの計算ROEとは別 |
-| priceEarningsRatio | PER・倍 | S | 掲載値のみ。現在株価から計算しない |
-| payoutRatio | 配当性向・小数 | D/S | 掲載値 |
-| numberOfIssuedShares | 発行済株式数・株 | I/S | 掲載値。自己株控除/分割調整を行わない |
-| dividendPaidPerShare | 一株配当・円/株 | D/S | 掲載値 |
-| operatingMargin | 営業利益率・小数 | D | operatingIncome / netSales |
-| netMargin | 純利益率・小数 | D | netIncome / netSales |
-| freeCashFlow | FCF・円 | D | operatingCashFlow + investingCashFlow（投資CFを符号のまま加算） |
+| edinet-ts項目            | 意味/単位                 | 期間 | ソース・式                                                      |
+| ------------------------ | ------------------------- | ---- | --------------------------------------------------------------- |
+| netSales                 | 売上高/収益・円           | D    | KeyMetrics、J-GAAP/IFRSサマリー                                 |
+| operatingIncome          | 営業利益・円              | D    | KeyMetrics、標準/IFRSタグ。IFRS独自タグは欠損し得る             |
+| ordinaryIncome           | 経常利益・円              | D    | KeyMetrics、J-GAAP。IFRSでは通常未定義                          |
+| netIncome                | 親会社帰属利益・円        | D    | KeyMetrics、J-GAAP/IFRS                                         |
+| netAssets                | 純資産/IFRS親会社持分・円 | I    | KeyMetrics、会計基準で意味差あり                                |
+| totalAssets              | 総資産・円                | I    | KeyMetrics、J-GAAP/IFRS                                         |
+| operatingCashFlow        | 営業CF・円                | D    | KeyMetrics、J-GAAP/IFRS                                         |
+| investingCashFlow        | 投資CF・円                | D    | 同上                                                            |
+| financingCashFlow        | 財務CF・円                | D    | 同上                                                            |
+| cashAndEquivalents       | 現金同等物・円            | I    | KeyMetrics。現預金BS勘定とは別                                  |
+| earningsPerShare         | EPS・円/株                | D/S  | KeyMetrics、分割調整の統一なし                                  |
+| bookValuePerShare        | BPS・円/株                | I/S  | 同上                                                            |
+| equityToTotalAssetsRatio | 自己資本比率・小数        | I/S  | 掲載値、純資産から再計算しない                                  |
+| rateOfReturnOnEquity     | ROE・小数                 | D/S  | 掲載値。平均自己資本からの計算ROEとは別                         |
+| priceEarningsRatio       | PER・倍                   | S    | 掲載値のみ。現在株価から計算しない                              |
+| payoutRatio              | 配当性向・小数            | D/S  | 掲載値                                                          |
+| numberOfIssuedShares     | 発行済株式数・株          | I/S  | 掲載値。自己株控除/分割調整を行わない                           |
+| dividendPaidPerShare     | 一株配当・円/株           | D/S  | 掲載値                                                          |
+| operatingMargin          | 営業利益率・小数          | D    | operatingIncome / netSales                                      |
+| netMargin                | 純利益率・小数            | D    | netIncome / netSales                                            |
+| freeCashFlow             | FCF・円                   | D    | operatingCashFlow + investingCashFlow（投資CFを符号のまま加算） |
 
 欠損理由: 既存18項目はタグ欠損、会計基準差、対象context不在などをundefinedで返し、理由コードはまだない。追加比率は分子/分母欠損、非有限値、売上0以下でundefined。
 
@@ -171,16 +171,23 @@ import { EdinetXbrlParser, screenFinancialSnapshots, type FinancialSnapshot } fr
 
 const parsed = new EdinetXbrlParser().parse(readFileSync("./saved-report.xbrl", "utf8"));
 const extracted = parsed.getKeyMetricsWithSources();
-const snapshots: FinancialSnapshot[] = [{
-  secCode: "11110", docID: "EXAMPLE", docTypeCode: "120",
-  periodEnd: "2024-03-31", submitDate: "2024-06-25",
-  periodType: "annual", // 元書類が通期であることを確認
-  ...extracted // metrics と metricSources を一緒に保存
-}];
+const snapshots: FinancialSnapshot[] = [
+  {
+    secCode: "11110",
+    docID: "EXAMPLE",
+    docTypeCode: "120",
+    periodEnd: "2024-03-31",
+    submitDate: "2024-06-25",
+    periodType: "annual", // 元書類が通期であることを確認
+    ...extracted, // metrics と metricSources を一緒に保存
+  },
+];
 writeFileSync("./snapshots.json", JSON.stringify(snapshots));
 const result = screenFinancialSnapshots(snapshots, {
   conditions: [{ metric: "operatingMargin", operator: "gte", value: 0.1 }],
-  sortBy: "freeCashFlow", order: "desc", limit: 20
+  sortBy: "freeCashFlow",
+  order: "desc",
+  limit: 20,
 });
 ```
 

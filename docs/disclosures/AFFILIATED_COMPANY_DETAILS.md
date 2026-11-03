@@ -9,18 +9,31 @@
 ## 入力・報告年度・出典
 
 ```ts
-import { DisclosureTableKind, extractAffiliatedCompanies, searchAffiliatedCompanies, AffiliatedRelationship } from "edinet-ts";
+import {
+  DisclosureTableKind,
+  extractAffiliatedCompanies,
+  searchAffiliatedCompanies,
+  AffiliatedRelationship,
+} from "edinet-ts";
 const document = {
   xml: savedXml,
-  selection: { docID: "SAMPLE", kind: DisclosureTableKind.AffiliatedEntities, contextRef: "FilingDateInstant" },
-  reportingPeriodEnd: "2026-03-31", accountingStandard: "J-GAAP" as const,
+  selection: {
+    docID: "SAMPLE",
+    kind: DisclosureTableKind.AffiliatedEntities,
+    contextRef: "FilingDateInstant",
+  },
+  reportingPeriodEnd: "2026-03-31",
+  accountingStandard: "J-GAAP" as const,
   proof: { rawSha256: reviewedFragmentHash, indirectIncluded: true },
-  tables: [{ tableIndex: 0 }, { tableIndex: 1, continuationOf: 0 }]
+  tables: [{ tableIndex: 0 }, { tableIndex: 1, continuationOf: 0 }],
 };
 const detail = extractAffiliatedCompanies(document);
 const result = searchAffiliatedCompanies([document], {
-  reportingPeriodEnd: "2026-03-31", relationship: AffiliatedRelationship.ConsolidatedSubsidiary, entryKind: "named",
-  nameContains: "会社名", voting: { direction: "owned", component: "reportedTotal", operator: "gte", value: 50 }
+  reportingPeriodEnd: "2026-03-31",
+  relationship: AffiliatedRelationship.ConsolidatedSubsidiary,
+  entryKind: "named",
+  nameContains: "会社名",
+  voting: { direction: "owned", component: "reportedTotal", operator: "gte", value: 50 },
 });
 ```
 

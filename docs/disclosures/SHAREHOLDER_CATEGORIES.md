@@ -9,18 +9,31 @@
 ## 入力・基準日・対象
 
 ```ts
-import { DisclosureTableKind, ShareholderCategory, ShareholderCategoryMetric,
-  extractShareholderCategories, searchShareholderCategories } from "edinet-ts";
+import {
+  DisclosureTableKind,
+  ShareholderCategory,
+  ShareholderCategoryMetric,
+  extractShareholderCategories,
+  searchShareholderCategories,
+} from "edinet-ts";
 const document = {
   xml: savedXml,
-  selection: { docID: "SAMPLE", kind: DisclosureTableKind.ShareholderCategories, contextRef: "FilingDateInstant" },
-  declarations: [{ tableIndex: reviewedTableIndex, asOf: "2026-03-31", rawSha256: reviewedFragmentHash }]
+  selection: {
+    docID: "SAMPLE",
+    kind: DisclosureTableKind.ShareholderCategories,
+    contextRef: "FilingDateInstant",
+  },
+  declarations: [
+    { tableIndex: reviewedTableIndex, asOf: "2026-03-31", rawSha256: reviewedFragmentHash },
+  ],
 };
 const detail = extractShareholderCategories(document);
 const matches = searchShareholderCategories([document], {
-  asOf: "2026-03-31", category: ShareholderCategory.ForeignNonIndividuals,
+  asOf: "2026-03-31",
+  category: ShareholderCategory.ForeignNonIndividuals,
   metric: ShareholderCategoryMetric.OwnershipPercent,
-  condition: { operator: "gte", value: 10 }, sort: "value-desc"
+  condition: { operator: "gte", value: 10 },
+  sort: "value-desc",
 });
 ```
 
@@ -38,28 +51,28 @@ asOfEvidenceは正規化した日付表示と根拠の種類、表内の場合�
 
 ## 分類・単位と分母
 
-| 分類ID | 原表の分類 | role |
-|---|---|---|
-| government | 政府及び地方公共団体 | category |
-| financial-institutions | 金融機関 | category |
-| financial-instruments-firms | 金融商品取引業者 | category |
-| other-corporations | その他の法人 | category |
-| foreign-non-individuals | 外国法人等／個人以外 | category |
-| foreign-individuals | 外国法人等／個人 | category |
-| individuals-and-others | 個人その他 | category |
-| reported-total | 計 | reported-total |
-| odd-lots | 単元未満株式の状況 | odd-lots |
+| 分類ID                      | 原表の分類           | role           |
+| --------------------------- | -------------------- | -------------- |
+| government                  | 政府及び地方公共団体 | category       |
+| financial-institutions      | 金融機関             | category       |
+| financial-instruments-firms | 金融商品取引業者     | category       |
+| other-corporations          | その他の法人         | category       |
+| foreign-non-individuals     | 外国法人等／個人以外 | category       |
+| foreign-individuals         | 外国法人等／個人     | category       |
+| individuals-and-others      | 個人その他           | category       |
+| reported-total              | 計                   | reported-total |
+| odd-lots                    | 単元未満株式の状況   | odd-lots       |
 
 10列・3段見出し・株主数/所有株式数/割合の3データ行を対象とします。見出しの結合範囲、階層と列順、単元/株/人/％の単位を照合します。先頭に基準日の行がある表と、日付が表外にある表に対応します。未知の分類/単位/書式、結合された数値セル、余分なデータ行等は理由を返して採用しません。
 
 各entryのheadersは原表の見出しセル参照です。「外国法人等」の親見出しと「個人以外/個人」の子見出しを両方保持し、外国の個人を個人以外へ合算しません。合計は原表のまま保持し、分類値と合計を足しません。
 
-| metric | 単位・内容 |
-|---|---|
-| shareholderCount | persons。原表の株主数 |
-| ownedLots | lots。原表の所有単元数 |
-| ownedShares | shares。分類別単元数×原表の1単元株式数。単元未満欄は原表の株数そのもの |
-| ownershipPercent | percent。原表の所有株式数の割合（10＝10％） |
+| metric           | 単位・内容                                                             |
+| ---------------- | ---------------------------------------------------------------------- |
+| shareholderCount | persons。原表の株主数                                                  |
+| ownedLots        | lots。原表の所有単元数                                                 |
+| ownedShares      | shares。分類別単元数×原表の1単元株式数。単元未満欄は原表の株数そのもの |
+| ownershipPercent | percent。原表の所有株式数の割合（10＝10％）                            |
 
 sharesPerLotは見出しの1単元株式数を保持します。分類別の株数換算は整数演算で行い、元単元数と単元株式数のセル参照/算式を残します。安全に表現できる場合だけsafeNumberも付けます。100株以外も同じ算式を使い、単元未満の株数をさらに100倍することはありません。
 

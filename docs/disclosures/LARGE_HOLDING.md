@@ -20,24 +20,36 @@
 ### 入力と一覧メタデータ
 
 ```ts
-import { extractLargeHoldingReport, searchLargeHoldingReports, LargeHoldingMetric } from "edinet-ts";
+import {
+  extractLargeHoldingReport,
+  searchLargeHoldingReports,
+  LargeHoldingMetric,
+} from "edinet-ts";
 const document = {
   xml: savedXml,
   metadata: {
-    docID: selected.docID, docTypeCode: selected.docTypeCode, formCode: selected.formCode,
-    edinetCode: selected.edinetCode, issuerEdinetCode: selected.issuerEdinetCode,
+    docID: selected.docID,
+    docTypeCode: selected.docTypeCode,
+    formCode: selected.formCode,
+    edinetCode: selected.edinetCode,
+    issuerEdinetCode: selected.issuerEdinetCode,
     parentDocID: selected.parentDocID ?? undefined,
-    submitDateTime: selected.submitDateTime, knownAt: snapshotKnownAt,
+    submitDateTime: selected.submitDateTime,
+    knownAt: snapshotKnownAt,
     coverContextRef: "FilingDateInstant",
-    withdrawalStatus: selected.withdrawalStatus, disclosureStatus: selected.disclosureStatus,
-    docInfoEditStatus: selected.docInfoEditStatus
-  }
+    withdrawalStatus: selected.withdrawalStatus,
+    disclosureStatus: selected.disclosureStatus,
+    docInfoEditStatus: selected.docInfoEditStatus,
+  },
 };
 const report = extractLargeHoldingReport(document);
 const result = searchLargeHoldingReports([document], {
-  cutoff: observedCutoff, dutyDate: "2025-06-16", scope: "report",
+  cutoff: observedCutoff,
+  dutyDate: "2025-06-16",
+  scope: "report",
   metric: LargeHoldingMetric.HoldingPercent,
-  condition: { operator: "gte", value: 5 }, sort: "value-desc"
+  condition: { operator: "gte", value: 5 },
+  sort: "value-desc",
 });
 ```
 
@@ -59,13 +71,13 @@ metadataは呼出元の宣言であり、API応答や原本の真正性を暗号
 
 ### 日付と訂正
 
-| 項目 | 意味 |
-|---|---|
-| metadata.submitDateTime | 一覧が示す、その書類IDの提出日時 |
-| metadata.knownAt | 原本を利用可能とした観測日時 |
-| cover.dutyDate | XBRL表紙の報告義務発生日 |
-| cover.filingDate | XBRL表紙factの提出日 |
-| rows[].outstandingAsOf | BaseDate＝発行済株式等総数の基準日 |
+| 項目                    | 意味                               |
+| ----------------------- | ---------------------------------- |
+| metadata.submitDateTime | 一覧が示す、その書類IDの提出日時   |
+| metadata.knownAt        | 原本を利用可能とした観測日時       |
+| cover.dutyDate          | XBRL表紙の報告義務発生日           |
+| cover.filingDate        | XBRL表紙factの提出日               |
+| rows[].outstandingAsOf  | BaseDate＝発行済株式等総数の基準日 |
 
 BaseDateはPDFのV欄に対応します。報告義務発生日や保有日の別名ではなく、他の比率/保有値の時点へ流用しません。義務発生日が2025年6月17日、Vの基準日が6月20日の実例も、そのまま分けて返します。現在の保有ポジションや、全ての構成値が同じ時点であることは認定しません。
 
@@ -99,13 +111,13 @@ name等の重複は原値・namespace・context・単位/精度が完全一致�
 
 ### 5数値と分母
 
-| metric | 原タグ/欄 | valueUnit |
-|---|---|---|
-| heldEquivalents | TotalNumberOfStocksEtcHeld、T＝保有株券等の総数 | share-or-unit-equivalents |
-| potentialEquivalents | NumberOfResidualStocksHeld、U＝保有潜在株券等の数 | share-or-unit-equivalents |
-| outstandingEquivalents | TotalNumberOfOutstandingStocksEtc、V＝発行済株式等総数 | share-or-unit-equivalents |
-| holdingPercent | HoldingRatioOfShareCertificatesEtc、当期の記載比率 | percent |
-| previousHoldingPercent | HoldingRatioOfShareCertificatesEtcPerLastReport、直前報告の記載比率 | percent |
+| metric                 | 原タグ/欄                                                           | valueUnit                 |
+| ---------------------- | ------------------------------------------------------------------- | ------------------------- |
+| heldEquivalents        | TotalNumberOfStocksEtcHeld、T＝保有株券等の総数                     | share-or-unit-equivalents |
+| potentialEquivalents   | NumberOfResidualStocksHeld、U＝保有潜在株券等の数                   | share-or-unit-equivalents |
+| outstandingEquivalents | TotalNumberOfOutstandingStocksEtc、V＝発行済株式等総数              | share-or-unit-equivalents |
+| holdingPercent         | HoldingRatioOfShareCertificatesEtc、当期の記載比率                  | percent                   |
+| previousHoldingPercent | HoldingRatioOfShareCertificatesEtcPerLastReport、直前報告の記載比率 | percent                   |
 
 XBRLのshares/pureを解決した単位と照合します。pureの0.0507は5.0700％へ正確に換算し、原値・valueUnit・multiplier=100・十進値・安全な場合のsafeNumberを分離します。保有数は非負の整数値、比率は0〜1のpure原値に限定します。非整数、範囲外、単位違い等は結果と全候補証跡へ同じ除外理由を残します。
 
@@ -239,8 +251,8 @@ observationsを省略した既存のfile/metadata形式も使えます。
 取下げられた訂正から有効な元書類を選ぶ場合も、その取下げの根拠IDをdecisionに残し、選択observedAtへ反映します。取下げ前のcutoffの結果を書き換えません。
 同時刻の親参照競合では、片方の観測の種別が消えていても両方の参照先を未解決にします。新しい種別不明観測に別の親宣言が残る場合も、旧訂正参照先と新宣言先の採用を止め、両観測IDを根拠として返します。
 
-
 <a id="store"></a>
+
 ## 大量保有Storeで保存・再検索する
 
 `LargeHoldingStore` は一覧観測、原本のhashと利用可能時刻、解析結果を専用SQLiteへ保存します。検索時に原XMLを再読込する必要はありません。原XML自体はDBへ入れず、既存の原本保管先で保持してください。

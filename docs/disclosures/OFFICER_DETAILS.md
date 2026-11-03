@@ -15,8 +15,8 @@ const document = {
   tables: [
     { tableIndex: 0, rawSha256: reviewedFragmentHash, status: "as-filed", evidenceTableIndex: 0 },
     { tableIndex: 1, rawSha256: reviewedFragmentHash, status: "as-filed", evidenceTableIndex: 0 },
-    { tableIndex: 5, rawSha256: reviewedFragmentHash, status: "proposed", evidenceTableIndex: 5 }
-  ]
+    { tableIndex: 5, rawSha256: reviewedFragmentHash, status: "proposed", evidenceTableIndex: 5 },
+  ],
 };
 ```
 
@@ -45,13 +45,20 @@ namedの個人行とreported-totalの原表合計を分けます。合計を個�
 ```ts
 // 株数がダッシュの人も氏名・役職・略歴で検索できる
 searchOfficerDetails([document], {
-  metric: "record", status: "as-filed", rosterDate: "2026-06-24",
-  role: "named", biographyContains: "原文に含まれる文字列"
+  metric: "record",
+  status: "as-filed",
+  rosterDate: "2026-06-24",
+  role: "named",
+  biographyContains: "原文に含まれる文字列",
 });
 // 株数条件では欠損理由をexcludedへ残す
 searchOfficerDetails([document], {
-  metric: "reportedShares", status: "proposed", rosterDate: "2026-06-26",
-  role: "named", condition: { operator: "gte", value: 10000 }, sort: "value-desc"
+  metric: "reportedShares",
+  status: "proposed",
+  rosterDate: "2026-06-26",
+  role: "named",
+  condition: { operator: "gte", value: 10000 },
+  sort: "value-desc",
 });
 ```
 

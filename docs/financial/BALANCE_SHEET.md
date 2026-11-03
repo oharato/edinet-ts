@@ -34,11 +34,11 @@
 
 [別のBS横断検索API/CLI](BALANCE_SHEET.md#screening)を利用できます。
 
-| 安定ID | 直接fact | 単位/期間 |
-|---|---|---|
-| `currentAssets` | `jppfs_cor:CurrentAssets` | JPY / Instant |
+| 安定ID               | 直接fact                       | 単位/期間     |
+| -------------------- | ------------------------------ | ------------- |
+| `currentAssets`      | `jppfs_cor:CurrentAssets`      | JPY / Instant |
 | `currentLiabilities` | `jppfs_cor:CurrentLiabilities` | JPY / Instant |
-| `totalLiabilities` | `jppfs_cor:Liabilities` | JPY / Instant |
+| `totalLiabilities`   | `jppfs_cor:Liabilities`        | JPY / Instant |
 
 指標の対応表（registry）のversionは `BALANCE_SHEET_REGISTRY_VERSION`（現在 `"2"`）。定義・候補配列・辞書はfreezeしています。負債純資産合計や内訳の加算、資産から純資産を引く差額補完は行いません。
 
@@ -47,17 +47,22 @@
 ### 利用方法
 
 ```ts
-import { EdinetXbrlParser, BALANCE_SHEET_REGISTRY, AccountingStandard, ConsolidationScope } from "edinet-ts";
+import {
+  EdinetXbrlParser,
+  BALANCE_SHEET_REGISTRY,
+  AccountingStandard,
+  ConsolidationScope,
+} from "edinet-ts";
 const object = new EdinetXbrlParser().parse(xml);
 const result = object.selectBalanceSheetMetric(BALANCE_SHEET_REGISTRY.currentAssets.id, {
-    accountingStandard: AccountingStandard.JGAAP,
-    scope: ConsolidationScope.Consolidated,
-    period: { instant: "2025-03-31" }
+  accountingStandard: AccountingStandard.JGAAP,
+  scope: ConsolidationScope.Consolidated,
+  period: { instant: "2025-03-31" },
 });
 if (result.status === "selected") {
-    console.log(result.raw);        // decimal文字列
-    console.log(result.safeNumber); // 安全に往復できる場合だけnumber
-    console.log(result.source);    // 元の項目名/記載範囲/日付/連結か単体/単位等
+  console.log(result.raw); // decimal文字列
+  console.log(result.safeNumber); // 安全に往復できる場合だけnumber
+  console.log(result.source); // 元の項目名/記載範囲/日付/連結か単体/単位等
 }
 console.log(result.reason, result.evidence);
 console.log(BALANCE_SHEET_REGISTRY.currentAssets);
@@ -142,15 +147,35 @@ DEIから条件を得る場合は[財務基準判定](FINANCIAL_REPORTING_BASIS.
 ### 開発者向け: API
 
 ```ts
-import { createBalanceSheetSnapshot, screenBalanceSheetSnapshots,
-    AccountingStandard, BALANCE_SHEET_REGISTRY, ComparisonOperator, ConsolidationScope, SortOrder } from "edinet-ts";
+import {
+  createBalanceSheetSnapshot,
+  screenBalanceSheetSnapshots,
+  AccountingStandard,
+  BALANCE_SHEET_REGISTRY,
+  ComparisonOperator,
+  ConsolidationScope,
+  SortOrder,
+} from "edinet-ts";
 const row = createBalanceSheetSnapshot(xml, {
-    secCode: "1001", docID: "SYNTHETIC1", instant: "2025-03-31",
-    scope: ConsolidationScope.Consolidated, accountingStandard: AccountingStandard.JGAAP, currency: "JPY"
+  secCode: "1001",
+  docID: "SYNTHETIC1",
+  instant: "2025-03-31",
+  scope: ConsolidationScope.Consolidated,
+  accountingStandard: AccountingStandard.JGAAP,
+  currency: "JPY",
 });
 const result = screenBalanceSheetSnapshots([row], {
-    conditions: [{ metric: BALANCE_SHEET_REGISTRY.currentAssets.id, operator: ComparisonOperator.GreaterThanOrEqual, value: 100 }],
-    sortBy: BALANCE_SHEET_REGISTRY.totalLiabilities.id, order: SortOrder.Descending, offset: 0, limit: 20
+  conditions: [
+    {
+      metric: BALANCE_SHEET_REGISTRY.currentAssets.id,
+      operator: ComparisonOperator.GreaterThanOrEqual,
+      value: 100,
+    },
+  ],
+  sortBy: BALANCE_SHEET_REGISTRY.totalLiabilities.id,
+  order: SortOrder.Descending,
+  offset: 0,
+  limit: 20,
 });
 ```
 
@@ -187,13 +212,13 @@ CLI/helperで原本を渡す場合は、先行する厳密選択器による元n
 
 返値は以下です。
 
-| フィールド | 意味 |
-|---|---|
-| `rows` | 条件一致・並べ替え・ページング後のsnapshot。入力から深いコピーを返す |
-| `total` | 条件一致後・ページング前の件数 |
-| `excludedRows` | 必要指標の非採用/unsafe-numberで除外した行数 |
-| `filteredRows` | 比較可能だが条件に一致しない行数 |
-| `diagnostics` | 証券コード/docID/科目、非採用statusまたはunsafe-number、元selectionReason、requiredフラグ |
+| フィールド     | 意味                                                                                                  |
+| -------------- | ----------------------------------------------------------------------------------------------------- |
+| `rows`         | 条件一致・並べ替え・ページング後のsnapshot。入力から深いコピーを返す                                  |
+| `total`        | 条件一致後・ページング前の件数                                                                        |
+| `excludedRows` | 必要指標の非採用/unsafe-numberで除外した行数                                                          |
+| `filteredRows` | 比較可能だが条件に一致しない行数                                                                      |
+| `diagnostics`  | 証券コード/docID/科目、非採用statusまたはunsafe-number、元selectionReason、requiredフラグ             |
 | `reasonCounts` | missing/unsupported/ambiguous/unsafe-numberの**指標診断件数**。不要指標の診断も含むため行数とは異なる |
 
 sortByの既定順はdesc、`order: "asc"` も指定可能です。同値またはsort未指定では正規化証券コードの辞書順、次にdocID順です。offset/limitは0以上の安全整数。limit=0はrowsを空にしtotalを保持します。入力順を変えても並びが決まり、入力snapshotを変更しません。
@@ -206,8 +231,14 @@ sortByの既定順はdesc、`order: "asc"` も指定可能です。同値また�
 
 ```json
 [
-  { "secCode": "1001", "docID": "SYNTHETIC1", "file": "./one.xbrl",
-    "instant": "2025-03-31", "scope": "Consolidated", "accountingStandard": "J-GAAP" }
+  {
+    "secCode": "1001",
+    "docID": "SYNTHETIC1",
+    "file": "./one.xbrl",
+    "instant": "2025-03-31",
+    "scope": "Consolidated",
+    "accountingStandard": "J-GAAP"
+  }
 ]
 ```
 
@@ -260,20 +291,27 @@ manifest/file/条件/来歴の不正はstderr・非0終了、成功はstdoutへJ
 ### 1社の比率を確かめる
 
 ```ts
-import { calculateCurrentRatio, createBalanceSheetSnapshot,
-    AccountingStandard, ConsolidationScope } from "edinet-ts";
+import {
+  calculateCurrentRatio,
+  createBalanceSheetSnapshot,
+  AccountingStandard,
+  ConsolidationScope,
+} from "edinet-ts";
 
 const snapshot = createBalanceSheetSnapshot(xml, {
-    secCode: "1001", docID: "SYNTHETIC1", instant: "2025-03-31",
-    scope: ConsolidationScope.Consolidated,
-    accountingStandard: AccountingStandard.JGAAP, currency: "JPY"
+  secCode: "1001",
+  docID: "SYNTHETIC1",
+  instant: "2025-03-31",
+  scope: ConsolidationScope.Consolidated,
+  accountingStandard: AccountingStandard.JGAAP,
+  currency: "JPY",
 });
 const ratio = calculateCurrentRatio(snapshot);
 if (ratio.status === "calculated") {
-    console.log(ratio.value); // 表示用の近似値。3なら300%
-    console.log(ratio.exact); // 例: { numerator: "3", denominator: "1" }
+  console.log(ratio.value); // 表示用の近似値。3なら300%
+  console.log(ratio.exact); // 例: { numerator: "3", denominator: "1" }
 } else {
-    console.log(ratio.reason); // 計算しなかった理由
+  console.log(ratio.reason); // 計算しなかった理由
 }
 console.log(ratio.inputs); // 流動資産・流動負債の原値、採用元と理由
 ```
@@ -285,16 +323,27 @@ console.log(ratio.inputs); // 流動資産・流動負債の原値、採用元�
 ### 複数社を検索する
 
 ```ts
-import { screenBalanceSheetSnapshots, BalanceSheetScreeningMetric,
-    ComparisonOperator, SortOrder } from "edinet-ts";
+import {
+  screenBalanceSheetSnapshots,
+  BalanceSheetScreeningMetric,
+  ComparisonOperator,
+  SortOrder,
+} from "edinet-ts";
 
 const result = screenBalanceSheetSnapshots(snapshots, {
-    conditions: [{ metric: BalanceSheetScreeningMetric.CurrentRatio,
-        operator: ComparisonOperator.GreaterThanOrEqual, value: 2 }],
-    sortBy: BalanceSheetScreeningMetric.CurrentRatio,
-    order: SortOrder.Descending, offset: 0, limit: 20
+  conditions: [
+    {
+      metric: BalanceSheetScreeningMetric.CurrentRatio,
+      operator: ComparisonOperator.GreaterThanOrEqual,
+      value: 2,
+    },
+  ],
+  sortBy: BalanceSheetScreeningMetric.CurrentRatio,
+  order: SortOrder.Descending,
+  offset: 0,
+  limit: 20,
 });
-console.log(result.rows.map(row => row.derivedMetrics?.currentRatio));
+console.log(result.rows.map((row) => row.derivedMetrics?.currentRatio));
 console.log(result.excludedRows, result.diagnostics);
 ```
 
@@ -320,15 +369,15 @@ edinet-ts screen-bs --manifest ./inputs/manifest.json \
 
 ### 計算しない場合
 
-| 理由 | 扱い |
-|---|---|
-| `missing-input` | どちらかの金額が欠損。0で補いません |
-| `ambiguous-input` | 候補を一つに決められません |
-| `unsupported-input` | 単位・項目等が未対応。元の選択結果に詳しい理由を残します |
-| `unsafe-input` | 元の数値を安全にnumberへ往復できません。巨大な入力同士でも計算しません |
-| `zero-denominator` | 流動負債が0。無限大にしません |
-| `negative-input` | 流動資産または流動負債が負値。比率を作りません。流動資産0・流動負債が正なら比率0は有効です |
-| `unsafe-result` | 商が最大安全整数を超える、表示値が非有限、正の商が0へ小さくなりすぎる等 |
+| 理由                | 扱い                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| `missing-input`     | どちらかの金額が欠損。0で補いません                                                        |
+| `ambiguous-input`   | 候補を一つに決められません                                                                 |
+| `unsupported-input` | 単位・項目等が未対応。元の選択結果に詳しい理由を残します                                   |
+| `unsafe-input`      | 元の数値を安全にnumberへ往復できません。巨大な入力同士でも計算しません                     |
+| `zero-denominator`  | 流動負債が0。無限大にしません                                                              |
+| `negative-input`    | 流動資産または流動負債が負値。比率を作りません。流動資産0・流動負債が正なら比率0は有効です |
+| `unsafe-result`     | 商が最大安全整数を超える、表示値が非有限、正の商が0へ小さくなりすぎる等                    |
 
 会社・対象日・範囲・単位や採用元が矛盾する入力は、未計算の返値ではなく入力エラーです。正当な欠損・重複候補などは理由付きの未計算結果になり、比率を必要とする検索から除外します。金額検索だけなら、従来どおり0や負値を保持します。
 

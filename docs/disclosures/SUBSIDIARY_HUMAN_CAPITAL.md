@@ -43,12 +43,12 @@ import {
   searchSubsidiaryHumanCapitalLabels,
   SubsidiaryHumanCapitalLabelOperator,
   SortOrder,
-} from 'edinet-ts';
+} from "edinet-ts";
 
-const metadata = { docID: 'SYNTHETIC-A', instant: '2026-03-31', secCode: '1001' };
+const metadata = { docID: "SYNTHETIC-A", instant: "2026-03-31", secCode: "1001" };
 const extraction = extractSubsidiaryHumanCapitalLabels(xml, metadata);
 const result = searchSubsidiaryHumanCapitalLabels([{ xml, metadata }], {
-  conditions: [{ operator: SubsidiaryHumanCapitalLabelOperator.Contains, value: 'SYNTHETIC' }],
+  conditions: [{ operator: SubsidiaryHumanCapitalLabelOperator.Contains, value: "SYNTHETIC" }],
   order: SortOrder.Ascending,
   offset: 0,
   limit: 10,
@@ -83,7 +83,10 @@ const result = searchSubsidiaryHumanCapitalLabels([{ xml, metadata }], {
 
 ```json
 [
-  { "file": "a.xbrl", "metadata": { "docID": "SYNTHETIC-A", "instant": "2026-03-31", "secCode": "1001" } },
+  {
+    "file": "a.xbrl",
+    "metadata": { "docID": "SYNTHETIC-A", "instant": "2026-03-31", "secCode": "1001" }
+  },
   { "file": "b.xbrl", "metadata": { "docID": "SYNTHETIC-B", "instant": "2026-03-31" } }
 ]
 ```
@@ -166,7 +169,7 @@ nilは0にしません。初期の`disclosure.state`は`unknown`です。
 
 ```ts
 const result = extractSubsidiaryHumanCapitalMetrics(xml, metadata, undefined, "auto");
-console.log(result.noteInterpretation?.matched);    // 表・行・セル・注記番号・原文hash
+console.log(result.noteInterpretation?.matched); // 表・行・セル・注記番号・原文hash
 console.log(result.noteInterpretation?.unresolved); // 対応が一意にならなかった項目と理由
 
 const search = screenSubsidiaryHumanCapitalMetrics(
@@ -192,16 +195,16 @@ DEIの年度開始日・年度末・当期末・FY、提出者、注記context�
 
 `noteInterpretation.definitions` は、確認済みの文言から読み取った集計定義です。各項目には行・指標・表・数値セル・注記番号・原文・原文hashが付きます。表の見出しから参照され、セルの百分率がXBRL原値と一致する場合だけ返します。
 
-| `definition.kind` | 読み取る定義 |
-|---|---|
-| `secondment-population` | 他社への出向者を含め、他社からの出向者を除く集計範囲 |
-| `wage-composition` | 賃金に含む例（基本給・超過労働の報酬・賞与）と除く例（退職手当・通勤手当）。例示を全項目の一覧とは扱いません |
-| `part-time-wage-basis` | 有期の嘱託社員・臨時雇用者・パートタイマーという対象区分と、パートタイマーはフルタイム換算せず実支給賃金を使うこと。正規雇用者には付けません |
+| `definition.kind`       | 読み取る定義                                                                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `secondment-population` | 他社への出向者を含め、他社からの出向者を除く集計範囲                                                                                         |
+| `wage-composition`      | 賃金に含む例（基本給・超過労働の報酬・賞与）と除く例（退職手当・通勤手当）。例示を全項目の一覧とは扱いません                                 |
+| `part-time-wage-basis`  | 有期の嘱託社員・臨時雇用者・パートタイマーという対象区分と、パートタイマーはフルタイム換算せず実支給賃金を使うこと。正規雇用者には付けません |
 
 ```ts
 const definitions = result.noteInterpretation?.definitions ?? [];
-const wageDefinitions = definitions.filter(d => d.metric === "genderWageAllRatio");
-console.log(wageDefinitions.map(d => ({ definition: d.definition, note: d.noteText })));
+const wageDefinitions = definitions.filter((d) => d.metric === "genderWageAllRatio");
+console.log(wageDefinitions.map((d) => ({ definition: d.definition, note: d.noteText })));
 ```
 
 現在は保存済みミライト2年度の文言に対応しています。否定・追加説明・重複注記、親会社の表、数値/期間の不一致、nilには定義を付けません。空配列は「未確認」を表し、FTE調整済み・対象者なしを意味しません。定義による比率の補正や検索条件の自動変換はしないため、比較前に各書類の定義を確認してください。
@@ -241,14 +244,14 @@ Object入口`selectSubsidiaryHumanCapitalMetrics(metadata, metricIds, annotation
 
 追加通信なしで既存キャッシュを私有作業先へコピーし、元ファイルの前後hash一致を確認しました。エクシオ`S100YI51`のPDF81/82ページ（冊子78/79）、ミライト・ワン`S100YG40`のPDF84ページを描画し、行名・単位・注記を確認しました。
 
-| 検証対象 | 件数 |
-|---|---:|
-| 会社ラベル | 37 |
-| PDF百分率とXBRL原値×100の一致 | 176 |
-| PDFダッシュとXBRL nilの一致 | 71 |
-| 注記で非該当と確認したnil | 9 |
-| 理由を推測せず保持したnil | 62 |
-| 元表に列がない投影セル（ミライトの育休正規/非正規） | 12 |
+| 検証対象                                            | 件数 |
+| --------------------------------------------------- | ---: |
+| 会社ラベル                                          |   37 |
+| PDF百分率とXBRL原値×100の一致                       |  176 |
+| PDFダッシュとXBRL nilの一致                         |   71 |
+| 注記で非該当と確認したnil                           |    9 |
+| 理由を推測せず保持したnil                           |   62 |
+| 元表に列がない投影セル（ミライトの育休正規/非正規） |   12 |
 
 標準タグの247数値fact（176値+71nil）を独立Pythonで照合しました。ミライトの追加の別定義の育休列はこの標準タグの値へ代用していません。育休率の標準タグはエクシオで施行規則第2号、ミライトで女性活躍法の列を示すため、注記宣言と方法指定が必要です。
 

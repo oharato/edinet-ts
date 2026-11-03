@@ -21,19 +21,19 @@ Node.js・npm・依存関係と、標準SQLiteを使うための条件を説明�
 
 公式npm registryのstable latestを直接依存に固定する。互換範囲を無視して推移依存を別majorへ強制上書きしない。
 
-| 用途 | 採用版・変更 |
-|---|---|
-| SQLite | better-sqlite3と専用型を削除、Node標準node:sqlite |
-| CLI | commander 15.0.0 |
-| 日付 | dayjs 1.11.23 |
-| .env | dotenv 18.0.9（package.jsonの指定版） |
-| XML | fast-xml-parser 5.11.2 |
-| ZIP | jszip 3.10.2、本体型を使いdeprecated @types/jszipを削除 |
-| 型 | @types/node 26.6.5、@types/cli-progress 3.11.6 |
-| 型資料生成 | ts-morph 28.0.0 |
-| TS実行・型検査・テスト | tsx 4.23.15、TypeScript 7.0.2、Vitest 5.0.5 |
-| 進捗 | cli-progress 3.12.0。scriptsだけの用途なのでdevへ移動 |
-| Excel | 公式SheetJS CE 0.20.3 tarball、dev用途のみ |
+| 用途                   | 採用版・変更                                            |
+| ---------------------- | ------------------------------------------------------- |
+| SQLite                 | better-sqlite3と専用型を削除、Node標準node:sqlite       |
+| CLI                    | commander 15.0.0                                        |
+| 日付                   | dayjs 1.11.23                                           |
+| .env                   | dotenv 18.0.9（package.jsonの指定版）                   |
+| XML                    | fast-xml-parser 5.11.2                                  |
+| ZIP                    | jszip 3.10.2、本体型を使いdeprecated @types/jszipを削除 |
+| 型                     | @types/node 26.6.5、@types/cli-progress 3.11.6          |
+| 型資料生成             | ts-morph 28.0.0                                         |
+| TS実行・型検査・テスト | tsx 4.23.15、TypeScript 7.0.2、Vitest 5.0.5             |
+| 進捗                   | cli-progress 3.12.0。scriptsだけの用途なのでdevへ移動   |
+| Excel                  | 公式SheetJS CE 0.20.3 tarball、dev用途のみ              |
 
 [SheetJS公式導入資料](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/) はnpmの0.18.5を古い配布としているため、公式CDNの0.20.3へ固定し、lockfileのintegrityを記録する。ESMのfilesystemを明示設定する `scripts/utils/spreadsheet.ts` を生成スクリプトで共有する。
 

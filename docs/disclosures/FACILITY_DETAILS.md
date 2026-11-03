@@ -13,18 +13,34 @@
 原本XMLとdocID/contextRef、確認済みの会計基準J-GAAP、表ごとの`FacilityTableDeclaration`を渡します。
 
 ```ts
-import { DisclosureTableKind, extractFacilityDetails, screenFacilityDetails, FacilityField } from "edinet-ts";
+import {
+  DisclosureTableKind,
+  extractFacilityDetails,
+  screenFacilityDetails,
+  FacilityField,
+} from "edinet-ts";
 const document = {
   xml: savedXml,
   accountingStandard: "J-GAAP" as const,
-  selection: { docID: "SAMPLE", kind: DisclosureTableKind.Facilities, contextRef: "FilingDateInstant" },
-  declarations: [{ tableIndex: 1, asOfDate: "2026-03-31", organization: "reporting-company" as const, rawSha256: reviewedFragmentHash }]
+  selection: {
+    docID: "SAMPLE",
+    kind: DisclosureTableKind.Facilities,
+    contextRef: "FilingDateInstant",
+  },
+  declarations: [
+    {
+      tableIndex: 1,
+      asOfDate: "2026-03-31",
+      organization: "reporting-company" as const,
+      rawSha256: reviewedFragmentHash,
+    },
+  ],
 };
 const details = extractFacilityDetails(document);
 const result = screenFacilityDetails([document], {
   asOfDate: "2026-03-31",
   conditions: [{ field: FacilityField.TotalBookValueJPY, operator: "gte", value: 10_000_000_000 }],
-  sort: { field: FacilityField.TotalBookValueJPY, order: "desc" }
+  sort: { field: FacilityField.TotalBookValueJPY, order: "desc" },
 });
 ```
 
@@ -75,8 +91,8 @@ const result = screenFacilityDetails([document], {
 
 最終確認: Node 26.12.1で全85ファイル・2,802テスト（1ワーカー）、公開API型検査、buildが成功。最新のsource/buildで全96行のJSONが一致し、2年度の100億円以上検索は各7行/順序が独立Decimal期待値と一致しました。公開ESM/CJSからのAPIも確認済みです。
 
-
 <a id="store"></a>
+
 ## 原表と明細を保存して再検索する
 
 `FacilityDetailStore` は、確認済みの表宣言・原表本文・行/セル参照・4指標の採用状態を専用SQLiteへ保存します。XML全体はDBへ複製しません。原XMLは既存の保管先に残し、Storeの原本SHA-256と対応させてください。
@@ -100,7 +116,7 @@ try {
   const result = reader.search({
     asOfDate: "2026-03-31",
     snapshotIds: saved.snapshotIds,
-    sort: { field: "landAreaM2", order: "desc" }
+    sort: { field: "landAreaM2", order: "desc" },
   });
   console.log(result.rows);
 } finally {
@@ -131,7 +147,6 @@ edinet-ts search-facility-detail-store --db facilities.sqlite \
 一回の投入は100原本、各64 MiB・合計256 MiB以下です。日付分割後は100snapshot・保存本文合計256 MiB以下、各snapshotは32 MiB以下です。一検索も100原本・保存本文合計256 MiB、100,000物理セル・10,000設備行以下です。多くの原本を保存した場合はsnapshot IDで検索集合を分けます。SQLite復旧形式名は `facility-detail-store`。抽出形式が変わる場合は新しいDBを構築してください。
 
 Storeの限定照合では実4原本・96行の62検索が直接検索と一致し、独立XML処理の1,286物理セル・384項目（数値330・非数値54）がSQL保存値まで一致しました。CLI/APIで作成したDBの全byteも一致しています。この初回検証は版1です。海外表2行の基準日は次の版2検証で修正しました。全市場運用は引き続き未完了です。
-
 
 ### 版2：海外表の基準日を分ける
 

@@ -4,23 +4,23 @@
 
 ## 最初に読むページ
 
-| 知りたいこと | 読むページ |
-|---|---|
-| 動かし方と最小のコード例 | [README](../README.md) |
-| 使える機能と制約 | [提供機能と制約](REQUIREMENTS.md) |
-| 連結・期間・出典などの言葉の意味 | [用語集](GLOSSARY.md) |
-| 内部の処理や値の選択規則 | [技術仕様](SPECIFICATIONS.md) |
-| 今できていることと残作業 | [実装状況](plans/IMPLEMENTATION_STATUS.md)・[今後の計画](plans/EDINET_TS_ROADMAP.md) |
+| 知りたいこと                     | 読むページ                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------ |
+| 動かし方と最小のコード例         | [README](../README.md)                                                               |
+| 使える機能と制約                 | [提供機能と制約](REQUIREMENTS.md)                                                    |
+| 連結・期間・出典などの言葉の意味 | [用語集](GLOSSARY.md)                                                                |
+| 内部の処理や値の選択規則         | [技術仕様](SPECIFICATIONS.md)                                                        |
+| 今できていることと残作業         | [実装状況](plans/IMPLEMENTATION_STATUS.md)・[今後の計画](plans/EDINET_TS_ROADMAP.md) |
 
 ## 目的別の読み順
 
-| 目的 | 最初の一冊 | その次 |
-|---|---|---|
-| 1社の財務値を出典付きで読む | [指標の選択](financial/METRIC_SELECTION.md) | 基準も原本から判定するなら[DEIの自動判定](financial/FINANCIAL_REPORTING_BASIS.md) |
-| 複数社の数値を比較する | [財務明細の抽出・検索](financial/FINANCIAL_DETAILS.md) | 流動比率なら[BSと比率](financial/BALANCE_SHEET.md)、前年比なら[成長率](financial/ANNUAL_REVENUE_GROWTH.md) |
-| 会社・株主・役員などを調べる | 下の[会社情報](#会社情報企業マスター)・[開示表](#開示表人的資本株主) | 対象領域の明細APIへ進む |
-| 取得から検索データの公開まで運用する | [工程と観測時点](pipeline/DOCUMENT_PIPELINE.md) | 下図に沿ってアーカイブ・構築・品質・公開へ進む |
-| 開発・検証する | [実行環境](development/RUNTIME_AND_SQLITE.md) | [テスト手順](../scripts/README.md#全体テスト)・[技術仕様](SPECIFICATIONS.md) |
+| 目的                                 | 最初の一冊                                                           | その次                                                                                                     |
+| ------------------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1社の財務値を出典付きで読む          | [指標の選択](financial/METRIC_SELECTION.md)                          | 基準も原本から判定するなら[DEIの自動判定](financial/FINANCIAL_REPORTING_BASIS.md)                          |
+| 複数社の数値を比較する               | [財務明細の抽出・検索](financial/FINANCIAL_DETAILS.md)               | 流動比率なら[BSと比率](financial/BALANCE_SHEET.md)、前年比なら[成長率](financial/ANNUAL_REVENUE_GROWTH.md) |
+| 会社・株主・役員などを調べる         | 下の[会社情報](#会社情報企業マスター)・[開示表](#開示表人的資本株主) | 対象領域の明細APIへ進む                                                                                    |
+| 取得から検索データの公開まで運用する | [工程と観測時点](pipeline/DOCUMENT_PIPELINE.md)                      | 下図に沿ってアーカイブ・構築・品質・公開へ進む                                                             |
+| 開発・検証する                       | [実行環境](development/RUNTIME_AND_SQLITE.md)                        | [テスト手順](../scripts/README.md#全体テスト)・[技術仕様](SPECIFICATIONS.md)                               |
 
 ### 保存・公開の流れ
 
@@ -37,16 +37,16 @@ flowchart LR
 
 ## 資料の置き場所
 
-| フォルダ | 内容 |
-|---|---|
-| `financial/` | 財務値の選択・比較・計算 |
-| `companies/` | 会社情報・企業マスター・法人番号 |
-| `disclosures/` | 開示表・株主・役員・人的資本 |
-| `pipeline/` | 取得・保存・検索データの構築と公開 |
-| `development/` | 実行環境・検証・更新・配布の手順 |
-| `plans/` / `adr/` | 今後の計画・進捗・設計判断 |
-| `history/` | 過去の提案・調査・作業記録 |
-| `generated/` | 自動生成された項目一覧 |
+| フォルダ          | 内容                               |
+| ----------------- | ---------------------------------- |
+| `financial/`      | 財務値の選択・比較・計算           |
+| `companies/`      | 会社情報・企業マスター・法人番号   |
+| `disclosures/`    | 開示表・株主・役員・人的資本       |
+| `pipeline/`       | 取得・保存・検索データの構築と公開 |
+| `development/`    | 実行環境・検証・更新・配布の手順   |
+| `plans/` / `adr/` | 今後の計画・進捗・設計判断         |
+| `history/`        | 過去の提案・調査・作業記録         |
+| `generated/`      | 自動生成された項目一覧             |
 
 以下は分野別の全資料です。検証件数や配布commitは記録時点の結果であり、現在の稼働状態や全市場の品質を示すものではありません。
 
@@ -154,3 +154,5 @@ flowchart LR
 ## 文書を更新するとき
 
 文書を追加するときは、まず同じ目的の既存資料へ追記できるか確認します。使い方は領域別資料、現在の進捗は実装追跡、完了した作業の経緯は履歴に置き、同じ説明を複数箇所へコピーしません。
+
+- [DuckDB本番運用・正式catalog・切戻し](pipeline/DUCK_FINANCIAL_PRODUCTION.md)

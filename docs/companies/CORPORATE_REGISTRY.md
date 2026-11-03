@@ -2,18 +2,17 @@
 
 法人番号公表サイトのXMLを読み、番号で原記録を探します。EDINETマスターからの番号参照と、全件・日次差分による状態再構成を説明します。原記録をそのまま返す入口と、差分を適用する入口は別です。
 
-
 目的に応じて入口を選んでください。
 
-| 目的 | 入口 |
-|---|---|
-| 原記録を探す | この節のXML検索、または[保存DB](#大容量xmlのストリーミング保存) |
-| 保存容量を抑えて繰り返し検索する | [圧縮形式のStore](#原値を圧縮して保存する)（旧DBとは別形式） |
+| 目的                                 | 入口                                                                                                                                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 原記録を探す                         | この節のXML検索、または[保存DB](#大容量xmlのストリーミング保存)                                                                                              |
+| 保存容量を抑えて繰り返し検索する     | [圧縮形式のStore](#原値を圧縮して保存する)（旧DBとは別形式）                                                                                                 |
 | 全件・差分から対象法人の状態を求める | [小容量XML](#全件と日次差分からの状態再構成) / [保存DB](#保存した記録から状態を再構成する) / [DBを作らないstream](#原本streamから対象法人の状態を再構成する) |
-| EDINET企業と番号・原名称を照合する | [保存DBを使う](#企業マスターと再構成した法人状態を結び付ける) / [全国原本を一度読む](#全国原本から企業マスター全体を照合する) |
-| 原本を検証する | [XML署名](#保存済みxmlの署名を確認して取り込む) / [ZIP全entry](#保存zipの全エントリを検査する) |
-| 差分を取得する | [一日](#指定日の差分を取得し検証して保存する) / [期間指定](#複数日を計画し予算内で取得再開する) |
-| 全国の全件原本を取得する | [全国XML](#全国全件のxml原本を取得する) |
+| EDINET企業と番号・原名称を照合する   | [保存DBを使う](#企業マスターと再構成した法人状態を結び付ける) / [全国原本を一度読む](#全国原本から企業マスター全体を照合する)                                |
+| 原本を検証する                       | [XML署名](#保存済みxmlの署名を確認して取り込む) / [ZIP全entry](#保存zipの全エントリを検査する)                                                               |
+| 差分を取得する                       | [一日](#指定日の差分を取得し検証して保存する) / [期間指定](#複数日を計画し予算内で取得再開する)                                                              |
+| 全国の全件原本を取得する             | [全国XML](#全国全件のxml原本を取得する)                                                                                                                      |
 
 `parseCorporateRegistryDownloadXml(xml, source)` と `queryCorporateRegistryDownloads(inputs, query)` は、国税庁の30項目のダウンロードXMLを読みます。既存のXML安全検査を共有し、外部参照/DTDを拒否、1 XMLは64MiB以下・10万記録以下、検索は100入力/合計256MiB以下です。
 
@@ -21,15 +20,16 @@
 
 ```ts
 const source = {
-  sourceUrl: 'https://www.houjin-bangou.nta.go.jp/download/',
-  observedAt: '2026-10-29T12:00:00Z', // 実際にこのデータを得た時刻
-  dataDate: '2026-10-28',           // 全件の基準日。diffではファイル作成日を確認して宣言
-  kind: 'diff' as const,
-  purpose: 'download' as const     // 公式の架空サンプルは必ず sample
+  sourceUrl: "https://www.houjin-bangou.nta.go.jp/download/",
+  observedAt: "2026-10-29T12:00:00Z", // 実際にこのデータを得た時刻
+  dataDate: "2026-10-28", // 全件の基準日。diffではファイル作成日を確認して宣言
+  kind: "diff" as const,
+  purpose: "download" as const, // 公式の架空サンプルは必ず sample
 };
 const document = parseCorporateRegistryDownloadXml(xml, source);
-const result = queryCorporateRegistryDownloads([{xml, source}], {
-  corporateNumber: '1010001001202', knownAt: source.observedAt
+const result = queryCorporateRegistryDownloads([{ xml, source }], {
+  corporateNumber: "1010001001202",
+  knownAt: source.observedAt,
 });
 ```
 
@@ -105,17 +105,20 @@ flowchart LR
 ```
 
 ```ts
-import {reconstructCorporateRegistryState} from 'edinet-ts';
+import { reconstructCorporateRegistryState } from "edinet-ts";
 
-const result = reconstructCorporateRegistryState([
-  {scope: 'national', expectedParts: 1, parts: [fullInput]},
-  {scope: 'national', expectedParts: 2, parts: [diffPart1, diffPart2]},
-], {
-  corporateNumber: '1010001001202',
-  asOf: '2026-10-29',
-  knownAt: '2026-10-30T00:00:00Z',
-  registryPurpose: 'download',
-});
+const result = reconstructCorporateRegistryState(
+  [
+    { scope: "national", expectedParts: 1, parts: [fullInput] },
+    { scope: "national", expectedParts: 2, parts: [diffPart1, diffPart2] },
+  ],
+  {
+    corporateNumber: "1010001001202",
+    asOf: "2026-10-29",
+    knownAt: "2026-10-30T00:00:00Z",
+    registryPurpose: "download",
+  },
+);
 ```
 
 各 `parts` 要素は既存の `{xml, source}` です。`expectedParts` は呼出元が確認した全分割数、`scope: "national"` は全国の全ファイルを揃えたという宣言です。同じ配布単位の全partは基準日・full/diff・sample/downloadが一致する必要があります。全件では法人番号、差分では一連番号の重複を拒否します。全件の地域別ファイル間で一連番号が同じことは許容します。
@@ -136,12 +139,12 @@ const result = reconstructCorporateRegistryState([
 
 ### 結果の読み方
 
-| `selection.status` | 意味 |
-|---|---|
-| `available` | 指定対象日まで差分を適用できた記録。`record` に出典位置と30項目を保持 |
-| `deleted` | 削除99を適用した状態。削除の原記録を保持し、`history` は空にする |
-| `unavailable` | 適格な全件がない、または全件・適用差分に対象番号がない |
-| `unresolved` | 日付の欠落、同時点の衝突、未知処理、分割内の状態矛盾等で確定できない |
+| `selection.status` | 意味                                                                  |
+| ------------------ | --------------------------------------------------------------------- |
+| `available`        | 指定対象日まで差分を適用できた記録。`record` に出典位置と30項目を保持 |
+| `deleted`          | 削除99を適用した状態。削除の原記録を保持し、`history` は空にする      |
+| `unavailable`      | 適格な全件がない、または全件・適用差分に対象番号がない                |
+| `unresolved`       | 日付の欠落、同時点の衝突、未知処理、分割内の状態矛盾等で確定できない  |
 
 `available` は法人の存続や法的同一性の認定ではありません。閉鎖21の記録も原文の閉鎖日・事由・承継先番号を持ったまま返します。復活22も同じ法人番号の記録として扱い、承継先の別番号へ自動統合しません。削除後にデータがない日を経ても復活させません。
 
@@ -177,17 +180,17 @@ API・CLIとも最大100配布・合計100ファイル/256MiB、各XML64MiB/10�
 第3引数に、保存した国税庁の差分案内HTMLと内閣府の祝日CSVを渡します。APIはネットワーク取得せず、CSVは呼出元でShift_JISから復号します。
 
 ```ts
-import {reconstructCorporateRegistryState} from 'edinet-ts';
+import { reconstructCorporateRegistryState } from "edinet-ts";
 
 const calendar = {
   policy: {
     html: savedNtaHtml,
-    sourceUrl: 'https://www.houjin-bangou.nta.go.jp/download/sabun/',
+    sourceUrl: "https://www.houjin-bangou.nta.go.jp/download/sabun/",
     observedAt: policyReceipt.observedAt,
   },
   holidays: {
     csv: decodedCabinetCsv,
-    sourceUrl: 'https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv',
+    sourceUrl: "https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv",
     observedAt: holidayReceipt.observedAt,
   },
 };
@@ -198,13 +201,13 @@ const result = reconstructCorporateRegistryState(deliveries, query, calendar);
 
 ### 未作成日の扱い
 
-| 条件 | 処理 |
-|---|---|
-| 12月29日〜1月3日 | 年末年始の未作成日として確認 |
-| 土曜・日曜 | 週末の未作成日として確認 |
-| 内閣府CSVに記載された祝日・休日 | 記載名を保持して確認。振替休日・国民の休日・特例移動もCSVを使う |
-| それ以外でXMLがない | 取得漏れの可能性を残し、`coverage-gap` |
-| 未作成日なのにdiff XMLがある | `delivery-on-non-publication-day`。配布日・対象日の指定や例外の確認が必要 |
+| 条件                            | 処理                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| 12月29日〜1月3日                | 年末年始の未作成日として確認                                              |
+| 土曜・日曜                      | 週末の未作成日として確認                                                  |
+| 内閣府CSVに記載された祝日・休日 | 記載名を保持して確認。振替休日・国民の休日・特例移動もCSVを使う           |
+| それ以外でXMLがない             | 取得漏れの可能性を残し、`coverage-gap`                                    |
+| 未作成日なのにdiff XMLがある    | `delivery-on-non-publication-day`。配布日・対象日の指定や例外の確認が必要 |
 
 未作成日は会社の変更や削除として数えず、`nonPublicationDays` に日付・理由・必要なら祝日名を残します。これは停止前までに確認した日で、未処理範囲全体の休日一覧ではありません。元の記録と履歴は維持し、`coverage.through` だけを進めます。
 
@@ -247,19 +250,21 @@ flowchart LR
 ```
 
 ```ts
-import {CorporateRegistryStore} from 'edinet-ts';
+import { CorporateRegistryStore } from "edinet-ts";
 
-const store = new CorporateRegistryStore('corporate-registry.sqlite');
+const store = new CorporateRegistryStore("corporate-registry.sqlite");
 try {
   const imported = await store.importFile({
-    file: 'diff_20261028.xml',
-    source,                 // 実際の取得時刻・対象日・full/diff・sample/download
-    part: 'diff_20261028.xml', // ZIP内の元entry等、同じ出典内のファイル識別子
+    file: "diff_20261028.xml",
+    source, // 実際の取得時刻・対象日・full/diff・sample/download
+    part: "diff_20261028.xml", // ZIP内の元entry等、同じ出典内のファイル識別子
     sha256: expectedXmlSha256,
   });
   const receipt = store.file(imported.file.id);
   const audit = store.audit(receipt.id);
-} finally { store.close(); }
+} finally {
+  store.close();
+}
 ```
 
 期待SHAは取得監査の原XML byte列のSHA-256です。取込完了時に全byteを照合し、読取中の書換え・パス置換・リンク・ディレクトリ等を拒否します。XMLの末尾が切れていた場合や、一連番号が重複した場合も、そのファイルの途中記録を確定しません。既に完了した別ファイルの観測は保持します。
@@ -271,15 +276,18 @@ try {
 ### 保存後の番号検索
 
 ```ts
-const reader = new CorporateRegistryStore('corporate-registry.sqlite', {readOnly: true});
+const reader = new CorporateRegistryStore("corporate-registry.sqlite", { readOnly: true });
 try {
   const result = reader.query({
-    corporateNumber: '1010001001202',
+    corporateNumber: "1010001001202",
     knownAt: analysisCutoff,
-    registryPurpose: 'download',
-    offset: 0, limit: 100,
+    registryPurpose: "download",
+    offset: 0,
+    limit: 100,
   });
-} finally { reader.close(); }
+} finally {
+  reader.close();
+}
 ```
 
 結果の各行は `file` に観測・原本SHA・part等、`record` に元の30項目と位置を持ちます。`total` はページ指定前の原記録数です。同じ内容を複数回観測していれば、それぞれの観測に属する行として数えます。企業数や最新状態の数ではありません。sample/downloadと実観測cutoffは必須で、既定100行・最大1,000行を返します。
@@ -290,13 +298,13 @@ try {
 
 ### 上限と中断・復旧
 
-| 対象 | 上限・扱い |
-|---|---|
-| 元XML | 1ファイル8GiBまで。文字列APIの64MiB/10万記録上限とは別 |
-| 一記録 | UTF-8換算64KiBまで。30項目の既存パーサーで検査 |
-| 低水準の入力chunk | 最大1MiB。ファイル取込は64KiBずつ読む |
-| XML形式 | UTF-8、任意のBOM/XML宣言、属性なしのcorporations/corporationと原30項目。DTD・CDATA・コメント・追加処理命令等は非対応として拒否 |
-| 取込中の接続 | 同じ接続の検索・再取込・closeを拒否。完了・失敗後に再利用可 |
+| 対象              | 上限・扱い                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 元XML             | 1ファイル8GiBまで。文字列APIの64MiB/10万記録上限とは別                                                                         |
+| 一記録            | UTF-8換算64KiBまで。30項目の既存パーサーで検査                                                                                 |
+| 低水準の入力chunk | 最大1MiB。ファイル取込は64KiBずつ読む                                                                                          |
+| XML形式           | UTF-8、任意のBOM/XML宣言、属性なしのcorporations/corporationと原30項目。DTD・CDATA・コメント・追加処理命令等は非対応として拒否 |
+| 取込中の接続      | 同じ接続の検索・再取込・closeを拒否。完了・失敗後に再利用可                                                                    |
 
 APIのAbortSignalとCLIのSIGINT/SIGTERMはrollbackへ渡します。強制終了でhot journalが残った場合は、元DB・journalを消さず、`recoverDedicatedSqliteSnapshot` の `kind: "corporate-registry-store"` で別候補へ復旧できます。汎用復旧のschema検査だけで利用せず、復旧後にStoreで本文/索引を検査してください。DB・journal・検査用私有コピーの容量計画も必要です。
 
@@ -321,23 +329,25 @@ file.jsonはAPI例の `{file, source, part, sha256}`、query.jsonは検索例の
 
 保存追加の隔離検証: Node 26.12.1で全170ファイル・4,389テスト、build・本体/公開型・ESM/CJSが成功しました。日次CLI試験の子時計固定後の再実行で、並行作業の分割換算・dataflow・busy timeout変更は含めません。
 
-
 ## 保存した記録から状態を再構成する
 
 `store.reconstruct(deliveries, query, calendar?)` は、保存済みファイルのIDを使って全件・日次差分を適用します。原XMLを再読込せず、保存時の原XML SHA-256とファイル内の記録位置を返します。切り出したXMLを作り直したり、そのhashを原本hashとして返したりしません。
 
 ```ts
-const store = new CorporateRegistryStore('corporate-registry.sqlite', {readOnly: true});
+const store = new CorporateRegistryStore("corporate-registry.sqlite", { readOnly: true });
 try {
-  const result = store.reconstruct([
-    {scope: 'national', expectedParts: 1, fileIds: [fullReceipt.id]},
-    {scope: 'national', expectedParts: 2, fileIds: [diffReceipt1.id, diffReceipt2.id]},
-  ], {
-    corporateNumber: '1010001001202',
-    asOf: '2026-10-29',
-    knownAt: '2026-10-30T12:00:00Z',
-    registryPurpose: 'download',
-  });
+  const result = store.reconstruct(
+    [
+      { scope: "national", expectedParts: 1, fileIds: [fullReceipt.id] },
+      { scope: "national", expectedParts: 2, fileIds: [diffReceipt1.id, diffReceipt2.id] },
+    ],
+    {
+      corporateNumber: "1010001001202",
+      asOf: "2026-10-29",
+      knownAt: "2026-10-30T12:00:00Z",
+      registryPurpose: "download",
+    },
+  );
   console.log(result.selection);
 } finally {
   store.close();
@@ -371,7 +381,6 @@ Node 26.12.1で、公式サンプル全件・休日・通常日の欠落・未�
 別の合成試験では100,001件・113.7MBの保存済み差分と、小さな別法人の全件起点を使用しました。JavaScriptヒープ128MiB上限で状態再構成に成功し、最大RSSは約186MiB、初回159.4秒・同じ接続の再実行0.12秒でした。候補件数上限の拒否も確認しました。共有hostでの一回の測定であり、全国の実データの状態や速度を保証する結果ではありません。
 
 証跡は `data/roadmap/corporate-registry-stored-state-{real,large}-20261031/` です。全国の実全件と連続差分、署名・取得監査との統合、EDINET法人同一性、固定配布物と実運用への反映は残ります。
-
 
 ## 保存済みXMLの署名を確認して取り込む
 
@@ -414,7 +423,6 @@ edinet-ts import-corporate-registry-file \
 
 保存済みの公式実差分で、署名検証→取込manifest→CLI取込の経路を確認しました。独立Pythonで2,181記録・65,430項目と出典/hashの一致を確認しています。証跡は `data/roadmap/corporate-registry-signature-store-20261031/` です。自動取得・ZIP全パートの監査・全国実状態・稼働環境への反映は引き続き残ります。
 
-
 ## 保存ZIPの全エントリを検査する
 
 `verify-corporate-registry-zip.py` は、保存した一つの配布ZIPを対象に、取得時hash・全エントリ・各XMLの署名を検査します。前節と同じLinux/Python 3/GnuPG 2環境を使い、通信は行いません。
@@ -455,7 +463,6 @@ ZIPの全エントリが、宣言したXML名と各 `名前.xml.asc` の組に�
 
 この検査の範囲は一つのZIP内です。全国配布を構成する複数ZIPの一覧、取得時刻/対象日、取得漏れ、取得の自動化・再開は別途確認が必要です。原ZIPと取得記録は引き続き保持してください。
 
-
 ## 指定日の差分を取得し、検証して保存する
 
 `fetch-corporate-registry-diff.py` は公式の差分一覧を取得し、指定日の**XML欄**からファイルIDを選びます。そのセッションでZIPを取得し、前節の全entry/署名検査へ渡します。CSVのIDやZIPサイズから形式を推測しません。
@@ -493,14 +500,15 @@ Node 26.12.1の関連4テストファイルと、取得処理のPython境界テ�
 
 この入口は一日分の差分取得です。複数日取得には次の入口を使います。全国全件の取得、定期実行、稼働環境への反映は残工程です。公開鍵の信頼判断や取得元の利用条件の確認も、呼出元が行います。
 
-
 ## 複数日を計画し、予算内で取得・再開する
 
 `planCorporateRegistryDifferences(calendarInput, {from, through, knownAt})` は、最大100日を `expectedDates` と根拠付きの `nonPublicationDays` に分けます。再構成器と同じ未作成日判定を使い、通信は行いません。カレンダーの未来観測・収録年の範囲外・cutoff時点の未来日・不正な日付は拒否します。
 
 ```ts
 const plan = planCorporateRegistryDifferences(calendarInput, {
-  from: '2026-10-23', through: '2026-10-26', knownAt: '2026-10-31T00:00:00Z',
+  from: "2026-10-23",
+  through: "2026-10-26",
+  knownAt: "2026-10-31T00:00:00Z",
 });
 // expectedDates: ['2026-10-23', '2026-10-26']
 // nonPublicationDays: 24日・25日（週末）
@@ -533,7 +541,6 @@ python3 scripts/roadmap/collect-corporate-registry-differences.py \
 
 取得計画の境界テスト12件・収集のPythonテスト7件を追加しました。Node 26.12.1の隔離環境で全177ファイル/4,416テスト、型・build・公開型・ESM/CJSが成功しています。証跡は `data/roadmap/corporate-registry-collection-20261031/`。これは期間内の日次差分収集の確認であり、全国全件・本番状態・定期運用や利用先反映の完成ではありません。
 
-
 ## 全国全件のXML原本を取得する
 
 `fetch-corporate-registry-full.py` は、[公式全件一覧](https://www.houjin-bangou.nta.go.jp/download/zenken/)の **XML欄・全国** を選び、掲載された全ZIPを取得します。都道府県データやCSV欄を全国XMLへ読み替えません。一つのZIPに複数XMLがある場合も、すべてのXMLと対応署名を検査します。
@@ -551,12 +558,12 @@ python3 scripts/roadmap/fetch-corporate-registry-full.py \
 
 容量の判断には圧縮サイズだけでなく、全entryの展開予定量を使います。全XMLを保持できる場合は通常の署名検証・実体化を実行します。全体を保持できなくても、一つのXMLと署名を一時展開できる場合は、一分割ずつ検証して一時コピーを解放します。原ZIPは削除しません。どちらの経路も34GiBの空き留保を保ちます。
 
-| status | 意味・次の操作 |
-|---|---|
-| `pending` | ZIP取得予算に達した状態。同じ計画で次回取得を進める |
-| `pending-capacity` | 一分割の一時展開もできない状態。原ZIPを保持して停止 |
+| status             | 意味・次の操作                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| `pending`          | ZIP取得予算に達した状態。同じ計画で次回取得を進める                                              |
+| `pending-capacity` | 一分割の一時展開もできない状態。原ZIPを保持して停止                                              |
 | `verified-archive` | 全XMLの署名を確認済み。原ZIPと分割ごとのXML/署名hash・鍵・GnuPG結果を保持し、展開XMLは保持しない |
-| `complete` | 全署名の確認と展開XMLの保持が完了。`importManifests` を既存の取込CLIへ渡せる |
+| `complete`         | 全署名の確認と展開XMLの保持が完了。`importManifests` を既存の取込CLIへ渡せる                     |
 
 `verified-archive` はDBへ取り込める展開ファイルの存在を示しません。取込manifestを出さず、`archiveVerifications` に原ZIPと検証結果の参照を返します。再検証の証跡は別ファイルへ追加し、以前の証跡を上書きしません。`checking` は完了印ではなく、中断後にも残ることがあります。再実行すると保存原本から検査します。
 
@@ -570,7 +577,6 @@ python3 scripts/roadmap/fetch-corporate-registry-full.py \
 
 関連5テストファイル（Python境界48件）がNode 26.12.1で成功。全国欄の選択、分割順、取得予算、改変拒否、容量不足、逐次署名検証、後続署名失敗時の一時コピー除去を確認しました。証跡は `data/roadmap/corporate-registry-full-20261031/` です。
 
-
 ## 企業マスターと再構成した法人状態を結び付ける
 
 `linkCompanyMasterCorporateStates` は保存済みの全国全件・連続差分から法人状態を再構成し、選択した企業の法人番号と原名称を完全一致で照合します。単一の差分原記録を参照する `linkCompanyMasterCorporateRecords` とは別の入口です。
@@ -579,10 +585,18 @@ python3 scripts/roadmap/fetch-corporate-registry-full.py \
 import { CorporateRegistryStore, linkCompanyMasterCorporateStates } from "edinet-ts";
 const registry = new CorporateRegistryStore("registry.sqlite", { readOnly: true });
 try {
-  const result = linkCompanyMasterCorporateStates(savedMasters, registry, savedDeliveries, {
-    asOf: "2026-10-29", knownAt: "2026-10-30T00:00:00Z",
-    registryPurpose: "download", edinetCodes: ["E00001"]
-  }, savedCalendar);
+  const result = linkCompanyMasterCorporateStates(
+    savedMasters,
+    registry,
+    savedDeliveries,
+    {
+      asOf: "2026-10-29",
+      knownAt: "2026-10-30T00:00:00Z",
+      registryPurpose: "download",
+      edinetCodes: ["E00001"],
+    },
+    savedCalendar,
+  );
   console.log(result.rows);
 } finally {
   registry.close();
@@ -611,7 +625,6 @@ masterは `CompanyMasterSnapshot` のJSON配列（最大64 MiB）、manifestは�
 
 この時点では全国全件DBと実全国状態の企業照合は未完了でした。後述の圧縮Storeで全国保存・全原値照合・企業結合まで確認済みです。法人同一性の確認、署名監査から利用先までの運用接続は残ります。証跡は `data/roadmap/company-corporate-state-real-20261031/` です。
 
-
 ## 原本streamから対象法人の状態を再構成する
 
 `reconstructCorporateRegistryStreamStates` は、全国配布の全パートを先頭から末尾まで検査し、指定した法人番号の記録だけを保持します。全件をDBへ保存する容量がない場合にも、元の全国原本を省略せずに状態を調べる入口です。全国全件DBの構築・保存とは別です。
@@ -628,16 +641,27 @@ flowchart LR
 ```ts
 import { createReadStream } from "node:fs";
 import { reconstructCorporateRegistryStreamStates } from "edinet-ts";
-const result = await reconstructCorporateRegistryStreamStates([{
-  scope: "national", expectedParts: reviewedParts.length,
-  parts: reviewedParts.map(p => ({
-    source: p.source, sha256: p.sha256,
-    chunks: createReadStream(p.file, { highWaterMark: 65536, signal })
-  }))
-}], {
-  corporateNumbers: ["1010001001202"], asOf: "2026-10-30",
-  knownAt: "2026-10-31T00:00:00Z", registryPurpose: "download"
-}, savedCalendar, { signal });
+const result = await reconstructCorporateRegistryStreamStates(
+  [
+    {
+      scope: "national",
+      expectedParts: reviewedParts.length,
+      parts: reviewedParts.map((p) => ({
+        source: p.source,
+        sha256: p.sha256,
+        chunks: createReadStream(p.file, { highWaterMark: 65536, signal }),
+      })),
+    },
+  ],
+  {
+    corporateNumbers: ["1010001001202"],
+    asOf: "2026-10-30",
+    knownAt: "2026-10-31T00:00:00Z",
+    registryPurpose: "download",
+  },
+  savedCalendar,
+  { signal },
+);
 ```
 
 `chunks` は1チャンク1 MiB以下の `Uint8Array` を返すAsyncIterableです。SDKは全byteのSHA-256、UTF-8/XMLの末尾、全記録の30項目の形式、各ファイルの一連番号重複を確認します。全件では全パートを通じた法人番号重複、差分では全パートを通じた一連番号重複も拒否します。未知処理区分や削除の追加項目は集計へ残し、対象法人の状態を再構成できるかは既存入口と同じ規則で判定します。
@@ -672,7 +696,6 @@ ZIPを使う場合は、リポジトリの `scripts/roadmap/stream-corporate-reg
 
 このstream検証時点では全国DB保存と全EDINET法人への拡大が残っていました。後続の圧縮Storeで全国保存・全原値照合と企業マスター全11,432行への照合を確認済みです。連続実差分・復旧運用、法人同一性の確認、正式な利用先反映は残ります。
 
-
 ## 全国原本から企業マスター全体を照合する
 
 保存DBを作らずマスター全体を確認する場合は、`linkCompanyMasterCorporateStreamStates` を使います。全国全件と必要な連続差分を一度ずつ検査し、対象の法人番号だけを保持します。保存DB経由の結合と同じ規則で、番号・原名称の一致、閉鎖、名称相違、番号の共有などを区別します。
@@ -693,24 +716,27 @@ flowchart LR
 import { linkCompanyMasterCorporateStreamStates } from "edinet-ts";
 
 const result = await linkCompanyMasterCorporateStreamStates(
-  savedMasters, streamDeliveries,
+  savedMasters,
+  streamDeliveries,
   {
     edinetCodes: selectedEdinetCodes,
-    asOf: "2026-10-30", knownAt: observedCutoff,
-    registryPurpose: "download"
+    asOf: "2026-10-30",
+    knownAt: observedCutoff,
+    registryPurpose: "download",
   },
-  savedCalendar, { signal: controller.signal }
+  savedCalendar,
+  { signal: controller.signal },
 );
-console.log(result.rows.map(row => [row.company.edinetCode, row.reason]));
+console.log(result.rows.map((row) => [row.company.edinetCode, row.reason]));
 ```
 
 `streamDeliveries` は前節の `reconstructCorporateRegistryStreamStates` と同じ入力です。各パートには出典・期待SHA-256・`AsyncIterable<Uint8Array>` を渡します。ZIPの場合は生成側で署名検証済みのreceiptを確認し、XMLのstdoutに加えて生成プロセスの正常終了も確認してください。
 
-| 結果 | 意味 |
-|---|---|
-| `rows` | 元の会社情報、照合理由、番号・原名称の一致状況。対象の状態を読んだ行は `state` に原記録・coverage・出典を保持 |
-| `absentEdinetCodes` | 選択した時点とマスター条件に含まれなかった要求ID |
-| `scan` | 結合に用いた全パートの検査receipt。対象が番号なし・共有番号・不在だけの場合は原本を読まず、この項目も返さない |
+| 結果                | 意味                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `rows`              | 元の会社情報、照合理由、番号・原名称の一致状況。対象の状態を読んだ行は `state` に原記録・coverage・出典を保持 |
+| `absentEdinetCodes` | 選択した時点とマスター条件に含まれなかった要求ID                                                              |
+| `scan`              | 結合に用いた全パートの検査receipt。対象が番号なし・共有番号・不在だけの場合は原本を読まず、この項目も返さない |
 
 検索フィルタの外に同じ番号の別EDINET IDがあっても、`shared-corporate-number` として保留します。名称を正規化して一致へ変えたり、閉鎖法人の承継先を追ってIDを統合したりしません。`entityIdentity` は引き続き `not-established` です。
 
@@ -726,19 +752,18 @@ edinet-ts link-company-corporate-stream-states \
 
 queryは上のAPIの第3引数と同じJSON、manifestは前節の `parts(file/source/sha256)` 形式です。ファイルパスはmanifestの場所を基準に解決します。masterは64 MiB以下、query・manifestは各2 MiB以下です。XMLの全展開ファイルをCLIへ渡す場合はその保存容量も必要です。展開ファイルを作らずZIPから読む場合はAPIと前節の補助スクリプトを組み合わせます。
 
-
 ### 実マスターでの確認状況
 
 2026年10月29日観測のEDINETマスター全11,432行を、10月30日基準の全国6パートへ照合しました。SDKは5,850,621記録・6,511,947,094 bytesの検査を完走し、対象7,264番号の記録を保持しました。共有番号は全マスターで判定しています。
 
-| SDKの照合理由 | 行数 |
-|---|---:|
-| 番号・原名称の完全一致、閉鎖なし | 6,539 |
-| 原名称の相違 | 418 |
-| 閉鎖法人 | 307 |
-| 複数EDINET IDが同じ番号を宣言 | 14 |
-| マスターに法人番号なし | 4,154 |
-| 合計 | 11,432 |
+| SDKの照合理由                    |   行数 |
+| -------------------------------- | -----: |
+| 番号・原名称の完全一致、閉鎖なし |  6,539 |
+| 原名称の相違                     |    418 |
+| 閉鎖法人                         |    307 |
+| 複数EDINET IDが同じ番号を宣言    |     14 |
+| マスターに法人番号なし           |  4,154 |
+| 合計                             | 11,432 |
 
 照合理由は重複集計せず、閉鎖は名称相違より先に数えます。
 
@@ -754,8 +779,10 @@ import { CorporateRegistryBlockStore } from "edinet-ts";
 const writer = new CorporateRegistryBlockStore("registry-blocks.sqlite");
 try {
   const receipt = await writer.importFile({
-    file: "full-01.xml", source: savedSource,
-    part: "full-01.xml", sha256: expectedXmlSha256
+    file: "full-01.xml",
+    source: savedSource,
+    part: "full-01.xml",
+    sha256: expectedXmlSha256,
   });
   console.log(receipt.file.id);
 } finally {
@@ -764,14 +791,25 @@ try {
 
 const reader = new CorporateRegistryBlockStore("registry-blocks.sqlite", { readOnly: true });
 try {
-  console.log(reader.query({
-    corporateNumber: "1010001001202", knownAt: savedCutoff,
-    registryPurpose: "download"
-  }));
-  console.log(reader.reconstruct(savedDeliveries, {
-    corporateNumber: "1010001001202", asOf: "2026-10-30",
-    knownAt: savedCutoff, registryPurpose: "download"
-  }, savedCalendar));
+  console.log(
+    reader.query({
+      corporateNumber: "1010001001202",
+      knownAt: savedCutoff,
+      registryPurpose: "download",
+    }),
+  );
+  console.log(
+    reader.reconstruct(
+      savedDeliveries,
+      {
+        corporateNumber: "1010001001202",
+        asOf: "2026-10-30",
+        knownAt: savedCutoff,
+        registryPurpose: "download",
+      },
+      savedCalendar,
+    ),
+  );
 } finally {
   reader.close();
 }
@@ -846,10 +884,10 @@ Node 26.12.1で関連10ファイル/95テスト、本体・配布公開型・bui
 
 全国全件を保存するには、DB本体に加えて検査用コピーや更新時の一時領域が必要です。現在の容量制約を解消できるか調べるため、既存の派生入力2,000記録だけを使い、保存配置を比較しました。稼働用のDBや原本は変更していません。
 
-| 配置 | 測定した表・索引の容量 |
-|---|---:|
-| 現行の1記録ごとのJSONと索引 | 2,625,536 bytes |
-| 1,024記録の30項目配列をDeflate圧縮し、番号の位置索引を付ける試作 | 167,936 bytes |
+| 配置                                                             | 測定した表・索引の容量 |
+| ---------------------------------------------------------------- | ---------------------: |
+| 現行の1記録ごとのJSONと索引                                      |        2,625,536 bytes |
+| 1,024記録の30項目配列をDeflate圧縮し、番号の位置索引を付ける試作 |          167,936 bytes |
 
 圧縮側も空欄・先頭0・元の文字列を保持し、全60,000項目の復元と2,000番号の検索が元値に一致しました。Deflate/Brotli/Zstdと256/1,024記録単位の計6配置で復元を確認し、上表はこの標本で最小だった配置です。
 

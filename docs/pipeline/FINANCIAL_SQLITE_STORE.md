@@ -12,39 +12,71 @@
 
 ```ts
 import { createHash } from "node:crypto";
-import { BalanceSheetSqliteStore, createBalanceSheetSnapshot,
-    BALANCE_SHEET_REGISTRY_VERSION, BalanceSheetScreeningMetric,
-    AccountingStandard, ConsolidationScope, ComparisonOperator,
-    SortOrder } from "edinet-ts";
+import {
+  BalanceSheetSqliteStore,
+  createBalanceSheetSnapshot,
+  BALANCE_SHEET_REGISTRY_VERSION,
+  BalanceSheetScreeningMetric,
+  AccountingStandard,
+  ConsolidationScope,
+  ComparisonOperator,
+  SortOrder,
+} from "edinet-ts";
 
 // xmlは利用者が保持する原本のコピー。例の識別子は合成です。
-const metadata = { secCode: "1001", docID: "SYNTHETIC1", instant: "2025-03-31",
-    scope: ConsolidationScope.Consolidated,
-    accountingStandard: AccountingStandard.JGAAP, currency: "JPY" as const };
+const metadata = {
+  secCode: "1001",
+  docID: "SYNTHETIC1",
+  instant: "2025-03-31",
+  scope: ConsolidationScope.Consolidated,
+  accountingStandard: AccountingStandard.JGAAP,
+  currency: "JPY" as const,
+};
 const snapshot = createBalanceSheetSnapshot(xml, metadata);
-const provenance = { extractorVersion: "my-tested-parser-v1",
-    mappingVersion: BALANCE_SHEET_REGISTRY_VERSION,
-    sourceSha256: createHash("sha256").update(xml).digest("hex") };
+const provenance = {
+  extractorVersion: "my-tested-parser-v1",
+  mappingVersion: BALANCE_SHEET_REGISTRY_VERSION,
+  sourceSha256: createHash("sha256").update(xml).digest("hex"),
+};
 
 // 必ず新しい試験用パスを指定。既存の書類一覧DBへ接続しません。
 const db = new BalanceSheetSqliteStore("./test-financial.sqlite");
 try {
-    const saved = db.putMany([{ snapshot, provenance }]);
-    console.log(saved.inserted, saved.unchanged, saved.ids);
-} finally { db.close(); }
+  const saved = db.putMany([{ snapshot, provenance }]);
+  console.log(saved.inserted, saved.unchanged, saved.ids);
+} finally {
+  db.close();
+}
 
 const reader = new BalanceSheetSqliteStore("./test-financial.sqlite", { readOnly: true });
 try {
-    const result = reader.search({ instant: metadata.instant, scope: metadata.scope,
-        accountingStandard: metadata.accountingStandard, currency: metadata.currency,
-        extractorVersion: provenance.extractorVersion, mappingVersion: provenance.mappingVersion }, {
-        conditions: [{ metric: BalanceSheetScreeningMetric.CurrentRatio,
-            operator: ComparisonOperator.GreaterThanOrEqual, value: 2 }],
-        sortBy: BalanceSheetScreeningMetric.CurrentRatio,
-        order: SortOrder.Descending, offset: 0, limit: 20
-    });
-    console.log(result.rows, result.total, result.excludedRows, result.diagnostics);
-} finally { reader.close(); }
+  const result = reader.search(
+    {
+      instant: metadata.instant,
+      scope: metadata.scope,
+      accountingStandard: metadata.accountingStandard,
+      currency: metadata.currency,
+      extractorVersion: provenance.extractorVersion,
+      mappingVersion: provenance.mappingVersion,
+    },
+    {
+      conditions: [
+        {
+          metric: BalanceSheetScreeningMetric.CurrentRatio,
+          operator: ComparisonOperator.GreaterThanOrEqual,
+          value: 2,
+        },
+      ],
+      sortBy: BalanceSheetScreeningMetric.CurrentRatio,
+      order: SortOrder.Descending,
+      offset: 0,
+      limit: 20,
+    },
+  );
+  console.log(result.rows, result.total, result.excludedRows, result.diagnostics);
+} finally {
+  reader.close();
+}
 ```
 
 `putMany()`は複数件をまとめて保存し、`get(id)`は原値・出典・保存時の版を読み出します。`search()`の結果形と条件・順序・除外の意味は、既存の`screenBalanceSheetSnapshots()`に合わせています。結果に出す数値がないときは0で補いません。
@@ -67,15 +99,15 @@ try {
 
 ## SQLとTypeScriptの分担
 
-| 処理 | 実際に担当する場所 |
-|---|---|
-| 指定日・範囲・抽出版・ID一覧の選択、会社/書類重複の検出 | SQL。範囲の複合索引を使用 |
-| 保存内容の整合性チェック | SQLから呼ぶTypeScriptのハッシュ関数。条件で行を落とす前に、選択範囲全体を確認 |
-| 金額3項目の条件・並べ替え・ページ指定 | SQL。保存した利用可能な値を使用 |
-| 流動比率の条件 | SQLの`WHERE`から接続専用の`edinet_fraction_compare`を呼ぶ。その関数内でTypeScriptのBigInt分数を厳密比較 |
-| 流動比率の並べ替え・ページ指定 | SQLで条件一致候補のID・証券コード・分子分母だけを読み、TypeScriptが厳密に並べてからページ指定 |
-| 総件数・除外件数・条件不一致件数、診断用の行 | SQLで集計・選択し、TypeScriptで既存の返値形式へ整形 |
-| 返却ページの元情報・計算結果 | ページ分だけ読み直して再検証し、既存APIで必要項目と計算を再確認 |
+| 処理                                                    | 実際に担当する場所                                                                                      |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 指定日・範囲・抽出版・ID一覧の選択、会社/書類重複の検出 | SQL。範囲の複合索引を使用                                                                               |
+| 保存内容の整合性チェック                                | SQLから呼ぶTypeScriptのハッシュ関数。条件で行を落とす前に、選択範囲全体を確認                           |
+| 金額3項目の条件・並べ替え・ページ指定                   | SQL。保存した利用可能な値を使用                                                                         |
+| 流動比率の条件                                          | SQLの`WHERE`から接続専用の`edinet_fraction_compare`を呼ぶ。その関数内でTypeScriptのBigInt分数を厳密比較 |
+| 流動比率の並べ替え・ページ指定                          | SQLで条件一致候補のID・証券コード・分子分母だけを読み、TypeScriptが厳密に並べてからページ指定           |
+| 総件数・除外件数・条件不一致件数、診断用の行            | SQLで集計・選択し、TypeScriptで既存の返値形式へ整形                                                     |
+| 返却ページの元情報・計算結果                            | ページ分だけ読み直して再検証し、既存APIで必要項目と計算を再確認                                         |
 
 比率の並べ替え前に、近似値のSQL順序や`LIMIT/OFFSET`で候補を落としません。SQLで全処理を完結する実装ではありません。比率の並べ替えには、条件一致候補数に応じたTypeScript側の時間とメモリが必要です。
 
@@ -141,10 +173,10 @@ node --import tsx scripts/benchmark-balance-sheet-store.ts 100 500 1000
 対象は同一範囲の合成データで、金額条件と比率条件をそれぞれ指定し、降順で最大20件を返します。XMLの合成・解析は取り込み/検索の時間に含めず、保存版検索には整合性検査と返却ページの再検証を含めています。
 
 | 件数 | DB容量 MiB | 取り込み ms | 金額検索 ms（保存版 / メモリ） | 比率検索 ms（保存版 / メモリ） |
-|---:|---:|---:|---:|---:|
-| 100 | 0.48 | 79.55 | 20.53 / 6.58 | 22.99 / 9.32 |
-| 500 | 2.30 | 285.37 | 37.06 / 29.53 | 43.02 / 41.62 |
-| 1000 | 4.57 | 461.77 | 59.67 / 59.42 | 70.53 / 79.01 |
+| ---: | ---------: | ----------: | -----------------------------: | -----------------------------: |
+|  100 |       0.48 |       79.55 |                   20.53 / 6.58 |                   22.99 / 9.32 |
+|  500 |       2.30 |      285.37 |                  37.06 / 29.53 |                  43.02 / 41.62 |
+| 1000 |       4.57 |      461.77 |                  59.67 / 59.42 |                  70.53 / 79.01 |
 
 再読込は0.30〜0.32msでした。範囲選択で`financial_cohort`索引が使われることも確認しました。同一プロセスでメモリ用入力も保持した測定で、RSSは約111/132/175MiBです。これはSQL接続だけのメモリや各検索のピーク使用量ではありません。SQLite側のメモリ量を分離した測定は未実施です。
 

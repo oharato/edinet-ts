@@ -18,18 +18,18 @@
 
 `calculateAnnualRevenueGrowth(pair)`は、両原本を既存の厳密な`MetricId.NetSales`選択器で読みます。原値・採用状態/理由・context/単位・出典を`previous`/`current`に保持します。候補の重複を足したり、先頭だけで計算したりしません。
 
-| 理由 | 計算しないケース |
-|---|---|
-| `unsupported-standard` | J-GAAP以外 |
+| 理由                                            | 計算しないケース                     |
+| ----------------------------------------------- | ------------------------------------ |
+| `unsupported-standard`                          | J-GAAP以外                           |
 | `incompatible-metadata` / `incompatible-entity` | 会社や範囲、採用値の対象企業が異なる |
-| `not-annual` | 時点値、年次以外の分類 |
-| `unsupported-annual-period` | 月初〜12暦月末ではない |
-| `non-consecutive-periods` | 年度飛び、逆順、重なり等 |
-| `unavailable-input` | 欠損・未対応・曖昧。元選択理由も返す |
-| `unsafe-input` | 原値が安全なnumberへ往復できない |
-| `zero-base` | 前年0（-0も含む） |
-| `negative-base` | 前年が負。符号の解釈を勝手に決めない |
-| `unsafe-result` | 表示値が有限・安全上限を満たさない |
+| `not-annual`                                    | 時点値、年次以外の分類               |
+| `unsupported-annual-period`                     | 月初〜12暦月末ではない               |
+| `non-consecutive-periods`                       | 年度飛び、逆順、重なり等             |
+| `unavailable-input`                             | 欠損・未対応・曖昧。元選択理由も返す |
+| `unsafe-input`                                  | 原値が安全なnumberへ往復できない     |
+| `zero-base`                                     | 前年0（-0も含む）                    |
+| `negative-base`                                 | 前年が負。符号の解釈を勝手に決めない |
+| `unsafe-result`                                 | 表示値が有限・安全上限を満たさない   |
 
 `status: "unavailable"`は率0を意味しません。当年0は前年正値なら-100%、当年負値も前年正値なら符号を保持し、-100%未満になる場合があります。金額の符号を反転・絶対値化しません。不正日付・未知フィールド・不正XML等の入力設定エラーは例外です。
 
@@ -42,8 +42,14 @@
 ## APIの使い方
 
 ```ts
-import { calculateAnnualRevenueGrowth, screenAnnualRevenueGrowth, AnnualGrowthMetricId,
-    ComparisonOperator, SortOrder, type AnnualRevenuePair } from "edinet-ts";
+import {
+  calculateAnnualRevenueGrowth,
+  screenAnnualRevenueGrowth,
+  AnnualGrowthMetricId,
+  ComparisonOperator,
+  SortOrder,
+  type AnnualRevenuePair,
+} from "edinet-ts";
 
 declare const pair: AnnualRevenuePair; // previous/currentそれぞれ{ xml, metadata }
 const result = calculateAnnualRevenueGrowth(pair);
@@ -51,9 +57,16 @@ if (result.status === "calculated") console.log(result.value, result.exact);
 else console.log(result.reason, result.previous.selection, result.current.selection);
 
 const found = screenAnnualRevenueGrowth([pair], {
-    conditions: [{ metric: AnnualGrowthMetricId.NetSalesGrowth,
-        operator: ComparisonOperator.GreaterThanOrEqual, value: 0.2 }],
-    order: SortOrder.Descending, offset: 0, limit: 20
+  conditions: [
+    {
+      metric: AnnualGrowthMetricId.NetSalesGrowth,
+      operator: ComparisonOperator.GreaterThanOrEqual,
+      value: 0.2,
+    },
+  ],
+  order: SortOrder.Descending,
+  offset: 0,
+  limit: 20,
 });
 ```
 
@@ -73,13 +86,32 @@ const found = screenAnnualRevenueGrowth([pair], {
 
 ```json
 [
-  { "previous": { "file": "previous.xbrl", "metadata": {
-      "secCode": "1001", "docID": "SYNTHETIC-PRIOR", "scope": "Consolidated", "accountingStandard": "J-GAAP", "currency": "JPY",
-      "periodType": "annual", "period": { "startDate": "2023-04-01", "endDate": "2024-03-31" }
-  } }, "current": { "file": "current.xbrl", "metadata": {
-      "secCode": "1001", "docID": "SYNTHETIC-CURRENT", "scope": "Consolidated", "accountingStandard": "J-GAAP", "currency": "JPY",
-      "periodType": "annual", "period": { "startDate": "2024-04-01", "endDate": "2025-03-31" }
-  } } }
+  {
+    "previous": {
+      "file": "previous.xbrl",
+      "metadata": {
+        "secCode": "1001",
+        "docID": "SYNTHETIC-PRIOR",
+        "scope": "Consolidated",
+        "accountingStandard": "J-GAAP",
+        "currency": "JPY",
+        "periodType": "annual",
+        "period": { "startDate": "2023-04-01", "endDate": "2024-03-31" }
+      }
+    },
+    "current": {
+      "file": "current.xbrl",
+      "metadata": {
+        "secCode": "1001",
+        "docID": "SYNTHETIC-CURRENT",
+        "scope": "Consolidated",
+        "accountingStandard": "J-GAAP",
+        "currency": "JPY",
+        "periodType": "annual",
+        "period": { "startDate": "2024-04-01", "endDate": "2025-03-31" }
+      }
+    }
+  }
 ]
 ```
 
@@ -112,9 +144,12 @@ Node26.12.1で全869テスト（既存821＋新規48）、本体/公開API例の
 
 ```ts
 import {
-  calculateAnnualOperatingIncomeGrowth, screenAnnualOperatingIncomeGrowth,
-  AnnualOperatingIncomeGrowthMetricId, ComparisonOperator, SortOrder,
-  type AnnualOperatingIncomePair
+  calculateAnnualOperatingIncomeGrowth,
+  screenAnnualOperatingIncomeGrowth,
+  AnnualOperatingIncomeGrowthMetricId,
+  ComparisonOperator,
+  SortOrder,
+  type AnnualOperatingIncomePair,
 } from "edinet-ts";
 
 declare const pair: AnnualOperatingIncomePair;
@@ -123,9 +158,16 @@ if (result.status === "calculated") console.log(result.value, result.exact);
 else console.log(result.reason);
 
 const found = screenAnnualOperatingIncomeGrowth([pair], {
-  conditions: [{ metric: AnnualOperatingIncomeGrowthMetricId.OperatingIncomeGrowth,
-    operator: ComparisonOperator.GreaterThanOrEqual, value: 0.2 }],
-  order: SortOrder.Descending, offset: 0, limit: 20
+  conditions: [
+    {
+      metric: AnnualOperatingIncomeGrowthMetricId.OperatingIncomeGrowth,
+      operator: ComparisonOperator.GreaterThanOrEqual,
+      value: 0.2,
+    },
+  ],
+  order: SortOrder.Descending,
+  offset: 0,
+  limit: 20,
 });
 ```
 

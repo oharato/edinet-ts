@@ -4,13 +4,13 @@
 
 ## 読みたい項目を選ぶ
 
-| 目的 | 読む節 |
-|---|---|
-| 既定の給与を取得する | [対応範囲](#給与の対応範囲)と[API](#apiの使い方) |
-| 年齢・勤続年数を追加する | [年齢・勤続年数](#年齢勤続年数を明示して追加する) |
-| 人数を読む | [従業員数](#従業員数を明示して読む)、[平均臨時雇用人員](#平均臨時雇用人員を明示して読む) |
-| 女性管理職・育休・賃金比率を読む | [比率9項目](#比率9項目の明示取得2026-10-28作業ツリーで追加) |
-| 同じ値が複数ある場合を確認する | [重複の採用条件](#人的資本の同一重複ルール) |
+| 目的                             | 読む節                                                                                   |
+| -------------------------------- | ---------------------------------------------------------------------------------------- |
+| 既定の給与を取得する             | [対応範囲](#給与の対応範囲)と[API](#apiの使い方)                                         |
+| 年齢・勤続年数を追加する         | [年齢・勤続年数](#年齢勤続年数を明示して追加する)                                        |
+| 人数を読む                       | [従業員数](#従業員数を明示して読む)、[平均臨時雇用人員](#平均臨時雇用人員を明示して読む) |
+| 女性管理職・育休・賃金比率を読む | [比率9項目](#比率9項目の明示取得2026-10-28作業ツリーで追加)                              |
+| 同じ値が複数ある場合を確認する   | [重複の採用条件](#人的資本の同一重複ルール)                                              |
 
 給与以外は項目IDを明示して読みます。各節のテスト件数・統合状況は追加時点の記録です。
 
@@ -24,13 +24,13 @@
 
 ## 給与の対応範囲
 
-| 項目 | 仕様 |
-|---|---|
-| 定数 / ID | `WorkforceMetricId.AverageAnnualSalary` / `averageAnnualSalary` |
+| 項目       | 仕様                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| 定数 / ID  | `WorkforceMetricId.AverageAnnualSalary` / `averageAnnualSalary`                          |
 | 原本のタグ | `jpcrp_cor:AverageAnnualSalaryInformationAboutReportingCompanyInformationAboutEmployees` |
-| 対象 | 一般事業J-GAAP、提出会社単体、JPY、明示した期末のinstant |
-| 範囲の確認 | 正式な`NonConsolidatedMember`（単体を表す指定）が明示された候補だけ |
-| 単位 | 円。`decimals=-3`でも原値へ1,000を掛けない |
+| 対象       | 一般事業J-GAAP、提出会社単体、JPY、明示した期末のinstant                                 |
+| 範囲の確認 | 正式な`NonConsolidatedMember`（単体を表す指定）が明示された候補だけ                      |
+| 単位       | 円。`decimals=-3`でも原値へ1,000を掛けない                                               |
 
 J-GAAPなどの会計基準は、利用者が元書類で確認して指定します。給与タグの名前空間から基準を自動推定しません。次元なしを単体だと推測することや、連結から単体への自動切替はしません。この制限により、原本に給与があっても対象外になる場合があります。
 
@@ -41,24 +41,40 @@ J-GAAPなどの会計基準は、利用者が元書類で確認して指定し�
 ## APIの使い方
 
 ```ts
-import { createWorkforceSnapshot, screenWorkforceDocuments, WorkforceMetricId,
-    AccountingStandard, ConsolidationScope, ComparisonOperator, SortOrder } from "edinet-ts";
+import {
+  createWorkforceSnapshot,
+  screenWorkforceDocuments,
+  WorkforceMetricId,
+  AccountingStandard,
+  ConsolidationScope,
+  ComparisonOperator,
+  SortOrder,
+} from "edinet-ts";
 
 const metadata = {
-    secCode: "1001", docID: "SYNTHETIC1",
-    scope: ConsolidationScope.NonConsolidated,
-    accountingStandard: AccountingStandard.JGAAP, currency: "JPY" as const,
-    period: { instant: "2025-03-31" }
+  secCode: "1001",
+  docID: "SYNTHETIC1",
+  scope: ConsolidationScope.NonConsolidated,
+  accountingStandard: AccountingStandard.JGAAP,
+  currency: "JPY" as const,
+  period: { instant: "2025-03-31" },
 };
 const snapshot = createWorkforceSnapshot(xml, metadata);
 const salary = snapshot.selections[WorkforceMetricId.AverageAnnualSalary];
 if (salary.status === "selected") console.log(salary.raw, salary.safeNumber, salary.source);
 
 const result = screenWorkforceDocuments(documents, {
-    conditions: [{ metric: WorkforceMetricId.AverageAnnualSalary,
-        operator: ComparisonOperator.GreaterThanOrEqual, value: 1000000 }],
-    sortBy: WorkforceMetricId.AverageAnnualSalary,
-    order: SortOrder.Descending, offset: 0, limit: 20
+  conditions: [
+    {
+      metric: WorkforceMetricId.AverageAnnualSalary,
+      operator: ComparisonOperator.GreaterThanOrEqual,
+      value: 1000000,
+    },
+  ],
+  sortBy: WorkforceMetricId.AverageAnnualSalary,
+  order: SortOrder.Descending,
+  offset: 0,
+  limit: 20,
 });
 ```
 
@@ -82,10 +98,17 @@ const result = screenWorkforceDocuments(documents, {
 
 ```json
 [
-  { "file": "source.xbrl", "metadata": {
-      "secCode": "1001", "docID": "SYNTHETIC1", "scope": "NonConsolidated",
-      "accountingStandard": "J-GAAP", "currency": "JPY", "period": { "instant": "2025-03-31" }
-  } }
+  {
+    "file": "source.xbrl",
+    "metadata": {
+      "secCode": "1001",
+      "docID": "SYNTHETIC1",
+      "scope": "NonConsolidated",
+      "accountingStandard": "J-GAAP",
+      "currency": "JPY",
+      "period": { "instant": "2025-03-31" }
+    }
+  }
 ]
 ```
 
@@ -120,10 +143,10 @@ node dist/cli.js screen-workforce --manifest /tmp/local-workforce/files.json --s
 
 提出会社単体の「平均年齢（年）」と「平均勤続年数（年）」を、原本の直接タグから読み、同じ期末の明示集合で検索できます。年や月を合算したり、月から年へ換算したりしません。原本で年と月が併記されていても、この機能が読むのは下記の年タグだけです。比較の前に、元書類の表記と対象社員などの注記を確認してください。
 
-| 定数 / ID | 元の `jpcrp_cor:` タグ | 原値の単位 |
-|---|---|---|
-| `AverageAgeYears` / `averageAgeYears` | `AverageAgeYearsInformationAboutReportingCompanyInformationAboutEmployees` | 年 |
-| `AverageLengthOfServiceYears` / `averageLengthOfServiceYears` | `AverageLengthOfServiceYearsInformationAboutReportingCompanyInformationAboutEmployees` | 年 |
+| 定数 / ID                                                     | 元の `jpcrp_cor:` タグ                                                                 | 原値の単位 |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------- |
+| `AverageAgeYears` / `averageAgeYears`                         | `AverageAgeYearsInformationAboutReportingCompanyInformationAboutEmployees`             | 年         |
+| `AverageLengthOfServiceYears` / `averageLengthOfServiceYears` | `AverageLengthOfServiceYearsInformationAboutReportingCompanyInformationAboutEmployees` | 年         |
 
 現在の`WORKFORCE_REGISTRY_VERSION`は`"5"`です。XBRLの単位は`pure`（`xbrli:pure`）、人が読む原値の単位は辞書の`valueUnit: "years"`で区別します。
 
@@ -132,14 +155,17 @@ node dist/cli.js screen-workforce --manifest /tmp/local-workforce/files.json --s
 原本に丸めて記載された値をそのまま扱い、丸め前の平均を復元しません。
 
 ```ts
-const metricIds = [WorkforceMetricId.AverageAgeYears,
-    WorkforceMetricId.AverageLengthOfServiceYears];
+const metricIds = [
+  WorkforceMetricId.AverageAgeYears,
+  WorkforceMetricId.AverageLengthOfServiceYears,
+];
 const statistics = createWorkforceSnapshot(xml, metadata, metricIds);
 const age = statistics.selections[WorkforceMetricId.AverageAgeYears];
 if (age?.status === "selected") console.log(age.raw, age.source);
 const result = screenWorkforceDocuments(documents, {
-    metricIds, sortBy: WorkforceMetricId.AverageAgeYears,
-    order: SortOrder.Ascending
+  metricIds,
+  sortBy: WorkforceMetricId.AverageAgeYears,
+  order: SortOrder.Ascending,
 });
 ```
 
@@ -171,27 +197,26 @@ node dist/cli.js screen-workforce --manifest /tmp/local-workforce/files.json --m
 
 提出会社単体の従業員数を、元の値と採用できた理由付きで取得・検索します。連結グループや事業別の人数を合算せず、原本にある全社・単体の候補だけを読みます。既定は給与1項目のままで、従業員数を読むには明示指定が必要です。
 
-| 項目 | 仕様 |
-|---|---|
-| 定数 / ID | `WorkforceMetricId.NumberOfEmployees` / `numberOfEmployees` |
-| 原本のタグ | `jpcrp_cor:NumberOfEmployees` |
-| 対象 | 一般事業J-GAAP、正規の単体指定だけ、明示した期末のinstant |
-| XBRL単位 / 人向け単位 | `pure` / 辞書の`valueUnit: "people"` |
-| 同じ対象の複数候補 | 完全に同一なら理由`selected-identical-duplicates`で1件として採用（合算しない）。値・精度・単位・文脈が違う重複は`ambiguous` |
+| 項目                  | 仕様                                                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 定数 / ID             | `WorkforceMetricId.NumberOfEmployees` / `numberOfEmployees`                                                                 |
+| 原本のタグ            | `jpcrp_cor:NumberOfEmployees`                                                                                               |
+| 対象                  | 一般事業J-GAAP、正規の単体指定だけ、明示した期末のinstant                                                                   |
+| XBRL単位 / 人向け単位 | `pure` / 辞書の`valueUnit: "people"`                                                                                        |
+| 同じ対象の複数候補    | 完全に同一なら理由`selected-identical-duplicates`で1件として採用（合算しない）。値・精度・単位・文脈が違う重複は`ambiguous` |
 
 `NumberOfEmployeesOfReportingCompanyTable`等の表構造の名前や、別の長いタグ名・summaryタグを代用しません。特定の表示表から読んだ値だという帰属、正社員だけの人数、労働時間に応じた換算人数（FTE）などの定義は、このタグとcontextだけでは補いません。対象者の定義は元書類の説明を確認してください。
 
 原値はdecimal文字列で保ち、整数へ丸めたり小数を切り捨てたりしません。0と`-0`は保持します。負数は検索に使わず候補記録に原値を残し、nil・不在・不安全な数値・曖昧な候補を0に変えません。`currency: "JPY"`は既存入力との互換用の制約で、人数を円として読む指定ではありません。
 
 ```ts
-const employees = createWorkforceSnapshot(xml, metadata,
-    [WorkforceMetricId.NumberOfEmployees]);
+const employees = createWorkforceSnapshot(xml, metadata, [WorkforceMetricId.NumberOfEmployees]);
 const count = employees.selections[WorkforceMetricId.NumberOfEmployees];
 if (count?.status === "selected") console.log(count.raw, count.source);
 const matching = screenWorkforceDocuments(documents, {
-    metricIds: [WorkforceMetricId.NumberOfEmployees],
-    sortBy: WorkforceMetricId.NumberOfEmployees,
-    order: SortOrder.Descending
+  metricIds: [WorkforceMetricId.NumberOfEmployees],
+  sortBy: WorkforceMetricId.NumberOfEmployees,
+  order: SortOrder.Descending,
 });
 ```
 
@@ -215,13 +240,13 @@ PDF表示値、対象者の注記、他基準・連結・全市場の充足率�
 
 提出会社単体の平均臨時雇用人員を、従業員数と同じ規則で取得・検索します。これは年間平均の人数であり、期末時点の人数や正社員数ではありません。平均であることを整数化や労働時間換算（FTE）で消さず、原値をそのまま保持します。この項目を追加した時点のregistry版は4です。後の比率追加で現在は版5になっています。
 
-| 項目 | 仕様 |
-|---|---|
-| 定数 / ID | `WorkforceMetricId.AverageNumberOfTemporaryEmployees` / `averageNumberOfTemporaryEmployees` |
-| 原本のタグ | `jpcrp_cor:AverageNumberOfTemporaryWorkers` |
-| 対象 | 一般事業J-GAAP、正規の単体指定だけ、明示した期末のinstant |
-| XBRL単位 / 人向け単位 | `pure` / 辞書の`valueUnit: "people"` |
-| 同じ対象の複数候補 | 完全に同一なら理由`selected-identical-duplicates`で1件として採用（合算しない）。値・精度・単位・文脈が違う重複は`ambiguous` |
+| 項目                  | 仕様                                                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 定数 / ID             | `WorkforceMetricId.AverageNumberOfTemporaryEmployees` / `averageNumberOfTemporaryEmployees`                                 |
+| 原本のタグ            | `jpcrp_cor:AverageNumberOfTemporaryWorkers`                                                                                 |
+| 対象                  | 一般事業J-GAAP、正規の単体指定だけ、明示した期末のinstant                                                                   |
+| XBRL単位 / 人向け単位 | `pure` / 辞書の`valueUnit: "people"`                                                                                        |
+| 同じ対象の複数候補    | 完全に同一なら理由`selected-identical-duplicates`で1件として採用（合算しない）。値・精度・単位・文脈が違う重複は`ambiguous` |
 
 従業員数のタグで代用せず、セグメント別・全社員区分などの内訳も全社値として読みません。原値はdecimal文字列で保ち、0と小数を保持します。
 
@@ -249,24 +274,26 @@ CLIは`--metrics averageNumberOfTemporaryEmployees`で指定できます。
 
 registry版5で、以下の提出会社単体・明示instant・正規NonConsolidatedMember・全社の直接factを追加しました。`unit: "pure"`、`valueUnit: "ratio"`、1=100%です。給与は常に返す互換契約と、既定1項目は維持します。XML/CLIの明示projectionでだけ追加・条件検索します。
 
-| ID | 定義/労働者区分 |
-|---|---|
-| `femaleManagerRatio` | 管理職に占める女性労働者の割合 |
-| `maleChildcareLeaveOrdinanceItem1AllRatio` | 育児休業取得率、施行規則の育児休業の区分・全労働者（taxonomyのArticle714Item1） |
-| `maleChildcareLeaveOrdinanceItem1RegularRatio` | 同・正規雇用 |
-| `maleChildcareLeaveOrdinanceItem1NonRegularRatio` | 同・非正規雇用 |
-| `maleChildcareLeaveOrdinanceItem2AllRatio` | 育児休業等及び育児目的休暇の区分・全労働者（taxonomyのArticle714Item2） |
-| `maleChildcareLeaveWomensActAllRatio` | 女性活躍推進法に基づく・全労働者の別定義 |
-| `genderWageAllRatio` | 男女賃金の差異・全労働者 |
-| `genderWageRegularRatio` | 同・正規雇用 |
-| `genderWageNonRegularRatio` | 同・非正規雇用 |
+| ID                                                | 定義/労働者区分                                                                 |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `femaleManagerRatio`                              | 管理職に占める女性労働者の割合                                                  |
+| `maleChildcareLeaveOrdinanceItem1AllRatio`        | 育児休業取得率、施行規則の育児休業の区分・全労働者（taxonomyのArticle714Item1） |
+| `maleChildcareLeaveOrdinanceItem1RegularRatio`    | 同・正規雇用                                                                    |
+| `maleChildcareLeaveOrdinanceItem1NonRegularRatio` | 同・非正規雇用                                                                  |
+| `maleChildcareLeaveOrdinanceItem2AllRatio`        | 育児休業等及び育児目的休暇の区分・全労働者（taxonomyのArticle714Item2）         |
+| `maleChildcareLeaveWomensActAllRatio`             | 女性活躍推進法に基づく・全労働者の別定義                                        |
+| `genderWageAllRatio`                              | 男女賃金の差異・全労働者                                                        |
+| `genderWageRegularRatio`                          | 同・正規雇用                                                                    |
+| `genderWageNonRegularRatio`                       | 同・非正規雇用                                                                  |
 
 辞書の直接タグだけを使い、法令・労働者区分・子会社行からの穴埋めや合算は行いません。公開の比率が100%を超えるケースを自動で100%へ切り詰めません。`25%`やダッシュの文字列を数値へ強制変換せず、rawと非採用理由を残します。nilの背景が非開示か非該当かまでは推測しません。
 
 ```ts
 const metricIds = [WorkforceMetricId.FemaleManagerRatio, WorkforceMetricId.GenderWageAllRatio];
-const result = screenWorkforceDocuments(documents, { metricIds,
-  conditions: [{ metric: WorkforceMetricId.FemaleManagerRatio, operator: "gte", value: 0.2 }] });
+const result = screenWorkforceDocuments(documents, {
+  metricIds,
+  conditions: [{ metric: WorkforceMetricId.FemaleManagerRatio, operator: "gte", value: 0.2 }],
+});
 ```
 
 エクシオ/ミライト・ワンの2025年提出2原本・当期/前年36選択で12採用・24欠損を確認しました。ラクーンの会社行次元だけのfactを全体値へ誤採用しない回帰も追加しました。

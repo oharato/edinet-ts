@@ -708,8 +708,6 @@ writer/元履歴を変更せず、境界再開・完了直後停止・確定後�
 
 年次2原本の宣言した小規模集合で4行/10値を生成・原XMLと独立照合し、半期2原本の期間不一致は修正済みで、原XMLとの11値の独立照合も完了しました（PDFは未照合）。解析/品質/公開の自動反復や全体ロードマップは未完了です。
 
-
-
 ## 残工程の再確認（2026-10-30）
 
 保存記録とsystemdの現在状態を読み合わせ、上表の古い運用記録を次のとおり補足します。
@@ -775,7 +773,6 @@ Node 26.12.1 / npm 12.2.1で、build、本体・公開API例の型検査、全15
 
 圧縮運用の準備: 検証済みSDK/運用コードから2,502ファイルの新規固定runtime候補を作り、全指紋と通信なしimportを確認しました（未切替）。日別候補のキャッシュ参照先を、その日の `preparation-config.json` と同じディレクトリの `provider-cache` へ修正し、日次17テストが成功。前候補で取得した117原本・93,592,563 byteを保存hashと照合して別キャッシュへ準備し、固定SDKの `fetchXbrl` を通信禁止で実行して全117件のbyte指紋一致・HTTP要求0件を確認しました。新候補への投入は未実施で、実取得時刻の過去への変更は行っていません。根拠は私有の `daily-source-cache-read-proof.json` とキャッシュの `manifest.json` です。
 
-
 ## 通知ルール2の固定runtimeと100社単位の索引構築（2026-10-30）
 
 構築中の候補は固定SDK f1d39b6のまま、既存の構築APIを100社単位で呼ぶ専用サービスへ移した。実試行で140→240社、稼働中の完了ログで340社・残り3,472社・失敗0件を確認した。試行では入力指紋と構築recipeのbyte列が不変で、公開catalogも未変更。起動前19検査を通過し、通常の財務timerは一時停止、構築完了後に自動復帰する設定とした。
@@ -786,11 +783,9 @@ Node 26.12.1 / npm 12.2.1で、build、本体・公開API例の型検査、全15
 
 証拠は `data/roadmap/notice-v2-deployment-proof.json`、`notice-v2-preflight-proof.json`、`notice-v2-fixed-runtime-replay-proof.json` と `bulk-build-deployment-proof.json` に保存した。これらはGit管理外の実行記録であり、現在の稼働状態は実unitとreceiptを確認する。
 
-
 続いて、新しい財務候補の作成側にも現行通知ルール版を必須とする条件を追加した（85e3bb4）。当日完了に見える旧ルールcheckpointでも新規候補を作らず、metadata側の実移行・再完了を待つ。設定版1/2とも、出力とcheckpointを変更せず待機し、新ルールの完了後に準備できる試験を追加。関連2ファイル46テストがNode 26で成功した。
 
 固定SDKは維持し、通知判定2ファイルとこの引継ぎ処理の計3ファイルだけを反映した別runtimeへ両日次unitを再設定した。改めて22検査と全139,758観測の再生が成功し、checkpoint未変更・未解決89件の再現を確認。最新の切替証跡は `notice-v2-handoff-deployment-proof.json`、検査は `notice-v2-handoff-preflight-proof.json`、再生は `notice-v2-handoff-fixed-runtime-replay-proof.json`。この時点でも実checkpoint移行は未確認で、構築中の固定候補・公開catalogは変更していない。
-
 
 ## IFRSのBS追加5項目を保存・検索へ接続（2026-10-30）
 
@@ -802,7 +797,6 @@ DEIによる自動snapshotはBS8項目を保存する。観測アーカイブの
 
 保存・検索経路の実原本検証には、検証時刻の人工的な観測宣言を使った。提供元の実際の一覧観測・提出時刻を再構成した証拠ではない。負債とリースの内包関係、全業種・全年度、稼働SDKと利用先への反映は未確認で、公開catalogは変更していない。証拠は `data/roadmap/ifrs-instant-real-latest.json` が指す候補の `sdk-results.json`、`independent-proof.json`、`pdf-visual-proof.json`、`legacy-compatibility-proof.json` に保存した。
 
-
 ## 通知checkpointの実移行と新ルールでの当日完了（2026-10-30）
 
 100社単位の索引構築が自然にauto-restartへ移る間隙で、固定runtime 85e3bb4のmetadata unitを一度起動した。構築を停止せず、共有排他の下で旧checkpointをrulesVersion 2へ移行。当日probeと直近の日次取得を完了し、140,884観測・未解決89件・pending日0・activeなし・サービス終了0を確認した。取得予算は151→159要求で引き継いだ。
@@ -811,14 +805,11 @@ DEIによる自動snapshotはBS8項目を保存する。観測アーカイブの
 
 実行間隙は `data/roadmap/notice-v2-gap-start-proof.json`、完了監査は `notice-v2-live-migration-proof.json` に保存した。移行前の再生・切替証跡は当時の状態として保持する。
 
-
 未解決89件の提出日時も通信なしで調査した。自身の提出日時がある39件のうち、参照先ごとの既知一覧日を除くと、元書類自身が未確認の20件に13日分（2024-03-28〜2025-10-28）の一覧再取得候補が残る。親参照だけが不明な既知の自身を再取得候補に混ぜない。日時の一致だけで元一覧の存在を確定せず、checkpointも変更していない。手元のstock-data原本cacheに該当参照先のディレクトリは見つからなかった。次は元一覧を実際に確認し、未解決を保持したまま再観測できる入口を検証する。記録は `unresolved-notice-submit-date-inventory.json`。
 
 全体テストの初回実行は、手順にあるdata/artifacts除外を付けず、過去配布物5組のテストも拾っていたためSIGINTで停止した。現行158ファイルに対し発見対象が850ファイルとなっていた。`npm test` 自体にdata/artifactsの除外を組み込み、現行の追跡済み157ファイルと新規1ファイルが漏れなく検出されることを確認して全体テストを再実行した。発見対象の証拠は `ifrs-instant-test-discovery-proof.json`。
 
-
 修正後の `npm test -- --maxWorkers=1` はNode 26.12.1で158ファイル・4,218テストが成功した（450.88秒）。build、本体/公開型、公開ESM/CJSの追加export、Python保存保護5件、ローカル文書リンク540件の検査も成功。実3社・同一期末のbuilt CLIをAPIと比較して一致し、入力原本も不変だった。確認ログとsource/distの指紋は `ifrs-instant-verification-summary.json` に記録する。新しいIFRS辞書版2のSDKはまだ稼働unit・公開catalog・stock-dataへ反映していない。索引構築は固定SDKのまま940社完了・残り2,872社・失敗0件で継続中。
-
 
 ## 提出日時から元一覧を確認する通知ルール3（2026-10-30）
 
@@ -832,7 +823,6 @@ Node 26で関連3ファイル65テスト、財務準備・再構築の境界2フ
 
 証拠は `data/roadmap/notice-v3-fixed-runtime-replay-proof.json`、`notice-v3-preflight-proof.json`、`notice-v3-deployment-proof.json`、`notice-v3-gap-start-proof.json`、`notice-v3-live-migration-proof.json`、`notice-v3-unresolved-inventory.json`。残る72件について、未確認の自身の提出日時から追加できる候補日はこの調査時点で0件であり、親参照や原本等の別の確認が必要。
 
-
 ## IFRS BS辞書2のSDKを次の日次unitへ反映（2026-10-30）
 
 4218テスト・実原本照合を通過したSDKのsource/dist指紋を再確認し、コミット73b681cのSDKと通知ルール3を含む別固定runtimeを作った。依存はF1固定runtimeのmanifestと一致するものを維持し、実行に必要なscriptだけを含めて2,503ファイルを固定。SDKの辞書版2/8項目・既定3項目のexport、ルール3の現行165,557観測/未解決72件のcheckpoint、旧3項目索引の実3社の検索結果・byte不変を通信なしで検証した。起動前22検査も成功した。
@@ -840,7 +830,6 @@ Node 26で関連3ファイル65テスト、財務準備・再構築の境界2フ
 両日次unitをこの固定runtimeへ切り替えた。metadataを100社構築の自然な処理間隙で起動し、already-complete・追加要求0で終了0を確認。checkpointのSHAと取得予算200要求は不変だった。現在構築中の候補はSDK F1の専用サービスを継続し、1,540社完了・残り2,272社・失敗0件。通常財務timerは一時停止を維持し、この構築完了後に復帰する。新SDKによる次の日次構築・全社品質検証と公開catalog/stock-dataの切替は未完了。SDKと対応世代を組にして配布・切戻しする条件も維持する。
 
 証拠は `data/roadmap/sdk-ifrs-v2-runtime-candidate.json`、`sdk-ifrs-v2-preflight-proof.json`、`sdk-ifrs-v2-smoke-proof.json`、`sdk-ifrs-v2-deployment-proof.json`、`sdk-ifrs-v2-gap-start-proof.json`、`sdk-ifrs-v2-live-metadata-proof.json`。初回stagingでは必要のない開発scriptも含んでいたため、unitを切り替える前に除外し、最終manifestとlauncherの指紋を作り直して検査した。稼働中のruntimeは書き換えていない。
-
 
 ## 通常日次の100社構築と117原本のpool継承（2026-10-30）
 
@@ -854,7 +843,6 @@ Node 26で関連3ファイル65テスト、財務準備・再構築の境界2フ
 
 証拠は `data/roadmap/daily100-preflight-proof.json`、`daily100-deployment-proof.json`、`promoted-source-pool-20261030/independent-audit.json`、同 `reuse-proof.json`、同 `controller-preflight-proof.json`、`promoted-pool-preflight-proof.json`、`promoted-pool-deployment-proof.json` に保持した。
 
-
 ## readOnly観測検査と全社構築の完了確認
 
 readOnly私有コピーでは、初回検査の前後と再利用の都度にファイル不変検査を通して観測指紋を再利用する。書込可能DBの全行再読取は維持し、readOnly側の行キャッシュは保持しない。変更・置換・切詰め・リンク追加と初回走査中の変更を拒否するテストを追加した。Node 26.12.1でbuild、公開型検査、全158ファイル/4,234テストが成功。ローカル文書リンク540件も問題なし。
@@ -862,7 +850,6 @@ readOnly私有コピーでは、初回検査の前後と再利用の都度にフ
 実139,758観測の同一DB/指紋で6回検査を比較し、旧14,694.7 ms、新4,245.2 ms。ファイル全体hashとコピー作成は計測外で、処理全体の速度保証ではない。稼働中の固定runtimeは変更していない。
 
 旧SDK固定の会社別索引は3,812社すべてcomplete、専用サービスは停止、通常財務timerはactive/waitingへ復帰した。14,436行・利用可能36,026値、利用可能値のある会社3,732社。構築receiptのpublicationEligibleとfinancialValuesValidatedはいずれもfalse。期間不一致198書類等の品質問題を残し、公開catalogは切り替えていない。
-
 
 ## 半期一覧期間の実例に基づく照合修正
 
@@ -878,7 +865,6 @@ readOnly私有コピーでは、初回検査の前後と再利用の都度にフ
 
 半期期間照合の修正後、Node 26.12.1でbuild・本体型・公開NodeNext型・ESM/CJSの抽出版4が成功。全158ファイル/4,238テストが成功（420.79秒）、文書リンク540件も問題なし。全社再構築は別途継続中。
 
-
 ## BS・財務明細の完全一致重複を証跡付きで採用
 
 完成候補の曖昧323値を分類し、原値・タグ/名前空間・精度・解決済み単位・期間・範囲・次元・entityが完全一致する有効候補317件を確認。独立Python/SQLite/gzip/hashlib/ElementTree処理で、314原本の候補と元XMLの原値・精度・期間/entity・全社次元・JPY単位を照合した。BS208件（日本基準203・IFRS5）と明細109件（日本基準38・IFRS71）を対象に、既存の共通完全一致判定を各専用選択器へ適用した。旧18指標の既定選択は変更していない。
@@ -892,7 +878,6 @@ readOnly私有コピーでは、初回検査の前後と再利用の都度にフ
 半期修正版の別世代は200社・失敗0で区切り、その固定SDKと途中結果を保持。追加の重複修正を含む別の2,491ファイルのSDK候補を作成し、最終検証後に新しい計画を開始する。日次runtimeと公開catalogは変更していない。
 
 最終検証はNode 26.12.1で現行158ファイル/4,263テストが全成功（317.90秒、maxWorkers=2/testTimeout=30000）。開始時と終了時のsrc/test/scripts全461ファイルのhashが一致し、旧保存ソースは除外済み。build・本体型・公開NodeNext型・固定SDKのESM/CJS版確認も成功。文書リンク541件は問題なし。記録はfinancial-duplicates-final-regression-inputs.jsonとfinancial-duplicates-verification-summary.json。
-
 
 ## 先行再構築への集約と、修正済み元一覧/固定通知の区別
 

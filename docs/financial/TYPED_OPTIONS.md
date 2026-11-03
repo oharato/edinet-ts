@@ -17,21 +17,26 @@
 
 ```ts
 import {
-    AccountingStandard, ComparisonOperator, ConsolidationScope,
-    FinancialPeriodType, MetricId, SortOrder,
-    screenFinancialSnapshots
+  AccountingStandard,
+  ComparisonOperator,
+  ConsolidationScope,
+  FinancialPeriodType,
+  MetricId,
+  SortOrder,
+  screenFinancialSnapshots,
 } from "edinet-ts";
 
 const selection = object.selectMetric(MetricId.NetSales, {
-    accountingStandard: AccountingStandard.JGAAP,
-    scope: ConsolidationScope.Consolidated,
-    period: { startDate: "2024-04-01", endDate: "2025-03-31" }
+  accountingStandard: AccountingStandard.JGAAP,
+  scope: ConsolidationScope.Consolidated,
+  period: { startDate: "2024-04-01", endDate: "2025-03-31" },
 });
 const options = {
-    conditions: [{ metric: MetricId.NetSales,
-        operator: ComparisonOperator.GreaterThanOrEqual, value: 100 }],
-    sortBy: MetricId.NetSales,
-    order: SortOrder.Descending
+  conditions: [
+    { metric: MetricId.NetSales, operator: ComparisonOperator.GreaterThanOrEqual, value: 100 },
+  ],
+  sortBy: MetricId.NetSales,
+  order: SortOrder.Descending,
 };
 const result = screenFinancialSnapshots(snapshots, options);
 // snapshot生成時の明示分類: periodType: FinancialPeriodType.Annual
@@ -42,15 +47,15 @@ const result = screenFinancialSnapshots(snapshots, options);
 
 ## 採用した入力定数
 
-| 定数/同名型 | member → 既存の値 | 適用先 |
-|---|---|---|
+| 定数/同名型                   | member → 既存の値                                                                                                                                        | 適用先                                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `BalanceSheetScreeningMetric` | `CurrentAssets` → `currentAssets`、`CurrentLiabilities` → `currentLiabilities`、`TotalLiabilities` → `totalLiabilities`、`CurrentRatio` → `currentRatio` | 財務3項目・[流動比率](BALANCE_SHEET.md#ratio)の検索条件・並べ替え（このPRで追加） |
-| `MetricId` | `NetSales` → `netSales` 等18項目 | selectMetric、18指標のID |
-| `AccountingStandard` | `JGAAP` → `J-GAAP`、`IFRS` → `IFRS`、`USGAAP` → `US-GAAP` | 明示する会計基準。定数の存在は全基準の抽出対応を意味しない |
-| `ConsolidationScope` | `Consolidated`、`NonConsolidated`（値は同じ表記） | context、指標来歴、strict selection、既存context検索のscope |
-| `ComparisonOperator` | `GreaterThanOrEqual` → `gte`、`LessThanOrEqual` → `lte`、`GreaterThan` → `gt`、`LessThan` → `lt`、`Equal` → `eq` | 財務検索条件 |
-| `SortOrder` | `Ascending` → `asc`、`Descending` → `desc` | 財務検索の並び順 |
-| `FinancialPeriodType` | `Annual` → `annual`、`YearToDate` → `ytd`、`Quarterly` → `quarterly` | 保存snapshotの明示分類 |
+| `MetricId`                    | `NetSales` → `netSales` 等18項目                                                                                                                         | selectMetric、18指標のID                                                          |
+| `AccountingStandard`          | `JGAAP` → `J-GAAP`、`IFRS` → `IFRS`、`USGAAP` → `US-GAAP`                                                                                                | 明示する会計基準。定数の存在は全基準の抽出対応を意味しない                        |
+| `ConsolidationScope`          | `Consolidated`、`NonConsolidated`（値は同じ表記）                                                                                                        | context、指標来歴、strict selection、既存context検索のscope                       |
+| `ComparisonOperator`          | `GreaterThanOrEqual` → `gte`、`LessThanOrEqual` → `lte`、`GreaterThan` → `gt`、`LessThan` → `lt`、`Equal` → `eq`                                         | 財務検索条件                                                                      |
+| `SortOrder`                   | `Ascending` → `asc`、`Descending` → `desc`                                                                                                               | 財務検索の並び順                                                                  |
+| `FinancialPeriodType`         | `Annual` → `annual`、`YearToDate` → `ytd`、`Quarterly` → `quarterly`                                                                                     | 保存snapshotの明示分類                                                            |
 
 `scope: "Consolidated"`、`operator: "gte"`等も同じunion型の有効値であり、引き続き利用できる。定数利用を必須にしない。readonly定数はfreezeし、APIの選択結果・比較値・既定値を変更しない。
 
@@ -58,16 +63,16 @@ BS後続APIのscope/演算子/並び順も同じ文字列unionであるため、
 
 ## 他の文字列直書きの調査と判断
 
-| 対象 | 現在の型/扱い | 今回の判断 |
-|---|---|---|
-| 書類種別コード | 既存`EdinetDocumentType` enum | 重複した定数を追加せず、既存enumを利用する。未知/将来コードを扱う一覧APIのstring入力は維持 |
-| 財務検索の指標名 | `FinancialScreeningMetric`とreadonly `FINANCIAL_SCREENING_METRICS` | 既存の21指標unionを維持。主要18項目には`MetricId`を使え、追加3計算指標も既存unionで誤字を検出する |
-| strict選択のstatus/reason | discriminated unionと`SelectionReason` | 出力の分岐と内部生成は型で制約済み。入力定数と別に扱い、全reasonの値定数追加は保留 |
-| registryのunit/instant-duration | `MetricUnit`と`MetricDefinition`のunion | 内部の指標定義を型で制約済み。annual/ytd/quarterlyとは異なる概念のため統合しない |
-| 旧context検索のyear/Duration/Instant | 引数の限定union | scopeだけを共通型へ接続し、既存の大文字小文字・過年度値を維持。低頻度の旧引数への値定数追加は保留 |
-| XBRL要素名・namespace・contextRef・unitRef・ISO通貨 | 原本のデータ値、生成済みtaxonomy型、厳密選択器の照合 | 原本をそのまま保持。未対応/将来taxonomyや未知単位を閉じたenumへ変換して失わない |
-| 日付、docID、銘柄コード、ファイルパス | 可変のデータ値とruntime検査 | 固定候補の定数にしない。型付き定数はデータの真正性や原本との識別子一致を保証しない |
-| API URL、XMLの固定属性名、既定の文字列 | 実装/プロトコル上の識別子 | 公開optionと分離。機械的な全置換や値の変更を行わない |
+| 対象                                                | 現在の型/扱い                                                      | 今回の判断                                                                                        |
+| --------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| 書類種別コード                                      | 既存`EdinetDocumentType` enum                                      | 重複した定数を追加せず、既存enumを利用する。未知/将来コードを扱う一覧APIのstring入力は維持        |
+| 財務検索の指標名                                    | `FinancialScreeningMetric`とreadonly `FINANCIAL_SCREENING_METRICS` | 既存の21指標unionを維持。主要18項目には`MetricId`を使え、追加3計算指標も既存unionで誤字を検出する |
+| strict選択のstatus/reason                           | discriminated unionと`SelectionReason`                             | 出力の分岐と内部生成は型で制約済み。入力定数と別に扱い、全reasonの値定数追加は保留                |
+| registryのunit/instant-duration                     | `MetricUnit`と`MetricDefinition`のunion                            | 内部の指標定義を型で制約済み。annual/ytd/quarterlyとは異なる概念のため統合しない                  |
+| 旧context検索のyear/Duration/Instant                | 引数の限定union                                                    | scopeだけを共通型へ接続し、既存の大文字小文字・過年度値を維持。低頻度の旧引数への値定数追加は保留 |
+| XBRL要素名・namespace・contextRef・unitRef・ISO通貨 | 原本のデータ値、生成済みtaxonomy型、厳密選択器の照合               | 原本をそのまま保持。未対応/将来taxonomyや未知単位を閉じたenumへ変換して失わない                   |
+| 日付、docID、銘柄コード、ファイルパス               | 可変のデータ値とruntime検査                                        | 固定候補の定数にしない。型付き定数はデータの真正性や原本との識別子一致を保証しない                |
+| API URL、XMLの固定属性名、既定の文字列              | 実装/プロトコル上の識別子                                          | 公開optionと分離。機械的な全置換や値の変更を行わない                                              |
 
 ## 型・互換性の検証
 

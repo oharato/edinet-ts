@@ -26,18 +26,24 @@ flowchart LR
 ## 開発者向け: 利用例
 
 ```ts
-import { EdinetXbrlParser, METRIC_REGISTRY, MetricId, AccountingStandard, ConsolidationScope } from "edinet-ts";
+import {
+  EdinetXbrlParser,
+  METRIC_REGISTRY,
+  MetricId,
+  AccountingStandard,
+  ConsolidationScope,
+} from "edinet-ts";
 
 const object = new EdinetXbrlParser().parse(xml);
 const result = object.selectMetric(MetricId.NetSales, {
-    accountingStandard: AccountingStandard.JGAAP,
-    scope: ConsolidationScope.Consolidated,
-    period: { startDate: "2024-04-01", endDate: "2025-03-31" }
+  accountingStandard: AccountingStandard.JGAAP,
+  scope: ConsolidationScope.Consolidated,
+  period: { startDate: "2024-04-01", endDate: "2025-03-31" },
 });
 if (result.status === "selected") {
-    console.log(result.raw);        // 例: "123.4500"（decimal原値）
-    console.log(result.safeNumber); // 例: 123.45。精度を失う場合はundefined
-    console.log(result.source);    // namespace/context/period/dimensions/unit/decimals
+  console.log(result.raw); // 例: "123.4500"（decimal原値）
+  console.log(result.safeNumber); // 例: 123.45。精度を失う場合はundefined
+  console.log(result.source); // namespace/context/period/dimensions/unit/decimals
 }
 console.log(result.reason, result.evidence);
 console.log(METRIC_REGISTRY.netSales);
@@ -62,12 +68,12 @@ console.log(METRIC_REGISTRY.netSales);
 各定義はID、decimal型、単位、instant/duration、会計基準別候補タグと対応可否、fallback方針を持ちます。
 配列・定義・辞書はfreezeしています。既存の候補タグから独立実装したもので、外部ライブラリのmappingは取り込んでいません。
 
-| 単位 | 指標 |
-|---|---|
-| JPY | 売上高、営業利益、経常利益、純利益、純資産、総資産、営業/投資/財務CF、現金同等物 |
-| JPY/share | EPS、BPS、1株配当 |
-| shares | 発行済株式数 |
-| pure | 自己資本比率、ROE、PER、配当性向 |
+| 単位      | 指標                                                                             |
+| --------- | -------------------------------------------------------------------------------- |
+| JPY       | 売上高、営業利益、経常利益、純利益、純資産、総資産、営業/投資/財務CF、現金同等物 |
+| JPY/share | EPS、BPS、1株配当                                                                |
+| shares    | 発行済株式数                                                                     |
+| pure      | 自己資本比率、ROE、PER、配当性向                                                 |
 
 比率はXBRLの `xbrli:pure` のraw値を採用し、百分率への変換や100倍/100分の1の補正を行いません。
 JPY/shareは単一JPY分子と単一shares分母のdivideだけを扱います。他の複合単位、外貨換算、scale推測は未対応です。
@@ -83,12 +89,12 @@ US-GAAPと企業拡張タグの対応は未実装です。銀行・保険専用�
 
 `status`は「採用できたか」の区分、`reason`はその理由です。採用元は`source`、探索時点までの候補と理由は`evidence`に入ります。値の解析後の元表記を保つ文字列が`raw`、安全にnumberへ変換できた場合の値が`safeNumber`です。
 
-| status | 意味と主なreason |
-|---|---|
-| selected | `selected` または `selected-raw-only`。原値と採用元を返す |
-| missing | `tag-absent`、`context-mismatch`、`nil`。0で補わない |
+| status      | 意味と主なreason                                                                                                                                                                                                                                               |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| selected    | `selected` または `selected-raw-only`。原値と採用元を返す                                                                                                                                                                                                      |
+| missing     | `tag-absent`、`context-mismatch`、`nil`。0で補わない                                                                                                                                                                                                           |
 | unsupported | `unsupported-standard`、`unsupported-semantics`、`unknown-namespace`、`unknown-context`、`unsupported-context`、`unsupported-entity`、`unsupported-dimensions`、`unsupported-unit`、`invalid-period`、`invalid-decimal`、`invalid-decimals`、`raw-unavailable` |
-| ambiguous | `duplicate-context`、`multiple-facts`。XML内の順序で値を決めない |
+| ambiguous   | `duplicate-context`、`multiple-facts`。XML内の順序で値を決めない                                                                                                                                                                                               |
 
 `selected` 以外ではraw/numberを結果の採用値として公開しません。未採用factの原値は `evidence` に残ります。
 `selected` でも巨大整数やdecimalの精度を保てない値では `safeNumber` がありません。

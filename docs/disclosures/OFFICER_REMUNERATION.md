@@ -26,8 +26,8 @@ const document = {
   period: { startDate: "2023-04-01", endDate: "2024-03-31" },
   tables: [
     { tableIndex: 1, rawSha256: reviewedFragmentHash, kind: "category", headerRows: 2 },
-    { tableIndex: 2, rawSha256: reviewedFragmentHash, kind: "individual", headerRows: 2 }
-  ]
+    { tableIndex: 2, rawSha256: reviewedFragmentHash, kind: "individual", headerRows: 2 },
+  ],
 };
 ```
 
@@ -41,11 +41,11 @@ categoryは役員区分、報酬等総額、種類別総額、対象役員の員
 
 ## 数値と区分の扱い
 
-| 記載 | 保持する単位・構造 | 混同しないもの |
-|---|---|---|
-| category | 区分の階層、総額、内訳、対象人数 | 個人別報酬、提出時点の現任人数 |
-| individual | 個人の連結総額を1回、会社別内訳をcontributionsへ | 会社別の金額、同名の別記載 |
-| reported-total | 明示された原表合計 | 個人/区分の再加算による合計 |
+| 記載           | 保持する単位・構造                               | 混同しないもの                 |
+| -------------- | ------------------------------------------------ | ------------------------------ |
+| category       | 区分の階層、総額、内訳、対象人数                 | 個人別報酬、提出時点の現任人数 |
+| individual     | 個人の連結総額を1回、会社別内訳をcontributionsへ | 会社別の金額、同名の別記載     |
+| reported-total | 明示された原表合計                               | 個人/区分の再加算による合計    |
 
 円/千円/百万円を円単位の十進文字列へ換算し、原表示・倍率・見出し参照を残します。人数は人単位の整数です。ダッシュ、空欄、不正値と実際の0を分けます。端数切捨て等で総額と内訳合計がずれていても、原本を修正しません。
 
@@ -63,14 +63,20 @@ categoryは役員区分、報酬等総額、種類別総額、対象役員の員
 
 ```ts
 searchOfficerRemuneration([document], {
-  kind: "individual", period: { startDate: "2023-04-01", endDate: "2024-03-31" },
-  role: "detail", metric: "total",
-  condition: { operator: "gte", value: 100000000 }, sort: "value-desc"
+  kind: "individual",
+  period: { startDate: "2023-04-01", endDate: "2024-03-31" },
+  role: "detail",
+  metric: "total",
+  condition: { operator: "gte", value: 100000000 },
+  sort: "value-desc",
 });
 searchOfficerRemuneration([document], {
-  kind: "individual", period: { startDate: "2023-04-01", endDate: "2024-03-31" },
-  role: "detail", metric: "component", componentPath: ["株式報酬"],
-  companyContains: "原表の会社名"
+  kind: "individual",
+  period: { startDate: "2023-04-01", endDate: "2024-03-31" },
+  role: "detail",
+  metric: "component",
+  componentPath: ["株式報酬"],
+  companyContains: "原表の会社名",
 });
 ```
 

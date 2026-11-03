@@ -15,10 +15,21 @@ flowchart LR
 `extractDisclosureTables`は、設備・関係会社・主要顧客・連結セグメント・役員・役員報酬・経営分析・所有者別状況・大株主の指定TextBlockを、本文とセルの位置付きで返します。元のHTMLを実行/描画せず、結合セルを同じ物理セルへの参照として展開します。数値や会社名の意味を確定する領域別APIとは別の前提機能です。
 
 ```ts
-import { extractDisclosureTables, searchDisclosureTableCells, DisclosureTableKind } from "edinet-ts";
-const selection = { docID: "SAMPLE", kind: DisclosureTableKind.Facilities, contextRef: "FilingDateInstant" };
+import {
+  extractDisclosureTables,
+  searchDisclosureTableCells,
+  DisclosureTableKind,
+} from "edinet-ts";
+const selection = {
+  docID: "SAMPLE",
+  kind: DisclosureTableKind.Facilities,
+  contextRef: "FilingDateInstant",
+};
 const result = extractDisclosureTables(savedXml, selection);
-const matches = searchDisclosureTableCells([{ xml: savedXml, selection }], { contains: "東京都", limit: 20 });
+const matches = searchDisclosureTableCells([{ xml: savedXml, selection }], {
+  contains: "東京都",
+  limit: 20,
+});
 ```
 
 表外の解析済み本文は`outsideTableText`でも返します。表内の数値/注釈を、表外の基準日の証拠へ使わないための情報で、元HTMLを実行しません。

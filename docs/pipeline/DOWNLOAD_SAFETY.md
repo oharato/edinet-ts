@@ -16,16 +16,16 @@
 
 ## 上限と受け付ける形式
 
-| 項目 | 上限・規則 |
-|---|---|
-| 圧縮応答 | 64MiB。HTTP bodyの実際のchunk量を数えます。Content-Lengthだけを信用しません |
-| 1項目の展開後サイズ | 64MiB。宣言値と実際に展開した量の両方を確認します |
-| ZIP全体の展開後サイズ | 256MiB。全項目の宣言合計を確認し、各項目の実サイズとの一致を確認します |
-| 項目数 | 中央ディレクトリー10,000件以下、暗黙にできる親フォルダを含む保存treeも10,000件以下 |
-| 名前の長さ | UTF-8でパス全体4,096byte以下、各要素255byte以下 |
-| 書類ID | 英数字で始まる英数字・`_`・`-`の1〜128文字。空や不明値`unknown`は拒否 |
-| 圧縮形式 | 通常のclassic ZIP、STOREまたはDEFLATE。data descriptor付きも対象 |
-| 名前の文字コード | ASCII、またはUTF-8指定のある名前。名前を別表記へ差し替えるUnicode extra fieldは非対応 |
+| 項目                  | 上限・規則                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| 圧縮応答              | 64MiB。HTTP bodyの実際のchunk量を数えます。Content-Lengthだけを信用しません           |
+| 1項目の展開後サイズ   | 64MiB。宣言値と実際に展開した量の両方を確認します                                     |
+| ZIP全体の展開後サイズ | 256MiB。全項目の宣言合計を確認し、各項目の実サイズとの一致を確認します                |
+| 項目数                | 中央ディレクトリー10,000件以下、暗黙にできる親フォルダを含む保存treeも10,000件以下    |
+| 名前の長さ            | UTF-8でパス全体4,096byte以下、各要素255byte以下                                       |
+| 書類ID                | 英数字で始まる英数字・`_`・`-`の1〜128文字。空や不明値`unknown`は拒否                 |
+| 圧縮形式              | 通常のclassic ZIP、STOREまたはDEFLATE。data descriptor付きも対象                      |
+| 名前の文字コード      | ASCII、またはUTF-8指定のある名前。名前を別表記へ差し替えるUnicode extra fieldは非対応 |
 
 MiBは1,048,576byteです。上限を拡大する公開オプションは追加していません。内部テストだけで小さい上限を使い、巨大な圧縮爆弾を実行せず境界を確認します。
 
@@ -70,19 +70,17 @@ CPU時間、圧縮率、厳密なメモリ使用量、ネットの待ち時間�
 `requestTimeoutMs`を指定すると、1回の通信を開始してから本文を受け取り終えるまでに期限を付けられます。待ち行列や再試行までの待ち時間は、この期限に含めません。受信本文が止まった場合も対象です。**省略時は従来どおり無制限**なので、期限が必要な利用では明示設定してください。
 
 ```ts
-import {
-  EdinetXbrlDownloader, EdinetRequestError, EdinetRequestErrorCode
-} from "edinet-ts";
+import { EdinetXbrlDownloader, EdinetRequestError, EdinetRequestErrorCode } from "edinet-ts";
 
 const client = new EdinetXbrlDownloader({
   apiKey: process.env.EDINET_API_KEY,
   requestTimeoutMs: 30_000,
-  maxRetries: 2 // 最初の1回に加えて最大2回、合計3回まで
+  maxRetries: 2, // 最初の1回に加えて最大2回、合計3回まで
 });
 const controller = new AbortController();
 try {
   const documents = await client.search("2026-01-01", undefined, {
-    signal: controller.signal
+    signal: controller.signal,
   });
   console.log(documents.length);
 } catch (error) {
@@ -101,15 +99,15 @@ try {
 
 既存の引数と戻り値は保ち、次の末尾に省略可能な`{ signal }`を追加します。不要なら従来の呼び方のままです。
 
-| メソッド | 中断指定の位置 |
-|---|---|
-| `search(date, typeFilter?, request?)` | 第3引数 |
-| `download(docID, targetDir?, request?)` | 第3引数 |
-| `fetchXbrl(docID, request?)` | 第2引数 |
-| `searchPeriod(start, end, typeFilter?, request?)` | 第4引数 |
-| `findLatest(ticker, type, lookbackDays?, request?)` | 第4引数 |
-| `downloadByTicker(ticker, targetDir?, date?, type?, request?)` | 第5引数 |
-| `Edinet.getFinancialHistory(ticker, years?, docType?, request?)` | 第4引数 |
+| メソッド                                                         | 中断指定の位置 |
+| ---------------------------------------------------------------- | -------------- |
+| `search(date, typeFilter?, request?)`                            | 第3引数        |
+| `download(docID, targetDir?, request?)`                          | 第3引数        |
+| `fetchXbrl(docID, request?)`                                     | 第2引数        |
+| `searchPeriod(start, end, typeFilter?, request?)`                | 第4引数        |
+| `findLatest(ticker, type, lookbackDays?, request?)`              | 第4引数        |
+| `downloadByTicker(ticker, targetDir?, date?, type?, request?)`   | 第5引数        |
+| `Edinet.getFinancialHistory(ticker, years?, docType?, request?)` | 第4引数        |
 
 `EdinetRequestErrorCode.Aborted`は利用側の中断、`Timeout`は設定した通信期限の超過、`Network`は通信障害です。HTTPの非成功状態、不正JSON、業務エラー、不正ZIPはこれらと区別して失敗を返します。エラー文面の一致より型と定数を使って判定してください。
 
@@ -136,7 +134,7 @@ const client = new EdinetXbrlDownloader({
   apiKey: process.env.EDINET_API_KEY,
   requestTimeoutMs: 30_000,
   maxRetries: 2,
-  maxRetryDelayMs: 60_000
+  maxRetryDelayMs: 60_000,
 });
 ```
 
@@ -146,13 +144,13 @@ const client = new EdinetXbrlDownloader({
 
 例えば既定上限で`Retry-After: 120`なら、自動再試行を終了します。
 
-| 指定 | 動作 |
-|---|---|
-| 有効な秒・現行日時で上限内 | 指定より早く再試行しない。独自待ちの方が長ければそちらを使う |
-| 有効な指定が上限超、または非常に大きな整数秒 | 待たず自動再試行を終了し、HTTPエラーを返す |
-| 旧式RFC850/asctimeらしい構文 | 解釈を推測せず、自動再試行を終了する。旧式日時の暦日を完全に検証する実装ではない |
-| 現行日時の秒60（うるう秒） | JavaScript Dateで正確に扱わず、自動再試行を終了する |
-| 空・負数・小数・指数表記・その他不正な値/日時 | 通常の指数待ちを使う |
+| 指定                                          | 動作                                                                             |
+| --------------------------------------------- | -------------------------------------------------------------------------------- |
+| 有効な秒・現行日時で上限内                    | 指定より早く再試行しない。独自待ちの方が長ければそちらを使う                     |
+| 有効な指定が上限超、または非常に大きな整数秒  | 待たず自動再試行を終了し、HTTPエラーを返す                                       |
+| 旧式RFC850/asctimeらしい構文                  | 解釈を推測せず、自動再試行を終了する。旧式日時の暦日を完全に検証する実装ではない |
+| 現行日時の秒60（うるう秒）                    | JavaScript Dateで正確に扱わず、自動再試行を終了する                              |
+| 空・負数・小数・指数表記・その他不正な値/日時 | 通常の指数待ちを使う                                                             |
 
 **HTTP日時の全形式に対応した実装ではありません。** RFC 9110の受信側が求める旧式日時の解釈は未実装です。
 

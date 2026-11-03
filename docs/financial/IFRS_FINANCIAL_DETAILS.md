@@ -12,25 +12,25 @@ IFRS連結の損益・キャッシュフロー明細を読み、同じ期間の�
 
 専用辞書 `IFRS_FINANCIAL_DETAIL_REGISTRY` の版は3です。候補は各IDにつき1タグだけで、別範囲の科目から合算/差引で埋めません。すべて `jpigp_cor:` の金額・durationです。
 
-| ID | タグ |
-|---|---|
-| costOfSales | CostOfSalesIFRS |
-| grossProfit | GrossProfitIFRS |
-| sellingGeneralAndAdministrativeExpenses | SellingGeneralAndAdministrativeExpensesIFRS |
-| profitBeforeTax | ProfitLossBeforeTaxIFRS |
-| incomeTaxExpense | IncomeTaxExpenseIFRS |
-| depreciationAndAmortizationCashFlow | DepreciationAndAmortizationOpeCFIFRS |
-| depreciationExpenseCashFlow | DepreciationExpenseOpeCFIFRS |
-| propertyPlantEquipmentPurchaseCashFlow | PurchaseOfPropertyPlantAndEquipmentInvCFIFRS |
+| ID                                                   | タグ                                                            |
+| ---------------------------------------------------- | --------------------------------------------------------------- |
+| costOfSales                                          | CostOfSalesIFRS                                                 |
+| grossProfit                                          | GrossProfitIFRS                                                 |
+| sellingGeneralAndAdministrativeExpenses              | SellingGeneralAndAdministrativeExpensesIFRS                     |
+| profitBeforeTax                                      | ProfitLossBeforeTaxIFRS                                         |
+| incomeTaxExpense                                     | IncomeTaxExpenseIFRS                                            |
+| depreciationAndAmortizationCashFlow                  | DepreciationAndAmortizationOpeCFIFRS                            |
+| depreciationExpenseCashFlow                          | DepreciationExpenseOpeCFIFRS                                    |
+| propertyPlantEquipmentPurchaseCashFlow               | PurchaseOfPropertyPlantAndEquipmentInvCFIFRS                    |
 | propertyPlantEquipmentAndIntangiblesPurchaseCashFlow | PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCFIFRS |
-| incomeTaxesPaidCashFlow | IncomeTaxesPaidOpeCFIFRS |
-| incomeTaxesRefundCashFlow | IncomeTaxesRefundOpeCFIFRS |
-| netIncomeTaxesRefundPaidCashFlow | IncomeTaxesRefundPaidOpeCFIFRS |
-| dividendsPaidCashFlow | DividendsPaidFinCFIFRS |
-| dividendsPaidToOwnersOfParentCashFlow | DividendsPaidToOwnersOfParentFinCFIFRS |
-| longTermBorrowingsRepaymentCashFlow | RepaymentsOfLongTermBorrowingsFinCFIFRS |
-| bondsAndLongTermBorrowingsRepaymentCashFlow | RedemptionOfBondsAndRepaymentsOfLongTermBorrowingsFinCFIFRS |
-| leaseObligationsRepaymentCashFlow | RepaymentsOfLeaseObligationsFinCFIFRS |
+| incomeTaxesPaidCashFlow                              | IncomeTaxesPaidOpeCFIFRS                                        |
+| incomeTaxesRefundCashFlow                            | IncomeTaxesRefundOpeCFIFRS                                      |
+| netIncomeTaxesRefundPaidCashFlow                     | IncomeTaxesRefundPaidOpeCFIFRS                                  |
+| dividendsPaidCashFlow                                | DividendsPaidFinCFIFRS                                          |
+| dividendsPaidToOwnersOfParentCashFlow                | DividendsPaidToOwnersOfParentFinCFIFRS                          |
+| longTermBorrowingsRepaymentCashFlow                  | RepaymentsOfLongTermBorrowingsFinCFIFRS                         |
+| bondsAndLongTermBorrowingsRepaymentCashFlow          | RedemptionOfBondsAndRepaymentsOfLongTermBorrowingsFinCFIFRS     |
+| leaseObligationsRepaymentCashFlow                    | RepaymentsOfLeaseObligationsFinCFIFRS                           |
 
 [金融庁の2026年版公表資料](https://www.fsa.go.jp/search/20251111.html)にある[公式タクソノミZIP](https://www.fsa.go.jp/search/20251111/1c_Taxonomy.zip)のjpigp/2025-11-01 XSDと日本語ラベルで、17タグの金額型・duration・非abstractを確認しました。借入と社債を含む返済、設備単独と無形資産を含む取得、減価償却単独と償却費を含む調整額、税支払/還付/純額、一般の配当/親会社所有者向け配当は別項目です。
 
@@ -42,23 +42,30 @@ IFRS連結の損益・キャッシュフロー明細を読み、同じ期間の�
 
 ```ts
 import {
-  EdinetXbrlParser, IfrsFinancialDetailMetricId,
-  createIfrsFinancialDetailSnapshot, screenIfrsFinancialDetailDocuments
+  EdinetXbrlParser,
+  IfrsFinancialDetailMetricId,
+  createIfrsFinancialDetailSnapshot,
+  screenIfrsFinancialDetailDocuments,
 } from "edinet-ts";
 
 const metadata = {
-  secCode: "10010", docID: "SAMPLE",
-  accountingStandard: "IFRS", scope: "Consolidated", currency: "JPY",
+  secCode: "10010",
+  docID: "SAMPLE",
+  accountingStandard: "IFRS",
+  scope: "Consolidated",
+  currency: "JPY",
   periodType: "annual",
-  period: { startDate: "2025-04-01", endDate: "2026-03-31" }
+  period: { startDate: "2025-04-01", endDate: "2026-03-31" },
 } as const;
 
 const object = new EdinetXbrlParser().parse(xml, metadata.docID);
 const paid = object.selectIfrsFinancialDetail(
-  IfrsFinancialDetailMetricId.IncomeTaxesPaidCashFlow, metadata
+  IfrsFinancialDetailMetricId.IncomeTaxesPaidCashFlow,
+  metadata,
 );
 const snapshot = createIfrsFinancialDetailSnapshot(xml, metadata, [
-  "incomeTaxesPaidCashFlow", "incomeTaxesRefundCashFlow"
+  "incomeTaxesPaidCashFlow",
+  "incomeTaxesRefundCashFlow",
 ]);
 ```
 
@@ -82,7 +89,10 @@ IFRS直接PL/CF明細では、完全一致する有効重複だけを共通判�
 const result = screenIfrsFinancialDetailDocuments(documents, {
   metricIds: ["incomeTaxesPaidCashFlow", "incomeTaxesRefundCashFlow"],
   conditions: [{ metric: "incomeTaxesPaidCashFlow", operator: "lt", value: 0 }],
-  sortBy: "incomeTaxesPaidCashFlow", order: "asc", offset: 0, limit: 100
+  sortBy: "incomeTaxesPaidCashFlow",
+  order: "asc",
+  offset: 0,
+  limit: 100,
 });
 ```
 
@@ -141,11 +151,11 @@ IFRS財務明細辞書版2では、販管費・税引前以外にも完全一致
 
 公式PDF6原本を取得し、CF計算書8ページを描画して目視確認しました。前期14値・当期14値の全28値が、既存の独立XML照合と固定SDKの直接選択/snapshot選択に一致しました。PDFに記載された期間・百万円単位・支出の△表示を保持して換算しています。旧proofは上書きせず、後続証跡を `data/roadmap/ifrs-cf-three-tags-pdf-20261031/` の `sources.json`・`comparison.json`・`independent-audit.json` に保存しました。
 
-| 原本 | CF計算書のPDFページ | 照合値数 |
-|---|---|---:|
-| 丸紅・年次 / 半期 | 150・151 / 22・23 | 6 / 6 |
-| 日立建機・年次 / 半期 | 87 / 16 | 4 / 4 |
-| アステラス製薬・年次 / 半期 | 109 / 20 | 4 / 4 |
+| 原本                        | CF計算書のPDFページ | 照合値数 |
+| --------------------------- | ------------------- | -------: |
+| 丸紅・年次 / 半期           | 150・151 / 22・23   |    6 / 6 |
+| 日立建機・年次 / 半期       | 87 / 16             |    4 / 4 |
+| アステラス製薬・年次 / 半期 | 109 / 20            |    4 / 4 |
 
 PDFの行名も保持します。丸紅は「減価償却費等」、日立建機は「減価償却費」で、後者の「無形資産償却費」は別行です。標準タグの原値が一致しても、会社間の費用範囲が同じとは認証しません。親会社配当を非支配持分配当へ置き換えず、社債・長期借入の合算返済へリース返済を加えません。
 

@@ -88,3 +88,9 @@ CLIテストは子プロセスを起動します。`spawnSync` の `error.code` 
 日次準備から原本取得・DuckDB構築までの一括実行は `roadmap/run-daily-duck-financial-cycle.mjs`（排他・provider設定・再開を含む）。既存SQLite日次経路とは別コマンドで、正式切替は明示した別工程。
 
 署名検証済み法人番号ZIPを圧縮Storeへ取り込む入口は `roadmap/import-corporate-registry-archive.mjs`。receiptのSHA固定、パート単位checkpoint、DB全記録監査付き再開、排他と34GiB留保を使います。引数・追記・終了コードは [法人番号の取込手順](../docs/companies/CORPORATE_REGISTRY.md#署名検証済みzipからパート単位で取り込む) を参照してください。
+
+## 開発用チェック（2026-11-03更新）
+
+現在の開発・本番DuckDB実行系は`.node-version`のNode 26.13.0、npm 12.2.1、`.python-version`のPython 3.15.2。固定済み旧配布物を再現する`build-local.py`の旧toolchain指定は履歴の再現条件なので変更しない。
+
+`npm run format`でoxfmtによる整形、`npm run format:check`で差分検査、`npm run lint`でoxlintのcorrectness検査、`npm run security`で開発依存を含む脆弱性検査を行う。生成DB・原本・調査artifactは整形対象外。lintでは未使用識別子、入力境界で意図して使う制御文字の正規表現、thisのcapture、互換enum aliasを一括変更しない。型試験の値参照・異常入力fixture等はtest側overrideに限定する。

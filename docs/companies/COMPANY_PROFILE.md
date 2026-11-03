@@ -12,14 +12,14 @@
 
 DEIは、提出会社や書類の基本情報に付けられたXBRLの項目群です。`jpdei_cor`の正式URI形式を確認し、次のタグだけを使います。
 
-| `CompanyProfileFieldId`定数 | ID | 元のタグ | 意味 |
-|---|---|---|---|
-| `FilerName` | `filerName` | `FilerNameInJapaneseDEI` | 原本の日本語提出者名 |
-| `EdinetCode` | `edinetCode` | `EDINETCodeDEI` | EDINETで提出者を識別するコード |
-| `SecurityCode` | `securityCode` | `SecurityCodeDEI` | 原本の証券コード。英字・先頭0も文字列のまま |
-| `AccountingStandard` | `accountingStandard` | `AccountingStandardsDEI` | 原本の会計基準名。例:`Japan GAAP` |
-| `FiscalYearStartDate` | `fiscalYearStartDate` | `CurrentFiscalYearStartDateDEI` | 当期の開始日 |
-| `FiscalYearEndDate` | `fiscalYearEndDate` | `CurrentFiscalYearEndDateDEI` | 当期の終了日 |
+| `CompanyProfileFieldId`定数 | ID                    | 元のタグ                        | 意味                                        |
+| --------------------------- | --------------------- | ------------------------------- | ------------------------------------------- |
+| `FilerName`                 | `filerName`           | `FilerNameInJapaneseDEI`        | 原本の日本語提出者名                        |
+| `EdinetCode`                | `edinetCode`          | `EDINETCodeDEI`                 | EDINETで提出者を識別するコード              |
+| `SecurityCode`              | `securityCode`        | `SecurityCodeDEI`               | 原本の証券コード。英字・先頭0も文字列のまま |
+| `AccountingStandard`        | `accountingStandard`  | `AccountingStandardsDEI`        | 原本の会計基準名。例:`Japan GAAP`           |
+| `FiscalYearStartDate`       | `fiscalYearStartDate` | `CurrentFiscalYearStartDateDEI` | 当期の開始日                                |
+| `FiscalYearEndDate`         | `fiscalYearEndDate`   | `CurrentFiscalYearEndDateDEI`   | 当期の終了日                                |
 
 会計基準の文字列が読めても、ライブラリの財務抽出がその基準へ対応している証明にはなりません。名称・コードの文字列は採用元の記載であり、コード制度の有効性や他資料との同一性まで認証するものではありません。非上場を示す表記など、`-`が書かれていても原文として保持し、上場企業の有効コードへ変換しません。日付は実在する`YYYY-MM-DD`を検査します。
 
@@ -33,7 +33,7 @@ import { createCompanyProfile, CompanyProfileFieldId } from "edinet-ts";
 const profile = createCompanyProfile(xml, "SYNTHETIC1");
 const name = profile.fields[CompanyProfileFieldId.FilerName];
 if (name.status === "selected") {
-    console.log(name.raw, name.source);
+  console.log(name.raw, name.source);
 }
 console.log(profile.consistency);
 ```
@@ -92,13 +92,25 @@ Node26.12.1で全933テスト（既存898＋追加35）、本体/公開API例の
 #43でmainへ統合済みの`screenCompanyDocuments()`とCLI `screen-companies`で、会社名・コード・決算月を検索できます。入力は`[{xml, docID}, ...]`です。各原本から6項目すべてを採用でき、項目間の整合性も確認できた会社情報だけを検索します。名前だけ読めても、他の必要情報が欠けた行は対象外となり、理由を返します。
 
 ```ts
-import { screenCompanyDocuments, CompanyProfileFieldId, CompanyProfileOperator, SortOrder } from "edinet-ts";
+import {
+  screenCompanyDocuments,
+  CompanyProfileFieldId,
+  CompanyProfileOperator,
+  SortOrder,
+} from "edinet-ts";
 const result = screenCompanyDocuments(documents, {
-    conditions: [{ field: CompanyProfileFieldId.FilerName,
-        operator: CompanyProfileOperator.Contains, value: "合成" }],
-    fiscalYearEndMonth: 3,
-    sortBy: CompanyProfileFieldId.EdinetCode, order: SortOrder.Ascending,
-    offset: 0, limit: 20
+  conditions: [
+    {
+      field: CompanyProfileFieldId.FilerName,
+      operator: CompanyProfileOperator.Contains,
+      value: "合成",
+    },
+  ],
+  fiscalYearEndMonth: 3,
+  sortBy: CompanyProfileFieldId.EdinetCode,
+  order: SortOrder.Ascending,
+  offset: 0,
+  limit: 20,
 });
 ```
 
@@ -125,9 +137,7 @@ const result = screenCompanyDocuments(documents, {
 一覧JSONの例:
 
 ```json
-[
-  { "file": "source.xbrl", "docID": "SYNTHETIC1" }
-]
+[{ "file": "source.xbrl", "docID": "SYNTHETIC1" }]
 ```
 
 ```sh
@@ -166,8 +176,11 @@ snapshotの`asOf`はCSVの「○年○月○日現在」、`observedAt`は取得
 ```ts
 const snapshot = await fetchEdinetCompanyMaster({ timeoutMs: 30000, signal });
 const result = queryCompanyMaster([snapshot], {
-  asOf: "2026-10-27", knownAt: "2026-10-28T00:00:00+09:00",
-  industry: "情報・通信業", listingStatus: "listed", fiscalYearEndMonth: 3
+  asOf: "2026-10-27",
+  knownAt: "2026-10-28T00:00:00+09:00",
+  industry: "情報・通信業",
+  listingStatus: "listed",
+  fiscalYearEndMonth: 3,
 });
 ```
 

@@ -45,20 +45,24 @@ manifestは選択書類/根書類/会社と開始時の原本状態を持ちま�
 ## APIと再開
 
 ```ts
-import {FinancialSourceJob, ObservedFinancialArchive, EdinetXbrlDownloader} from "edinet-ts";
+import { FinancialSourceJob, ObservedFinancialArchive, EdinetXbrlDownloader } from "edinet-ts";
 
 const state = new FinancialSourceJob("data/source-job.sqlite");
-const frozen = new ObservedFinancialArchive("data/financial.sqlite", {readOnly: true});
+const frozen = new ObservedFinancialArchive("data/financial.sqlite", { readOnly: true });
 try {
-  state.begin({id: "listed-run-1", cutoff, population}, frozen);
+  state.begin({ id: "listed-run-1", cutoff, population }, frozen);
 } finally {
   frozen.close();
 }
 const archive = new ObservedFinancialArchive("data/financial.sqlite");
-const downloader = new EdinetXbrlDownloader({rootDir: "downloads", requestTimeoutMs: 60_000});
+const downloader = new EdinetXbrlDownloader({ rootDir: "downloads", requestTimeoutMs: 60_000 });
 try {
-  const progress = await state.runNext("listed-run-1", archive,
-    (id, request) => downloader.fetchXbrl(id, request), {limit: 20, signal});
+  const progress = await state.runNext(
+    "listed-run-1",
+    archive,
+    (id, request) => downloader.fetchXbrl(id, request),
+    { limit: 20, signal },
+  );
   console.log(progress.pending, progress.failed, progress.history);
 } finally {
   archive.close();
@@ -149,10 +153,10 @@ SIGINTを取得関数へ伝えます。失敗/実行途中/中断があればche
 `audit` / `audit-financial-source-job` は、指定jobの計画・全task/試行履歴と、完了原本/未提供根拠をreadOnlyで照合します。途中までしか取得できていないcheckpointも対象です。
 
 ```ts
-import {FinancialSourceJob, ObservedFinancialArchive} from "edinet-ts";
+import { FinancialSourceJob, ObservedFinancialArchive } from "edinet-ts";
 
-const state = new FinancialSourceJob(recovery.output.path, {readOnly: true});
-const archive = new ObservedFinancialArchive(stoppedArchivePath, {readOnly: true});
+const state = new FinancialSourceJob(recovery.output.path, { readOnly: true });
+const archive = new ObservedFinancialArchive(stoppedArchivePath, { readOnly: true });
 try {
   const audit = state.audit(jobId, archive, {
     planSha256: expectedPlanSha256,
@@ -160,7 +164,10 @@ try {
   });
   if (audit.stateSha256 !== recovery.output.sha256) throw new Error("復旧候補が異なります");
   // この状態/原本/計画の指紋を新しい固定実行configへ渡します。
-} finally { archive.close(); state.close(); }
+} finally {
+  archive.close();
+  state.close();
+}
 ```
 
 両接続は停止したファイルから開くreadOnly接続が必要です。`planSha256` は保存済みの期待計画指紋です。`archiveSha256` は**今回停止した原本アーカイブの物理指紋**で、取得開始時の初期アーカイブ指紋とは異なります。原本の追加で物理指紋が変わっても、一覧観測は計画時の指紋と一致する必要があります。

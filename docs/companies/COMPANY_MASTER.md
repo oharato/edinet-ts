@@ -26,20 +26,22 @@ flowchart LR
 `CompanyMasterStore` は、完全なコードリストの観測を専用SQLiteへ追記保存します。既存の財務DBやメタデータDBとは別形式です。会社ごとの法的イベント履歴や発生日の再構成とは区別します。
 
 ```ts
-import {CompanyMasterStore} from 'edinet-ts';
-const store = new CompanyMasterStore('company-master.sqlite');
+import { CompanyMasterStore } from "edinet-ts";
+const store = new CompanyMasterStore("company-master.sqlite");
 try {
   const saved = store.put(snapshot); // fetchEdinetCompanyMaster()等の完全な観測
   const result = store.query({
     sourceUrl: snapshot.sourceUrl,
-    asOf: '2026-10-29',
-    knownAt: '2026-10-30T00:00:00Z',
-    listingStatus: 'listed',
-    industry: '建設業',
+    asOf: "2026-10-29",
+    knownAt: "2026-10-30T00:00:00Z",
+    listingStatus: "listed",
+    industry: "建設業",
   });
   const observations = store.history(snapshot.sourceUrl);
   const original = store.snapshot(saved.observation.id);
-} finally { store.close(); }
+} finally {
+  store.close();
+}
 ```
 
 - `put()` は会社の安定EDINET IDと全属性、CSV/ZIPのhash・出典URL・基準日・観測時刻を保持します。原CSV/ZIPのbyte列は別途保存してください。時刻は同じ瞬間をUTC ISO表記に正規化し、会社行はEDINETコード順に保存します。
@@ -111,19 +113,22 @@ flowchart LR
 ```
 
 ```ts
-import {screenCompanyFinancials} from 'edinet-ts';
+import { screenCompanyFinancials } from "edinet-ts";
 
-const result = screenCompanyFinancials('financial-index.sqlite', snapshots, {
+const result = screenCompanyFinancials("financial-index.sqlite", snapshots, {
   cohort, // generation/group/standard/scope/currency/period/periodType
   company: {
-    asOf: '2026-10-29',
-    listingStatus: 'listed',
-    industry: '建設業',
+    asOf: "2026-10-29",
+    listingStatus: "listed",
+    industry: "建設業",
   },
   search: {
-    metricIds: ['costOfSales'],
-    conditions: [{metric: 'costOfSales', operator: 'gte', value: 0}],
-    sortBy: 'costOfSales', order: 'desc', offset: 0, limit: 20,
+    metricIds: ["costOfSales"],
+    conditions: [{ metric: "costOfSales", operator: "gte", value: 0 }],
+    sortBy: "costOfSales",
+    order: "desc",
+    offset: 0,
+    limit: 20,
   },
 });
 ```
@@ -171,12 +176,12 @@ Node 26.12.1の隔離コピーで全161ファイル・4,303テスト、build・�
 `compareCompanyFinancialsByIndustry()` は、指定した指標が**すべて利用可能な共通企業集合**について、業種別の最小・最大・合計・平均・中央値を返します。指標ごとに別の企業集合を使った平均ではありません。
 
 ```ts
-import {compareCompanyFinancialsByIndustry} from 'edinet-ts';
+import { compareCompanyFinancialsByIndustry } from "edinet-ts";
 
-const comparison = compareCompanyFinancialsByIndustry('financial-index.sqlite', snapshots, {
+const comparison = compareCompanyFinancialsByIndustry("financial-index.sqlite", snapshots, {
   cohort, // 同一世代・会計基準・連結範囲・通貨・期間
-  company: {asOf: '2026-10-29', listingStatus: 'listed'},
-  metricIds: ['costOfSales', 'sellingGeneralAndAdministrativeExpenses'],
+  company: { asOf: "2026-10-29", listingStatus: "listed" },
+  metricIds: ["costOfSales", "sellingGeneralAndAdministrativeExpenses"],
 });
 
 for (const group of comparison.industries) {
@@ -190,12 +195,12 @@ for (const group of comparison.industries) {
 
 各業種の件数は次の意味です。業種の空欄・未記録は `industry: null` にまとめます。
 
-| フィールド | 意味 |
-|---|---|
-| `masterCompanies` | 企業条件に合うマスター企業数 |
-| `usableCompanies` | 同じ財務cohortで全要求指標を採用できた企業数 |
-| `excludedCompanies` | 必須指標の欠損・曖昧・非対応・unsafe-numberで除外した企業数。複数の欠損を一社として数える |
-| `unrepresentedCompanies` | 上の採用・除外のいずれにも該当する財務記録がない企業数 |
+| フィールド               | 意味                                                                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------- |
+| `masterCompanies`        | 企業条件に合うマスター企業数                                                              |
+| `usableCompanies`        | 同じ財務cohortで全要求指標を採用できた企業数                                              |
+| `excludedCompanies`      | 必須指標の欠損・曖昧・非対応・unsafe-numberで除外した企業数。複数の欠損を一社として数える |
+| `unrepresentedCompanies` | 上の採用・除外のいずれにも該当する財務記録がない企業数                                    |
 
 このAPIでは数値条件やページ指定を受け付けません。先に数値で絞った標本や先頭ページだけで、業種全体の平均を計算することを防ぎます。`company` の業種・決算月・上場区分等による母集団の絞込はできます。
 

@@ -2,6 +2,26 @@
   "name": "edinet-ts",
   "version": "1.1.17",
   "description": "TypeScript port of edinet_xbrl for parsing EDINET XBRL files",
+  "keywords": [
+    "edinet",
+    "typescript",
+    "xbrl"
+  ],
+  "license": "Apache-2.0",
+  "author": "oharato",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oharato/edinet-ts.git"
+  },
+  "bin": {
+    "edinet-ts": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -11,34 +31,18 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "bin": {
-    "edinet-ts": "dist/cli.js"
-  },
   "scripts": {
     "build": "npm run clean && npm run generate-type-docs && npm run prepare-financial-verifier && tsc && npm run add-js-extensions",
-    "generate-type-docs": "node --import tsx scripts/generate-type-docs.ts",
+    "generate-type-docs": "node --import tsx scripts/generate-type-docs.ts && oxfmt src/utils/type-doc-defs.ts",
     "add-js-extensions": "node scripts/add-js-extensions.js",
     "test": "npm run prepare-financial-verifier && vitest run --exclude=data/** --exclude=artifacts/**",
     "clean": "node -e \"require('node:fs').rmSync('dist', {recursive:true, force:true})\"",
-    "prepare-financial-verifier": "node scripts/copy-financial-verifier.js"
+    "prepare-financial-verifier": "node scripts/copy-financial-verifier.js",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint src scripts test",
+    "security": "npm audit --audit-level=moderate"
   },
-  "keywords": [
-    "edinet",
-    "xbrl",
-    "typescript"
-  ],
-  "author": "oharato",
-  "license": "Apache-2.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/oharato/edinet-ts.git"
-  },
-  "files": [
-    "dist",
-    "LICENSE",
-    "README.md",
-    "package.json"
-  ],
   "dependencies": {
     "commander": "15.0.0",
     "dayjs": "1.11.23",
@@ -48,23 +52,30 @@
   },
   "devDependencies": {
     "@types/cli-progress": "3.11.6",
-    "@types/node": "26.6.5",
+    "@types/node": "26.6.6",
     "cli-progress": "3.12.0",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
     "ts-morph": "28.0.0",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "5.0.5",
+    "vitest": "5.1.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
+  "optionalDependencies": {
+    "@duckdb/node-api": "2.0.0-r.1"
+  },
+  "overrides": {
+    "@ts-morph/common": {
+      "minimatch": "11.0.4"
+    }
+  },
   "engines": {
-    "node": ">=26.12.1",
+    "node": ">=26.13.0",
     "npm": ">=12.2.1"
   },
   "packageManager": "npm@12.2.1",
   "allowScripts": {
     "esbuild": true
-  },
-  "optionalDependencies": {
-    "@duckdb/node-api": "2.0.0-r.1"
   }
 }

@@ -1,11 +1,23 @@
-import { AccountingStandard, ComparisonOperator, ConsolidationScope, FinancialPeriodType, MetricId, SortOrder,
-    screenFinancialSnapshots, type EdinetXbrlObject, type FinancialCondition, type FinancialScreeningOptions, type FinancialSnapshot, type MetricSelectionOptions } from "../../src/index";
+import {
+  AccountingStandard,
+  ComparisonOperator,
+  ConsolidationScope,
+  FinancialPeriodType,
+  MetricId,
+  SortOrder,
+  screenFinancialSnapshots,
+  type EdinetXbrlObject,
+  type FinancialCondition,
+  type FinancialScreeningOptions,
+  type FinancialSnapshot,
+  type MetricSelectionOptions,
+} from "../../src/index";
 
 declare const object: EdinetXbrlObject;
 const options = {
-    accountingStandard: AccountingStandard.JGAAP,
-    scope: ConsolidationScope.Consolidated,
-    period: { startDate: "2024-04-01", endDate: "2025-03-31" }
+  accountingStandard: AccountingStandard.JGAAP,
+  scope: ConsolidationScope.Consolidated,
+  period: { startDate: "2024-04-01", endDate: "2025-03-31" },
 } satisfies MetricSelectionOptions;
 
 object.selectMetric(MetricId.NetSales, options);
@@ -24,12 +36,18 @@ object.selectMetric("netSale", options);
 // @ts-expect-error 会計基準文字列の誤字を拒否
 object.selectMetric(MetricId.NetSales, { ...options, accountingStandard: "JGAAP" });
 
-const condition: FinancialCondition = { metric: MetricId.NetSales, operator: ComparisonOperator.GreaterThanOrEqual, value: 0 };
+const condition: FinancialCondition = {
+  metric: MetricId.NetSales,
+  operator: ComparisonOperator.GreaterThanOrEqual,
+  value: 0,
+};
 const search: FinancialScreeningOptions = { conditions: [condition], order: SortOrder.Descending };
 const periodType: FinancialSnapshot["periodType"] = FinancialPeriodType.YearToDate;
 const inferredOptions = {
-    conditions: [{ metric: MetricId.NetSales, operator: ComparisonOperator.GreaterThanOrEqual, value: 0 }],
-    order: SortOrder.Descending
+  conditions: [
+    { metric: MetricId.NetSales, operator: ComparisonOperator.GreaterThanOrEqual, value: 0 },
+  ],
+  order: SortOrder.Descending,
 };
 screenFinancialSnapshots([], inferredOptions);
 object.selectMetric(MetricId.NetSales, { ...options, scope: ConsolidationScope.NonConsolidated });
@@ -46,15 +64,39 @@ const badOrder: FinancialScreeningOptions = { ...search, order: "descending" };
 // @ts-expect-error 未知の期間分類
 const badPeriod: FinancialSnapshot["periodType"] = "yearly";
 
-import { BalanceSheetScreeningMetric, calculateCurrentRatio, screenBalanceSheetSnapshots, type BalanceSheetSnapshot, type BalanceSheetCondition } from "../../src/index";
+import {
+  BalanceSheetScreeningMetric,
+  calculateCurrentRatio,
+  screenBalanceSheetSnapshots,
+  type BalanceSheetSnapshot,
+  type BalanceSheetCondition,
+} from "../../src/index";
 declare const balanceSheet: BalanceSheetSnapshot;
-const currentRatioCondition: BalanceSheetCondition = { metric: BalanceSheetScreeningMetric.CurrentRatio, operator: ComparisonOperator.GreaterThanOrEqual, value: 2 };
-screenBalanceSheetSnapshots([balanceSheet], { conditions: [currentRatioCondition], sortBy: BalanceSheetScreeningMetric.CurrentRatio, order: SortOrder.Descending });
+const currentRatioCondition: BalanceSheetCondition = {
+  metric: BalanceSheetScreeningMetric.CurrentRatio,
+  operator: ComparisonOperator.GreaterThanOrEqual,
+  value: 2,
+};
+screenBalanceSheetSnapshots([balanceSheet], {
+  conditions: [currentRatioCondition],
+  sortBy: BalanceSheetScreeningMetric.CurrentRatio,
+  order: SortOrder.Descending,
+});
 const ratio = calculateCurrentRatio(balanceSheet);
-if (ratio.status === "calculated") { const value: number = ratio.value; const exact: string = ratio.exact.numerator; }
+if (ratio.status === "calculated") {
+  const value: number = ratio.value;
+  const exact: string = ratio.exact.numerator;
+}
 // @ts-expect-error 計算指標の補完memberの誤字
 BalanceSheetScreeningMetric.CurrentRation;
-// @ts-expect-error 百分率の別metricや誤字は受け付けない
-const wrongRatioCondition: BalanceSheetCondition = { ...currentRatioCondition, metric: "currentRatioPct" };
+const wrongRatioCondition: BalanceSheetCondition = {
+  ...currentRatioCondition,
+  // @ts-expect-error 百分率の別metricや誤字は受け付けない
+  metric: "currentRatioPct",
+};
 // @ts-expect-error 計算値を直接factの取得APIへ渡さない
-object.selectBalanceSheetMetric(BalanceSheetScreeningMetric.CurrentRatio, { accountingStandard: AccountingStandard.JGAAP, scope: ConsolidationScope.Consolidated, period: { instant: "2025-03-31" } });
+object.selectBalanceSheetMetric(BalanceSheetScreeningMetric.CurrentRatio, {
+  accountingStandard: AccountingStandard.JGAAP,
+  scope: ConsolidationScope.Consolidated,
+  period: { instant: "2025-03-31" },
+});

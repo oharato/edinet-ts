@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "no-unused-vars": "off",
+    "no-control-regex": "off",
+    "typescript/no-this-alias": "off",
+    "typescript/no-duplicate-enum-values": "off"
+  },
+  "overrides": [
+    {
+      "files": ["test/**"],
+      "rules": {
+        "no-unused-expressions": "off",
+        "require-yield": "off",
+        "no-sparse-arrays": "off"
+      }
+    }
+  ]
+}
