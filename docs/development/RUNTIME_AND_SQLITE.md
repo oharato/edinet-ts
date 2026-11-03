@@ -22,6 +22,8 @@ npm test -- --maxWorkers=1 --testTimeout=30000
 npm run security
 ```
 
+GitHubのCodeQLはTypeScript/JavaScriptとActionsを検査します。Pythonのソースと実行依存は撤去済みのため、Python向けの検査設定も外しています。依存の脆弱性は `npm run security` とaudit workflowで検査します。
+
 テストの容量条件や固定配布物の扱いは[テスト手順](../../scripts/README.md#全体テスト)を参照してください。SDKのbuildは古いdistを消してから生成します。開発用の整形はoxfmt、静的検査はoxlintを使用します。
 
 ## 保存形式と既存DB
