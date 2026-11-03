@@ -135,7 +135,7 @@ node dist/cli.js screen-workforce --manifest /tmp/local-workforce/files.json --s
 
 [全体計画](../plans/EDINET_TS_ROADMAP.md)の段階5を一部だけ進めます。
 
-給与追加時の検証記録: Node26.12.1/npm12.2.1で全976テスト（既存933＋追加43）、本体/使用例の型検査・build・保存保護Python5件が成功しました。全体テストはCIと同じ`--maxWorkers=1`で実行し、既存の制限時間や期待値は変更していません。lint設定はありません。
+給与追加時の検証記録: Node26.12.1/npm12.2.1で全976テスト（既存933＋追加43）、本体/使用例の型検査・build・保存保護Python5件が成功しました。全体テストはCIと同じ`--maxWorkers=1`で実行し、既存の制限時間や期待値は変更していません。この検証時点ではlintを導入していませんでした。
 
 独立レビューのsource86確認・build済みESM/root/CLI87確認・CJS export1確認も成功し、修正必須の未解決問題はありませんでした。レビューは合成入力によるものです。
 

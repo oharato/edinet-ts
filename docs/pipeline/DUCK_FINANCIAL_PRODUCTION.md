@@ -45,6 +45,22 @@ SDKはdist/scripts/src/package lock・README・LICENSEを通常ファイルで�
 
 日次の準備・取得・構築を自動継続する。正式catalogの更新は上記の明示公開操作として分け、日次の部分完了・未検証候補・別世代を自動で正式化しない。終了75は既存排他との競合であり、lockファイルを消して回避しない。出力先/一時領域の34 GiB留保と追加容量guardも維持する。
 
+### 容量待ちと停止を見分ける
+
+serviceの終了0だけでは、取得や構築の完了とは判断できません。ログのJSONが `status: "acquisition-paused", reason: "disk-reserve"` なら、容量保護による待機です。timerが有効なら次の時刻に同じ固定候補から再開を試みます。実行中は前回終了時のJSONが最後のログに残るため、現在のPID・開始時刻と取得jobの進捗も合わせて確認してください。
+
+```sh
+systemctl --user show edinet-roadmap-daily-financial-preparation.service \
+  -p ActiveState -p MainPID -p ExecMainStartTimestamp -p ExecMainExitTimestamp -p ExecMainStatus
+systemctl --user show edinet-roadmap-daily-financial-preparation.timer \
+  -p ActiveState -p NextElapseUSecRealtime
+journalctl --user -u edinet-roadmap-daily-financial-preparation.service -n 20 --no-pager
+```
+
+原本取得の入口では、出力先と一時領域の空きに **34 GiB＋候補の `archive.sqlite`＋`source-job.sqlite` のサイズ** が必要です。SDKが検査用の私有コピーを作るため、空きが34 GiBを超えていても待機します。`archive.sqlite` は取得原本、`source-job.sqlite` は書類ごとの取得状態・試行履歴を保存するDBです。取得に伴って原本DBが増えるので、入口を一度通過するだけの余白では完了まで足りない場合があります。後段の解析・DuckDB構築にはさらに別の出力容量が必要です。
+
+容量を整理するときは、停止・非参照を確認した再生成可能な検証用依存などに限定し、再生成元のlockfile・配布物と整理前の一覧を残します。原本、失敗記録、正式世代、切戻し先、稼働runtimeは保持します。通常のtimer再試行で進捗が増えたことを確認し、待機を成功や故障へ読み替えたり、留保値を下げたりしません。
+
 ## 切戻し
 
 切替前のunitは本番rootの`rollback/units`、設定・catalogの切替前コピーとhashは同じrollback記録へ保持する。問題があれば新財務timer/serviceを停止し、保存unitを戻してdaemon-reloadする。旧SQLite serviceの再開は保存済み旧設定・旧runtimeを組で使う。
