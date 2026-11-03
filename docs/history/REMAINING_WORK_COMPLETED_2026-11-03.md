@@ -72,3 +72,21 @@ README・技術仕様・ソース配置・財務データ構造などの主要�
 要求・非機能要件・ER図・索引を現行実装と照合しました。再試行の既定値と設定上限を区別し、XML解析の代表テストへの導線も補正しました。全市場・全形式での受入や全APIの網羅試験を新たに合格扱いにはしません。
 
 検証記録: `data/docs-design-review-20261103.json`（DDL主キー12表、論理参照、設定・保存読取の確認）、`data/design-doc-link-validation-20261103.json`（README/docs 107文書・828ローカルリンク/アンカー、欠落0）、`data/spec-selection-example-20261103.json`（合成例の100採用、条件違いを不採用）。文書の整形と差分検査も確認しました。
+
+## 優先順位5：正式利用先の固定配布物更新
+
+元の受入条件:
+
+- 対象: 正式利用先の固定配布物更新
+- 着手時: optional依存あり/なしの隔離install、stock-data候補での回帰・保存保護・旧版復帰は実施済み。正式vendor更新とは区別が必要
+- 完了条件: 最新の固定配布物とprovenanceを揃え、利用先の現行lock・型・回帰・rollbackを確認。別リポジトリの正式反映範囲を記録し、候補環境の成功を正式反映と呼ばない
+
+SDK固定source3d511d1、配布物SHA-256 d8781379697f57e81683e4952db226f33ad395d493fd9333a25eea0d98271140をclean offline buildし、検証済みdist325ファイルとbyte一致、配布328ファイル/48依存の固定lock一致を確認しました。canonical packも同じhashを再現し、保持storeへの登録、旧世代へのrollbackと新版復帰を確認しています。
+
+正式stock-dataのvendor/lock/provenanceと実行環境を更新し、検証済みclean installを同一filesystemで移設しました。正式側で型・全10ファイル56テスト・配布byte・依存一致を再検査し、価格DuckDB1.5は不変です。保存した旧package/lock/provenance/node_modulesを正式位置へ戻してNode24.22.1でXML/SQLiteを確認し、新版Node26.13へ復帰しました。利用者変更6ファイルはhash不変です。
+
+[stock-data PR #14](https://github.com/oharato/stock-data/pull/14)もmainへ統合しました。GitHubのmerge-refではbase側の追加機能を含む14ファイル131テスト、型、既存成果物保護17テストが成功しています。正式ローカルの対象は最小更新のcommit f89c59eで、別作業の全sourceをそのcheckoutへ展開した意味ではありません。
+
+loaded service/publisherのNode/npmと配布物参照先を専用drop-inで揃え、元unitは保持しました。取得・static build・予定運転は実行していません。optionalなしの検証はXML/SQLiteとdriver拒否、旧版検証は保持したnative依存を使う限定確認で、旧toolchainのfresh rebuildではありません。SDKの正式vendor更新と、静的成果物/予定運転の受入は区別します。
+
+証跡は `data/roadmap/fixed-artifact-3d511d1-20261103/`、`data/consumer-update-candidate-20261103/`、`data/production/stock-data-sdk-20261103/`。旧SDK/native依存・配布物・sourceの切戻し先は保持しています。
