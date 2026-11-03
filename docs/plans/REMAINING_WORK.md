@@ -36,6 +36,10 @@ main統合と固定本番runtimeへの反映は完了しました。固定した
 
 在庫とID一覧は `data/roadmap/missing-parents-current-20261103/`、93書類の取得計画・試行履歴・完了記録は `data/roadmap/missing-parent-source-job-20261103/` に保存しました。15書類の観測・取得完了記録は `data/roadmap/parent-evidence-investigation-20261103/` に保存しました。これらの取得は金額採用の検証や旧世代の診断変更ではなく、過去cutoffで既に利用可能だったとも扱いません。件数は当該固定入力の値であり、今日の市場全体の件数ではありません。
 
+追加の公式一覧照合では、正式stock-dataの旧集約DBから見つけた105ID・53候補日を、現在時刻で公式APIへ問い合わせました。53要求・失敗0で20,025観測を別の私有入力へ保存し、予定105IDすべてを確認しました。不足425親のうち78ID（年次64・半期14、全件XBRLあり）の一覧根拠が追加され、残る347IDは未確認です。78原本の取得はまだ行っていません。旧固定入力の不足件数や観測時刻は書き換えません。
+
+通知参照27IDも返却されましたが、22IDはwithdrawalStatus2・提出日時nullです。23件には通知日より前の参照日根拠が増えた一方、同日の4件は時刻不明、46件は参照先未確認のままです。参照日が得られたことを通知解決と同一視せず、live通知73件は保持しています。日次要求数は8→61（残195）、予算以外のcheckpoint項目・凍結候補4ファイル・元legacy DBは不変です。証跡は `data/roadmap/unresolved-metadata-notices-20261103/official-list-job/post-run-audit/summary.json` です。
+
 会計基準の限定対応では、Japan GAAPの外国会社FY第八号・HY第九号の三を認識し、USD/JPY混在の16科目は曖昧なまま保持しました。版5は版4と別解析キーになり、旧Store/索引の読取りも検証済みです。US-GAAPは明示 `selectMetric()` の意味が一致する要約8指標だけ追加し、12原本・96選択で79採用・17不在を独立読取と照合しました。自動判定・snapshot・索引のUS対応は未完了です。根拠は `data/roadmap/unsupported-financial-boundaries-20261103/` と `data/roadmap/us-gaap-summary-metrics-20261103/` に保存しています。
 
 法人番号差分は、新CLI自身で全国5,850,621＋11月2日差分2,346記録を約9分25秒で適用・全監査しました。元入力14点のhash不変、最大観測RSS約690 MiB、34 GiB留保を確認し、同じCLIの再実行も追加適用0・DB/checkpoint不変でした。独立原値照合70,380項目、8番号のcutoff/不足日判定、企業マスター6行の一致は別途確認しています。実公表日は1日分なので、連続2公表日や定期起動の受入は残ります。証跡は `data/roadmap/corporate-registry-continuous-differences-20261103/` です。
