@@ -91,6 +91,8 @@ CLIテストは子プロセスを起動します。`spawnSync` の `error.code` 
 
 保存済み法人番号差分の全国DBへの適用は `roadmap/apply-corporate-registry-differences.mts`。通信を拒否して署名と保存原本を再検査し、私有DBコピーへの適用・全記録監査・DB/checkpoint切替を再開できます。準備・固定runtime・日数上限・保持条件は [差分適用手順](../docs/companies/CORPORATE_REGISTRY.md#保存済み差分を全国dbへ適用する) を参照してください。
 
+法人番号差分を1公表日ずつ取得・適用する入口は `roadmap/run-corporate-registry-daily.mts`。jobごとの永続通信予算、途中停止の再開、過去の受理記録と現在DBの区別を扱います。[日次実行手順](../docs/pipeline/CORPORATE_REGISTRY_DAILY.md)に初期化・未確定要求・資源上限と未実施の本番受入を記載しています。
+
 ## 開発用チェック（2026-11-03更新）
 
 現在の開発実行系は`.node-version`のNode 26.13.0、npm 12.2.1です。運用スクリプトとテストをTypeScriptへ移し、Pythonの準備は不要になりました。単独実行するTypeScriptはES moduleを明示する`.mts`を使用します。本番の固定runtimeもTypeScript版へ更新済みです。採用commitと検証記録は[本番運用](../docs/pipeline/DUCK_FINANCIAL_PRODUCTION.md)のdeployment.jsonで確認します。固定済み旧配布物を再現する`build-local.mts`の旧toolchain指定は履歴の再現条件なので変更しない。

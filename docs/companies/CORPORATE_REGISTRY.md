@@ -15,6 +15,7 @@
 | 原本を検証する                       | [XML署名](#保存済みxmlの署名を確認して取り込む) / [ZIP全entry](#保存zipの全エントリを検査する)                                                               |
 | 差分を取得する                       | [一日](#指定日の差分を取得し検証して保存する) / [期間指定](#複数日を計画し予算内で取得再開する)                                                              |
 | 保存済み差分を全国DBへ適用する       | [通信なしの差分適用・再開](#保存済み差分を全国dbへ適用する)                                                                                                  |
+| 取得から適用まで1公表日ずつ進める    | [日次実行の初期化・再開・定期起動条件](../pipeline/CORPORATE_REGISTRY_DAILY.md)                                                                              |
 | 全国の全件原本を取得する             | [全国XML](#全国全件のxml原本を取得する)                                                                                                                      |
 
 `parseCorporateRegistryDownloadXml(xml, source)` と `queryCorporateRegistryDownloads(inputs, query)` は、国税庁の30項目のダウンロードXMLを読みます。既存のXML安全検査を共有し、外部参照/DTDを拒否、1 XMLは64MiB以下・10万記録以下、検索は100入力/合計256MiB以下です。
