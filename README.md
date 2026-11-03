@@ -108,7 +108,7 @@ EDINETから取得する場合はAPIキーが必要です。CLIでは、環境�
 
 ```sh
 # 指定日の書類をダウンロード
-node dist/cli.js download --date 2024-06-25
+node dist/cli.js download --ticker 7203 --date 2024-06-25
 
 # 指定日の大量保有報告書・訂正報告書を取得して解析
 node dist/cli.js get --date 2024-06-25 --type LargeShareholding --pretty

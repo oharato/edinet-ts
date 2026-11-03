@@ -125,7 +125,7 @@ program
 program
   .command("download")
   .description("EDINET書類をダウンロードします")
-  .option("-t, --ticker <codes>", "証券コード（カンマ区切り、例: 7203,9984）")
+  .requiredOption("-t, --ticker <codes>", "証券コード（カンマ区切り、例: 7203,9984）")
   .option("-d, --date <date>", "対象日 (YYYY-MM-DD)。デフォルトは当日")
   .option(
     "--type <type>",
@@ -155,8 +155,9 @@ program
         } else {
           console.warn(`Not found: ${ticker}`);
         }
-      } catch (e: any) {
-        console.error(`Failed to download ${ticker}:`, e.message);
+      } catch {
+        console.error(`Failed to download ${ticker.trim()}: acquisition failed (details hidden).`);
+        process.exitCode = 1;
       }
     }
   });
@@ -3834,9 +3835,16 @@ program
 const getCommand = program
   .command("get")
   .description("EDINET書類をダウンロードし、即座に解析します")
-  .option("-t, --ticker <code>", "証券コード (例: 7203)")
+  .option(
+    "-t, --ticker <code>",
+    "証券コード。ローカルDBを優先し、なければ最新書類を検索 (例: 7203)",
+  )
   .option("-d, --date <date>", "対象日 (YYYY-MM-DD)。デフォルトは当日")
-  .option("-l, --lookback <days>", "対象日に見つからない場合に遡る日数 (デフォルト: 90)", "90")
+  .option(
+    "-l, --lookback <days>",
+    "tickerのAPI最新検索で遡る日数。ローカルDB検索には適用しません (既定: 90)",
+    "90",
+  )
   .option(
     "--type <type>",
     "書類種別 (例: Annual, registration-statement/030, securities-notice/010)。既定: Annual",
@@ -3852,6 +3860,11 @@ const getCommand = program
     if (options.helpTypes) {
       console.log(generateFullHelpMarkdown());
       process.exit(0);
+    }
+    if (options.ticker !== undefined && options.date !== undefined) {
+      console.error("getの--tickerと--dateは併用できません。最新検索か日付検索を選んでください。");
+      process.exitCode = 1;
+      return;
     }
     // デフォルトを ./downloads にすることでキャッシュを効かせる
     const saveDir = options.saveDir || "./downloads";
@@ -3957,15 +3970,18 @@ const getCommand = program
           };
           results.push(output);
         } catch (e: any) {
-          // console.error(`Failed to process ${doc.docID}:`, e.message);
+          console.error(
+            `Failed to process ${doc.docID}: acquisition or parsing failed (details hidden).`,
+          );
+          process.exitCode = 1;
         }
       }
 
       // 配列として一括出力
       console.log(options.pretty ? JSON.stringify(results, null, 2) : JSON.stringify(results));
-    } catch (e: any) {
-      console.error("Error:", e.message);
-      process.exit(1);
+    } catch {
+      console.error("書類検索・取得に失敗しました（詳細は非表示）。");
+      process.exitCode = 1;
     }
   });
 
