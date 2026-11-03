@@ -7,18 +7,38 @@
 ## 入力と出典
 
 ```ts
-import { DisclosureTableKind, extractOrderDetails, searchOrderDetails, OrderMetric } from "edinet-ts";
+import {
+  DisclosureTableKind,
+  extractOrderDetails,
+  searchOrderDetails,
+  OrderMetric,
+} from "edinet-ts";
 const period = { startDate: "2025-04-01", endDate: "2026-03-31" };
 const document = {
   xml: savedXml,
-  selection: { docID: "SAMPLE", kind: DisclosureTableKind.ManagementAnalysis, contextRef: "FilingDateInstant" },
+  selection: {
+    docID: "SAMPLE",
+    kind: DisclosureTableKind.ManagementAnalysis,
+    contextRef: "FilingDateInstant",
+  },
   accountingStandard: "J-GAAP" as const,
-  declarations: [{ tableIndex: reviewedTableIndex, period, scope: "NonConsolidated" as const, rawSha256: reviewedFragmentHash }]
+  declarations: [
+    {
+      tableIndex: reviewedTableIndex,
+      period,
+      scope: "NonConsolidated" as const,
+      rawSha256: reviewedFragmentHash,
+    },
+  ],
 };
 const detail = extractOrderDetails(document);
 const matches = searchOrderDetails([document], {
-  period, scope: "NonConsolidated", role: "detail", metric: OrderMetric.OrdersReceivedJPY,
-  condition: { operator: "gte", value: 10_000_000_000 }, sort: "value-desc"
+  period,
+  scope: "NonConsolidated",
+  role: "detail",
+  metric: OrderMetric.OrdersReceivedJPY,
+  condition: { operator: "gte", value: 10_000_000_000 },
+  sort: "value-desc",
 });
 ```
 
@@ -43,13 +63,13 @@ DEIの会計基準がJapan GAAP、当期開始/終了が採用可能で、会社
 
 ## 値と行の役割
 
-| 指標 | 元の意味 | periodBasis |
-|---|---|---|
-| ordersReceivedJPY | 受注高/受注工事高 | duration |
-| completedConstructionJPY | 完成工事高 | duration |
-| salesJPY | 売上高 | duration |
-| openingBacklogJPY | 前期繰越/期首の手持額 | period-start-opening |
-| closingBacklogJPY | 次期繰越/期末の手持額 | period-end |
+| 指標                     | 元の意味              | periodBasis          |
+| ------------------------ | --------------------- | -------------------- |
+| ordersReceivedJPY        | 受注高/受注工事高     | duration             |
+| completedConstructionJPY | 完成工事高            | duration             |
+| salesJPY                 | 売上高                | duration             |
+| openingBacklogJPY        | 前期繰越/期首の手持額 | period-start-opening |
+| closingBacklogJPY        | 次期繰越/期末の手持額 | period-end           |
 
 百万円を円へ正確な十進文字列で換算し、安全に表現できる場合だけsafeNumberも返します。単独の負数表示も符号付きで保持します。原セルの空白で分かれた数値、複数値や注釈を推測で結合しません。空欄・ダッシュ・非対応数値と、表にない指標`missing/not-in-table`は区別します。
 

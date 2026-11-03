@@ -1,28 +1,232 @@
-import{it,expect}from'vitest';import{mkdtempSync,rmSync,readFileSync,writeFileSync,renameSync,unlinkSync,linkSync,symlinkSync,truncateSync}from'node:fs';import{join}from'node:path';import{tmpdir}from'node:os';import{createHash}from'node:crypto';import{ObservedFinancialArchive,type DocumentVersionObservation}from'../src/index';import{Database}from'../src/db/node-sqlite';
-const observation=(id='A'):DocumentVersionObservation=>({observationId:id,observedAt:'2026-06-25T00:00:00Z',document:{docID:id,edinetCode:'E12345',parentDocID:null,docTypeCode:'120'}});
-function fixture(fn:(archive:ObservedFinancialArchive,path:string)=>void){const dir=mkdtempSync(join(tmpdir(),'observation-fingerprint-'));const path=join(dir,'archive.sqlite'),archive=new ObservedFinancialArchive(path);try{archive.append([observation()]);fn(archive,path);}finally{archive.close();rmSync(dir,{recursive:true,force:true});}}
-function measure(archive:ObservedFinancialArchive){let calls=0;const a=archive as any,original=a.decodeObservation.bind(a);a.decodeObservation=(row:any)=>{calls++;return original(row);};return()=>calls;}
-it('全行を読み指紋を再計算しつつ、検証済み完全一致行の再解析を省く',()=>fixture(archive=>{const count=measure(archive);const a=archive.observationsSha256();expect(count()).toBe(1);expect(archive.observationsSha256()).toBe(a);expect(count()).toBe(1);archive.append([observation('B')]);const b=archive.observationsSha256();expect(b).not.toBe(a);expect(count()).toBe(2);}));
-it.each(['body','sha256','doc_id','parent_doc_id','edinet_code','observed_ms','id'])('再利用後の%s変更を見逃さない',column=>fixture((archive,path)=>{archive.observationsSha256();const db=new Database(path);try{const statement=db.prepare(`UPDATE archive_observations SET ${column}=?`);try{statement.run(column==='observed_ms'?0:'corrupted');}finally{statement.close();}}finally{db.close();}expect(()=>archive.observationsSha256()).toThrow();}));
-it('別接続の正当な本文/索引更新と行の追加/削除を古い指紋で返さない',()=>fixture((archive,path)=>{const a=archive.observationsSha256(),db=new Database(path);try{const get=db.prepare('SELECT * FROM archive_observations');const row=get.get()!;get.close();const parsed=JSON.parse(row.body as string);parsed.document.filerName='changed';const body=JSON.stringify(parsed),sha=createHash('sha256').update(JSON.stringify([row.id,body])).digest('hex');const update=db.prepare('UPDATE archive_observations SET body=?,sha256=?');update.run(body,sha);update.close();const b=archive.observationsSha256();expect(b).not.toBe(a);expect(archive.observationsSha256()).toBe(b);db.exec('DELETE FROM archive_observations');const empty=archive.observationsSha256();expect(empty).not.toBe(b);archive.append([observation('B')]);expect(archive.observationsSha256()).not.toBe(empty);}finally{db.close();}}));
-it('rollback後に検査履歴が残っても、実際に読んだ行から指紋を決める',()=>fixture(archive=>{const a=archive as any,first=archive.observationsSha256(),count=measure(archive);expect(()=>a.transaction(()=>{const row=a.rows('SELECT * FROM archive_observations')[0],parsed=JSON.parse(row.body);parsed.document.filerName='rolled back';const body=JSON.stringify(parsed),sha=createHash('sha256').update(JSON.stringify([row.id,body])).digest('hex');a.run('UPDATE archive_observations SET body=?,sha256=?',[body,sha]);a.validateFingerprintObservation(a.rows('SELECT * FROM archive_observations')[0]);throw Error('forced rollback');})).toThrow('forced rollback');expect(archive.observationsSha256()).toBe(first);expect(count()).toBe(2);}));
-it('readOnlyコピーを元DBの更新と混同せず、close後は再利用しない',()=>fixture((archive,path)=>{const reader=new ObservedFinancialArchive(path,{readOnly:true});try{const a=reader.observationsSha256();archive.append([observation('B')]);expect(reader.observationsSha256()).toBe(a);expect(archive.observationsSha256()).not.toBe(a);}finally{reader.close();}expect(()=>reader.observationsSha256()).toThrow();}));
-it.each(['bytes','entries'])('%s上限に達した行を省略せず再検査する',limit=>fixture(archive=>{const a=archive as any;if(limit==='bytes')a.validatedObservationBytes=256*1024*1024;else for(let i=0;i<200000;i++)a.validatedObservationRows.set('cached'+i,{});const count=measure(archive),first=archive.observationsSha256();expect(archive.observationsSha256()).toBe(first);expect(count()).toBe(2);expect(a.validatedObservationRows.size).toBe(limit==='bytes'?0:200000);}));
+import { it, expect } from "vitest";
+import {
+  mkdtempSync,
+  rmSync,
+  readFileSync,
+  writeFileSync,
+  renameSync,
+  unlinkSync,
+  linkSync,
+  symlinkSync,
+  truncateSync,
+} from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
+import { ObservedFinancialArchive, type DocumentVersionObservation } from "../src/index";
+import { Database } from "../src/db/node-sqlite";
+const observation = (id = "A"): DocumentVersionObservation => ({
+  observationId: id,
+  observedAt: "2026-06-25T00:00:00Z",
+  document: { docID: id, edinetCode: "E12345", parentDocID: null, docTypeCode: "120" },
+});
+function fixture(fn: (archive: ObservedFinancialArchive, path: string) => void) {
+  const dir = mkdtempSync(join(tmpdir(), "observation-fingerprint-"));
+  const path = join(dir, "archive.sqlite"),
+    archive = new ObservedFinancialArchive(path);
+  try {
+    archive.append([observation()]);
+    fn(archive, path);
+  } finally {
+    archive.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+function measure(archive: ObservedFinancialArchive) {
+  let calls = 0;
+  const a = archive as any,
+    original = a.decodeObservation.bind(a);
+  a.decodeObservation = (row: any) => {
+    calls++;
+    return original(row);
+  };
+  return () => calls;
+}
+it("全行を読み指紋を再計算しつつ、検証済み完全一致行の再解析を省く", () =>
+  fixture((archive) => {
+    const count = measure(archive);
+    const a = archive.observationsSha256();
+    expect(count()).toBe(1);
+    expect(archive.observationsSha256()).toBe(a);
+    expect(count()).toBe(1);
+    archive.append([observation("B")]);
+    const b = archive.observationsSha256();
+    expect(b).not.toBe(a);
+    expect(count()).toBe(2);
+  }));
+it.each(["body", "sha256", "doc_id", "parent_doc_id", "edinet_code", "observed_ms", "id"])(
+  "再利用後の%s変更を見逃さない",
+  (column) =>
+    fixture((archive, path) => {
+      archive.observationsSha256();
+      const db = new Database(path);
+      try {
+        const statement = db.prepare(`UPDATE archive_observations SET ${column}=?`);
+        try {
+          statement.run(column === "observed_ms" ? 0 : "corrupted");
+        } finally {
+          statement.close();
+        }
+      } finally {
+        db.close();
+      }
+      expect(() => archive.observationsSha256()).toThrow();
+    }),
+);
+it("別接続の正当な本文/索引更新と行の追加/削除を古い指紋で返さない", () =>
+  fixture((archive, path) => {
+    const a = archive.observationsSha256(),
+      db = new Database(path);
+    try {
+      const get = db.prepare("SELECT * FROM archive_observations");
+      const row = get.get()!;
+      get.close();
+      const parsed = JSON.parse(row.body as string);
+      parsed.document.filerName = "changed";
+      const body = JSON.stringify(parsed),
+        sha = createHash("sha256")
+          .update(JSON.stringify([row.id, body]))
+          .digest("hex");
+      const update = db.prepare("UPDATE archive_observations SET body=?,sha256=?");
+      update.run(body, sha);
+      update.close();
+      const b = archive.observationsSha256();
+      expect(b).not.toBe(a);
+      expect(archive.observationsSha256()).toBe(b);
+      db.exec("DELETE FROM archive_observations");
+      const empty = archive.observationsSha256();
+      expect(empty).not.toBe(b);
+      archive.append([observation("B")]);
+      expect(archive.observationsSha256()).not.toBe(empty);
+    } finally {
+      db.close();
+    }
+  }));
+it("rollback後に検査履歴が残っても、実際に読んだ行から指紋を決める", () =>
+  fixture((archive) => {
+    const a = archive as any,
+      first = archive.observationsSha256(),
+      count = measure(archive);
+    expect(() =>
+      a.transaction(() => {
+        const row = a.rows("SELECT * FROM archive_observations")[0],
+          parsed = JSON.parse(row.body);
+        parsed.document.filerName = "rolled back";
+        const body = JSON.stringify(parsed),
+          sha = createHash("sha256")
+            .update(JSON.stringify([row.id, body]))
+            .digest("hex");
+        a.run("UPDATE archive_observations SET body=?,sha256=?", [body, sha]);
+        a.validateFingerprintObservation(a.rows("SELECT * FROM archive_observations")[0]);
+        throw Error("forced rollback");
+      }),
+    ).toThrow("forced rollback");
+    expect(archive.observationsSha256()).toBe(first);
+    expect(count()).toBe(2);
+  }));
+it("readOnlyコピーを元DBの更新と混同せず、close後は再利用しない", () =>
+  fixture((archive, path) => {
+    const reader = new ObservedFinancialArchive(path, { readOnly: true });
+    try {
+      const a = reader.observationsSha256();
+      archive.append([observation("B")]);
+      expect(reader.observationsSha256()).toBe(a);
+      expect(archive.observationsSha256()).not.toBe(a);
+    } finally {
+      reader.close();
+    }
+    expect(() => reader.observationsSha256()).toThrow();
+  }));
+it.each(["bytes", "entries"])("%s上限に達した行を省略せず再検査する", (limit) =>
+  fixture((archive) => {
+    const a = archive as any;
+    if (limit === "bytes") a.validatedObservationBytes = 256 * 1024 * 1024;
+    else for (let i = 0; i < 200000; i++) a.validatedObservationRows.set("cached" + i, {});
+    const count = measure(archive),
+      first = archive.observationsSha256();
+    expect(archive.observationsSha256()).toBe(first);
+    expect(count()).toBe(2);
+    expect(a.validatedObservationRows.size).toBe(limit === "bytes" ? 0 : 200000);
+  }),
+);
 
-it('旧件数上限を超えてもbyte上限内の完全一致行は再解析しない',()=>fixture(archive=>{const a=archive as any;for(let i=0;i<100000;i++)a.validatedObservationRows.set('cached'+i,{});const count=measure(archive);const first=archive.observationsSha256();expect(archive.observationsSha256()).toBe(first);expect(count()).toBe(1);expect(a.validatedObservationRows.size).toBe(100001);}));
+it("旧件数上限を超えてもbyte上限内の完全一致行は再解析しない", () =>
+  fixture((archive) => {
+    const a = archive as any;
+    for (let i = 0; i < 100000; i++) a.validatedObservationRows.set("cached" + i, {});
+    const count = measure(archive);
+    const first = archive.observationsSha256();
+    expect(archive.observationsSha256()).toBe(first);
+    expect(count()).toBe(1);
+    expect(a.validatedObservationRows.size).toBe(100001);
+  }));
 
-
-it('不変なreadOnlyコピーでは全観測のSQL走査を一回に抑え、書込用と同じ指紋を返す',()=>fixture((writer,path)=>{
- const reader=new ObservedFinancialArchive(path,{readOnly:true}),a=reader as any,original=a.rows.bind(a);let scans=0;
- a.rows=(sql:string,...args:any[])=>{if(sql.startsWith('SELECT * FROM archive_observations'))scans++;return original(sql,...args)};
- try{const expected=writer.observationsSha256();expect(reader.observationsSha256()).toBe(expected);expect(scans).toBeGreaterThan(0);scans=0;expect(reader.observationsSha256()).toBe(expected);expect(scans).toBe(0);expect(a.validatedObservationRows.size).toBe(0);}finally{reader.close()}
-}));
-it.each(['rewrite','replace','truncate','hardlink','symlink'])('readOnlyの観測指紋を再利用するときも私有copyの%sを拒否する',action=>fixture((_writer,path)=>{
- const reader=new ObservedFinancialArchive(path,{readOnly:true}),probe=(reader as any).snapshotFile,side=join(path+'-side');
- try{reader.observationsSha256();const bytes=readFileSync(probe);if(action==='rewrite')writeFileSync(probe,bytes);else if(action==='truncate')truncateSync(probe,0);else if(action==='hardlink')linkSync(probe,side);else{writeFileSync(side,bytes);unlinkSync(probe);if(action==='replace')renameSync(side,probe);else symlinkSync(side,probe)}expect(()=>reader.observationsSha256()).toThrow();}finally{reader.close()}
-}));
-it('初回のreadOnly観測走査中に変わったcopyを固定指紋として保存しない',()=>fixture((_writer,path)=>{
- const reader=new ObservedFinancialArchive(path,{readOnly:true}),a=reader as any,original=a.rows.bind(a),probe=a.snapshotFile;let changed=false;
- a.rows=(sql:string,...args:any[])=>{const rows=original(sql,...args);if(!changed&&sql.startsWith('SELECT * FROM archive_observations')){changed=true;writeFileSync(probe,readFileSync(probe))}return rows};
- try{expect(()=>reader.observationsSha256()).toThrow('変化');expect(()=>reader.observationsSha256()).toThrow('変化');}finally{reader.close()}
-}));
+it("不変なreadOnlyコピーでは全観測のSQL走査を一回に抑え、書込用と同じ指紋を返す", () =>
+  fixture((writer, path) => {
+    const reader = new ObservedFinancialArchive(path, { readOnly: true }),
+      a = reader as any,
+      original = a.rows.bind(a);
+    let scans = 0;
+    a.rows = (sql: string, ...args: any[]) => {
+      if (sql.startsWith("SELECT * FROM archive_observations")) scans++;
+      return original(sql, ...args);
+    };
+    try {
+      const expected = writer.observationsSha256();
+      expect(reader.observationsSha256()).toBe(expected);
+      expect(scans).toBeGreaterThan(0);
+      scans = 0;
+      expect(reader.observationsSha256()).toBe(expected);
+      expect(scans).toBe(0);
+      expect(a.validatedObservationRows.size).toBe(0);
+    } finally {
+      reader.close();
+    }
+  }));
+it.each(["rewrite", "replace", "truncate", "hardlink", "symlink"])(
+  "readOnlyの観測指紋を再利用するときも私有copyの%sを拒否する",
+  (action) =>
+    fixture((_writer, path) => {
+      const reader = new ObservedFinancialArchive(path, { readOnly: true }),
+        probe = (reader as any).snapshotFile,
+        side = join(path + "-side");
+      try {
+        reader.observationsSha256();
+        const bytes = readFileSync(probe);
+        if (action === "rewrite") writeFileSync(probe, bytes);
+        else if (action === "truncate") truncateSync(probe, 0);
+        else if (action === "hardlink") linkSync(probe, side);
+        else {
+          writeFileSync(side, bytes);
+          unlinkSync(probe);
+          if (action === "replace") renameSync(side, probe);
+          else symlinkSync(side, probe);
+        }
+        expect(() => reader.observationsSha256()).toThrow();
+      } finally {
+        reader.close();
+      }
+    }),
+);
+it("初回のreadOnly観測走査中に変わったcopyを固定指紋として保存しない", () =>
+  fixture((_writer, path) => {
+    const reader = new ObservedFinancialArchive(path, { readOnly: true }),
+      a = reader as any,
+      original = a.rows.bind(a),
+      probe = a.snapshotFile;
+    let changed = false;
+    a.rows = (sql: string, ...args: any[]) => {
+      const rows = original(sql, ...args);
+      if (!changed && sql.startsWith("SELECT * FROM archive_observations")) {
+        changed = true;
+        writeFileSync(probe, readFileSync(probe));
+      }
+      return rows;
+    };
+    try {
+      expect(() => reader.observationsSha256()).toThrow("変化");
+      expect(() => reader.observationsSha256()).toThrow("変化");
+    } finally {
+      reader.close();
+    }
+  }));

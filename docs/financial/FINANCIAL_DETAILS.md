@@ -4,13 +4,13 @@ BS・PL・CFの個別科目を、原本の直接記載から読みます。必�
 
 ## 必要な説明へ進む
 
-| 目的 | 読む節 |
-|---|---|
-| 最初に使える項目を知る | [既定5項目](#既定で読む5項目)と[1社のAPI](#1社から読むapi) |
-| 複数社を条件で探す | [検索とCLI](#複数社の検索とcli) |
-| CF・負債・PLの項目を追加する | [CF3項目](#追加のcf3項目を明示して読む)、[負債9残高](#借入金社債リースなどの9残高)、[PL5項目](#pl追加明細5項目を明示して読む) |
-| 解析結果を保存して再利用する | [保存JSONの検索](#保存jsonの原値出典を検査して検索する) |
-| 自己資本やROICに使う科目を読む | [自己資本](#自己資本の構成科目registry-7)、[CP・短期社債](#cp短期社債registry-8) |
+| 目的                           | 読む節                                                                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| 最初に使える項目を知る         | [既定5項目](#既定で読む5項目)と[1社のAPI](#1社から読むapi)                                                                    |
+| 複数社を条件で探す             | [検索とCLI](#複数社の検索とcli)                                                                                               |
+| CF・負債・PLの項目を追加する   | [CF3項目](#追加のcf3項目を明示して読む)、[負債9残高](#借入金社債リースなどの9残高)、[PL5項目](#pl追加明細5項目を明示して読む) |
+| 解析結果を保存して再利用する   | [保存JSONの検索](#保存jsonの原値出典を検査して検索する)                                                                       |
+| 自己資本やROICに使う科目を読む | [自己資本](#自己資本の構成科目registry-7)、[CP・短期社債](#cp短期社債registry-8)                                              |
 
 項目の追加履歴と検証件数は、各追加時点の記録です。現在の辞書は27項目ですが、既定で返す項目は5項目のままです。
 
@@ -22,12 +22,12 @@ BS・PL・CFの個別科目を、原本の直接記載から読みます。必�
 
 ## 既定で読む5項目
 
-| 定数 `FinancialDetailMetricId` | ID | 元の直接タグ `jppfs_cor:` | 対象 |
-|---|---|---|---|
-| `NoncurrentAssets` | `noncurrentAssets` | `NoncurrentAssets` | 指定日現在の固定資産 |
-| `NoncurrentLiabilities` | `noncurrentLiabilities` | `NoncurrentLiabilities` | 指定日現在の固定負債 |
-| `CashAndDeposits` | `cashAndDeposits` | `CashAndDeposits` | 指定日現在の現金及び預金 |
-| `CostOfSales` | `costOfSales` | `CostOfSales` | 明示期間の売上原価 |
+| 定数 `FinancialDetailMetricId`            | ID                                        | 元の直接タグ `jppfs_cor:`                 | 対象                                     |
+| ----------------------------------------- | ----------------------------------------- | ----------------------------------------- | ---------------------------------------- |
+| `NoncurrentAssets`                        | `noncurrentAssets`                        | `NoncurrentAssets`                        | 指定日現在の固定資産                     |
+| `NoncurrentLiabilities`                   | `noncurrentLiabilities`                   | `NoncurrentLiabilities`                   | 指定日現在の固定負債                     |
+| `CashAndDeposits`                         | `cashAndDeposits`                         | `CashAndDeposits`                         | 指定日現在の現金及び預金                 |
+| `CostOfSales`                             | `costOfSales`                             | `CostOfSales`                             | 明示期間の売上原価                       |
 | `SellingGeneralAndAdministrativeExpenses` | `sellingGeneralAndAdministrativeExpenses` | `SellingGeneralAndAdministrativeExpenses` | 明示期間の販売費及び一般管理費（販管費） |
 
 金額はJPY、元値のdecimal文字列を保持します。`FINANCIAL_DETAIL_REGISTRY_VERSION`は`"8"`です。候補・定義はfreezeしています。対応は既存生成型と公式taxonomy由来の定義、保存原本の存在確認を基に、共有の厳密選択器を使って独立実装しています。
@@ -37,22 +37,36 @@ BS・PL・CFの個別科目を、原本の直接記載から読みます。必�
 ## 1社から読むAPI
 
 ```ts
-import { createFinancialDetailSnapshot, screenFinancialDetailDocuments, FinancialDetailMetricId, ComparisonOperator, SortOrder,
-    ConsolidationScope, AccountingStandard, FinancialPeriodType } from "edinet-ts";
+import {
+  createFinancialDetailSnapshot,
+  screenFinancialDetailDocuments,
+  FinancialDetailMetricId,
+  ComparisonOperator,
+  SortOrder,
+  ConsolidationScope,
+  AccountingStandard,
+  FinancialPeriodType,
+} from "edinet-ts";
 
 const current = createFinancialDetailSnapshot(xml, {
-    secCode: "1001", docID: "SYNTHETIC1", scope: ConsolidationScope.Consolidated,
-    accountingStandard: AccountingStandard.JGAAP, currency: "JPY",
-    period: { instant: "2025-03-31" }
+  secCode: "1001",
+  docID: "SYNTHETIC1",
+  scope: ConsolidationScope.Consolidated,
+  accountingStandard: AccountingStandard.JGAAP,
+  currency: "JPY",
+  period: { instant: "2025-03-31" },
 });
 const cash = current.selections[FinancialDetailMetricId.CashAndDeposits];
 if (cash?.status === "selected") console.log(cash.raw, cash.safeNumber, cash.source);
 
 const expenses = createFinancialDetailSnapshot(xml, {
-    secCode: "1001", docID: "SYNTHETIC1", scope: ConsolidationScope.Consolidated,
-    accountingStandard: AccountingStandard.JGAAP, currency: "JPY",
-    period: { startDate: "2024-04-01", endDate: "2025-03-31" },
-    periodType: FinancialPeriodType.Annual
+  secCode: "1001",
+  docID: "SYNTHETIC1",
+  scope: ConsolidationScope.Consolidated,
+  accountingStandard: AccountingStandard.JGAAP,
+  currency: "JPY",
+  period: { startDate: "2024-04-01", endDate: "2025-03-31" },
+  periodType: FinancialPeriodType.Annual,
 });
 ```
 
@@ -82,10 +96,17 @@ XML文字列を受けるsnapshot APIは構文を検査しますが、XBRLスキ�
 
 ```ts
 const result = screenFinancialDetailDocuments(documents, {
-    conditions: [{ metric: FinancialDetailMetricId.CashAndDeposits,
-        operator: ComparisonOperator.GreaterThanOrEqual, value: 100 }],
-    sortBy: FinancialDetailMetricId.CashAndDeposits,
-    order: SortOrder.Descending, offset: 0, limit: 20
+  conditions: [
+    {
+      metric: FinancialDetailMetricId.CashAndDeposits,
+      operator: ComparisonOperator.GreaterThanOrEqual,
+      value: 100,
+    },
+  ],
+  sortBy: FinancialDetailMetricId.CashAndDeposits,
+  order: SortOrder.Descending,
+  offset: 0,
+  limit: 20,
 });
 ```
 
@@ -103,10 +124,17 @@ CLI `screen-details`は、次のような一覧を指定します。相対file�
 
 ```json
 [
-  { "file": "source.xbrl", "metadata": {
-      "secCode": "1001", "docID": "SYNTHETIC1", "scope": "Consolidated",
-      "accountingStandard": "J-GAAP", "currency": "JPY", "period": { "instant": "2025-03-31" }
-  } }
+  {
+    "file": "source.xbrl",
+    "metadata": {
+      "secCode": "1001",
+      "docID": "SYNTHETIC1",
+      "scope": "Consolidated",
+      "accountingStandard": "J-GAAP",
+      "currency": "JPY",
+      "period": { "instant": "2025-03-31" }
+    }
+  }
 ]
 ```
 
@@ -133,10 +161,10 @@ Node26.12.1で全821テスト（既存756＋新規65）、本体/公開API例の
 
 CF（キャッシュフロー）は現金の収入・支出を示す計算書です。次の3項目は一般事業J-GAAP/JPYのduration（開始日から終了日までの期間）だけを対象にします。金額の単位は円、符号は原本どおりです。設備取得の支出を正の額へ変換しません。
 
-| 定数 `FinancialDetailMetricId` | ID | 元の `jppfs_cor:` タグ |
-|---|---|---|
-| `DepreciationOperatingCashFlow` | `depreciationOperatingCashFlow` | `DepreciationAndAmortizationOpeCF` |
-| `PropertyPlantEquipmentPurchaseCashFlow` | `propertyPlantEquipmentPurchaseCashFlow` | `PurchaseOfPropertyPlantAndEquipmentInvCF` |
+| 定数 `FinancialDetailMetricId`                         | ID                                                     | 元の `jppfs_cor:` タグ                                        |
+| ------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------- |
+| `DepreciationOperatingCashFlow`                        | `depreciationOperatingCashFlow`                        | `DepreciationAndAmortizationOpeCF`                            |
+| `PropertyPlantEquipmentPurchaseCashFlow`               | `propertyPlantEquipmentPurchaseCashFlow`               | `PurchaseOfPropertyPlantAndEquipmentInvCF`                    |
 | `PropertyPlantEquipmentAndIntangiblesPurchaseCashFlow` | `propertyPlantEquipmentAndIntangiblesPurchaseCashFlow` | `PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF` |
 
 最初は営業CFの調整項目である減価償却費、次は有形固定資産の取得支出、最後は有形固定資産と無形資産を合わせた取得支出です。設備だけの支出と合計支出は別項目であり、互いに代用・合算しません。販管費の減価償却や減価償却累計額からCFの値を補うこともありません。EBITDAや設備投資総額を計算する機能ではありません。
@@ -144,12 +172,15 @@ CF（キャッシュフロー）は現金の収入・支出を示す計算書で
 既存利用を保つため、registryが拡張されても既定は`DEFAULT_FINANCIAL_DETAIL_METRICS`の従来5項目のままです。新項目を検索する場合は、返す項目の一覧`metricIds`へ明示します。単一snapshotでは第3引数です。
 
 ```ts
-const metricIds = [FinancialDetailMetricId.DepreciationOperatingCashFlow,
-    FinancialDetailMetricId.PropertyPlantEquipmentPurchaseCashFlow];
+const metricIds = [
+  FinancialDetailMetricId.DepreciationOperatingCashFlow,
+  FinancialDetailMetricId.PropertyPlantEquipmentPurchaseCashFlow,
+];
 const cashFlow = createFinancialDetailSnapshot(xml, durationMetadata, metricIds);
 const result = screenFinancialDetailDocuments(documents, {
-    metricIds, sortBy: FinancialDetailMetricId.DepreciationOperatingCashFlow,
-    order: SortOrder.Descending
+  metricIds,
+  sortBy: FinancialDetailMetricId.DepreciationOperatingCashFlow,
+  order: SortOrder.Descending,
 });
 ```
 
@@ -183,24 +214,24 @@ node dist/cli.js screen-details --manifest /tmp/local-details/duration-files.jso
 
 次の9項目も`metricIds`/CLI `--metrics`で明示して読み、同じ期末・範囲の会社集合で検索できます。一般事業J-GAAP/JPYのinstantだけです。辞書は計27項目ですが、既定は従来5項目（時点3・期間2）を維持します。
 
-| 定数 / ID | 元の `jppfs_cor:` タグ | 意味 |
-|---|---|---|
-| `ShortTermLoansPayable` / `shortTermLoansPayable` | `ShortTermLoansPayable` | 短期借入金 |
+| 定数 / ID                                                                       | 元の `jppfs_cor:` タグ                 | 意味                      |
+| ------------------------------------------------------------------------------- | -------------------------------------- | ------------------------- |
+| `ShortTermLoansPayable` / `shortTermLoansPayable`                               | `ShortTermLoansPayable`                | 短期借入金                |
 | `CurrentPortionOfLongTermLoansPayable` / `currentPortionOfLongTermLoansPayable` | `CurrentPortionOfLongTermLoansPayable` | 1年内返済予定の長期借入金 |
-| `LongTermLoansPayable` / `longTermLoansPayable` | `LongTermLoansPayable` | 長期借入金 |
-| `CurrentPortionOfBonds` / `currentPortionOfBonds` | `CurrentPortionOfBonds` | 1年内償還予定の社債 |
-| `BondsPayable` / `bondsPayable` | `BondsPayable` | 社債 |
-| `LeaseObligationsCL` / `leaseObligationsCL` | `LeaseObligationsCL` | 流動負債のリース債務 |
-| `LeaseObligationsNCL` / `leaseObligationsNCL` | `LeaseObligationsNCL` | 固定負債のリース債務 |
-| `CommercialPapers` / `commercialPapers` | `CommercialPapersLiabilities` | コマーシャル・ペーパー |
-| `ShortTermBondsPayable` / `shortTermBondsPayable` | `ShortTermBondsPayable` | 短期社債 |
+| `LongTermLoansPayable` / `longTermLoansPayable`                                 | `LongTermLoansPayable`                 | 長期借入金                |
+| `CurrentPortionOfBonds` / `currentPortionOfBonds`                               | `CurrentPortionOfBonds`                | 1年内償還予定の社債       |
+| `BondsPayable` / `bondsPayable`                                                 | `BondsPayable`                         | 社債                      |
+| `LeaseObligationsCL` / `leaseObligationsCL`                                     | `LeaseObligationsCL`                   | 流動負債のリース債務      |
+| `LeaseObligationsNCL` / `leaseObligationsNCL`                                   | `LeaseObligationsNCL`                  | 固定負債のリース債務      |
+| `CommercialPapers` / `commercialPapers`                                         | `CommercialPapersLiabilities`          | コマーシャル・ペーパー    |
+| `ShortTermBondsPayable` / `shortTermBondsPayable`                               | `ShortTermBondsPayable`                | 短期社債                  |
 
 CL/NCLは流動/固定の区分です。各原記載を独立に保持し、合算・排他的な内訳だとみなすこと・他科目での補完はしません。短期借入金に1年内返済分が含まれるかは自動判定しません。関連会社の借入内訳や負債合計を元タグの代わりにせず、欠損を0としません。原本の0や負数の記載は既存の直接財務APIと同じく保持します。
 
 ```ts
 const loans = createFinancialDetailSnapshot(xml, instantMetadata, [
-    FinancialDetailMetricId.ShortTermLoansPayable,
-    FinancialDetailMetricId.LongTermLoansPayable
+  FinancialDetailMetricId.ShortTermLoansPayable,
+  FinancialDetailMetricId.LongTermLoansPayable,
 ]);
 ```
 
@@ -232,19 +263,30 @@ Node26.12.1で全1,055テスト（既存976＋追加79）、本体/使用例の�
 
 ```ts
 import { writeFileSync, readFileSync } from "node:fs";
-import { createFinancialDetailSnapshot, normalizeFinancialDetailSnapshot,
-    screenFinancialDetailSnapshots, FinancialDetailMetricId,
-    AccountingStandard, ConsolidationScope, SortOrder } from "edinet-ts";
+import {
+  createFinancialDetailSnapshot,
+  normalizeFinancialDetailSnapshot,
+  screenFinancialDetailSnapshots,
+  FinancialDetailMetricId,
+  AccountingStandard,
+  ConsolidationScope,
+  SortOrder,
+} from "edinet-ts";
 
 const snapshot = createFinancialDetailSnapshot(xml, {
-    secCode: "1001", docID: "SYNTHETIC1", scope: ConsolidationScope.Consolidated,
-    accountingStandard: AccountingStandard.JGAAP, currency: "JPY", period: { instant: "2025-03-31" }
+  secCode: "1001",
+  docID: "SYNTHETIC1",
+  scope: ConsolidationScope.Consolidated,
+  accountingStandard: AccountingStandard.JGAAP,
+  currency: "JPY",
+  period: { instant: "2025-03-31" },
 });
 writeFileSync("/tmp/local-details/rows.json", JSON.stringify([snapshot], null, 2));
 const saved = JSON.parse(readFileSync("/tmp/local-details/rows.json", "utf8"));
 const checked = saved.map(normalizeFinancialDetailSnapshot);
 const result = screenFinancialDetailSnapshots(checked, {
-    sortBy: FinancialDetailMetricId.CashAndDeposits, order: SortOrder.Descending
+  sortBy: FinancialDetailMetricId.CashAndDeposits,
+  order: SortOrder.Descending,
 });
 ```
 
@@ -279,10 +321,10 @@ node dist/cli.js screen-details-json --file /tmp/local-details/cf-rows.json --me
 
 入力JSONを書き換えず、元XML・DB・ネットワークへはアクセスしません。性能は未測定です。
 
-| 入口 | 入力 | 処理 |
-|---|---|---|
-| `screen-details` | 原本ファイルとmetadataの一覧 | XMLを解析して直接項目を選び検索 |
-| `screen-details-json` | 保存した財務snapshotの配列 | 保存証跡を検査して検索 |
+| 入口                  | 入力                         | 処理                            |
+| --------------------- | ---------------------------- | ------------------------------- |
+| `screen-details`      | 原本ファイルとmetadataの一覧 | XMLを解析して直接項目を選び検索 |
+| `screen-details-json` | 保存した財務snapshotの配列   | 保存証跡を検査して検索          |
 
 SQLへの永続保存・差分更新・解析版管理は、このJSON検索の完成とは別です。#46で、固定資産・固定負債・現金及び預金のinstant3項目だけを保存する[専用SQLite Store](../pipeline/FINANCIAL_DETAIL_STORE.md)を試験用APIとしてmainへ追加済みです。
 
@@ -298,13 +340,13 @@ Node26.12.1で全1,378テスト（既存1,159＋追加219）、本体/使用例�
 
 損益計算書の追加明細を、既存の売上原価・販管費と同じ規則で取得・検索します。いずれも一般事業J-GAAP・明示期間（duration）・JPYの直接タグだけを読み、既定5項目には含めません。PL5項目を追加した時点のregistry版は4です。現在の版は冒頭を参照してください。
 
-| 定数 `FinancialDetailMetricId` | ID | 元の直接タグ `jppfs_cor:` | 対象 |
-|---|---|---|---|
-| `GrossProfit` | `grossProfit` | `GrossProfit` | 明示期間の売上総利益 |
-| `NonOperatingIncome` | `nonOperatingIncome` | `NonOperatingIncome` | 明示期間の営業外収益 |
-| `NonOperatingExpenses` | `nonOperatingExpenses` | `NonOperatingExpenses` | 明示期間の営業外費用 |
-| `IncomeBeforeIncomeTaxes` | `incomeBeforeIncomeTaxes` | `IncomeBeforeIncomeTaxes` | 明示期間の税引前当期純利益 |
-| `IncomeTaxes` | `incomeTaxes` | `IncomeTaxes` | 明示期間の法人税、住民税及び事業税等 |
+| 定数 `FinancialDetailMetricId` | ID                        | 元の直接タグ `jppfs_cor:` | 対象                                 |
+| ------------------------------ | ------------------------- | ------------------------- | ------------------------------------ |
+| `GrossProfit`                  | `grossProfit`             | `GrossProfit`             | 明示期間の売上総利益                 |
+| `NonOperatingIncome`           | `nonOperatingIncome`      | `NonOperatingIncome`      | 明示期間の営業外収益                 |
+| `NonOperatingExpenses`         | `nonOperatingExpenses`    | `NonOperatingExpenses`    | 明示期間の営業外費用                 |
+| `IncomeBeforeIncomeTaxes`      | `incomeBeforeIncomeTaxes` | `IncomeBeforeIncomeTaxes` | 明示期間の税引前当期純利益           |
+| `IncomeTaxes`                  | `incomeTaxes`             | `IncomeTaxes`             | 明示期間の法人税、住民税及び事業税等 |
 
 営業利益・経常利益・特別利益/特別損失・当期純利益では代用しません。法人税等は還付等で負値になることがあり、原値をそのまま保持します。
 
@@ -322,21 +364,29 @@ registryはこの変更で4→5、後述CF3追加で5→6です。
 
 この作業ツリーで追加した直接duration科目です。一般事業J-GAAP・JPYで、原本の負符号を保持します。公開mainへの統合・配布はまだ行っていません。
 
-| 定数 | ID | 直接タグ |
-|---|---|---|
-| `IncomeTaxesPaidCashFlow` | `incomeTaxesPaidCashFlow` | `IncomeTaxesPaidOpeCF` |
-| `CashDividendsPaidCashFlow` | `cashDividendsPaidCashFlow` | `CashDividendsPaidFinCF` |
+| 定数                             | ID                               | 直接タグ                               |
+| -------------------------------- | -------------------------------- | -------------------------------------- |
+| `IncomeTaxesPaidCashFlow`        | `incomeTaxesPaidCashFlow`        | `IncomeTaxesPaidOpeCF`                 |
+| `CashDividendsPaidCashFlow`      | `cashDividendsPaidCashFlow`      | `CashDividendsPaidFinCF`               |
 | `LongTermLoansRepaymentCashFlow` | `longTermLoansRepaymentCashFlow` | `RepaymentOfLongTermLoansPayableFinCF` |
 
 還付/支払還付純額、非支配株主配当、短期借入返済は代用・合算しません。不在・nil・単体CF非開示を0へ変えません。完全一致する有効重複は他の財務明細と同じ規則で扱います。
 
 ```ts
-const metricIds = [FinancialDetailMetricId.IncomeTaxesPaidCashFlow,
-  FinancialDetailMetricId.CashDividendsPaidCashFlow, FinancialDetailMetricId.LongTermLoansRepaymentCashFlow];
+const metricIds = [
+  FinancialDetailMetricId.IncomeTaxesPaidCashFlow,
+  FinancialDetailMetricId.CashDividendsPaidCashFlow,
+  FinancialDetailMetricId.LongTermLoansRepaymentCashFlow,
+];
 const snapshot = createFinancialDetailSnapshot(xml, durationMetadata, metricIds);
-const result = screenFinancialDetailDocuments(documents, { metricIds,
-  conditions: [{ metric: FinancialDetailMetricId.IncomeTaxesPaidCashFlow, operator: "lte", value: -1000000 }],
-  sortBy: FinancialDetailMetricId.CashDividendsPaidCashFlow, order: "asc" });
+const result = screenFinancialDetailDocuments(documents, {
+  metricIds,
+  conditions: [
+    { metric: FinancialDetailMetricId.IncomeTaxesPaidCashFlow, operator: "lte", value: -1000000 },
+  ],
+  sortBy: FinancialDetailMetricId.CashDividendsPaidCashFlow,
+  order: "asc",
+});
 ```
 
 同じIDを`screenFinancialDetailSnapshots()`とCLI `screen-details`/`screen-details-json`の`--metrics`へ指定できます。既定5項目・主要18/21指標・SQLite保存対象は増やしません。

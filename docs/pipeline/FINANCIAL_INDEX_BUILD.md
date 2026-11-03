@@ -20,12 +20,12 @@ flowchart LR
 
 ## 固定する入力
 
-| 項目 | 意味 |
-|---|---|
-| `id` / `generation` | 構築ID / 集約後の検索世代ID。各1〜200文字の英数字・`_.:-` |
-| `archiveSha256` | 停止した原本アーカイブをreadOnlyで開いたコピー全体のSHA-256 |
-| `population` | asOf、実観測時刻、出典名/URL、sourceSha256、重複しないEDINETコード集合 |
-| `options` | cutoff、必須extractorVersion、任意sourceCommit/明示duration明細 |
+| 項目                | 意味                                                                   |
+| ------------------- | ---------------------------------------------------------------------- |
+| `id` / `generation` | 構築ID / 集約後の検索世代ID。各1〜200文字の英数字・`_.:-`              |
+| `archiveSha256`     | 停止した原本アーカイブをreadOnlyで開いたコピー全体のSHA-256            |
+| `population`        | asOf、実観測時刻、出典名/URL、sourceSha256、重複しないEDINETコード集合 |
+| `options`           | cutoff、必須extractorVersion、任意sourceCommit/明示duration明細        |
 
 母集団は1〜100,000件です。コード集合は並び順に依存しない形へ固定し、空・重複・不正コードを拒否します。母集団の実観測がcutoffより後の場合や、基準日がcutoffの日本日付より後の場合は使用しません。現在の上場母集団を過去に既知だった集合へ遡及させません。
 
@@ -42,24 +42,27 @@ flowchart LR
 ## APIの使い方
 
 ```ts
-import {ObservedFinancialArchive, FinancialSearchIndex, FinancialIndexBuild} from "edinet-ts";
+import { ObservedFinancialArchive, FinancialSearchIndex, FinancialIndexBuild } from "edinet-ts";
 
-const source = new ObservedFinancialArchive("data/frozen-observed.sqlite", {readOnly: true});
+const source = new ObservedFinancialArchive("data/frozen-observed.sqlite", { readOnly: true });
 const index = new FinancialSearchIndex("data/financial-index.sqlite");
 const build = new FinancialIndexBuild("data/financial-build.sqlite");
 try {
   build.begin({
-    id: "listed-20261028", generation: "listed-20261028",
+    id: "listed-20261028",
+    generation: "listed-20261028",
     archiveSha256: source.snapshotSha256(),
     population, // asOf / observedAt / source / sourceSha256 / edinetCodes
-    options: {cutoff, extractorVersion, sourceCommit}
+    options: { cutoff, extractorVersion, sourceCommit },
   });
-  const progress = build.runNext("listed-20261028", source, index, {limit: 20});
+  const progress = build.runNext("listed-20261028", source, index, { limit: 20 });
   if (progress.pending === 0 && progress.failed === 0) {
     build.finish("listed-20261028", index);
   }
 } finally {
-  build.close(); index.close(); source.close();
+  build.close();
+  index.close();
+  source.close();
 }
 ```
 
@@ -137,8 +140,6 @@ finishはpending/failedが一つでもあれば拒否します。条件/DB/指�
 
 `build-prepared-financial-cycle.mjs` の `--max-batches`（既定1、1〜100）で、1〜100社のbatchを同じarchive/state/index接続で反復できます。日次入口の上限は100社×10batchです。呼出元は全batch終了まで同じ排他を保持します。入力指紋・容量をbatchごとに確認し、signalは会社commitの境界で処理します。従来の会社checkpointを維持するため、停止後の再開で処理済み会社を再取得・再構築しません。
 
-
-
 通常の日次入口 `scripts/roadmap/run-daily-financial-preparation.mjs` も、取得完了後の構築を一回100社で区切ります。101社の合成母集団で、実際の二重ロック下のCLIが100社で部分終了し、次の呼出しで残り1社を同じ入力指紋・同じ構築recipeのbyte列で完了することを確認しています。ライブラリAPIの既定20社は維持します。CLIの終了0だけで完了とせず、`status` と残件数を確認してください。既に凍結した候補は、その入力に固定したruntimeで再開します。
 
 `scripts/roadmap/build-prepared-financial-cycle.mjs` は、再構築receiptがある固定候補の索引を進めます。一回の上限は既定100社、指定可能な範囲は1〜100社です。同じSDK・構築script・固定configを使い、処理社数だけを引数で変えるため、既存の入力指紋と会社別checkpointを引き継げます。品質集計は公開承認とは別です。
@@ -159,7 +160,7 @@ flock -n -E 75 --close "$CYCLE_ROOT.lock" \
 `FinancialSearchIndex.exportGenerationTo(generation, targetIndex)` は、assemblyのある集約世代を空の別専用DBへ出力します。出力先も通常の `FinancialSearchIndex` で、世代ID・指紋・来歴・品質・検索結果を保持します。会社別世代は出力せず、元の構築DBと会社checkpointは再開・監査用に残します。
 
 ```ts
-const source = new FinancialSearchIndex("data/build-index.sqlite", {readOnly: true});
+const source = new FinancialSearchIndex("data/build-index.sqlite", { readOnly: true });
 const target = new FinancialSearchIndex("data/reader-candidate.sqlite");
 try {
   source.exportGenerationTo("listed-current", target);

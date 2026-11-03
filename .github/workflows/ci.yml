@@ -17,10 +17,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - name: Reserve runner space for guarded SQLite and DuckDB tests
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet
+          df -h . /tmp
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -28,6 +35,10 @@ jobs:
         run: npm install --global npm@12.2.1 --no-audit --no-fund
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+      - name: Check formatting
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint
       - name: Check types
         run: npx --no-install tsc --noEmit
       - name: Compile SDK for API and CLI checks
@@ -42,3 +53,5 @@ jobs:
         run: npm test -- --maxWorkers=1 --exclude test/esm-imports.test.ts
       - name: Test local artifact publication safeguards
         run: python3 scripts/test_artifact_store.py
+      - name: Test Python verification helpers
+        run: python3 -m unittest discover -s test -p '*_test.py'

@@ -37,12 +37,20 @@ cutoffより後の観測・提出は除外し、同じ書類の最新観測を�
 
 ```ts
 const store = new FinancialDetailGenerations("data/details-generations.sqlite");
-store.begin({ id: "extract-20261028", keys: ["document-period-scope"], extractorVersion, mappingVersion });
+store.begin({
+  id: "extract-20261028",
+  keys: ["document-period-scope"],
+  extractorVersion,
+  mappingVersion,
+});
 // snapshotはcreateFinancialDetailSnapshot等で作成した明示期間・項目の結果。
-store.put("extract-20261028", [{
-  key: "document-period-scope", snapshot,
-  provenance: { sourceSha256, extractorVersion, mappingVersion }
-}]);
+store.put("extract-20261028", [
+  {
+    key: "document-period-scope",
+    snapshot,
+    provenance: { sourceSha256, extractorVersion, mappingVersion },
+  },
+]);
 store.pending("extract-20261028"); // 再open後も未保存キーから再開できる
 store.complete("extract-20261028");
 store.activate("extract-20261028");
@@ -67,13 +75,13 @@ store.close();
 
 限定試算は現在の上場母集団（公式2026-10-27時点3,813社）と、過去2日（2025-06-23/24）の提出窓、2025年3月末・連結・J-GAAP・JPYの現金及び預金を組み合わせました。
 
-| 状態 | 社数 |
-|---|---:|
+| 状態             |  社数 |
+| ---------------- | ----: |
 | 対象窓に書類なし | 3,304 |
-| 原本未取得 | 492 |
-| 利用可能 | 2 |
-| 候補複数 | 12 |
-| 書類関係未解決 | 3 |
+| 原本未取得       |   492 |
+| 利用可能         |     2 |
+| 候補複数         |    12 |
+| 書類関係未解決   |     3 |
 
 この母集団は2025年当時の上場企業集合ではありません。提出窓も年間全体ではないため、2025年の全市場財務充足率とは呼びません。
 
@@ -128,9 +136,18 @@ Q2/Q3は事業年度開始から3暦月ずつ区切った開始日と当期末�
 単四半期contextの不在・重複、日付不一致、通常の区切りでは確認できない変則期間は `period-mismatch` として保留し、累計contextで代用しません。
 
 ```ts
-const result = createObservedFinancialSnapshots(observations, [{
-  docID, availableAt, sourceSha256, xml
-}], {cutoff});
+const result = createObservedFinancialSnapshots(
+  observations,
+  [
+    {
+      docID,
+      availableAt,
+      sourceSha256,
+      xml,
+    },
+  ],
+  { cutoff },
+);
 for (const record of result.records) {
   // result内のbasis/各group/各選択値の状態も確認する。
   console.log(record.docID, record.knownAt, record.result.status);

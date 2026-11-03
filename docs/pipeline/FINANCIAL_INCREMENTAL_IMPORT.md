@@ -10,12 +10,12 @@
 
 原本一覧（manifest）は、利用側が用意する書類情報と原本のSHA256、抽出器の版、対応表の版、任意のソースcommitの組です。SHA256はファイル内容を識別する値です。
 
-| 状態 | 判定 | 処理 |
-|---|---|---|
-| `new` 新規 | 会社・書類・対象日・連結/単体・基準・通貨の組が未保存 | 原本を読んで解析・保存 |
-| `changed` 解析版変更 | 同じ組と同じ原本で、抽出器/対応表の版またはソースcommitが違う | 再解析し別IDで保存。旧版を削除しない |
-| `unchanged` 変更なし | 同じ組・原本・版・ソースcommitが保存済み | 原本を読み直さず既存IDを返す |
-| `conflict` 衝突 | 同じ書類IDで原本ハッシュや企業・基準・通貨が一致しない | batch全体を止める。静かな上書きはしない |
+| 状態                 | 判定                                                          | 処理                                    |
+| -------------------- | ------------------------------------------------------------- | --------------------------------------- |
+| `new` 新規           | 会社・書類・対象日・連結/単体・基準・通貨の組が未保存         | 原本を読んで解析・保存                  |
+| `changed` 解析版変更 | 同じ組と同じ原本で、抽出器/対応表の版またはソースcommitが違う | 再解析し別IDで保存。旧版を削除しない    |
+| `unchanged` 変更なし | 同じ組・原本・版・ソースcommitが保存済み                      | 原本を読み直さず既存IDを返す            |
+| `conflict` 衝突      | 同じ書類IDで原本ハッシュや企業・基準・通貨が一致しない        | batch全体を止める。静かな上書きはしない |
 
 同じ原本から別の対象日や連結/単体の値を取り出すことはできます。同じbatch内で同じ組を2回指定する入力は拒否します。日本基準・円以外の入力は、既存APIと同様に未対応として拒否します。
 
@@ -35,8 +35,14 @@
 
 ```json
 [
-  { "file": "source.xbrl", "secCode": "1001", "docID": "SYNTHETIC1",
-    "instant": "2025-03-31", "scope": "Consolidated", "accountingStandard": "J-GAAP" }
+  {
+    "file": "source.xbrl",
+    "secCode": "1001",
+    "docID": "SYNTHETIC1",
+    "instant": "2025-03-31",
+    "scope": "Consolidated",
+    "accountingStandard": "J-GAAP"
+  }
 ]
 ```
 
@@ -84,31 +90,48 @@ DB検索へ渡すIDは保存後のAPIで利用でき、DBを検索する新CLI�
 ```ts
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { BalanceSheetSqliteStore, planBalanceSheetImport, importBalanceSheets,
-    BalanceSheetImportStatus, ConsolidationScope, AccountingStandard,
-    BALANCE_SHEET_REGISTRY_VERSION, type BalanceSheetImportSource } from "edinet-ts";
+import {
+  BalanceSheetSqliteStore,
+  planBalanceSheetImport,
+  importBalanceSheets,
+  BalanceSheetImportStatus,
+  ConsolidationScope,
+  AccountingStandard,
+  BALANCE_SHEET_REGISTRY_VERSION,
+  type BalanceSheetImportSource,
+} from "edinet-ts";
 
 // 例の書類ID・証券コードは合成。原本とDBはGit管理外に置きます。
 const path = "/tmp/synthetic-source.xbrl";
 const bytes = readFileSync(path);
 const source: BalanceSheetImportSource = {
-    metadata: { secCode: "1001", docID: "SYNTHETIC1", instant: "2025-03-31",
-        scope: ConsolidationScope.Consolidated,
-        accountingStandard: AccountingStandard.JGAAP, currency: "JPY" },
-    provenance: { sourceSha256: createHash("sha256").update(bytes).digest("hex"),
-        extractorVersion: "my-tested-parser-v1", mappingVersion: BALANCE_SHEET_REGISTRY_VERSION }
+  metadata: {
+    secCode: "1001",
+    docID: "SYNTHETIC1",
+    instant: "2025-03-31",
+    scope: ConsolidationScope.Consolidated,
+    accountingStandard: AccountingStandard.JGAAP,
+    currency: "JPY",
+  },
+  provenance: {
+    sourceSha256: createHash("sha256").update(bytes).digest("hex"),
+    extractorVersion: "my-tested-parser-v1",
+    mappingVersion: BALANCE_SHEET_REGISTRY_VERSION,
+  },
 };
 const store = new BalanceSheetSqliteStore("/tmp/test-financial.sqlite");
 try {
-    const preview = planBalanceSheetImport(store, [source]);
-    console.log(preview.counts);
-    if (preview.items.some(item => item.status === BalanceSheetImportStatus.Conflict)) {
-        throw new Error("同じ書類の原本情報を確認してください");
-    }
-    // 実行時には再計画するため、外で書換えたpreviewを信用して実行しません。
-    const result = importBalanceSheets(store, [source], () => readFileSync(path));
-    console.log(result.processed, result.inserted, result.unchanged, result.snapshotIds);
-} finally { store.close(); }
+  const preview = planBalanceSheetImport(store, [source]);
+  console.log(preview.counts);
+  if (preview.items.some((item) => item.status === BalanceSheetImportStatus.Conflict)) {
+    throw new Error("同じ書類の原本情報を確認してください");
+  }
+  // 実行時には再計画するため、外で書換えたpreviewを信用して実行しません。
+  const result = importBalanceSheets(store, [source], () => readFileSync(path));
+  console.log(result.processed, result.inserted, result.unchanged, result.snapshotIds);
+} finally {
+  store.close();
+}
 ```
 
 `readSource`は同期関数で、必要な書類のUTF-8原本を`Uint8Array`（Bufferも可）で返します。複数書類の場合は、渡されたdocID等から利用側の原本パスを選んでください。

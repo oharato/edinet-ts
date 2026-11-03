@@ -6,22 +6,32 @@
 
 主要18/21指標や財務明細23項目へは混ぜません。
 
-| 区分 | 指標IDの先頭 |
-|---|---|
-| 監査証明業務／非監査業務 | `auditFees` / `nonAuditFees` |
-| 提出会社／連結子会社／計 | `ReportingCompany` / `ConsolidatedSubsidiaries` / `Total` |
-| 監査人本体／同一ネットワーク（本体を除く） | 接尾辞なし / `NetworkFirms` |
+| 区分                                       | 指標IDの先頭                                              |
+| ------------------------------------------ | --------------------------------------------------------- |
+| 監査証明業務／非監査業務                   | `auditFees` / `nonAuditFees`                              |
+| 提出会社／連結子会社／計                   | `ReportingCompany` / `ConsolidatedSubsidiaries` / `Total` |
+| 監査人本体／同一ネットワーク（本体を除く） | 接尾辞なし / `NetworkFirms`                               |
 
 例えば`AuditFeeMetricId.AuditReportingCompany`は`auditFeesReportingCompany`、`AuditFeeMetricId.NonAuditTotalNetwork`は`nonAuditFeesTotalNetworkFirms`です。対応する`jpcrp_cor`の同名先頭大文字タグを使います。
 
 企業独自タグや別区分の値は代用しません。対象会社の区分はタグが示し、contextの連結/単体scopeとは別の情報です。
 
 ```ts
-const result = createAuditFeeSnapshot({ xml, metadata: {
-  secCode: "19510", docID, scope: "Consolidated", accountingStandard: "J-GAAP",
-  currency: "JPY", periodType: "annual",
-  period: { startDate: "2024-04-01", endDate: "2025-03-31" }
-}}, AuditFeeMetricId.AuditTotal);
+const result = createAuditFeeSnapshot(
+  {
+    xml,
+    metadata: {
+      secCode: "19510",
+      docID,
+      scope: "Consolidated",
+      accountingStandard: "J-GAAP",
+      currency: "JPY",
+      periodType: "annual",
+      period: { startDate: "2024-04-01", endDate: "2025-03-31" },
+    },
+  },
+  AuditFeeMetricId.AuditTotal,
+);
 ```
 
 金額は円の原値で返し、元タグ・context・unit・精度・原XML hashを残します。重複は完全一致でも曖昧のままです。負値・未知次元・不一致単位等は採用せず、nil/ダッシュを0へ変えません。明記された0は保持します。安全なnumberにできない原値は保持しますが検索から除外します。合計タグを取得し、内訳を合算して補完しません。

@@ -40,16 +40,16 @@ node scripts/roadmap/verify-built-financial-cycle.mjs --config /absolute/path/ca
 
 既定policyは次の8条件です。条件未達の候補も `eligible: false / violations` 付きで保存し、確認できます。
 
-| 条件 | 既定値と数え方 |
-|---|---|
+| 条件                               | 既定値と数え方                                                     |
+| ---------------------------------- | ------------------------------------------------------------------ |
 | `minimumCompaniesWithUsableValues` | 固定母集団の会社数。各社に保存projectionの利用可能値が一つ以上必要 |
-| `maxUnavailableSources` | 0。選択原本の不在/時刻/hash/parse等の利用不可書類数 |
-| `maxUnresolvedSelections` | 0。訂正系列等の書類選択が未解決の件数 |
-| `maxUnavailableSelections` | 0。取下げ/非開示/通知等で選択利用不可の件数 |
-| `maxUnresolvedRecords` | 0。原本からの基準/範囲等の結果が未解決の書類数 |
-| `maxUnavailableGroups` | 0。作れなかったgroup別の書類数 |
-| `maxDuplicateCohortIdentifiers` | 0。各cohort内の重複EDINETコード数と重複証券コード数の合計 |
-| `maxUnavailableValues` | 0。保存値の欠損/非対応/曖昧/unsafe件数の合計 |
+| `maxUnavailableSources`            | 0。選択原本の不在/時刻/hash/parse等の利用不可書類数                |
+| `maxUnresolvedSelections`          | 0。訂正系列等の書類選択が未解決の件数                              |
+| `maxUnavailableSelections`         | 0。取下げ/非開示/通知等で選択利用不可の件数                        |
+| `maxUnresolvedRecords`             | 0。原本からの基準/範囲等の結果が未解決の書類数                     |
+| `maxUnavailableGroups`             | 0。作れなかったgroup別の書類数                                     |
+| `maxDuplicateCohortIdentifiers`    | 0。各cohort内の重複EDINETコード数と重複証券コード数の合計          |
+| `maxUnavailableValues`             | 0。保存値の欠損/非対応/曖昧/unsafe件数の合計                       |
 
 書類系列の件数は品質の `selectionDecisions` から取り、解析結果の未解決と分けます。関連する系列で会社所属が未確定でも、黙って無視しません。policyを明示する場合は8項目すべてを0以上の安全な整数で指定します。条件を変更する場合は新候補IDにし、どの条件で採用したかを残します。
 
@@ -58,15 +58,15 @@ node scripts/roadmap/verify-built-financial-cycle.mjs --config /absolute/path/ca
 ## 明示切替と旧候補への復帰
 
 ```ts
-import {FinancialIndexPublication, FinancialSearchIndex} from "edinet-ts";
+import { FinancialIndexPublication, FinancialSearchIndex } from "edinet-ts";
 
 const catalog = new FinancialIndexPublication("data/publication.sqlite");
-const index = new FinancialSearchIndex("data/financial-index.sqlite", {readOnly: true});
+const index = new FinancialSearchIndex("data/financial-index.sqlite", { readOnly: true });
 try {
   const candidate = catalog.prepare("candidate-1", index, "listed-current");
   if (candidate.eligible) {
     const previous = catalog.current()?.id ?? null;
-    catalog.activate(candidate.id, index, {expectedActive: previous});
+    catalog.activate(candidate.id, index, { expectedActive: previous });
   }
 } finally {
   index.close();

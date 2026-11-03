@@ -14,13 +14,13 @@
 
 計画の `items` は書類ID順で、各書類の最新原本観測を次の状態に分けます。
 
-| status | 意味 |
-|---|---|
-| `missing` | 原本観測なし |
-| `declaration-only` | 最新hashの観測はあるが内容なし |
-| `stored` | 最新hashの内容があり、保存byteのhashも一致 |
-| `conflicting` | 最新の同時刻観測に複数hashあり |
-| `unavailable` | 選択された一覧観測でXBRL未提供が明示され、保存済みXMLなし |
+| status             | 意味                                                      |
+| ------------------ | --------------------------------------------------------- |
+| `missing`          | 原本観測なし                                              |
+| `declaration-only` | 最新hashの観測はあるが内容なし                            |
+| `stored`           | 最新hashの内容があり、保存byteのhashも一致                |
+| `conflicting`      | 最新の同時刻観測に複数hashあり                            |
+| `unavailable`      | 選択された一覧観測でXBRL未提供が明示され、保存済みXMLなし |
 
 `unavailable` の理由は `xbrl-not-provided`。`formatAvailability` は選択書類自身の観測ID・時刻とXBRL/PDF/CSV/添付/英文の宣言です。
 
@@ -37,18 +37,21 @@
 ## 一件ずつ保存して再開する
 
 ```ts
-import {ObservedFinancialArchive, EdinetXbrlDownloader} from "edinet-ts";
+import { ObservedFinancialArchive, EdinetXbrlDownloader } from "edinet-ts";
 
 const archive = new ObservedFinancialArchive("data/observed-financial.sqlite");
 const downloader = new EdinetXbrlDownloader({
-  rootDir: "downloads", requestTimeoutMs: 60_000
+  rootDir: "downloads",
+  requestTimeoutMs: 60_000,
 });
 try {
-  const query = {cutoff: "2026-10-28T03:46:38.635Z", edinetCodes: ["E01139"]};
+  const query = { cutoff: "2026-10-28T03:46:38.635Z", edinetCodes: ["E01139"] };
   const plan = archive.planSourceAcquisition(query);
-  const batch = await archive.acquireSources(query,
+  const batch = await archive.acquireSources(
+    query,
     (docID, request) => downloader.fetchXbrl(docID, request),
-    {limit: 20, signal});
+    { limit: 20, signal },
+  );
   // batch.results の失敗と batch.remaining を確認して次の巡回を決めます。
 } finally {
   archive.close();

@@ -21,15 +21,15 @@ flowchart LR
 
 [2026年版の公式タクソノミ](https://www.fsa.go.jp/search/20251111.html)に含まれるjpdei/2013-08-31 XSDで、以下11要素が非abstractのinstant項目であることを確認しました。
 
-| 項目 | DEIタグ |
-|---|---|
-| 提出者 | EDINETCodeDEI |
-| 証券コード（任意） | SecurityCodeDEI |
-| 様式 | DocumentTypeDEI |
-| 基準 | AccountingStandardsDEI |
-| 連結作成の宣言 | WhetherConsolidatedFinancialStatementsArePreparedDEI |
-| 年度開始/年度末 | CurrentFiscalYearStartDateDEI / CurrentFiscalYearEndDateDEI |
-| 当期末/当期の符号 | CurrentPeriodEndDateDEI / TypeOfCurrentPeriodDEI |
+| 項目                                        | DEIタグ                                                                                                                                                                                                 |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 提出者                                      | EDINETCodeDEI                                                                                                                                                                                           |
+| 証券コード（任意）                          | SecurityCodeDEI                                                                                                                                                                                         |
+| 様式                                        | DocumentTypeDEI                                                                                                                                                                                         |
+| 基準                                        | AccountingStandardsDEI                                                                                                                                                                                  |
+| 連結作成の宣言                              | WhetherConsolidatedFinancialStatementsArePreparedDEI                                                                                                                                                    |
+| 年度開始/年度末                             | CurrentFiscalYearStartDateDEI / CurrentFiscalYearEndDateDEI                                                                                                                                             |
+| 当期末/当期の符号                           | CurrentPeriodEndDateDEI / TypeOfCurrentPeriodDEI                                                                                                                                                        |
 | 連結/単体の業種別財務諸表規則コード（任意） | IndustryCodeWhenConsolidatedFinancialStatementsArePreparedInAccordanceWithIndustrySpecificRegulationsDEI / IndustryCodeWhenFinancialStatementsArePreparedInAccordanceWithIndustrySpecificRegulationsDEI |
 
 各fieldはselected/missing/unsupported/ambiguousと原値・全候補・namespace/context/entity/単位等の証跡を返します。DEIは正規namespace・次元のない有効instant・単位なしを確認し、複数候補は完全一致でも自動採用しません。
@@ -44,11 +44,11 @@ nil/空欄/不在と不正値を分けます。単一の既知entityを必要と
 
 Japan GAAPはJ-GAAP、IFRSはIFRSとして確定します。US GAAP/JMIS/未知値を他基準へ切り替えません。連結作成フラグtrue/1を主範囲Consolidated、false/0をNonConsolidatedとして扱い、財務contextも実際のscope・次元・entityで照合します。
 
-| DEIの当期符号 | 期間分類 | durationの対象 |
-|---|---|---|
-| FY | annual | 年度開始から当期末。年度末と当期末の一致を確認 |
-| HY / Q1 / Q2 / Q3 | ytd | 年度開始から当期末。年度末へ延長しない |
-| Q4 | ytd | 延長年度内の第4四半期。下記の当期末・実単四半期条件を必要とする |
+| DEIの当期符号     | 期間分類 | durationの対象                                                  |
+| ----------------- | -------- | --------------------------------------------------------------- |
+| FY                | annual   | 年度開始から当期末。年度末と当期末の一致を確認                  |
+| HY / Q1 / Q2 / Q3 | ytd      | 年度開始から当期末。年度末へ延長しない                          |
+| Q4                | ytd      | 延長年度内の第4四半期。下記の当期末・実単四半期条件を必要とする |
 
 年度開始≦当期末≦年度末、当期末≦DEIのinstantを確認します。FY以外は当期末が年度末より前であることを確認します。annualはFYの宣言に基づく分類で、12か月の保証ではありません。変則期間の元日付を保持し、単四半期や12か月へ換算しません。
 
@@ -58,13 +58,13 @@ Japan GAAPはJ-GAAP、IFRSはIFRSとして確定します。US GAAP/JMIS/未知�
 
 返却する `metadata` では、次の期間・時点を区別します。
 
-| フィールド | 意味 |
-|---|---|
-| `period` | 年度開始から当期末までの累計期間 |
-| `fiscalYear` | 年度開始から年度末までの年度全体 |
-| `instant` | 当期末の時点 |
+| フィールド          | 意味                                                             |
+| ------------------- | ---------------------------------------------------------------- |
+| `period`            | 年度開始から当期末までの累計期間                                 |
+| `fiscalYear`        | 年度開始から年度末までの年度全体                                 |
+| `instant`           | 当期末の時点                                                     |
 | `deiContextInstant` | DEIが参照する時点。提出日時・取得日時・`knownAt`には読み替えない |
-| `quarterPeriod` | Q2/Q3/Q4で実contextを確認できた場合だけ返す、単四半期の期間 |
+| `quarterPeriod`     | Q2/Q3/Q4で実contextを確認できた場合だけ返す、単四半期の期間      |
 
 `quarterPeriod` は、年度開始からQ2なら3か月、Q3なら6か月、Q4なら9か月後を開始候補とし、当期末がその四半期内にあることを確認します。開始日の計算で日付が翌月へ繰り越される場合は採用しません。さらに、期間・名前空間・連結区分・提出者・次元が一致する実contextを必要とし、該当contextに重複IDがある場合も返しません。
 
@@ -79,14 +79,15 @@ Q4は、当期末が年度開始から12暦月後の前日で、DEIの年度末�
 ## APIとsnapshot接続
 
 ```ts
-import {resolveFinancialReportingBasis, createAutomaticFinancialSnapshots} from "edinet-ts";
+import { resolveFinancialReportingBasis, createAutomaticFinancialSnapshots } from "edinet-ts";
 
 const basis = resolveFinancialReportingBasis(xml, "SAMPLE");
 if (basis.status === "selected") {
   console.log(basis.metadata.accountingStandard, basis.metadata.period);
 }
 const result = createAutomaticFinancialSnapshots(xml, {
-  docID: "SAMPLE", detailMetricIds: ["costOfSales"]
+  docID: "SAMPLE",
+  detailMetricIds: ["costOfSales"],
 });
 ```
 
@@ -94,10 +95,10 @@ const result = createAutomaticFinancialSnapshots(xml, {
 
 自動接続の結果は、基準に応じて以下の既存契約を返します。
 
-| 判定 | balanceSheet | detailsの既定 |
-|---|---|---|
-| J-GAAP | 既存BS3 snapshot | 既存のduration2科目（原価/販管費） |
-| IFRS連結 | [IFRS BS8項目](IFRS_BALANCE_SHEET_SELECTION.md)のsnapshot | IFRS PL5 snapshot |
+| 判定     | balanceSheet                                              | detailsの既定                      |
+| -------- | --------------------------------------------------------- | ---------------------------------- |
+| J-GAAP   | 既存BS3 snapshot                                          | 既存のduration2科目（原価/販管費） |
+| IFRS連結 | [IFRS BS8項目](IFRS_BALANCE_SHEET_SELECTION.md)のsnapshot | IFRS PL5 snapshot                  |
 
 detailMetricIdsで、その基準のduration明細を明示できます。期間型/基準にない項目や未知/重複/疎配列は拒否します。IFRS単体はDEI/実contextで確認できる当期主範囲だけを専用IFRS抽出器へ渡し、日本基準へ切り替えません。
 

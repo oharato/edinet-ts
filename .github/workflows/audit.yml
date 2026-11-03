@@ -6,16 +6,21 @@ on:
   pull_request:
     branches: [main, master]
   schedule:
-    - cron: '0 0 * * 1' # 毎週月曜日に実行
+    - cron: "0 0 * * 1" # 毎週月曜日に実行
+
+permissions:
+  contents: read
 
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
@@ -23,12 +28,5 @@ jobs:
         run: npm install --global npm@12.2.1 --no-audit --no-fund
       - run: npm ci
 
-      - name: Audit Production Dependencies (print details)
-        run: |
-          npm audit --omit=dev --json | tee audit-omit-dev.json
-          node -e "const a=require('./audit-omit-dev.json'); console.log('audit metadata:', a.metadata)"
-
-      - name: Audit All Dependencies (Report Only)
-        run: npm audit || true
-        # 開発依存関係(devDependencies)も含めてチェックするが、CIは失敗させない
-        # 開発依存の検出結果は既存方針どおり報告用とする
+      - name: Audit all locked dependencies
+        run: npm run security

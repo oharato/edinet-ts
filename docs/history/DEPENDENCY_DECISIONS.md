@@ -11,24 +11,24 @@
 
 最新版は公式npm registryの`latest`を確認したstable版。package.jsonでの採用済み状態とは別で、pre-releaseは対象にしない。
 
-| 現行依存 | 用途 | 確認した候補・方針 |
-|---|---|---|
-| better-sqlite3 | 書類メタデータDB | 外部依存を削除しNode標準node:sqliteへ。既存DB・transaction・bind・lockingの互換検証が必須 |
-| cli-progress | seedスクリプトの進捗 | 3.12.0を維持。別UIフレームワークに替えない |
-| commander | CLI | 15.0.0へ更新候補。ESM-only、Node>=22.12。肯定/否定オプションのdefaultとJSON/終了コードを回帰検証 |
-| dayjs | seed・期間の日付操作 | 1.11.23へ更新維持。日付のみとtimestampを分け、UTC/JST/米国TZ境界を検証 |
-| dotenv | CLI・開発スクリプトの.env | 最新18.0.8を確認。Node loadEnvFile/--env-file-if-existsも候補。ENOENT・環境変数の上書き・ESM import前の読み込み互換を確認して判断 |
-| fast-xml-parser | XBRL/XML | 5.11.2へ更新優先。namespace/属性、raw数値、mixed content/継続/scaleの回帰が必要。preserveOrderの機械的変更はしない |
-| jszip | ZIP読込/展開 | 3.10.2へ更新維持。大容量は下記候補を評価し、実測なしで高速化を主張しない |
-| @types/better-sqlite3 | 外部SQLite型 | 標準SQLite移行と同時に削除 |
-| @types/cli-progress | 進捗型 | 3.11.6を維持 |
-| @types/jszip | ZIP型 | deprecated stub。JSZip本体に型があるため削除 |
-| @types/node | Node型 | 26.6.5を確認。採用runtimeのDatabase/Statementと型APIを実機確認 |
-| ts-morph | 型ドキュメント生成 | 28.0.0へ更新候補。生成結果が不必要に変わらないことを確認 |
-| tsx | TypeScriptスクリプト実行 | 4.23.15を維持。Node組込TSはtsconfig/型検査の代替ではなく、無条件に削除しない |
-| typescript | 型検査・宣言/JS生成 | 7.0.2へ更新候補。tsconfig廃止/非推奨設定と型宣言・ESM生成を検証 |
-| vitest | テスト | 5.0.5へ更新候補。Node標準testへの置換は移行効果がある場合だけ別判断 |
-| xlsx | タクソノミExcel読込・生成/調査スクリプト | npm latest 0.18.5は既知問題が残る。公式SheetJS CE 0.20.3配布と代替を比較して決定。runtimeのパーサー依存ではない |
+| 現行依存              | 用途                                     | 確認した候補・方針                                                                                                                |
+| --------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| better-sqlite3        | 書類メタデータDB                         | 外部依存を削除しNode標準node:sqliteへ。既存DB・transaction・bind・lockingの互換検証が必須                                         |
+| cli-progress          | seedスクリプトの進捗                     | 3.12.0を維持。別UIフレームワークに替えない                                                                                        |
+| commander             | CLI                                      | 15.0.0へ更新候補。ESM-only、Node>=22.12。肯定/否定オプションのdefaultとJSON/終了コードを回帰検証                                  |
+| dayjs                 | seed・期間の日付操作                     | 1.11.23へ更新維持。日付のみとtimestampを分け、UTC/JST/米国TZ境界を検証                                                            |
+| dotenv                | CLI・開発スクリプトの.env                | 最新18.0.8を確認。Node loadEnvFile/--env-file-if-existsも候補。ENOENT・環境変数の上書き・ESM import前の読み込み互換を確認して判断 |
+| fast-xml-parser       | XBRL/XML                                 | 5.11.2へ更新優先。namespace/属性、raw数値、mixed content/継続/scaleの回帰が必要。preserveOrderの機械的変更はしない                |
+| jszip                 | ZIP読込/展開                             | 3.10.2へ更新維持。大容量は下記候補を評価し、実測なしで高速化を主張しない                                                          |
+| @types/better-sqlite3 | 外部SQLite型                             | 標準SQLite移行と同時に削除                                                                                                        |
+| @types/cli-progress   | 進捗型                                   | 3.11.6を維持                                                                                                                      |
+| @types/jszip          | ZIP型                                    | deprecated stub。JSZip本体に型があるため削除                                                                                      |
+| @types/node           | Node型                                   | 26.6.5を確認。採用runtimeのDatabase/Statementと型APIを実機確認                                                                    |
+| ts-morph              | 型ドキュメント生成                       | 28.0.0へ更新候補。生成結果が不必要に変わらないことを確認                                                                          |
+| tsx                   | TypeScriptスクリプト実行                 | 4.23.15を維持。Node組込TSはtsconfig/型検査の代替ではなく、無条件に削除しない                                                      |
+| typescript            | 型検査・宣言/JS生成                      | 7.0.2へ更新候補。tsconfig廃止/非推奨設定と型宣言・ESM生成を検証                                                                   |
+| vitest                | テスト                                   | 5.0.5へ更新候補。Node標準testへの置換は移行効果がある場合だけ別判断                                                               |
+| xlsx                  | タクソノミExcel読込・生成/調査スクリプト | npm latest 0.18.5は既知問題が残る。公式SheetJS CE 0.20.3配布と代替を比較して決定。runtimeのパーサー依存ではない                   |
 
 ## Nodeと標準SQLite
 

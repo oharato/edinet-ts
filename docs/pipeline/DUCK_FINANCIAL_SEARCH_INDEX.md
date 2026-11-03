@@ -34,7 +34,6 @@ node node_modules/tsx/dist/cli.mjs scripts/verify-duck-financial-reader.ts \
 
 P5で初回監査の分割・容量上限と検査結果再利用を追加した。詳細は以下。品質・独立原本照合gate、catalogでの正式切替、全社/日次/利用先の移行はP6〜P7。本モジュールの追加だけでは本番経路は切り替わらない。
 
-
 ## P5：固定snapshotの監査結果を再利用する
 
 open中に世代manifest・全財務行・全指標値を監査し、全行本文を既存品質検査でSQL列・指標manifestへ突合する。失敗時はreaderを返さず、接続と私有コピーを破棄する。唯一の完成世代以外の孤立行・値も拒否する。
@@ -72,7 +71,6 @@ P5専用の追加検査は、定常時の監査SQLなし、cacheの返却値分�
 構築は新規beginと再開経路の形式検査でも確認し、候補schema/値への書込前に拒否する。異なるnative DuckDBを使う価格DB等とは専用CLI processで分離する。将来のengine更新は依存pinとこの確認条件を一緒に変更・検証する。
 
 実機検証: `node scripts/verify-duck-financial-engine.mjs <隔離SDK> <旧driverのentry.js> <完成候補DuckDB> <新規証跡directory>`。2.0専用processの読取成功と、実1.5/2.0混在processでの拒否、元候補のhash不変を確認する。
-
 
 初回のDuckDB readerは`auditSnapshot`で世代manifestに行のmetadata/本文/hashを照合し、同じ行読取で品質集計も行う。SQL指標値は全件のhashを別途照合してから検査済み状態を返す。数値列のNaN/InfinityはJSONのnullへ正規化される前に拒否する。本文・保存hashの同時改変や、行だけ欠落して指標値が残る場合も拒否する。
 

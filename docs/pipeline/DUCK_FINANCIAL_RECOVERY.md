@@ -40,13 +40,13 @@ node node_modules/tsx/dist/cli.mjs scripts/verify-duck-financial-recovery.ts \
 
 `data/benchmarks/duck-financial-recovery-20261031/summary.json` は実原本由来2社を使い、通常のflock付きCLIで次の7点を検証した。
 
-| 強制終了点 | 再開確認 |
-|---|---|
-| Store schema COMMIT前/後 | stagingを回収し、新しい最終DBを正常初期化 |
-| 実Store.put COMMIT前 | 未確定結果を戻し、残件から解析 |
-| 実Store.put COMMIT後・ack前 | 確定済み結果を再利用 |
-| 実DuckDB会社COMMIT前/後 | 確定会社を保持し、残件だけ構築 |
-| catalog更新transaction中 | 元候補を復旧して完成記録と照合 |
+| 強制終了点                  | 再開確認                                  |
+| --------------------------- | ----------------------------------------- |
+| Store schema COMMIT前/後    | stagingを回収し、新しい最終DBを正常初期化 |
+| 実Store.put COMMIT前        | 未確定結果を戻し、残件から解析            |
+| 実Store.put COMMIT後・ack前 | 確定済み結果を再利用                      |
+| 実DuckDB会社COMMIT前/後     | 確定会社を保持し、残件だけ構築            |
+| catalog更新transaction中    | 元候補を復旧して完成記録と照合            |
 
 全ケースで4行まで完成、同内容再実行、原本不変、正式切替不可を確認した。別fixtureでは3種類のschema初期化前後、cold/空journal、破損journalとWAL拒否、ジョブ・catalog履歴を確認する。検証ハーネスは終了を待った子processが作った私有コピーだけを回収する。
 

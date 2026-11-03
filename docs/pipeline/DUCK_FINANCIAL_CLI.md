@@ -2,14 +2,14 @@
 
 2026-10-31。移行計画P7の配布・読取入口。既存コマンドに加え、以下の非同期コマンドを追加した。
 
-| コマンド | 入力・結果 |
-|---|---|
-| `build-duck-financial-cycle` | `--config`。共有解析Storeを再利用し、固定原本から分割構築・再開する。Linux flockを使用 |
-| `screen-duck-financial-index` | `--db --cohort --metrics`。条件・ソート・offset・limitを指定し、値・根拠・診断・件数を返す。企業マスター指定時はEDINETコードで結合する |
-| `compare-duck-financial-industries` | `--db --cohort --metrics --company-master --company-query`。業種別の共通採用集合・分数統計を返す |
-| `duck-financial-index-quality` | `--db --generation`。全件検査済み世代の母集団・書類・値の充足 |
-| `duck-financial-index-generation` | `--db --generation`。固定世代manifest |
-| `duck-financial-publication-status` | `--catalog --db`。SQLite catalogの候補・履歴とDuckDBの一致を検査 |
+| コマンド                            | 入力・結果                                                                                                                             |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `build-duck-financial-cycle`        | `--config`。共有解析Storeを再利用し、固定原本から分割構築・再開する。Linux flockを使用                                                 |
+| `screen-duck-financial-index`       | `--db --cohort --metrics`。条件・ソート・offset・limitを指定し、値・根拠・診断・件数を返す。企業マスター指定時はEDINETコードで結合する |
+| `compare-duck-financial-industries` | `--db --cohort --metrics --company-master --company-query`。業種別の共通採用集合・分数統計を返す                                       |
+| `duck-financial-index-quality`      | `--db --generation`。全件検査済み世代の母集団・書類・値の充足                                                                          |
+| `duck-financial-index-generation`   | `--db --generation`。固定世代manifest                                                                                                  |
+| `duck-financial-publication-status` | `--catalog --db`。SQLite catalogの候補・履歴とDuckDBの一致を検査                                                                       |
 
 `--pretty` でJSONを整形する。完成した停止済みDuckDBを私有コピーとして読取専用で開く。未知/破損ファイル、不正な集合・数値・未収録世代は非0終了し、入力内容・ネイティブdriverのエラー詳細をログへ出さない。
 
@@ -24,7 +24,7 @@ cohort.json:
   "accountingStandard": "J-GAAP",
   "scope": "Consolidated",
   "currency": "JPY",
-  "period": {"startDate": "2025-04-01", "endDate": "2026-03-31"},
+  "period": { "startDate": "2025-04-01", "endDate": "2026-03-31" },
   "periodType": "annual"
 }
 ```

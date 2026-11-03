@@ -1,13 +1,44 @@
-import { BalanceSheetSqliteStore, BalanceSheetScreeningMetric, ComparisonOperator, SortOrder,
-    type BalanceSheetSnapshot, type BalanceSheetStoreCohort, type BalanceSheetStoreInput } from "../../src/index";
+import {
+  BalanceSheetSqliteStore,
+  BalanceSheetScreeningMetric,
+  ComparisonOperator,
+  SortOrder,
+  type BalanceSheetSnapshot,
+  type BalanceSheetStoreCohort,
+  type BalanceSheetStoreInput,
+} from "../../src/index";
 declare const store: BalanceSheetSqliteStore;
 declare const snapshot: BalanceSheetSnapshot;
-const input: BalanceSheetStoreInput = { snapshot, provenance: { extractorVersion: "v1", mappingVersion: "1", sourceSha256: "a".repeat(64) } };
+const input: BalanceSheetStoreInput = {
+  snapshot,
+  provenance: { extractorVersion: "v1", mappingVersion: "1", sourceSha256: "a".repeat(64) },
+};
 const saved = store.putMany([input]);
-const cohort = { instant: "2025-03-31", scope: "Consolidated", accountingStandard: "J-GAAP", currency: "JPY", extractorVersion: "v1", mappingVersion: "1" } satisfies BalanceSheetStoreCohort;
-store.search({ ...cohort, snapshotIds: saved.ids }, { conditions: [{ metric: BalanceSheetScreeningMetric.CurrentRatio, operator: ComparisonOperator.GreaterThanOrEqual, value: 2 }], order: SortOrder.Descending });
+const cohort = {
+  instant: "2025-03-31",
+  scope: "Consolidated",
+  accountingStandard: "J-GAAP",
+  currency: "JPY",
+  extractorVersion: "v1",
+  mappingVersion: "1",
+} satisfies BalanceSheetStoreCohort;
+store.search(
+  { ...cohort, snapshotIds: saved.ids },
+  {
+    conditions: [
+      {
+        metric: BalanceSheetScreeningMetric.CurrentRatio,
+        operator: ComparisonOperator.GreaterThanOrEqual,
+        value: 2,
+      },
+    ],
+    order: SortOrder.Descending,
+  },
+);
 const row = store.get(saved.ids[0]);
-if (row) { const raw: string | undefined = row.snapshot.selections.currentAssets.raw; }
+if (row) {
+  const raw: string | undefined = row.snapshot.selections.currentAssets.raw;
+}
 // @ts-expect-error 未対応会計基準をDBで混ぜない
 store.search({ ...cohort, accountingStandard: "IFRS" });
 // @ts-expect-error 単位を推測変換しない
@@ -17,28 +48,51 @@ store.putMany([{ snapshot, provenance: { mappingVersion: "1", sourceSha256: "a".
 // @ts-expect-error 検索項目の綴り誤り
 store.search(cohort, { sortBy: "currentRation" });
 
-import { planBalanceSheetImport, importBalanceSheets, BalanceSheetImportStatus, type BalanceSheetImportSource } from "../../src/index";
-const source: BalanceSheetImportSource = { metadata: { secCode: "1001", docID: "SYNTHETIC1", instant: cohort.instant,
-    scope: cohort.scope, accountingStandard: cohort.accountingStandard, currency: cohort.currency }, provenance: input.provenance };
+import {
+  planBalanceSheetImport,
+  importBalanceSheets,
+  BalanceSheetImportStatus,
+  type BalanceSheetImportSource,
+} from "../../src/index";
+const source: BalanceSheetImportSource = {
+  metadata: {
+    secCode: "1001",
+    docID: "SYNTHETIC1",
+    instant: cohort.instant,
+    scope: cohort.scope,
+    accountingStandard: cohort.accountingStandard,
+    currency: cohort.currency,
+  },
+  provenance: input.provenance,
+};
 const plan = planBalanceSheetImport(store, [source]);
 const status: BalanceSheetImportStatus = plan.items[0].status;
-if (status === BalanceSheetImportStatus.Changed) { const ids: string[] = plan.items[0].previousIds; }
+if (status === BalanceSheetImportStatus.Changed) {
+  const ids: string[] = plan.items[0].previousIds;
+}
 const imported = importBalanceSheets(store, [source], () => new Uint8Array());
 store.putMany([], { expectedInventoryFingerprint: store.inventory().fingerprint });
 // @ts-expect-error 原本はbyte列で渡す
 importBalanceSheets(store, [source], () => "XML");
-// @ts-expect-error 解析版は必須
-planBalanceSheetImport(store, [{ metadata: source.metadata, provenance: { mappingVersion: "1", sourceSha256: "a".repeat(64) } }]);
+planBalanceSheetImport(store, [
+  // @ts-expect-error 解析版は必須
+  { metadata: source.metadata, provenance: { mappingVersion: "1", sourceSha256: "a".repeat(64) } },
+]);
 // @ts-expect-error ステータスの綴り誤り
 const invalidStatus: BalanceSheetImportStatus = "change";
 
-import { compareBalanceSheetVersions, BalanceSheetDiffStatus, BalanceSheetValueComparison } from "../../src/index";
+import {
+  compareBalanceSheetVersions,
+  BalanceSheetDiffStatus,
+  BalanceSheetValueComparison,
+} from "../../src/index";
 const comparison = compareBalanceSheetVersions(store, saved.ids[0], saved.ids[0]);
 const comparisonStatus: BalanceSheetDiffStatus = comparison.status;
-const valueComparison: BalanceSheetValueComparison = comparison.metrics.currentAssets.valueComparison;
+const valueComparison: BalanceSheetValueComparison =
+  comparison.metrics.currentAssets.valueComparison;
 const exactRaw: string | undefined = comparison.metrics.currentAssets.before.raw;
 if (comparison.currentRatio.before.status === "calculated") {
-    const exactNumerator: string = comparison.currentRatio.before.exact.numerator;
+  const exactNumerator: string = comparison.currentRatio.before.exact.numerator;
 }
 const versions = store.getMany(saved.ids);
 // @ts-expect-error snapshot IDは文字列

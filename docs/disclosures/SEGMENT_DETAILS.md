@@ -6,15 +6,15 @@
 
 ## 指標と役割
 
-| 指標ID | 元表の意味 | 期間の扱い |
-|---|---|---|
-| externalRevenueJPY | 外部顧客への売上高 | duration |
-| intersegmentRevenueJPY | セグメント間の内部売上高又は振替高 | duration |
-| revenueJPY | 売上高の「計」 | duration |
-| profitJPY | セグメント利益又は損失 | duration |
-| assetsJPY | セグメント資産 | 宣言期間の期末 |
-| depreciationJPY | 減価償却費 | duration |
-| assetAdditionsJPY | 有形固定資産及び無形固定資産の増加額 | duration |
+| 指標ID                 | 元表の意味                           | 期間の扱い     |
+| ---------------------- | ------------------------------------ | -------------- |
+| externalRevenueJPY     | 外部顧客への売上高                   | duration       |
+| intersegmentRevenueJPY | セグメント間の内部売上高又は振替高   | duration       |
+| revenueJPY             | 売上高の「計」                       | duration       |
+| profitJPY              | セグメント利益又は損失               | duration       |
+| assetsJPY              | セグメント資産                       | 宣言期間の期末 |
+| depreciationJPY        | 減価償却費                           | duration       |
+| assetAdditionsJPY      | 有形固定資産及び無形固定資産の増加額 | duration       |
 
 元表の見出しから`reported-segment`（報告セグメント）・`reported-total`（記載合計）・`adjustment`（調整額）・`financial-statement-total`（連結財務諸表計上額）を区別します。検索ではroleを必須とし、合計や調整を通常のセグメント件数へ混ぜません。
 
@@ -25,19 +25,29 @@
 ## 原表の期間と横分割
 
 ```ts
-import { extractSegmentDetails, searchSegmentDetails, DisclosureTableKind, SegmentMetric } from "edinet-ts";
+import {
+  extractSegmentDetails,
+  searchSegmentDetails,
+  DisclosureTableKind,
+  SegmentMetric,
+} from "edinet-ts";
 const period = { startDate: "2025-04-01", endDate: "2026-03-31" };
 const document = {
   xml: savedXml,
-  selection: { docID: "SAMPLE", kind: DisclosureTableKind.Segments, contextRef: "CurrentYearDuration" },
+  selection: {
+    docID: "SAMPLE",
+    kind: DisclosureTableKind.Segments,
+    contextRef: "CurrentYearDuration",
+  },
   accountingStandard: "J-GAAP" as const,
-  declarations: [{ period, tableIndexes: [2, 3], rawSha256: reviewedFragmentHash }]
+  declarations: [{ period, tableIndexes: [2, 3], rawSha256: reviewedFragmentHash }],
 };
 const details = extractSegmentDetails(document);
 const matches = searchSegmentDetails([document], {
-  period, role: "reported-segment",
+  period,
+  role: "reported-segment",
   conditions: [{ metric: SegmentMetric.ProfitJPY, operator: "gt", value: 1_000_000_000 }],
-  sort: { metric: SegmentMetric.ProfitJPY, order: "desc" }
+  sort: { metric: SegmentMetric.ProfitJPY, order: "desc" },
 });
 ```
 

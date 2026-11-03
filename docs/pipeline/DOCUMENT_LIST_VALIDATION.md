@@ -43,11 +43,11 @@ EDINET API v2 は `docInfoEditStatus` を `"0"` / `"1"` / `"2"` の文字列で�
 
 金融庁の[API仕様書v2・2026年6月版、印刷p88（PDF93枚目）](https://disclosure2dl.edinet-fsa.go.jp/guide/static/disclosure/download/ESE140206.pdf#page=93)で、010は通知書、030は有価証券届出書、040は訂正有価証券届出書と確認しました。
 
-| 読みたい種類 | 新しい定数 | CLIの明示指定 |
-|---|---|---|
-| 通知書010 | `EdinetDocumentType.SecuritiesNotice` | `--type securities-notice` または `--type 010` |
-| 有価証券届出書030 | `EdinetDocumentType.RegistrationStatement` | `--type registration-statement` または `--type 030` |
-| 訂正有価証券届出書040 | 既存の `AmendedSecuritiesRegistrationStatement` | 既存の `--type amended` または `--type 040` |
+| 読みたい種類          | 新しい定数                                      | CLIの明示指定                                       |
+| --------------------- | ----------------------------------------------- | --------------------------------------------------- |
+| 通知書010             | `EdinetDocumentType.SecuritiesNotice`           | `--type securities-notice` または `--type 010`      |
+| 有価証券届出書030     | `EdinetDocumentType.RegistrationStatement`      | `--type registration-statement` または `--type 030` |
+| 訂正有価証券届出書040 | 既存の `AmendedSecuritiesRegistrationStatement` | 既存の `--type amended` または `--type 040`         |
 
 旧 `SecuritiesRegistrationStatement` は名前と値が食い違っていました。互換性を保つため値は010のままにし、非推奨（新しいコードでは使わない）としています。
 
@@ -56,7 +56,7 @@ CLIの旧 `registration` も010のままです。届出書には新しい定数�
 これまで未登録だった `--type 030` は有報120へ戻っていましたが、今回から正しく030で絞り込みます。
 
 ```ts
-import { EdinetDocumentType } from 'edinet-ts';
+import { EdinetDocumentType } from "edinet-ts";
 const notice = EdinetDocumentType.SecuritiesNotice; // 010
 const registration = EdinetDocumentType.RegistrationStatement; // 030
 ```
@@ -73,14 +73,14 @@ const registration = EdinetDocumentType.RegistrationStatement; // 030
 
 380の変更の届出書は基準日の届出書に対する変更であり、大量保有の変更報告書ではありません。
 
-| 読みたい種類 | 定数 | CLIの指定 |
-|---|---|---|
-| 別途買付け禁止の特例を受けるための申出書330 | `EdinetDocumentType.SeparatePurchaseProhibitionException` | `--type 330` |
-| 訂正別途買付け禁止の特例を受けるための申出書340 | `EdinetDocumentType.AmendedSeparatePurchaseProhibitionException` | `--type 340` |
-| 大量保有報告書350（変更報告書を含む） | `EdinetDocumentType.LargeShareholdingReport` | `--type largeshareholding` または `--type 350` |
-| 訂正大量保有報告書360 | 既存の `EdinetDocumentType.CorrectionReport` | `--type correction` または `--type 360` |
-| 基準日の届出書370 | `EdinetDocumentType.RecordDateNotification` | `--type 370` |
-| 変更の届出書380 | `EdinetDocumentType.ChangeNotification` | `--type 380` |
+| 読みたい種類                                    | 定数                                                             | CLIの指定                                      |
+| ----------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------- |
+| 別途買付け禁止の特例を受けるための申出書330     | `EdinetDocumentType.SeparatePurchaseProhibitionException`        | `--type 330`                                   |
+| 訂正別途買付け禁止の特例を受けるための申出書340 | `EdinetDocumentType.AmendedSeparatePurchaseProhibitionException` | `--type 340`                                   |
+| 大量保有報告書350（変更報告書を含む）           | `EdinetDocumentType.LargeShareholdingReport`                     | `--type largeshareholding` または `--type 350` |
+| 訂正大量保有報告書360                           | 既存の `EdinetDocumentType.CorrectionReport`                     | `--type correction` または `--type 360`        |
+| 基準日の届出書370                               | `EdinetDocumentType.RecordDateNotification`                      | `--type 370`                                   |
+| 変更の届出書380                                 | `EdinetDocumentType.ChangeNotification`                          | `--type 380`                                   |
 
 旧定義は `LargeShareholdingReport` が340、`ChangeReport` が350でした。340は大量保有ではないため、`LargeShareholdingReport` の値を公式どおり350へ是正し、`isLargeShareholding()` とCLI `largeshareholding` の対象を350と360にしました。
 

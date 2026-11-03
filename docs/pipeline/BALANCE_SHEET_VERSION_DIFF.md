@@ -36,12 +36,12 @@ node dist/cli.js diff-bs --db /tmp/bs-input/financial.sqlite --before "$BEFORE_I
 
 各項目の`valueComparison`は次の意味です。
 
-| 値 | 意味 |
-|---|---|
-| `equal` | 両方の採用値が数値として同じ |
-| `changed` | 両方の採用値が数値として違う |
-| `unavailable` | 欠損・未対応・曖昧等で、両方に採用値/計算値が揃わない。0へ補わない |
-| `not-comparable` | 会社や原本などが揃わず、数値を比較しない |
+| 値               | 意味                                                               |
+| ---------------- | ------------------------------------------------------------------ |
+| `equal`          | 両方の採用値が数値として同じ                                       |
+| `changed`        | 両方の採用値が数値として違う                                       |
+| `unavailable`    | 欠損・未対応・曖昧等で、両方に採用値/計算値が揃わない。0へ補わない |
+| `not-comparable` | 会社や原本などが揃わず、数値を比較しない                           |
 
 金額は元の十進文字列を正規化して等値を判定します。`00120.00`と`120`、`-0`と`+0.0`は数値として同じですが、`changes.raw`に表記の違いを残します。
 
@@ -62,18 +62,24 @@ numberや64bit整数へ変換しないため、巨大整数の差や小数の末
 ## プログラムから使う
 
 ```ts
-import { BalanceSheetSqliteStore, compareBalanceSheetVersions,
-    BalanceSheetDiffStatus, BalanceSheetValueComparison } from "edinet-ts";
+import {
+  BalanceSheetSqliteStore,
+  compareBalanceSheetVersions,
+  BalanceSheetDiffStatus,
+  BalanceSheetValueComparison,
+} from "edinet-ts";
 
 // 停止済み試験DBのコピーを使います。
 const store = new BalanceSheetSqliteStore("/tmp/test-copy.sqlite", { readOnly: true });
 try {
-    const result = compareBalanceSheetVersions(store, beforeId, afterId);
-    if (result.status === BalanceSheetDiffStatus.Incomparable) console.log(result.issues);
-    if (result.metrics.currentAssets.valueComparison === BalanceSheetValueComparison.Changed) {
-        console.log(result.metrics.currentAssets.summary);
-    }
-} finally { store.close(); }
+  const result = compareBalanceSheetVersions(store, beforeId, afterId);
+  if (result.status === BalanceSheetDiffStatus.Incomparable) console.log(result.issues);
+  if (result.metrics.currentAssets.valueComparison === BalanceSheetValueComparison.Changed) {
+    console.log(result.metrics.currentAssets.summary);
+  }
+} finally {
+  store.close();
+}
 ```
 
 `store.getMany(ids)`は同じ読み取り時点でID群を検証して返します。不正・不明ID、保存破損があれば全体を拒否し、同じIDを2回指定することもできます。比較APIはこれを使い、比較途中の他接続更新を混ぜません。

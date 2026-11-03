@@ -7,9 +7,9 @@
 ## APIと検査対象
 
 ```ts
-import {FinancialSearchIndex} from "edinet-ts";
+import { FinancialSearchIndex } from "edinet-ts";
 
-const index = new FinancialSearchIndex("data/financial-index.sqlite", {readOnly: true});
+const index = new FinancialSearchIndex("data/financial-index.sqlite", { readOnly: true });
 try {
   const quality = index.quality("listed-current");
   console.log(quality.populationCompanies, quality.companiesWithRows);
@@ -27,16 +27,16 @@ try {
 
 ## 会社・書類・行を分ける
 
-| field | 意味 |
-|---|---|
-| `population` / `populationCompanies` | 全社分割構築で宣言・固定した母集団と会社数 |
-| `companiesWithSelectedDocuments` | 固定母集団内で書類選択が成功した会社数 |
-| `companiesWithoutSelectedDocument` | 固定母集団内で選択成功書類がない会社数 |
-| `companiesWithRows` | 財務行が一つ以上ある会社数 |
-| `companiesWithUsableValues` | 保存した指標のうち数値比較に使える値が一つ以上ある会社数 |
-| `selectedCompaniesWithoutRows` | 選択成功書類があっても財務行がない会社数 |
-| `selectedDocuments` / `documentsWithRows` / `selectedDocumentsWithoutRows` | 同じ違いを書類単位で数えたもの |
-| `rows` | 保存したgroup別の財務行数 |
+| field                                                                      | 意味                                                     |
+| -------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `population` / `populationCompanies`                                       | 全社分割構築で宣言・固定した母集団と会社数               |
+| `companiesWithSelectedDocuments`                                           | 固定母集団内で書類選択が成功した会社数                   |
+| `companiesWithoutSelectedDocument`                                         | 固定母集団内で選択成功書類がない会社数                   |
+| `companiesWithRows`                                                        | 財務行が一つ以上ある会社数                               |
+| `companiesWithUsableValues`                                                | 保存した指標のうち数値比較に使える値が一つ以上ある会社数 |
+| `selectedCompaniesWithoutRows`                                             | 選択成功書類があっても財務行がない会社数                 |
+| `selectedDocuments` / `documentsWithRows` / `selectedDocumentsWithoutRows` | 同じ違いを書類単位で数えたもの                           |
+| `rows`                                                                     | 保存したgroup別の財務行数                                |
 
 一社に複数期/書類があり、一書類にはBS・明細の別行があるため、会社数・書類数・行数を同じ充足率へ混ぜません。「利用可能な値がある」は全指標の充足や会社間比較可能性を意味しません。
 
@@ -54,13 +54,13 @@ group別書類数と全体の書類数は単純に足しません。これらを
 
 保存した選択値の `values` は次の5分類です。
 
-| state | 意味 |
-|---|---|
-| `available` | 保存選択が採用され、既存の数値範囲検査を通る |
-| `missing` | 項目/対象factの不在等 |
-| `unsupported` | 通貨/単位・nil等の非対応 |
-| `ambiguous` | 複数fact等で採用を決められない |
-| `unsafe-number` | 元記載は採用できても数値比較の範囲外 |
+| state           | 意味                                         |
+| --------------- | -------------------------------------------- |
+| `available`     | 保存選択が採用され、既存の数値範囲検査を通る |
+| `missing`       | 項目/対象factの不在等                        |
+| `unsupported`   | 通貨/単位・nil等の非対応                     |
+| `ambiguous`     | 複数fact等で採用を決められない               |
+| `unsafe-number` | 元記載は採用できても数値比較の範囲外         |
 
 元の符号や精度を変更せず、nil/欠損/非対応/曖昧を0で補いません。詳細な採用理由と候補/evidenceは元の保存行・検索診断に残します。集計対象は世代に保存したprojectionだけであり、指定しなかった全辞書項目や主要21指標を抽出済みとする結果ではありません。
 
@@ -81,11 +81,11 @@ CLIはreadOnlyで全品質をJSONへ返します。品質上の不在/保留/重
 
 ## 実世代の確認
 
-| 対象 | 財務行/会社 | 値の状態 | 備考 |
-|---|---|---|---|
-| 当初4原本の固定母集団世代 | 8行/4社、4 cohort | 26採用 | 母集団3,813社、選択成功1,177社/1,268書類、選択なし2,636社、原本不足1,264書類 |
-| 後から取得した6原本の世代 | 12行/5社、6 cohort | 25採用/4欠損/1曖昧 | 利用可能値を持つ会社は4社 |
-| IFRS17明細の世代 | 4行/2社、2 cohort | 28採用/12欠損 | BS3と明示duration17の別projection |
+| 対象                      | 財務行/会社        | 値の状態           | 備考                                                                         |
+| ------------------------- | ------------------ | ------------------ | ---------------------------------------------------------------------------- |
+| 当初4原本の固定母集団世代 | 8行/4社、4 cohort  | 26採用             | 母集団3,813社、選択成功1,177社/1,268書類、選択なし2,636社、原本不足1,264書類 |
+| 後から取得した6原本の世代 | 12行/5社、6 cohort | 25採用/4欠損/1曖昧 | 利用可能値を持つ会社は4社                                                    |
+| IFRS17明細の世代          | 4行/2社、2 cohort  | 28採用/12欠損      | BS3と明示duration17の別projection                                            |
 
 source/built・配布用CLIで3世代の全品質が一致し、readOnlyの元ファイル不変、CommonJS公開関数・NodeNext型検査も確認しました。この結果は固定した既存世代のもので、進行中の原本一括取得後の全市場品質を示すものではありません。全市場の必要期間/原本・指標充足、公開条件・本番/利用先反映は残工程です。
 

@@ -15,11 +15,11 @@
 
 ## 稼働するunit
 
-| unit | 処理 | RestartSec |
-|---|---|---:|
-| `edinet-roadmap-year-acquisition-batch100.service` | 固定原本jobの残件取得・完了指紋検査 | 10秒 |
-| `edinet-roadmap-year-build-batch100.service` | 取得完了を待ち、同じ計画指紋から全社索引/品質を構築 | 15秒 |
-| `edinet-roadmap-daily-metadata.timer` | 年次完了後の別metadata再観測・通知対象日追加 | — |
+| unit                                               | 処理                                                | RestartSec |
+| -------------------------------------------------- | --------------------------------------------------- | ---------: |
+| `edinet-roadmap-year-acquisition-batch100.service` | 固定原本jobの残件取得・完了指紋検査                 |       10秒 |
+| `edinet-roadmap-year-build-batch100.service`       | 取得完了を待ち、同じ計画指紋から全社索引/品質を構築 |       15秒 |
+| `edinet-roadmap-daily-metadata.timer`              | 年次完了後の別metadata再観測・通知対象日追加        |          — |
 
 年次の両serviceは`~/.config/systemd/user/`に置き、`WantedBy=default.target`でenableしています。`Restart=on-failure`、300秒内3回の起動上限、`TimeoutStopSec=600`、`UMask=0077`。
 
@@ -167,9 +167,9 @@ timerはenable/activeで次の通常確認は09:00JST、09〜23時台の5分間�
 
 日次財務設定の `sourceArchivePath` を新しいDBへ変更し、次の2項目を追加します。
 
-| 項目 | 指定内容 |
-|---|---|
-| `sourceArchiveMigrationPath` | 独立監査JSONの絶対パス |
+| 項目                           | 指定内容                      |
+| ------------------------------ | ----------------------------- |
+| `sourceArchiveMigrationPath`   | 独立監査JSONの絶対パス        |
 | `sourceArchiveMigrationSha256` | そのJSONファイル全体のSHA-256 |
 
 監査JSONには `version: 1`、`status: "independently-verified"`、元DBの絶対パス `input` と指紋 `inputSha256`、新DBの絶対パス `output` と指紋 `outputSha256` を保存します。日次処理は、年次完了記録と元DBの対応、設定と監査JSONの対応、新DBの実指紋を確認します。証跡の作成自体はこの入力検査では行いません。

@@ -28,12 +28,12 @@
 
 以下の表と候補一覧は調査基準commitの記録です。PR #24で追加した最初の3項目の現在の対応範囲は、上記の使い方を参照してください。
 
-| 区分 | 単一銘柄・単一書類 | 横断検索 |
-|---|---|---|
-| 現在可能 | 既存18主要指標、選択factの来歴、任意タグのraw取得 | 明示snapshot集合の21指標filter/sort。永続財務索引・全市場DBではない |
-| タグはあるが未正規化 | 下表のBS/PL/CF候補。raw取得成功を統一API対応としない | 新しい科目は現行metric key/filter/sortに未登録 |
-| 追加計算 | 流動比率、負債比率、借入合計、設備投資合計等。必要明細・定義の合意後に追加 | 同一scope/時点/通貨/基準の入力を揃えたsnapshotだけを対象にする |
-| 未取得・未検証 | US-GAAP・金融業・新リース基準等の対象fixture、複数年度の独立原本照合、最新taxonomy差分 | 母集団別充足率、外部サービスとの値一致、全社永続索引 |
+| 区分                 | 単一銘柄・単一書類                                                                     | 横断検索                                                            |
+| -------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| 現在可能             | 既存18主要指標、選択factの来歴、任意タグのraw取得                                      | 明示snapshot集合の21指標filter/sort。永続財務索引・全市場DBではない |
+| タグはあるが未正規化 | 下表のBS/PL/CF候補。raw取得成功を統一API対応としない                                   | 新しい科目は現行metric key/filter/sortに未登録                      |
+| 追加計算             | 流動比率、負債比率、借入合計、設備投資合計等。必要明細・定義の合意後に追加             | 同一scope/時点/通貨/基準の入力を揃えたsnapshotだけを対象にする      |
+| 未取得・未検証       | US-GAAP・金融業・新リース基準等の対象fixture、複数年度の独立原本照合、最新taxonomy差分 | 母集団別充足率、外部サービスとの値一致、全社永続索引                |
 
 未取得、タグ不在、未対応基準、context不一致、単位不明、曖昧な重複、nilを、実値0から区別する。値を採用できない理由を返す型/APIは、mainへ統合済みの[数値の選択API](../financial/METRIC_SELECTION.md)に定義されています。この計画書自体はAPIを追加しません。
 
@@ -49,19 +49,19 @@ mainの財務3項目を使う流動比率は、PR #28でmainへ統合済みで�
 
 以下の項目名は設計上の候補名。公開API名の確定ではない。`jppfs_cor:`はJ-GAAP候補、`jpigp_cor:`はIFRS候補であり、namespace URI・taxonomy版も照合する。local nameだけで未知namespaceや会社拡張を同義扱いしない。
 
-| 優先/概算 | 項目・期間 | 元候補 | 誤混入防止・残課題 |
-|---|---|---|---|
-| P1/S | 流動資産・Instant | `jppfs_cor:CurrentAssets` | 合計factのみ。内訳やセグメントを足さない。IFRS候補 `jpigp_cor:CurrentAssetsIFRS` は別mapping。売却目的資産を除く `CurrentAssetsOtherThanAssetsHeldForSaleCAIFRS` を同義にしない |
-| P1/S | 流動負債・Instant | `jppfs_cor:CurrentLiabilities` | IFRS候補は `jpigp_cor:TotalCurrentLiabilitiesIFRS`。`OtherCurrentLiabilitiesCLIFRS` 等の内訳で代用しない |
-| P1/S | 負債合計・Instant | `jppfs_cor:Liabilities` | `LiabilitiesAndNetAssets`と区別。IFRS候補 `jpigp_cor:LiabilitiesIFRS`。売却目的関連を除く小計を代用しない。純資産差引計算は別指標 |
-| P1/S | 固定資産・固定負債・Instant | `jppfs_cor:NoncurrentAssets` / `NoncurrentLiabilities` | IFRS資産候補 `jpigp_cor:NonCurrentAssetsIFRS`（大文字小文字に注意）。IFRS負債の総額候補は追加確認が必要。差額補完しない |
-| P1/S | 現預金・Instant | `jppfs_cor:CashAndDeposits` | 既存 `cashAndEquivalents` と別項目。定期預金の調整等を推測しない。IFRSで自動的に現金同等物へfallbackしない |
-| 既存の監査/P0/S | 現金及び現金同等物・Instant | 既存 `jppfs_cor:CashAndCashEquivalents` / `CashAndCashEquivalentsEndOfPeriod` / `jpcrp_cor:CashAndCashEquivalentsIFRSSummaryOfBusinessResults` | `jpigp_cor:CashAndCashEquivalentsIFRS` は追加候補。要約/本表で異なるfactがあれば理由付き選択・曖昧さを記録。現預金で埋めない |
-| P2/M | 借入・社債・リース各残高・Instant | `jppfs_cor:ShortTermLoansPayable` / `CurrentPortionOfLongTermLoansPayable` / `LongTermLoansPayable` / `CurrentPortionOfBonds` / `BondsPayable` / `LeaseObligationsCL` / `LeaseObligationsNCL` | まず各直接factを独立保持。短期借入に一年内返済分が含まれるか、関連会社借入の内訳か合計かを確認。リース欠損を0扱いせず、有利子負債総額を直ちに作らない |
-| P2/M | IFRS有利子負債・リース各残高・Instant | `jpigp_cor:InterestBearingLiabilitiesCLIFRS` / `InterestBearingLiabilitiesNCLIFRS` / `LeaseLiabilitiesCLIFRS` / `LeaseLiabilitiesNCLIFRS` | 有利子負債がリースを含むか原文注記と定義で確認。上位額と内訳を重複加算しない。J-GAAP借入のみとの比較は別定義 |
-| P1/S〜M | 売上原価・販管費・Duration | `jppfs_cor:CostOfSales` / `SellingGeneralAndAdministrativeExpenses` | IFRS候補 `jpigp_cor:CostOfSalesIFRS` / `SellingGeneralAndAdministrativeExpensesIFRS`。業種別費用や部門費用の部分合計で代用しない。符号・費用機能別/性質別を確認 |
-| P2/M | CF調整の減価償却・Duration | `jppfs_cor:DepreciationAndAmortizationOpeCF` | `DepreciationSGA`、設備別累計償却、売上原価内の償却と区別。CF調整値からEBITDAを即計算しない |
-| P2/M | 設備投資支出・Duration | `jppfs_cor:PurchaseOfPropertyPlantAndEquipmentInvCF` / `PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF` | 有形のみと有形+無形を別項目にする。両方を加算しない。支出符号の仕様を固定し、資産増減やリース取得を代用しない |
+| 優先/概算       | 項目・期間                            | 元候補                                                                                                                                                                                        | 誤混入防止・残課題                                                                                                                                                              |
+| --------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1/S            | 流動資産・Instant                     | `jppfs_cor:CurrentAssets`                                                                                                                                                                     | 合計factのみ。内訳やセグメントを足さない。IFRS候補 `jpigp_cor:CurrentAssetsIFRS` は別mapping。売却目的資産を除く `CurrentAssetsOtherThanAssetsHeldForSaleCAIFRS` を同義にしない |
+| P1/S            | 流動負債・Instant                     | `jppfs_cor:CurrentLiabilities`                                                                                                                                                                | IFRS候補は `jpigp_cor:TotalCurrentLiabilitiesIFRS`。`OtherCurrentLiabilitiesCLIFRS` 等の内訳で代用しない                                                                        |
+| P1/S            | 負債合計・Instant                     | `jppfs_cor:Liabilities`                                                                                                                                                                       | `LiabilitiesAndNetAssets`と区別。IFRS候補 `jpigp_cor:LiabilitiesIFRS`。売却目的関連を除く小計を代用しない。純資産差引計算は別指標                                               |
+| P1/S            | 固定資産・固定負債・Instant           | `jppfs_cor:NoncurrentAssets` / `NoncurrentLiabilities`                                                                                                                                        | IFRS資産候補 `jpigp_cor:NonCurrentAssetsIFRS`（大文字小文字に注意）。IFRS負債の総額候補は追加確認が必要。差額補完しない                                                         |
+| P1/S            | 現預金・Instant                       | `jppfs_cor:CashAndDeposits`                                                                                                                                                                   | 既存 `cashAndEquivalents` と別項目。定期預金の調整等を推測しない。IFRSで自動的に現金同等物へfallbackしない                                                                      |
+| 既存の監査/P0/S | 現金及び現金同等物・Instant           | 既存 `jppfs_cor:CashAndCashEquivalents` / `CashAndCashEquivalentsEndOfPeriod` / `jpcrp_cor:CashAndCashEquivalentsIFRSSummaryOfBusinessResults`                                                | `jpigp_cor:CashAndCashEquivalentsIFRS` は追加候補。要約/本表で異なるfactがあれば理由付き選択・曖昧さを記録。現預金で埋めない                                                    |
+| P2/M            | 借入・社債・リース各残高・Instant     | `jppfs_cor:ShortTermLoansPayable` / `CurrentPortionOfLongTermLoansPayable` / `LongTermLoansPayable` / `CurrentPortionOfBonds` / `BondsPayable` / `LeaseObligationsCL` / `LeaseObligationsNCL` | まず各直接factを独立保持。短期借入に一年内返済分が含まれるか、関連会社借入の内訳か合計かを確認。リース欠損を0扱いせず、有利子負債総額を直ちに作らない                           |
+| P2/M            | IFRS有利子負債・リース各残高・Instant | `jpigp_cor:InterestBearingLiabilitiesCLIFRS` / `InterestBearingLiabilitiesNCLIFRS` / `LeaseLiabilitiesCLIFRS` / `LeaseLiabilitiesNCLIFRS`                                                     | 有利子負債がリースを含むか原文注記と定義で確認。上位額と内訳を重複加算しない。J-GAAP借入のみとの比較は別定義                                                                    |
+| P1/S〜M         | 売上原価・販管費・Duration            | `jppfs_cor:CostOfSales` / `SellingGeneralAndAdministrativeExpenses`                                                                                                                           | IFRS候補 `jpigp_cor:CostOfSalesIFRS` / `SellingGeneralAndAdministrativeExpensesIFRS`。業種別費用や部門費用の部分合計で代用しない。符号・費用機能別/性質別を確認                 |
+| P2/M            | CF調整の減価償却・Duration            | `jppfs_cor:DepreciationAndAmortizationOpeCF`                                                                                                                                                  | `DepreciationSGA`、設備別累計償却、売上原価内の償却と区別。CF調整値からEBITDAを即計算しない                                                                                     |
+| P2/M            | 設備投資支出・Duration                | `jppfs_cor:PurchaseOfPropertyPlantAndEquipmentInvCF` / `PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF`                                                                          | 有形のみと有形+無形を別項目にする。両方を加算しない。支出符号の仕様を固定し、資産増減やリース取得を代用しない                                                                   |
 
 P0/P1/P2およびS/Mは[改善計画](EDINET_TS_ROADMAP.md)と同じ相対的な概算で、実測工数・納期ではない。金融業・保険業の表示構造は別mappingとして保留する。
 
@@ -69,14 +69,14 @@ P0/P1/P2およびS/Mは[改善計画](EDINET_TS_ROADMAP.md)と同じ相対的な
 
 `test/test_data`内のXMLをnamespace展開付きで読み、対象要素に `contextRef` があること、対応contextにinstant/durationがあること、`AccountingStandardsDEI`の有無を確認した。以下は実装後に使う入力候補であり、元書類との金額照合済み一覧ではない。
 
-| 入力（test/test_dataからの相対位置） | 基準の記載 | 確認したscope/期間 | 再利用先と限界 |
-|---|---|---|---|
-| `CJ_2371_kakakucom.xbrl` | Japan GAAPあり | BS3項目・現預金は当期/前期、連結/単体。PL2項目はDuration。CF調整/有形支出あり | J-GAAPの基本ケース。旧版taxonomyを含む |
-| `3031_raccoon.xbrl` | Japan GAAPあり | BS3項目・現預金・長期借入/一年内返済あり。負債にはセグメント/調整項目contextもある | セグメント除外と借入内訳の境界に有用 |
-| `CI_4689_yahoo.xbrl` | IFRSあり | jppfsのBS3項目・現預金・PL2項目は単体。当期/前期あり | IFRSというDEIだけで単体jppfs値を連結IFRSへ採用してはいけない例 |
-| `S100TMMG/XBRL/PublicDoc/*.xbrl` | Japan GAAPあり | BS3項目・現預金は当期/前期、連結/単体。有形+無形支出あり | 有形のみと合計支出の区別。PL/CFはDuration |
-| `S100TP3N/XBRL/PublicDoc/*.xbrl` | IFRSあり | jpigpの流動資産/流動負債/負債/現金同等物・有利子負債/リースあり。jppfsのBS3項目は単体 | 連結IFRSと単体J-GAAPの同居。IFRS候補はここで存在確認できるが複数企業の検証は不足 |
-| `S100U4EY/XBRL/PublicDoc/*.xbrl` | Japan GAAPあり | `3031_raccoon.xbrl`と同じ書類管理IDの原本配置 | 独立した別企業/別年度のサンプルとして数えない |
+| 入力（test/test_dataからの相対位置） | 基準の記載     | 確認したscope/期間                                                                    | 再利用先と限界                                                                   |
+| ------------------------------------ | -------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `CJ_2371_kakakucom.xbrl`             | Japan GAAPあり | BS3項目・現預金は当期/前期、連結/単体。PL2項目はDuration。CF調整/有形支出あり         | J-GAAPの基本ケース。旧版taxonomyを含む                                           |
+| `3031_raccoon.xbrl`                  | Japan GAAPあり | BS3項目・現預金・長期借入/一年内返済あり。負債にはセグメント/調整項目contextもある    | セグメント除外と借入内訳の境界に有用                                             |
+| `CI_4689_yahoo.xbrl`                 | IFRSあり       | jppfsのBS3項目・現預金・PL2項目は単体。当期/前期あり                                  | IFRSというDEIだけで単体jppfs値を連結IFRSへ採用してはいけない例                   |
+| `S100TMMG/XBRL/PublicDoc/*.xbrl`     | Japan GAAPあり | BS3項目・現預金は当期/前期、連結/単体。有形+無形支出あり                              | 有形のみと合計支出の区別。PL/CFはDuration                                        |
+| `S100TP3N/XBRL/PublicDoc/*.xbrl`     | IFRSあり       | jpigpの流動資産/流動負債/負債/現金同等物・有利子負債/リースあり。jppfsのBS3項目は単体 | 連結IFRSと単体J-GAAPの同居。IFRS候補はここで存在確認できるが複数企業の検証は不足 |
+| `S100U4EY/XBRL/PublicDoc/*.xbrl`     | Japan GAAPあり | `3031_raccoon.xbrl`と同じ書類管理IDの原本配置                                         | 独立した別企業/別年度のサンプルとして数えない                                    |
 
 当期・前期factが同じ原本にあることは、複数年度の独立した提出原本が照合済みであることとは異なる。`S100TMMG`等のInline HTMLやlinkbaseの同梱を再利用できるが、本調査で全表の意味・金額照合は行っていない。AuditDocの監査書類を財務本表の追加サンプルとして数えない。
 
@@ -94,24 +94,24 @@ P0/P1/P2およびS/Mは[改善計画](EDINET_TS_ROADMAP.md)と同じ相対的な
 
 次の期待値は合成テスト用データで固定する。金額例は架空であり、個別銘柄の照合値ではない。実装時には[既存scope回帰](../../test/key-metrics-scope.test.ts)を維持し、独立した新しいテストファイルへ追加する。
 
-| ID | 入力/操作 | 期待結果 |
-|---|---|---|
-| F01 | J-GAAP/JPY/同一Instantに流動資産120、流動負債40、負債80 | 3項目をそのまま返し、原タグ/context/時点/通貨が一致。比率はこのPRでは計算しない |
-| F02 | 連結contextあり、流動資産は単体にだけ存在 | 連結指定では理由付き欠損。単体指定でのみ値を返す |
-| F03 | 当期に科目なし、前期には存在 | 当期は欠損。明示した前期でのみ返す。180日などの近接判定で補完しない |
-| F04 | 同じtagに全社80、部門30、調整項目10 | 全社80のみ。部門/調整だけなら全社を欠損にし、40へ合算しない |
-| F05 | BS候補をDuration、PL候補をInstantにだけ配置 | 期間種別不一致で除外。書類年次判定だけで採用しない |
-| F06 | 現預金100、現金同等物70を同時配置 | 独立項目として保持。片方を除いても他方で穴埋めしない |
-| F07 | IFRS連結jpigp流動資産120、同書類の単体jppfs流動資産50、DEI=IFRS | 連結IFRSでは120。J-GAAP限定の最初の実装では連結IFRSは未対応と明示し、50に切り替えない |
-| F08 | `Liabilities`80と`LiabilitiesAndNetAssets`200、売却目的関連除外小計70 | 負債合計は80。総資本/除外小計を代用・加算しない |
-| F09 | 0、負数、nil、空、タグ不在を別ケースにする | 有効な0と負数は保持。nil/空/不在を0に変えず理由を区別 |
-| F10 | 同一候補でJPY/USD混在、単位未定義、非金額単位、巨大整数 | 指定通貨だけを採用。不明/不適合は理由付き除外。精度を黙って丸めない |
-| F11 | 同一tag/context/unitに同値2件と異値2件、未知namespace同名tag | 先行APIの重複契約を検証。同値重複も記録し、異値は曖昧、未知namespaceは自動同義採用しない |
-| F12 | 借入総額/内訳/一年内返済、リース有無の組合せ | 初期は各直接factだけ返す。将来の集計では重複しない構成の証明と不足項目の理由が必要 |
-| F13 | 有形支出-20、有形+無形支出-30、償却CF調整5、販管費償却2 | 支出種類と符号、償却の用途を保持し、支出-50/償却7へ機械的に足さない |
-| F14 | 半期YTDと単四半期、異なる終了日、訂正版候補を混在 | 明示した期間/版のfactだけを選択。不明な分類や保存していない版を推測しない |
-| F15 | 保存fixtureのrawタグ/contextと新APIの来歴を照合 | 上表で存在確認した範囲を再現。数値の公開や新しい原本の取得は不要。独立原本・原表照合の不足を別記 |
-| F16 | 同じ選択済みsnapshotを個別APIと横断filter/sortへ渡す | registry登録後は値・欠損・通貨/期間条件が一致。未登録の時点では横断対応済みと報告しない |
+| ID  | 入力/操作                                                             | 期待結果                                                                                         |
+| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| F01 | J-GAAP/JPY/同一Instantに流動資産120、流動負債40、負債80               | 3項目をそのまま返し、原タグ/context/時点/通貨が一致。比率はこのPRでは計算しない                  |
+| F02 | 連結contextあり、流動資産は単体にだけ存在                             | 連結指定では理由付き欠損。単体指定でのみ値を返す                                                 |
+| F03 | 当期に科目なし、前期には存在                                          | 当期は欠損。明示した前期でのみ返す。180日などの近接判定で補完しない                              |
+| F04 | 同じtagに全社80、部門30、調整項目10                                   | 全社80のみ。部門/調整だけなら全社を欠損にし、40へ合算しない                                      |
+| F05 | BS候補をDuration、PL候補をInstantにだけ配置                           | 期間種別不一致で除外。書類年次判定だけで採用しない                                               |
+| F06 | 現預金100、現金同等物70を同時配置                                     | 独立項目として保持。片方を除いても他方で穴埋めしない                                             |
+| F07 | IFRS連結jpigp流動資産120、同書類の単体jppfs流動資産50、DEI=IFRS       | 連結IFRSでは120。J-GAAP限定の最初の実装では連結IFRSは未対応と明示し、50に切り替えない            |
+| F08 | `Liabilities`80と`LiabilitiesAndNetAssets`200、売却目的関連除外小計70 | 負債合計は80。総資本/除外小計を代用・加算しない                                                  |
+| F09 | 0、負数、nil、空、タグ不在を別ケースにする                            | 有効な0と負数は保持。nil/空/不在を0に変えず理由を区別                                            |
+| F10 | 同一候補でJPY/USD混在、単位未定義、非金額単位、巨大整数               | 指定通貨だけを採用。不明/不適合は理由付き除外。精度を黙って丸めない                              |
+| F11 | 同一tag/context/unitに同値2件と異値2件、未知namespace同名tag          | 先行APIの重複契約を検証。同値重複も記録し、異値は曖昧、未知namespaceは自動同義採用しない         |
+| F12 | 借入総額/内訳/一年内返済、リース有無の組合せ                          | 初期は各直接factだけ返す。将来の集計では重複しない構成の証明と不足項目の理由が必要               |
+| F13 | 有形支出-20、有形+無形支出-30、償却CF調整5、販管費償却2               | 支出種類と符号、償却の用途を保持し、支出-50/償却7へ機械的に足さない                              |
+| F14 | 半期YTDと単四半期、異なる終了日、訂正版候補を混在                     | 明示した期間/版のfactだけを選択。不明な分類や保存していない版を推測しない                        |
+| F15 | 保存fixtureのrawタグ/contextと新APIの来歴を照合                       | 上表で存在確認した範囲を再現。数値の公開や新しい原本の取得は不要。独立原本・原表照合の不足を別記 |
+| F16 | 同じ選択済みsnapshotを個別APIと横断filter/sortへ渡す                  | registry登録後は値・欠損・通貨/期間条件が一致。未登録の時点では横断対応済みと報告しない          |
 
 ## 最初の実装PRと後続の区切り
 

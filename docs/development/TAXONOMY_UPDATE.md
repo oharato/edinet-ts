@@ -6,8 +6,8 @@ EDINETタクソノミから型定義と項目一覧を更新する手順です�
 
 ## 前提条件
 
-*   Node.js（CIおよびpackage.jsonのruntime指定に従う）
-*   `unzip` コマンド (Linux/Mac環境の場合、日本語ファイル名対応のために `unzip -O cp932` が使用されます)
+- Node.js（CIおよびpackage.jsonのruntime指定に従う）
+- `unzip` コマンド (Linux/Mac環境の場合、日本語ファイル名対応のために `unzip -O cp932` が使用されます)
 
 ## 手順
 
@@ -44,6 +44,7 @@ npx tsx scripts/fetch_taxonomy.ts
 ### 4. 型定義の生成
 
 #### 4-1. 財務諸表本表 (jppfs_cor)
+
 `AccountList.xlsx` から `src/types/jppfs_cor_taxonomy.ts` を生成します。
 
 ```bash
@@ -53,6 +54,7 @@ npx tsx scripts/generate_types.ts
 実行後、 `src/types/jppfs_cor_taxonomy.ts` が更新されます。
 
 #### 4-2. 企業情報本表 (jpcrp_cor)
+
 `taxonomy/` フォルダ内のXSD定義から `src/types/jpcrp_cor_taxonomy.ts` およびドキュメントを生成します。
 
 ```bash
@@ -62,6 +64,7 @@ npx tsx scripts/generate_types_jpcrp.ts
 ### 5. ドキュメントの更新
 
 #### 5-1. 財務諸表 (JPPFS)
+
 ```bash
 npx tsx scripts/generate_doc_taxonomy.ts
 ```
@@ -86,7 +89,7 @@ npx vitest run test/type_coverage.test.ts --exclude 'data/**' --exclude 'artifac
 
 ## スクリプトの構成
 
-*   `scripts/fetch_taxonomy.ts`: タクソノミZIPのダウンロードと、日本語ファイル名を考慮した解凍を行います。
-*   `scripts/generate_types.ts`: `AccountList.xlsx` を解析し、 `jppfs_cor` 名前空間の項目を抽出してインターフェースを生成します。
-*   `scripts/generate_doc_taxonomy.ts`: `AccountList.xlsx` から `jppfs_cor` 項目の一覧ドキュメント (`docs/generated/TAXONOMY_JPPFS_COR.md`) を生成します。
-*   `scripts/debug/inspect_account_list.ts`: Excelファイルの構造（カラム位置など）が変わった場合に、中身を確認するための補助スクリプトです。
+- `scripts/fetch_taxonomy.ts`: タクソノミZIPのダウンロードと、日本語ファイル名を考慮した解凍を行います。
+- `scripts/generate_types.ts`: `AccountList.xlsx` を解析し、 `jppfs_cor` 名前空間の項目を抽出してインターフェースを生成します。
+- `scripts/generate_doc_taxonomy.ts`: `AccountList.xlsx` から `jppfs_cor` 項目の一覧ドキュメント (`docs/generated/TAXONOMY_JPPFS_COR.md`) を生成します。
+- `scripts/debug/inspect_account_list.ts`: Excelファイルの構造（カラム位置など）が変わった場合に、中身を確認するための補助スクリプトです。

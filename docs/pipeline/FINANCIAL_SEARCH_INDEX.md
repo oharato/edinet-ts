@@ -15,27 +15,37 @@
 3. `screen` で固定世代の同一比較集合をSQL検索する。原本XMLや原本アーカイブを開き直さない。
 
 ```ts
-import {ObservedFinancialArchive, FinancialSearchIndex} from "edinet-ts";
+import { ObservedFinancialArchive, FinancialSearchIndex } from "edinet-ts";
 
-const source = new ObservedFinancialArchive("data/observed.sqlite", {readOnly: true});
+const source = new ObservedFinancialArchive("data/observed.sqlite", { readOnly: true });
 const index = new FinancialSearchIndex("data/financial-index.sqlite");
 try {
   index.materialize("cutoff-20261028", source, {
     cutoff: "2026-10-28T00:00:00+09:00",
     extractorVersion: "fixed-extractor-1",
-    sourceCommit
+    sourceCommit,
   });
-  const result = index.screen({
-    generation: "cutoff-20261028", group: "details",
-    accountingStandard: "J-GAAP", scope: "Consolidated", currency: "JPY",
-    period: {startDate: "2025-04-01", endDate: "2026-03-31"}, periodType: "annual"
-  }, {
-    metricIds: ["costOfSales", "sellingGeneralAndAdministrativeExpenses"],
-    conditions: [{metric: "costOfSales", operator: "gte", value: 0}],
-    sortBy: "costOfSales", order: "desc", limit: 20
-  });
+  const result = index.screen(
+    {
+      generation: "cutoff-20261028",
+      group: "details",
+      accountingStandard: "J-GAAP",
+      scope: "Consolidated",
+      currency: "JPY",
+      period: { startDate: "2025-04-01", endDate: "2026-03-31" },
+      periodType: "annual",
+    },
+    {
+      metricIds: ["costOfSales", "sellingGeneralAndAdministrativeExpenses"],
+      conditions: [{ metric: "costOfSales", operator: "gte", value: 0 }],
+      sortBy: "costOfSales",
+      order: "desc",
+      limit: 20,
+    },
+  );
 } finally {
-  index.close(); source.close();
+  index.close();
+  source.close();
 }
 ```
 
@@ -93,10 +103,10 @@ offset/limitは0以上の安全な整数で、limit 0でも件数・診断は返
 
 ## SQLと整合検査
 
-| 保存対象 | 用途 |
-|---|---|
-| `financial_generations` | 固定入力の選択結果・保留・版・行/値のmanifest |
-| `financial_rows` / `financial_cohort` | 世代・group・基準・scope・通貨・期間の集合、行本文と出典 |
+| 保存対象                                      | 用途                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------- |
+| `financial_generations`                       | 固定入力の選択結果・保留・版・行/値のmanifest                       |
+| `financial_rows` / `financial_cohort`         | 世代・group・基準・scope・通貨・期間の集合、行本文と出典            |
 | `financial_values` / `financial_metric_range` | available、guard済みnumber、原値、状態/理由、指標順。条件の範囲検索 |
 
 SQLが同一集合、必要値の利用可能性、条件一致、件数、並べ替え、ページを処理します。世代・行metadata・全選択値の索引をmanifest/hashと照合し、条件外へ動かされた索引破損や余分/欠けた行も拒否します。
@@ -132,11 +142,11 @@ cohort.jsonはAPIのcohort objectです。buildのCLIは原本アーカイブを
 
 合成100/500/1,000社で、ウォームアップ1回後5回の中央値を測定しました。2groupを保存し、期間明細2項目・原価gte 10・desc・limit 10を検索する条件です。
 
-| 社数 | DBサイズ | SQL | 既存メモリ検索 |
-|---|---:|---:|---:|
-| 100 | 約1.25MiB | 約13.6ms | 約21.1ms |
-| 500 | 約6.10MiB | 約60.0ms | 約89.2ms |
-| 1,000 | 約12.2MiB | 約127ms | 約183ms |
+| 社数  |  DBサイズ |      SQL | 既存メモリ検索 |
+| ----- | --------: | -------: | -------------: |
+| 100   | 約1.25MiB | 約13.6ms |       約21.1ms |
+| 500   | 約6.10MiB | 約60.0ms |       約89.2ms |
+| 1,000 | 約12.2MiB |  約127ms |        約183ms |
 
 Node26.12.1、Core i5-7260U、一つのprocessでメモリ入力も保持し、原本/OSのcacheが温まった条件です。SQLは全世代のmetadata/選択値の整合検査と返却行の検証を含み、readOnlyのコピーopen時間を除いています。
 

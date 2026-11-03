@@ -14,11 +14,11 @@
 
 対象は日本基準（`J-GAAP`）・円（`JPY`）・明示した時点（`instant`）の次の3項目だけです。
 
-| 定数 `FinancialDetailMetricId` | ID | 内容 |
-|---|---|---|
-| `NoncurrentAssets` | `noncurrentAssets` | 固定資産 |
-| `NoncurrentLiabilities` | `noncurrentLiabilities` | 固定負債 |
-| `CashAndDeposits` | `cashAndDeposits` | 現金及び預金 |
+| 定数 `FinancialDetailMetricId` | ID                      | 内容         |
+| ------------------------------ | ----------------------- | ------------ |
+| `NoncurrentAssets`             | `noncurrentAssets`      | 固定資産     |
+| `NoncurrentLiabilities`        | `noncurrentLiabilities` | 固定負債     |
+| `CashAndDeposits`              | `cashAndDeposits`       | 現金及び預金 |
 
 保存時は3項目の選択記録をすべて渡します。値が欠けていても`missing`などの記録として保存できます。記録を省いた2項目だけのsnapshotや、売上原価・CF・借入等を含むsnapshotは保存しません。`FINANCIAL_DETAIL_STORE_METRICS`がこの固定集合です。検索時は`metricIds`でその一部を指定できます。
 
@@ -34,22 +34,29 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  FinancialDetailSqliteStore, createFinancialDetailSnapshot,
-  FINANCIAL_DETAIL_REGISTRY_VERSION, FinancialDetailMetricId,
-  AccountingStandard, ConsolidationScope, ComparisonOperator, SortOrder
+  FinancialDetailSqliteStore,
+  createFinancialDetailSnapshot,
+  FINANCIAL_DETAIL_REGISTRY_VERSION,
+  FinancialDetailMetricId,
+  AccountingStandard,
+  ConsolidationScope,
+  ComparisonOperator,
+  SortOrder,
 } from "edinet-ts";
 
 const xml = readFileSync("./saved-report.xbrl", "utf8");
 const snapshot = createFinancialDetailSnapshot(xml, {
-  secCode: "1001", docID: "SYNTHETIC1",
+  secCode: "1001",
+  docID: "SYNTHETIC1",
   accountingStandard: AccountingStandard.JGAAP,
-  scope: ConsolidationScope.Consolidated, currency: "JPY",
-  period: { instant: "2025-03-31" }
+  scope: ConsolidationScope.Consolidated,
+  currency: "JPY",
+  period: { instant: "2025-03-31" },
 }); // instantの既定3項目を保持
 const provenance = {
   extractorVersion: "local-extractor-v1",
   mappingVersion: FINANCIAL_DETAIL_REGISTRY_VERSION,
-  sourceSha256: createHash("sha256").update(xml).digest("hex")
+  sourceSha256: createHash("sha256").update(xml).digest("hex"),
 };
 const file = join(mkdtempSync(join(tmpdir(), "edinet-details-example-")), "details.sqlite");
 const writer = new FinancialDetailSqliteStore(file);
@@ -66,19 +73,30 @@ try {
 const reader = new FinancialDetailSqliteStore(file, { readOnly: true });
 try {
   const stored = reader.get(ids[0]); // 不明な形式のIDはエラー、存在しない正しい形式のIDはundefined
-  const result = reader.screen({
-    instant: "2025-03-31", scope: ConsolidationScope.Consolidated,
-    accountingStandard: AccountingStandard.JGAAP, currency: "JPY",
-    extractorVersion: provenance.extractorVersion,
-    mappingVersion: provenance.mappingVersion,
-    snapshotIds: ids
-  }, {
-    metricIds: [FinancialDetailMetricId.CashAndDeposits],
-    conditions: [{ metric: FinancialDetailMetricId.CashAndDeposits,
-      operator: ComparisonOperator.GreaterThanOrEqual, value: 0 }],
-    sortBy: FinancialDetailMetricId.CashAndDeposits,
-    order: SortOrder.Descending, limit: 20
-  });
+  const result = reader.screen(
+    {
+      instant: "2025-03-31",
+      scope: ConsolidationScope.Consolidated,
+      accountingStandard: AccountingStandard.JGAAP,
+      currency: "JPY",
+      extractorVersion: provenance.extractorVersion,
+      mappingVersion: provenance.mappingVersion,
+      snapshotIds: ids,
+    },
+    {
+      metricIds: [FinancialDetailMetricId.CashAndDeposits],
+      conditions: [
+        {
+          metric: FinancialDetailMetricId.CashAndDeposits,
+          operator: ComparisonOperator.GreaterThanOrEqual,
+          value: 0,
+        },
+      ],
+      sortBy: FinancialDetailMetricId.CashAndDeposits,
+      order: SortOrder.Descending,
+      limit: 20,
+    },
+  );
   console.log(stored?.id, result.total, result.excludedRows);
 } finally {
   reader.close();
@@ -166,14 +184,14 @@ ORDER BY sec_code, doc_id;
 
 単回のローカル測定で、ファイルキャッシュが温まった状態です。複数環境・繰り返し実験の統計や全市場性能の予測には使えません。
 
-| 操作 | 実測 |
-|---|---|
-| 新規DB作成（1回） | 6.5ms |
-| 200行の一括保存（1回） | 493.4ms |
-| 閉じたDBを開き直す（1回） | 3.6ms |
-| SQLite検索（10回の合計） | 2,094.1ms |
-| JSON検索（10回の合計） | 881.0ms |
-| 保存DB容量 | 2,514,944bytes |
+| 操作                      | 実測           |
+| ------------------------- | -------------- |
+| 新規DB作成（1回）         | 6.5ms          |
+| 200行の一括保存（1回）    | 493.4ms        |
+| 閉じたDBを開き直す（1回） | 3.6ms          |
+| SQLite検索（10回の合計）  | 2,094.1ms      |
+| JSON検索（10回の合計）    | 881.0ms        |
+| 保存DB容量                | 2,514,944bytes |
 
 SQLiteの検索時間には保存内容の検査を含むため、純粋なSQL文だけの速度比較ではありません。この条件でSQLiteが遅かった事実と、全市場での速度が未検証であることを分けて扱います。
 

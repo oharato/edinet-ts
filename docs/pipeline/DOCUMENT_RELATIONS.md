@@ -12,11 +12,11 @@
 
 同じ書類番号が複数の日の一覧に出る場合があります。`docInfoEditStatus`は一覧情報の修正に関する区分で、財務数値を訂正した書類かどうかを表す区分ではありません。親番号や提出日時などの情報が修正されても、原本自体は同じことがあります。異なる観測を保持し、最後の入力を最新版として採用しません。
 
-| 一覧の項目 | 区分の意味 |
-|---|---|
-| `withdrawalStatus` | 0: その他、1: 取下書、2: 取下げられた書類 |
-| `docInfoEditStatus` | 0: その他、1: 情報修正の通知、2: 情報修正された書類 |
-| `disclosureStatus` | 0: その他、1: 不開示開始の通知、2: 不開示中、3: 解除の通知 |
+| 一覧の項目          | 区分の意味                                                 |
+| ------------------- | ---------------------------------------------------------- |
+| `withdrawalStatus`  | 0: その他、1: 取下書、2: 取下げられた書類                  |
+| `docInfoEditStatus` | 0: その他、1: 情報修正の通知、2: 情報修正された書類        |
+| `disclosureStatus`  | 0: その他、1: 不開示開始の通知、2: 不開示中、3: 解除の通知 |
 
 0は「最新版で有効」という保証ではありません。親の状態を子へ自動伝播させたり、同じ会社や期間だけを結び付けたりしません。入力内の関係に循環が見つかっても、複数時点の観測を重ねた結果かもしれないため、確認候補として説明します。
 
@@ -37,13 +37,25 @@
 
 ```json
 [
-  { "observationId": "a", "listDate": "2025-06-30", "document": {
-      "docID": "SYNTHETIC-A", "parentDocID": null, "withdrawalStatus": "0",
-      "docInfoEditStatus": "0", "disclosureStatus": "0"
-  } },
-  { "observationId": "b", "listDate": "2025-07-01", "document": {
-      "docID": "SYNTHETIC-B", "parentDocID": "SYNTHETIC-A"
-  } }
+  {
+    "observationId": "a",
+    "listDate": "2025-06-30",
+    "document": {
+      "docID": "SYNTHETIC-A",
+      "parentDocID": null,
+      "withdrawalStatus": "0",
+      "docInfoEditStatus": "0",
+      "disclosureStatus": "0"
+    }
+  },
+  {
+    "observationId": "b",
+    "listDate": "2025-07-01",
+    "document": {
+      "docID": "SYNTHETIC-B",
+      "parentDocID": "SYNTHETIC-A"
+    }
+  }
 ]
 ```
 

@@ -12,16 +12,16 @@ IFRSの連結財務諸表から、直接記載された8項目を読みます。
 
 定数は `IfrsBalanceSheetMetricId`、辞書は `IFRS_BALANCE_SHEET_REGISTRY`（版 `"4"`）です。正式タグの接頭辞はすべて `jpigp_cor:` です。
 
-| 定数 | ID | 正式タグ | 既定 |
-|---|---|---|---|
-| `CurrentAssets` | `currentAssets` | `CurrentAssetsIFRS` | ○ |
-| `CurrentLiabilities` | `currentLiabilities` | `TotalCurrentLiabilitiesIFRS` | ○ |
-| `TotalLiabilities` | `totalLiabilities` | `LiabilitiesIFRS` | ○ |
-| `NoncurrentAssets` | `noncurrentAssets` | `NonCurrentAssetsIFRS` | |
-| `CurrentInterestBearingLiabilities` | `currentInterestBearingLiabilities` | `InterestBearingLiabilitiesCLIFRS` | |
-| `NoncurrentInterestBearingLiabilities` | `noncurrentInterestBearingLiabilities` | `InterestBearingLiabilitiesNCLIFRS` | |
-| `CurrentLeaseLiabilities` | `currentLeaseLiabilities` | `LeaseLiabilitiesCLIFRS` | |
-| `NoncurrentLeaseLiabilities` | `noncurrentLeaseLiabilities` | `LeaseLiabilitiesNCLIFRS` | |
+| 定数                                   | ID                                     | 正式タグ                            | 既定 |
+| -------------------------------------- | -------------------------------------- | ----------------------------------- | ---- |
+| `CurrentAssets`                        | `currentAssets`                        | `CurrentAssetsIFRS`                 | ○    |
+| `CurrentLiabilities`                   | `currentLiabilities`                   | `TotalCurrentLiabilitiesIFRS`       | ○    |
+| `TotalLiabilities`                     | `totalLiabilities`                     | `LiabilitiesIFRS`                   | ○    |
+| `NoncurrentAssets`                     | `noncurrentAssets`                     | `NonCurrentAssetsIFRS`              |      |
+| `CurrentInterestBearingLiabilities`    | `currentInterestBearingLiabilities`    | `InterestBearingLiabilitiesCLIFRS`  |      |
+| `NoncurrentInterestBearingLiabilities` | `noncurrentInterestBearingLiabilities` | `InterestBearingLiabilitiesNCLIFRS` |      |
+| `CurrentLeaseLiabilities`              | `currentLeaseLiabilities`              | `LeaseLiabilitiesCLIFRS`            |      |
+| `NoncurrentLeaseLiabilities`           | `noncurrentLeaseLiabilities`           | `LeaseLiabilitiesNCLIFRS`           |      |
 
 金融庁の[2026年版公式タクソノミ](https://www.fsa.go.jp/search/20251111.html)と[本体ZIP](https://www.fsa.go.jp/search/20251111/1c_Taxonomy.zip)の2025-11-01版XSDで、追加5項目が金額型・instant・非abstractであることを確認しています。既定3項目は[2018年公開資料](https://www.fsa.go.jp/search/20180316.html)の2018-03-31版でも確認済みです。全年度・全業種を検証したという意味ではありません。
 
@@ -38,7 +38,7 @@ const object = new EdinetXbrlParser().parse(xml, "SYNTHETIC-IFRS");
 const result = object.selectIfrsBalanceSheetMetric(M.CurrentLeaseLiabilities, {
   accountingStandard: "IFRS",
   scope: "Consolidated",
-  period: { instant: "2026-03-31" }
+  period: { instant: "2026-03-31" },
 });
 if (result.status === "selected") console.log(result.raw, result.source);
 ```
@@ -52,12 +52,19 @@ IFRS以外は `unsupported-standard`、単体は `unsupported-semantics` です�
 ## snapshotと複数社検索
 
 ```ts
-import { createIfrsBalanceSheetSnapshot, screenIfrsBalanceSheetDocuments,
-  IfrsBalanceSheetMetricId as M } from "edinet-ts";
+import {
+  createIfrsBalanceSheetSnapshot,
+  screenIfrsBalanceSheetDocuments,
+  IfrsBalanceSheetMetricId as M,
+} from "edinet-ts";
 
 const metadata = {
-  secCode: "1001", docID: "SYNTHETIC-IFRS", instant: "2026-03-31",
-  scope: "Consolidated", accountingStandard: "IFRS", currency: "JPY"
+  secCode: "1001",
+  docID: "SYNTHETIC-IFRS",
+  instant: "2026-03-31",
+  scope: "Consolidated",
+  accountingStandard: "IFRS",
+  currency: "JPY",
 } as const;
 const metrics = [M.NoncurrentAssets, M.CurrentLeaseLiabilities];
 const snapshot = createIfrsBalanceSheetSnapshot(xml, metadata, metrics);
@@ -65,7 +72,7 @@ const found = screenIfrsBalanceSheetDocuments([{ xml, metadata }], {
   metricIds: metrics,
   conditions: [{ metric: M.CurrentLeaseLiabilities, operator: "gte", value: 0 }],
   sortBy: M.CurrentLeaseLiabilities,
-  order: "desc"
+  order: "desc",
 });
 ```
 
@@ -84,10 +91,19 @@ const found = screenIfrsBalanceSheetDocuments([{ xml, metadata }], {
 一覧JSONには相対ファイル名と上例のmetadataを指定します。相対パスは一覧JSONの場所が基準です。
 
 ```json
-[{ "file": "company-a.xbrl", "metadata": {
-  "secCode": "1001", "docID": "SYNTHETIC-IFRS", "instant": "2026-03-31",
-  "scope": "Consolidated", "accountingStandard": "IFRS", "currency": "JPY"
-} }]
+[
+  {
+    "file": "company-a.xbrl",
+    "metadata": {
+      "secCode": "1001",
+      "docID": "SYNTHETIC-IFRS",
+      "instant": "2026-03-31",
+      "scope": "Consolidated",
+      "accountingStandard": "IFRS",
+      "currency": "JPY"
+    }
+  }
+]
 ```
 
 ```sh
@@ -105,14 +121,20 @@ DEIで当期・基準・scopeを解決する `createAutomaticFinancialSnapshots(
 `FinancialSearchIndex.screen()` は、`group: "balanceSheet"`・`accountingStandard: "IFRS"`・明示期末のcohortで追加IDを受け付けます。`metricIds` に必要な項目を指定し、条件・並べ替えにも同じIDを使えます。SQL側は指定項目だけを返します。旧世代に記録のない項目はタグ不在と推定せず、選択記録不足として拒否します。
 
 ```ts
-const rows = index.screen({
-  generation: "verified-generation", group: "balanceSheet",
-  accountingStandard: "IFRS", scope: "Consolidated", currency: "JPY",
-  period: { instant: "2026-03-31" }
-}, {
-  metricIds: [M.NoncurrentAssets],
-  sortBy: M.NoncurrentAssets
-});
+const rows = index.screen(
+  {
+    generation: "verified-generation",
+    group: "balanceSheet",
+    accountingStandard: "IFRS",
+    scope: "Consolidated",
+    currency: "JPY",
+    period: { instant: "2026-03-31" },
+  },
+  {
+    metricIds: [M.NoncurrentAssets],
+    sortBy: M.NoncurrentAssets,
+  },
+);
 ```
 
 <a id="今回は含めないもの"></a>

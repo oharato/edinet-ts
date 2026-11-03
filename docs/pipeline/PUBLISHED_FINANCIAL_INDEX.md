@@ -16,14 +16,24 @@ flowchart TD
 ## 読取snapshotをロードする
 
 ```ts
-import {PublishedFinancialIndex} from "edinet-ts";
+import { PublishedFinancialIndex } from "edinet-ts";
 
-const reader = new PublishedFinancialIndex("data/publication.sqlite", "data/financial-index.sqlite");
+const reader = new PublishedFinancialIndex(
+  "data/publication.sqlite",
+  "data/financial-index.sqlite",
+);
 try {
-  const result = reader.screen({
-    group: "details", accountingStandard: "J-GAAP", scope: "Consolidated", currency: "JPY",
-    period: {startDate: "2025-04-01", endDate: "2026-03-31"}, periodType: "annual"
-  }, {metricIds: ["costOfSales"], sortBy: "costOfSales", order: "desc", limit: 100});
+  const result = reader.screen(
+    {
+      group: "details",
+      accountingStandard: "J-GAAP",
+      scope: "Consolidated",
+      currency: "JPY",
+      period: { startDate: "2025-04-01", endDate: "2026-03-31" },
+      periodType: "annual",
+    },
+    { metricIds: ["costOfSales"], sortBy: "costOfSales", order: "desc", limit: 100 },
+  );
   console.log(result.snapshot, result.total, result.rows);
 } finally {
   reader.close();
@@ -36,13 +46,13 @@ constructorはcatalogのreadOnlyコピーから現在候補を読み、索引の
 
 戻り値は通常の `rows / total / excludedRows / filteredRows / diagnostics / reasonCounts` と、次の `snapshot` です。行が0件の場合も、どの公開snapshotで検索したかを返します。
 
-| field | 内容 |
-|---|---|
-| `publication` | 検査済み公開候補ID |
-| `generation` / `generationSha256` | 固定世代IDと内容指紋 |
-| `qualitySha256` | 公開候補が保持する全品質の指紋 |
-| `cutoff` | 固定財務世代の観測cutoff |
-| `populationCompanies` | 公開候補の宣言母集団数。今回のcohort/条件で返る会社数とは別 |
+| field                             | 内容                                                        |
+| --------------------------------- | ----------------------------------------------------------- |
+| `publication`                     | 検査済み公開候補ID                                          |
+| `generation` / `generationSha256` | 固定世代IDと内容指紋                                        |
+| `qualitySha256`                   | 公開候補が保持する全品質の指紋                              |
+| `cutoff`                          | 固定財務世代の観測cutoff                                    |
+| `populationCompanies`             | 公開候補の宣言母集団数。今回のcohort/条件で返る会社数とは別 |
 
 `snapshot()` で現在の読取metadata、`quality()` でロード時に検査した全品質を確認できます。返したmetadata/品質を呼出元が変更しても内部の候補は変わりません。公開条件そのものはcatalog候補に保持します。この入口が条件を緩めたり、未指定指標の充足を推測したりすることはありません。
 

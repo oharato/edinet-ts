@@ -11,7 +11,7 @@
 新規DBに `{compression: "gzip"}` を指定すると、原本XMLをgzipで保存します。
 
 ```ts
-const archive = new ObservedFinancialArchive("data/compressed.sqlite", {compression: "gzip"});
+const archive = new ObservedFinancialArchive("data/compressed.sqlite", { compression: "gzip" });
 ```
 
 再open時は保存方式を自動検出します。この指定は既存DBの変換には使いません。既存の非圧縮DBを移す場合は、停止した入力をreadOnlyで開き、新規の圧縮DBへ `transferSourcesTo` で転送します。一覧観測は `transferObservationsTo` で原時刻・IDを保って転送します。どちらも入力の `snapshotSha256()` を指定し、返されたcursorから再開できます。転送後の検証が終わるまで元DBを保持します。
@@ -20,12 +20,12 @@ const archive = new ObservedFinancialArchive("data/compressed.sqlite", {compress
 
 ## 保持するもの
 
-| 保存対象 | 内容と識別 |
-|---|---|
+| 保存対象 | 内容と識別                                                                                                                  |
+| -------- | --------------------------------------------------------------------------------------------------------------------------- |
 | 一覧観測 | 観測ID、実観測時刻、一覧日、書類/親ID、状態、提出者・証券コード・期間等、既存選択器が使う属性。元の文字列/null/未記録を保持 |
-| 原本観測 | 書類ID・取得時刻・SHA-256。異なる時刻/hashの履歴を上書きしない |
-| 原本内容 | UTF-8 XMLのBLOB。BOMを含む元byte列をhashで照合し、同じ内容は共有 |
-| 解析結果 | 日本基準/IFRSのBS・明細・DEIと全候補/欠損/保留理由。原本ID/hash・指定項目・抽出版・source commit・対応表版ごとのキャッシュ |
+| 原本観測 | 書類ID・取得時刻・SHA-256。異なる時刻/hashの履歴を上書きしない                                                              |
+| 原本内容 | UTF-8 XMLのBLOB。BOMを含む元byte列をhashで照合し、同じ内容は共有                                                            |
+| 解析結果 | 日本基準/IFRSのBS・明細・DEIと全候補/欠損/保留理由。原本ID/hash・指定項目・抽出版・source commit・対応表版ごとのキャッシュ  |
 
 一覧観測は選択器の既知属性を保存します。XBRL/PDF/CSV/添付/英文の可否宣言も保持し、数値コードは文字列に正規化します。
 
@@ -42,16 +42,16 @@ API応答全体の保存先を置き換えるものではなく、元の `Edinet
 ## APIの使い方
 
 ```ts
-import {ObservedFinancialArchive} from "edinet-ts";
+import { ObservedFinancialArchive } from "edinet-ts";
 
 const db = new ObservedFinancialArchive("data/observed-financial.sqlite");
 try {
-  db.append(observations, [{docID, availableAt, sourceSha256, xml}]);
+  db.append(observations, [{ docID, availableAt, sourceSha256, xml }]);
   const result = db.createSnapshots({
     cutoff: "2026-10-28T00:00:00+09:00",
     extractorVersion: "fixed-extractor-1",
     sourceCommit,
-    edinetCodes: ["E00007"]
+    edinetCodes: ["E00007"],
   });
   console.log(result.records, result.unavailableSources, result.cache);
 } finally {
@@ -174,19 +174,20 @@ readOnlyで開いた私有コピーは、初回の全行検査の前後にコピ
 可否宣言などを元metadataから再構成した新しいアーカイブへ、既に取得した原本を再ダウンロードせず引き継げます。元の観測・原本・計画・試行履歴は保持します。
 
 ```ts
-const source = new ObservedFinancialArchive("stopped-old.sqlite", {readOnly: true});
+const source = new ObservedFinancialArchive("stopped-old.sqlite", { readOnly: true });
 const target = new ObservedFinancialArchive("new.sqlite");
 try {
   const sourceArchiveSha256 = source.snapshotSha256();
   let afterId: string | undefined;
   for (;;) {
-    const page = source.transferSourcesTo(target, {sourceArchiveSha256, afterId, limit: 20});
+    const page = source.transferSourcesTo(target, { sourceArchiveSha256, afterId, limit: 20 });
     // この結果と元指紋を永続化してから次のpageへ進めます。
     if (page.complete) break;
     afterId = page.nextAfterId;
   }
 } finally {
-  target.close(); source.close();
+  target.close();
+  source.close();
 }
 ```
 
@@ -215,7 +216,10 @@ CLIも指紋が一致する前に転送先を作成せず、入力内容をエ�
 
 ```ts
 const page = source.transferSourcesTo(candidate, {
-  sourceArchiveSha256, availableBy: cycle.sourceAvailableBy, afterId, limit: 20
+  sourceArchiveSha256,
+  availableBy: cycle.sourceAvailableBy,
+  afterId,
+  limit: 20,
 });
 ```
 

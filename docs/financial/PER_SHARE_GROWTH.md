@@ -63,14 +63,16 @@ const adjustment: ShareSplitAdjustmentOptions = {
     reviewedFrom: "2024-03-31",
     reviewedThrough: "2024-04-01",
     source: reviewedLedgerSource, // name / sha256 / observedAt
-    events: [{
-      eventId: "split-2024",
-      effectiveDate: "2024-04-01",
-      oldShares: 1,
-      newShares: 2,
-      source: reviewedEventSource
-    }]
-  }
+    events: [
+      {
+        eventId: "split-2024",
+        effectiveDate: "2024-04-01",
+        oldShares: 1,
+        newShares: 2,
+        source: reviewedEventSource,
+      },
+    ],
+  },
 };
 const result = calculatePerShareGrowth(pair, PerShareGrowthMetricId.EarningsPerShare, adjustment);
 ```
@@ -98,15 +100,29 @@ const result = calculatePerShareGrowth(pair, PerShareGrowthMetricId.EarningsPerS
 期中の分割・併合で interim と year-end の1株当たり配当が異なる基準で支払われた年でも、`reconstructAnnualDividendPerShare(payments, secCode, options)` で明示台帳から共通基準の年額へ換算できます。各回の原値・基準日・支払区分を保持し、合計は正確な分数で返します。
 
 ```ts
-const annual = reconstructAnnualDividendPerShare([
-  { paymentId: "interim", amountPerShare: 40, basisDate: "2024-09-30",
-    dividendStatus: "paid", sourceObservedAt: "2025-06-01T00:00:00Z" },
-  { paymentId: "year-end", amountPerShare: 25, basisDate: "2025-03-31",
-    dividendStatus: "paid", sourceObservedAt: "2025-06-01T00:00:00Z" },
-], "1001", {
-  ...adjustment, // asOf / knownAt / targetBasisDate / ledger
-  annualPeriod: { start: "2024-04-01", end: "2025-03-31" },
-});
+const annual = reconstructAnnualDividendPerShare(
+  [
+    {
+      paymentId: "interim",
+      amountPerShare: 40,
+      basisDate: "2024-09-30",
+      dividendStatus: "paid",
+      sourceObservedAt: "2025-06-01T00:00:00Z",
+    },
+    {
+      paymentId: "year-end",
+      amountPerShare: 25,
+      basisDate: "2025-03-31",
+      dividendStatus: "paid",
+      sourceObservedAt: "2025-06-01T00:00:00Z",
+    },
+  ],
+  "1001",
+  {
+    ...adjustment, // asOf / knownAt / targetBasisDate / ledger
+    annualPeriod: { start: "2024-04-01", end: "2025-03-31" },
+  },
+);
 ```
 
 - `basisDate` は各回の金額が基づく株式基準日です。`targetBasisDate` へ向かう分割イベントだけを適用し、原値は書き換えません。
@@ -134,13 +150,13 @@ const annual = reconstructAnnualDividendPerShare([
 
 エクシオ`S100W0NZ`のPDF2/3ページを描画し、表と注記を確認しました。2024-04-01の1→2分割について、EPSの過年度値は遡及調整、過年度配当は当時の株式数の記載です。2025年3月期の配当63円には総会承認前の予定額が含まれます。
 
-| 計算 | 対象年/原値 | exact |
-|---|---|---|
-| EPS前年比 | 2024年94.76→2025年128.97、分割後基準 | 3421/9476 |
-| EPS 3年CAGR | 2022〜2025年、125.32/103.22/94.76/128.97 | (12897/12532)^(1/3)−1 |
-| 実績配当前年比 | 2023年102→2024年120、分割前基準 | 3/17 |
-| 実績配当3年CAGR | 2021〜2024年、82/96/102/120、分割前基準 | (60/41)^(1/3)−1 |
-| 予定額を含む配当 | 2025年63 | proposed-dividendで除外 |
+| 計算             | 対象年/原値                              | exact                   |
+| ---------------- | ---------------------------------------- | ----------------------- |
+| EPS前年比        | 2024年94.76→2025年128.97、分割後基準     | 3421/9476               |
+| EPS 3年CAGR      | 2022〜2025年、125.32/103.22/94.76/128.97 | (12897/12532)^(1/3)−1   |
+| 実績配当前年比   | 2023年102→2024年120、分割前基準          | 3/17                    |
+| 実績配当3年CAGR  | 2021〜2024年、82/96/102/120、分割前基準  | (60/41)^(1/3)−1         |
+| 予定額を含む配当 | 2025年63                                 | proposed-dividendで除外 |
 
 EPSは収益認識基準適用後の2022年からを選びました。配当には記念配当を含む年があり、記載された年額のままです。独立Pythonで9原値・14点参照・2前年比分数・2CAGR倍率/高精度小数・2注記hashが一致しました。全市場、他の株式種類、分割をまたぐ配当の自動換算や掲載成長率との一致を示すものではありません。
 

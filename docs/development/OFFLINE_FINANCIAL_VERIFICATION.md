@@ -43,8 +43,14 @@ flowchart LR
 
 ```json
 [
-  { "file": "source.xbrl", "secCode": "1001", "docID": "SYNTHETIC1",
-    "instant": "2025-03-31", "scope": "Consolidated", "accountingStandard": "J-GAAP" }
+  {
+    "file": "source.xbrl",
+    "secCode": "1001",
+    "docID": "SYNTHETIC1",
+    "instant": "2025-03-31",
+    "scope": "Consolidated",
+    "accountingStandard": "J-GAAP"
+  }
 ]
 ```
 
@@ -56,15 +62,23 @@ runnerに許容誤差はなく、raw文字列は完全一致、比率は約分�
 
 ```json
 [
-  { "metadata": { "secCode": "1001", "docID": "SYNTHETIC1", "instant": "2025-03-31",
-      "scope": "Consolidated", "accountingStandard": "J-GAAP", "currency": "JPY" },
+  {
+    "metadata": {
+      "secCode": "1001",
+      "docID": "SYNTHETIC1",
+      "instant": "2025-03-31",
+      "scope": "Consolidated",
+      "accountingStandard": "J-GAAP",
+      "currency": "JPY"
+    },
     "metrics": {
       "currentAssets": { "status": "selected", "raw": "120" },
       "currentLiabilities": { "status": "selected", "raw": "40" },
       "totalLiabilities": { "status": "selected", "raw": "80" }
     },
     "currentRatio": { "status": "calculated", "exact": { "numerator": "3", "denominator": "1" } },
-    "expectedDiff": "unchanged", "origin": { "column": "synthetic" }
+    "expectedDiff": "unchanged",
+    "origin": { "column": "synthetic" }
   }
 ]
 ```
@@ -81,8 +95,18 @@ runnerに許容誤差はなく、raw文字列は完全一致、比率は約分�
 
 ```json
 [
-  { "cohort": { "instant": "2025-03-31", "scope": "Consolidated", "accountingStandard": "J-GAAP", "currency": "JPY" },
-    "options": { "conditions": [{ "metric": "currentRatio", "operator": "gte", "value": 2 }], "sortBy": "currentRatio", "order": "desc" },
+  {
+    "cohort": {
+      "instant": "2025-03-31",
+      "scope": "Consolidated",
+      "accountingStandard": "J-GAAP",
+      "currency": "JPY"
+    },
+    "options": {
+      "conditions": [{ "metric": "currentRatio", "operator": "gte", "value": 2 }],
+      "sortBy": "currentRatio",
+      "order": "desc"
+    },
     "expectedCodes": ["10010"]
   }
 ]

@@ -24,7 +24,7 @@ SQLiteは未完了の書込みをrollback journalから戻します。復旧に�
 ## APIの使い方
 
 ```ts
-import {recoverDedicatedSqliteSnapshot, FinancialSourceJob} from "edinet-ts";
+import { recoverDedicatedSqliteSnapshot, FinancialSourceJob } from "edinet-ts";
 
 // 全writerを停止して、DBとjournalのSHA-256をそれぞれ固定します。
 const result = recoverDedicatedSqliteSnapshot({
@@ -36,27 +36,29 @@ const result = recoverDedicatedSqliteSnapshot({
 });
 
 // 構造の検査と、アプリケーションの全record検査は別です。
-const state = new FinancialSourceJob(result.output.path, {readOnly: true});
+const state = new FinancialSourceJob(result.output.path, { readOnly: true });
 try {
   const progress = state.progress(jobId);
   // 期待するplanSha256・全task/試行履歴・原本との対応を照合します。
-} finally { state.close(); }
+} finally {
+  state.close();
+}
 ```
 
 対象は `DedicatedSqliteRecoveryKind` に含まれる専用形式です。各クラスの固定schema/kindを検査します。主な対応は次のとおりです。
 
-| kind | クラス |
-|---|---|
-| `observed-financial-archive` | `ObservedFinancialArchive` |
-| `financial-source-job` | `FinancialSourceJob` |
-| `financial-index-build` | `FinancialIndexBuild` |
-| `financial-search-index` | `FinancialSearchIndex` |
-| `financial-index-publication` | `FinancialIndexPublication` |
-| `company-master-store` | `CompanyMasterStore` |
-| `corporate-registry-store` | `CorporateRegistryStore` |
+| kind                             | クラス                        |
+| -------------------------------- | ----------------------------- |
+| `observed-financial-archive`     | `ObservedFinancialArchive`    |
+| `financial-source-job`           | `FinancialSourceJob`          |
+| `financial-index-build`          | `FinancialIndexBuild`         |
+| `financial-search-index`         | `FinancialSearchIndex`        |
+| `financial-index-publication`    | `FinancialIndexPublication`   |
+| `company-master-store`           | `CompanyMasterStore`          |
+| `corporate-registry-store`       | `CorporateRegistryStore`      |
 | `corporate-registry-block-store` | `CorporateRegistryBlockStore` |
-| `large-holding-store` | `LargeHoldingStore` |
-| `facility-detail-store` | `FacilityDetailStore` |
+| `large-holding-store`            | `LargeHoldingStore`           |
+| `facility-detail-store`          | `FacilityDetailStore`         |
 
 ## 検査と保存する証跡
 

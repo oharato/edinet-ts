@@ -6,19 +6,19 @@
 
 ファイル別の実測サイズ・更新時刻・副ファイル有無は `data/benchmarks/duck-financial-final-20261103/retention-inventory.json` に保存した。処理中のファイルのサイズは変わる。この一覧は既知の主要12ファイルの記録であり、外部catalog参照を網羅した証明ではない。
 
-| 保存物 | 保持する理由 | 整理できる条件 |
-|---|---|---|
-| `data/roadmap/compressed-seed-20261030/archive.sqlite` | 日次取得の原本poolと圧縮移行の監査対象 | 本計画の削除対象外 |
-| `data/roadmap/daily-metadata-20261030.sqlite` とcheckpoint | 日次一覧・訂正系列・観測時点の根拠 | 本計画の削除対象外 |
-| `data/roadmap/daily-financial-work-20261030-index-v1/candidate/archive.sqlite`（約16.4 GiB） | 過去取得候補の原本。検索DBではない | 容量だけを理由に削除しない。原本保全・参照・代替の全内容を別途検証するまで保持 |
-| `data/roadmap/daily-financial-compressed-v2/2026-10-30/candidate/reconstructed/archive.sqlite` | 過去と最新版の全社比較に使う不変の原本 | 本計画の削除対象外 |
-| `data/benchmarks/duck-financial-full-20261031-v2/candidate/index.duckdb` と`publication.sqlite` | 旧比較候補・品質記録・過去の検証結果の再現 | 正式候補と切戻し先が確定し、どちらにも使わず、全参照を確認した後 |
-| 同候補の`parsed-snapshot.sqlite`、共有`parsed.sqlite` | 旧候補の再開と解析根拠 | 再開不要、正式・切戻し・検証経路から参照されないことを確認後。新しい解析版のcacheと混同しない |
-| `data/benchmarks/duck-financial-final-reader-20261031/comparison/aggregate.sqlite` | DuckDBと同一世代のSQLite投影。性能比較の共通入力 | 最終性能の比較・初回安定性検証の終了後。再生成元とhashを保存してから |
-| `data/benchmarks/duck-financial-final-20261103/` のStore・候補 | 最新版の全社再構築と検証 | 処理中は削除しない。結果の確定後に再開・照合・切戻し要件に従って判断 |
-| `data/benchmarks/duck-financial-unified-daily-20261031/days/2026-10-31/` | 旧固定SDKによる停止再開検証 | 凍結handoffと再開の結果を保持。新SDK候補へ混ぜず、完了/中断状態を記録してから整理を判断 |
-| 固定SDK・配布tgz・consumerのlockとmanifest | SDKとDBの組で再現・切戻しを行う | 正式・切戻し・証跡参照がない版だけ。残すtgzとsourceの対応hashを先に固定する |
-| 独立照合記録・入力/世代manifest・性能log・失敗log | 合格/未達の説明と再現 | 小さい証跡は保持。容量の大きい再生成物と一括削除しない |
+| 保存物                                                                                          | 保持する理由                                     | 整理できる条件                                                                                |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `data/roadmap/compressed-seed-20261030/archive.sqlite`                                          | 日次取得の原本poolと圧縮移行の監査対象           | 本計画の削除対象外                                                                            |
+| `data/roadmap/daily-metadata-20261030.sqlite` とcheckpoint                                      | 日次一覧・訂正系列・観測時点の根拠               | 本計画の削除対象外                                                                            |
+| `data/roadmap/daily-financial-work-20261030-index-v1/candidate/archive.sqlite`（約16.4 GiB）    | 過去取得候補の原本。検索DBではない               | 容量だけを理由に削除しない。原本保全・参照・代替の全内容を別途検証するまで保持                |
+| `data/roadmap/daily-financial-compressed-v2/2026-10-30/candidate/reconstructed/archive.sqlite`  | 過去と最新版の全社比較に使う不変の原本           | 本計画の削除対象外                                                                            |
+| `data/benchmarks/duck-financial-full-20261031-v2/candidate/index.duckdb` と`publication.sqlite` | 旧比較候補・品質記録・過去の検証結果の再現       | 正式候補と切戻し先が確定し、どちらにも使わず、全参照を確認した後                              |
+| 同候補の`parsed-snapshot.sqlite`、共有`parsed.sqlite`                                           | 旧候補の再開と解析根拠                           | 再開不要、正式・切戻し・検証経路から参照されないことを確認後。新しい解析版のcacheと混同しない |
+| `data/benchmarks/duck-financial-final-reader-20261031/comparison/aggregate.sqlite`              | DuckDBと同一世代のSQLite投影。性能比較の共通入力 | 最終性能の比較・初回安定性検証の終了後。再生成元とhashを保存してから                          |
+| `data/benchmarks/duck-financial-final-20261103/` のStore・候補                                  | 最新版の全社再構築と検証                         | 処理中は削除しない。結果の確定後に再開・照合・切戻し要件に従って判断                          |
+| `data/benchmarks/duck-financial-unified-daily-20261031/days/2026-10-31/`                        | 旧固定SDKによる停止再開検証                      | 凍結handoffと再開の結果を保持。新SDK候補へ混ぜず、完了/中断状態を記録してから整理を判断       |
+| 固定SDK・配布tgz・consumerのlockとmanifest                                                      | SDKとDBの組で再現・切戻しを行う                  | 正式・切戻し・証跡参照がない版だけ。残すtgzとsourceの対応hashを先に固定する                   |
+| 独立照合記録・入力/世代manifest・性能log・失敗log                                               | 合格/未達の説明と再現                            | 小さい証跡は保持。容量の大きい再生成物と一括削除しない                                        |
 
 ## 削除前の確認
 

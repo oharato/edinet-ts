@@ -4,10 +4,10 @@
 
 `calculateValuation(input, metricId)` と `screenValuation(inputs, metricId, options)` は、保存済みの財務原本と株価から次の値を計算します。
 
-| metricId | 算式 | unit |
-|---|---|---|
-| `priceToAnnualEarnings` | 終値 ÷ 実績年次EPS | `multiple`（倍） |
-| `priceToBookValue` | 終値 ÷ BPS | `multiple`（倍） |
+| metricId                  | 算式                   | unit              |
+| ------------------------- | ---------------------- | ----------------- |
+| `priceToAnnualEarnings`   | 終値 ÷ 実績年次EPS     | `multiple`（倍）  |
+| `priceToBookValue`        | 終値 ÷ BPS             | `multiple`（倍）  |
 | `annualPaidDividendYield` | 支払済み年次DPS ÷ 終値 | `ratio`（1=100%） |
 
 定義はJPXの[PER](https://www.jpx.co.jp/glossary/ka/73.html)・[PBR](https://www.jpx.co.jp/glossary/ka/74.html)・[株価検索の指標説明](https://port.jpx.co.jp/jpxhp/portdocs/beginner_a_03.html)を参照。配当は[配当利回り](https://www.jpx.co.jp/glossary/ka/85.html)の考え方を使い、このAPIでは明示した実績・支払済み年額を固定します。
@@ -17,22 +17,29 @@
 ## 入力と出典
 
 ```ts
-const result = calculateValuation({
-  financial: {
-    xml, metadata, observedAt, // 財務原本を実際に観測したtimezone付き時刻
-    shareBasis,               // 既存のShareBasis: 原注記を確認した宣言と参照hash
-  },
-  price: {
-    rows,                    // 既存LocalPriceRow。OHLC等の追加列は読みません
-    request: {secCode, asOf, knownAt, source: {name, sha256, observedAt}},
-    shareBasis: {
-      state: 'confirmed', shareClass: 'ordinary',
-      basisDate: '2024-04-01', // 財務のShareBasisと同じ基準の識別日
-      reviewedThrough: '2025-03-31', adjustment: 'unadjusted',
+const result = calculateValuation(
+  {
+    financial: {
+      xml,
+      metadata,
+      observedAt, // 財務原本を実際に観測したtimezone付き時刻
+      shareBasis, // 既存のShareBasis: 原注記を確認した宣言と参照hash
     },
-    maxAgeDays: 3,            // 許容する終値の古さを必須指定
+    price: {
+      rows, // 既存LocalPriceRow。OHLC等の追加列は読みません
+      request: { secCode, asOf, knownAt, source: { name, sha256, observedAt } },
+      shareBasis: {
+        state: "confirmed",
+        shareClass: "ordinary",
+        basisDate: "2024-04-01", // 財務のShareBasisと同じ基準の識別日
+        reviewedThrough: "2025-03-31",
+        adjustment: "unadjusted",
+      },
+      maxAgeDays: 3, // 許容する終値の古さを必須指定
+    },
   },
-}, 'priceToAnnualEarnings');
+  "priceToAnnualEarnings",
+);
 ```
 
 `metadata` は既存の財務明細形式です。EPS/DPSは連続12暦月のannual期間、BPSはinstantを指定します。J-GAAP/JPYだけを対象とし、四半期を年率へ換算しません。採用した元値・選択理由/全候補・原XML hash・両観測時刻・株価日/古さ/出来高/出典を返します。
@@ -74,12 +81,12 @@ const result = calculateValuation({
 
 2025-03-31の保存株価を明示し、後日の実観測時刻をknownAtにした遡及計算です。財務はエクシオS100W0NZ・ミライトS100VZQAの取得済み原本を使い、EPS/BPSはPDF2ページ、配当はPDF3/106/107ページの表・決議・支払日も確認しました。
 
-| 入力 | 正確な分数 | 近似表示 |
-|---|---|---:|
-| エクシオ: 終値1,680円 / 2025年EPS128.97円 | 56,000/4,299 | 約13.0263倍 |
-| エクシオ: 終値1,680円 / 2025年BPS1,551.71円 | 168,000/155,171 | 約1.08268倍 |
-| ミライト: 支払済み2024年DPS65円 / 終値2,178円 | 65/2,178 | 約2.98439% |
-| ミライト: 2025年DPS75円 | 計算不可 | 原本の予定額40円を含む |
+| 入力                                          | 正確な分数      |               近似表示 |
+| --------------------------------------------- | --------------- | ---------------------: |
+| エクシオ: 終値1,680円 / 2025年EPS128.97円     | 56,000/4,299    |            約13.0263倍 |
+| エクシオ: 終値1,680円 / 2025年BPS1,551.71円   | 168,000/155,171 |            約1.08268倍 |
+| ミライト: 支払済み2024年DPS65円 / 終値2,178円 | 65/2,178        |             約2.98439% |
+| ミライト: 2025年DPS75円                       | 計算不可        | 原本の予定額40円を含む |
 
 4入力の選択値・context/entity・原XML/注記/価格ファイルhash、3算式と予定配当の除外を独立Python/XML・source/built/CommonJSで照合しました。株価は元キャッシュのコピーを使い、元ファイルは変更しません。
 
@@ -96,10 +103,13 @@ const result = calculateValuation({
 `ValuationInput.splitLedger` に [分割換算の確認済み台帳](PER_SHARE_GROWTH.md) を指定すると、財務の一株値を `price.shareBasis.basisDate` へ換算してPER・PBR・支払済み配当利回りを計算します。`calculateValuation` と `screenValuation` で同じ入力を使います。価格as-of・knownAt・財務の観測時刻は元の入力から使い、換算後の正確分数で計算・検索します。
 
 ```ts
-const result = calculateValuation({
-  ...input,
-  splitLedger: reviewedLedger,
-}, ValuationMetricId.PriceToAnnualEarnings);
+const result = calculateValuation(
+  {
+    ...input,
+    splitLedger: reviewedLedger,
+  },
+  ValuationMetricId.PriceToAnnualEarnings,
+);
 ```
 
 価格の `shareBasis` は引き続き明示確認が必要です。株価そのものや取引日は変更せず、権利落ち日と効力日から価格の基準を自動推定しません。既に遡及調整された財務値は、その宣言された基準日以後だけを換算します。`shareAdjustment` に元値・換算分数・出典・適用イベントを残し、財務selectionと未調整終値を保持します。

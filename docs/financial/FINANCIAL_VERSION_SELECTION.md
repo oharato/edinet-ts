@@ -34,11 +34,11 @@ import {
   financialVersionEvidenceManifestSha256,
   verifyFinancialVersionContext,
   createSourceBackedObservedFinancialSnapshots,
-} from 'edinet-ts';
+} from "edinet-ts";
 
 // inputは呼出元が永続保管した完全公式観測/raw原XML/raw ZIPから読み込む。
 if (financialVersionEvidenceManifestSha256(input) !== pinnedManifestSha256) {
-  throw new Error('Pinned evidence changed');
+  throw new Error("Pinned evidence changed");
 }
 const bundle = { ...input, evidenceManifestSha256: pinnedManifestSha256 };
 const context = await authenticateFinancialVersionEvidence(bundle);
@@ -47,7 +47,7 @@ const proof = verifyFinancialVersionContext(context, bundle);
 const result = createSourceBackedObservedFinancialSnapshots(binding, {
   policy: FINANCIAL_VERSION_POLICY,
   evidenceManifestSha256: pinnedManifestSha256,
-  detailMetricIds: ['costOfSales'],
+  detailMetricIds: ["costOfSales"],
 });
 ```
 
@@ -66,8 +66,8 @@ chosen一原本の直接抽出には通常と同じissuer/security/期間/基準
 ```ts
 const options = {
   cutoff: bundle.cutoff,
-  extractorVersion: 'financial-details-1', // 通常の純粋抽出と同じ契約
-  detailMetricIds: ['costOfSales'] as const,
+  extractorVersion: "financial-details-1", // 通常の純粋抽出と同じ契約
+  detailMetricIds: ["costOfSales"] as const,
   financialVersion: {
     policy: FINANCIAL_VERSION_POLICY,
     evidenceManifestSha256: pinnedManifestSha256,
@@ -75,7 +75,10 @@ const options = {
 };
 const snapshots = archive.createSourceBackedSnapshots(options, binding);
 const generation = index.materializeSourceBacked(
-  'private-source-backed', archive, options, binding,
+  "private-source-backed",
+  archive,
+  options,
+  binding,
 );
 ```
 

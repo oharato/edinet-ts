@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    "data/**",
+    "artifacts/**",
+    ".opencode/**",
+    "dist/**",
+    "node_modules/**",
+    "test/test_data/**",
+    "docs/api/**",
+    "package-lock.json"
+  ]
+}

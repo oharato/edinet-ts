@@ -17,8 +17,8 @@ const document = {
     { tableIndex: 0, rawSha256: reviewedFragmentHash, kind: "non-pure-summary" },
     { tableIndex: 3, rawSha256: reviewedFragmentHash, kind: "specified", headingTableIndex: 3 },
     { tableIndex: 4, rawSha256: reviewedFragmentHash, kind: "specified", headingTableIndex: 3 },
-    { tableIndex: 5, rawSha256: reviewedFragmentHash, kind: "deemed", headingTableIndex: 5 }
-  ]
+    { tableIndex: 5, rawSha256: reviewedFragmentHash, kind: "deemed", headingTableIndex: 5 },
+  ],
 };
 ```
 
@@ -32,11 +32,11 @@ periodEndsは呼出元が原本を確認した宣言です。自動の会計年�
 
 ## 返す値と意味
 
-| 種類 | 記載単位と指標 | 扱い |
-|---|---|---|
-| non-pure-summary | issueCount（銘柄）、reportedAmount（円） | 非上場株式と非上場株式以外を別記載として保持。当期のみ |
-| specified | shares（株）、reportedAmount（円） | 特定投資株式の記載。簿価と株数を当期/前期に分ける |
-| deemed | shares（株）、reportedAmount（円） | みなし保有の記載。貸借対照表そのものの簿価とは同一視しない |
+| 種類             | 記載単位と指標                           | 扱い                                                       |
+| ---------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| non-pure-summary | issueCount（銘柄）、reportedAmount（円） | 非上場株式と非上場株式以外を別記載として保持。当期のみ     |
+| specified        | shares（株）、reportedAmount（円）       | 特定投資株式の記載。簿価と株数を当期/前期に分ける          |
+| deemed           | shares（株）、reportedAmount（円）       | みなし保有の記載。貸借対照表そのものの簿価とは同一視しない |
 
 円/千円/百万円、株/千株を十進文字列で換算し、元表示・倍率・見出し参照を残します。みなし保有では原見出しが「貸借対照表計上額」でも、注記が時価と議決権行使対象株数による金額と説明する実例があるため、指標名をreportedAmountとしています。
 
@@ -52,9 +52,14 @@ amountDefinitionも `deemed-holding-reported-amount` とし、特定投資/集�
 
 ```ts
 searchPolicyShareholdings([document], {
-  kind: "specified", periodEnd: "2026-03-31", metric: "reportedAmount",
-  nameContains: "原表の名前", condition: { operator: "gte", value: 100000000 },
-  sort: "value-desc", offset: 0, limit: 100
+  kind: "specified",
+  periodEnd: "2026-03-31",
+  metric: "reportedAmount",
+  nameContains: "原表の名前",
+  condition: { operator: "gte", value: 100000000 },
+  sort: "value-desc",
+  offset: 0,
+  limit: 100,
 });
 ```
 

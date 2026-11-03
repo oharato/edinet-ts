@@ -20,7 +20,6 @@
 
 検査入り試験配布物・consumer差分・全回帰logは `data/benchmarks/stock-data-duck-guard-20261031/`。旧consumerの正式vendorは変更していない。
 
-
 ## 同一SDK配布候補での追加回帰
 
 取得から構築まで同じ配布物を使う候補 `014e7801…` を `/tmp/stock-data-duck-unified-20261031` に接続した。artifact SHA-256は `7b259963ed55a365291f8c4da22e3a71f2c0f0da310e3cd820bc1155c051daa7`。型検査・全10ファイル64テストが成功した。初回の結合テストtimeout（60秒）はlogを保持し、複数CLIを含む機能試験の上限を120秒にして再実行。性能受入の閾値は変更していない。
