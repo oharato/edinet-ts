@@ -74,12 +74,3 @@ it("固定FDのCLI全量検査がAPIと一致し、対象発見後のhash不一�
     rmSync(dir, { recursive: true, force: true });
   }
 }, 60000);
-
-it("ZIPからの送出は全byte/CRC/hash/固定FDを検査する", () => {
-  const result = spawnSync("python3", ["test/fixtures/corporate-registry-zip-stream.py"], {
-    encoding: "utf8",
-    timeout: 30000,
-  });
-  expect(result.status, result.stderr).toBe(0);
-  expect(result.stderr).toContain("Ran 8 tests");
-}, 30000);

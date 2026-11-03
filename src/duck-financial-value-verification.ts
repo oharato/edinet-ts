@@ -1,15 +1,14 @@
 /** DuckDB counterpart of the formal daily source-verification gate. No raw XML is interpreted by the SDK here. */
-import { readFileSync, existsSync, lstatSync } from "node:fs";
+import { existsSync, lstatSync } from "node:fs";
 import { resolve, isAbsolute } from "node:path";
-import { fileURLToPath } from "node:url";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { DuckFinancialSearchIndex } from "./db/duck-financial-search-index";
 import { isFinancialIndexGenerationId } from "./db/financial-search-index";
 import { FinancialIndexPublication } from "./db/financial-index-publication";
 import { atomicJSON, canonical, normalFile, readJSONSnapshot, sha256 } from "./verification-files";
-const verifier = fileURLToPath(new URL("./assets/verify-financial-values.py", import.meta.url)),
-  execute = promisify(execFile);
+import {
+  financialSourceVerifierSha256 as verifierDigest,
+  runFinancialSourceVerifier,
+} from "./pipeline/verification/source-verifier-command";
 export interface DuckFinancialVerificationInput {
   reader: DuckFinancialSearchIndex;
   catalog: FinancialIndexPublication;
@@ -110,28 +109,23 @@ async function check(
   binding: Awaited<ReturnType<typeof context>>["binding"],
 ) {
   input.signal?.throwIfAborted();
-  const before = sha256(readFileSync(verifier));
-  const checks = await input.reader.withVerificationProjection(
+  const before = verifierDigest();
+  const checks = await input.reader.withVerificationSnapshot(
     async (projection) => {
-      let stdout: string;
+      let result;
       try {
-        ({ stdout } = await execute(
-          "python3",
-          [
-            "-I",
-            verifier,
-            projection,
-            input.archivePath,
-            binding.generation,
-            binding.archiveSha256,
-          ],
-          { signal: input.signal, maxBuffer: 1024 * 1024 },
-        ));
+        result = await runFinancialSourceVerifier(
+          "duckdb",
+          projection,
+          input.archivePath,
+          binding.generation,
+          binding.archiveSha256,
+          input.signal,
+        );
       } catch (error) {
         if (input.signal?.aborted) throw error;
         throw Error("Independent DuckDB financial source verification failed");
       }
-      const result = JSON.parse(stdout);
       if (
         !result ||
         typeof result !== "object" ||
@@ -162,10 +156,7 @@ async function check(
   );
   input.signal?.throwIfAborted();
   capture(input);
-  if (
-    before !== sha256(readFileSync(verifier)) ||
-    binding.duckdbSha256 !== (await input.reader.snapshotSha256())
-  )
+  if (before !== verifierDigest() || binding.duckdbSha256 !== (await input.reader.snapshotSha256()))
     throw Error("Verifier or DuckDB snapshot changed");
   if (canonical((await context(input)).binding) !== canonical(binding))
     throw Error("Candidate changed during verification");
@@ -212,7 +203,7 @@ export async function validateDuckFinancialValueVerification(raw: DuckFinancialV
     record.engine !== "duckdb" ||
     digest !== sha256(canonical(body)) ||
     canonical(record.binding) !== canonical(binding) ||
-    record.verifierSha256 !== sha256(readFileSync(verifier)) ||
+    record.verifierSha256 !== verifierDigest() ||
     !verifiedAt(record.verifiedAt)
   )
     throw Error("DuckDB financial source verification binding differs");

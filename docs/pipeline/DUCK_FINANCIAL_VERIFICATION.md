@@ -7,12 +7,12 @@
 ## 照合の流れ
 
 1. 固定readOnlyのDuckDB readerと保存候補の品質・世代・原本/計画指紋を確認する。条件未達候補は切り替えない。
-2. `withVerificationProjection` で私有一時SQLiteへ全財務行・全指標値・同じ世代manifestを転記する。XMLを再読込せず、最大100件・payload64 MiBで転記する。
-3. 一時SQLiteの全品質を再検査し、DuckDBの検査済み品質と完全一致することを確認する。
-4. 既存の `verify-financial-values.py` を `python3 -I` で実行する。SDKをimportせずSQLite/gzip/ElementTreeで採用値と原本を照合する。
-5. 成功・失敗・signal中断のいずれでも一時SQLiteを削除する。closeは実行中のprojection/callbackを待つ。
+2. `withVerificationSnapshot` で固定済みDuckDBの読み取り専用snapshotを照合処理へ渡す。一時SQLiteへの転記は行わない。
+3. SDK同梱の `pipeline/verification/verify-source-values.js` を別のNodeプロセスで実行する。本体の財務抽出・選択関数はimportせず、独立したSAX XMLパーサーで原本を読む。
+4. 保存されたSQL列とJSON本文、原本の値・単位・期間・提出者・訂正関係を照合する。gzip展開のサイズ上限とXML/原本ファイルのhashも検査する。
+5. 正常終了後にDuckDB snapshot・原本・候補・照合コード一式の不変性を再確認する。closeは実行中の照合callbackを待つ。
 
-一時SQLiteは既存照合器へ渡すためのもので、恒常的な検索DBの二重保存ではない。原本XMLを読むのは明示した独立照合時で、通常検索やDuckDB構築では読まない。原本ファイル全体の指紋も前後検査するため、切替時のI/OはP7で測定する。
+原本XMLを読むのは明示した独立照合時で、通常検索やDuckDB構築では読まない。原本ファイル全体の指紋も前後に検査する。従来の `withVerificationProjection` は比較検証用の互換機能として残すが、正式照合からは呼ばない。
 
 ## 記録と正式な切替入口
 
@@ -22,7 +22,7 @@
 
 原本は単一リンクの通常ファイル・正規の絶対パス・副ファイルなしを要求する。recordPathも正規の絶対パス。呼出側は既存の日次制御と同じ候補排他を保持し、固定inputSha256とsignalを渡す。取得済み候補コマンドはこの排他を保持して照合・切替を呼ぶ。
 
-これは保存された直接XBRL採用値の照合で、PDF金額照合、科目意味の網羅、未採用/欠損値の未開示認証を代替しない。原本・照合器が検証中に変わった場合は停止する。Pythonは既存のfail-closedな未対応条件も維持する。
+これは保存された直接XBRL採用値の照合で、PDF金額照合、科目意味の網羅、未採用/欠損値の未開示認証を代替しない。原本・照合器が検証中に変わった場合は停止する。未対応のXMLや曖昧な名前空間などは推定せず停止する。
 
 ## 読取側のreload
 
@@ -49,6 +49,6 @@ node node_modules/tsx/dist/cli.mjs scripts/verify-duck-financial-verification.ts
 
 `recordDuckFinancialValueVerification`、`validateDuckFinancialValueVerification`、`activateVerifiedDuckFinancialPublication` と入力型をSDKから公開する。従来の `scripts/roadmap/duck-financial-value-verification.ts` はSDK実装への再exportとして維持する。
 
-Python照合器の正本は引き続き `scripts/roadmap/verify-financial-values.py`。`npm run prepare-financial-verifier` がソース実行用と配布用の `assets/verify-financial-values.py` へコピーする。通常のbuild/testはこの準備を実行する。実行時は同梱ファイルだけを参照し、リポジトリのスクリプトへ戻らない。利用環境には `python3` が必要。
+照合器の正本は `src/pipeline/verification/` にあるTypeScriptです。通常のbuildでdistへコンパイルし、SDKへ同梱します。実行環境にPythonやリポジトリのscriptsは必要ありません。検証記録はentry・XML reader・実行補助・SQLite adapterの実装hashへ結合します。旧Python照合器の記録を新しい実装の記録として流用せず、照合を再実行して新規パスへ保存してください。
 
 照合開始時と終了時に原本DBの副ファイルを拒否する。検証記録の日時はUTCの正規ISO形式を要求する。このSDK入口の同梱は、取得一覧の最新性や日次handoffの保証・全社受入検証・本番切替の完了を意味しない。

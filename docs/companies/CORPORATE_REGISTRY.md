@@ -384,7 +384,7 @@ Node 26.12.1で、公式サンプル全件・休日・通常日の欠落・未�
 
 ## 保存済みXMLの署名を確認して取り込む
 
-Linux上でPython 3とGnuPG 2を使える場合は、`scripts/roadmap/verify-corporate-registry-signature.py` で保存済みのXML・分離署名・公開鍵を照合できます。ネットワーク取得やユーザーの鍵環境は使いません。公開鍵を取得しただけで信用せず、[国税庁の公開鍵ページ](https://www.houjin-bangou.nta.go.jp/download/kokaikagi/)等で確認した完全なフィンガープリントを指定してください。
+Linux上でPython 3とGnuPG 2を使える場合は、`scripts/roadmap/verify-corporate-registry-signature.mts` で保存済みのXML・分離署名・公開鍵を照合できます。ネットワーク取得やユーザーの鍵環境は使いません。公開鍵を取得しただけで信用せず、[国税庁の公開鍵ページ](https://www.houjin-bangou.nta.go.jp/download/kokaikagi/)等で確認した完全なフィンガープリントを指定してください。
 
 入力JSONの例です。ファイルの相対パスは、このJSONを置いたディレクトリから解決します。
 
@@ -409,7 +409,7 @@ Linux上でPython 3とGnuPG 2を使える場合は、`scripts/roadmap/verify-cor
 このhash・取得日時は検証に使った保存原本の例です。別の取得物へコピーせず、自分の取得記録を指定します。鍵更新時も、信頼するフィンガープリントを別途確認します。
 
 ```sh
-python3 scripts/roadmap/verify-corporate-registry-signature.py \
+node scripts/roadmap/verify-corporate-registry-signature.mts \
   --manifest signed-input.json --out verified-delivery
 edinet-ts import-corporate-registry-file \
   --db corporate-registry.sqlite --manifest verified-delivery/import.json
@@ -425,7 +425,7 @@ edinet-ts import-corporate-registry-file \
 
 ## 保存ZIPの全エントリを検査する
 
-`verify-corporate-registry-zip.py` は、保存した一つの配布ZIPを対象に、取得時hash・全エントリ・各XMLの署名を検査します。前節と同じLinux/Python 3/GnuPG 2環境を使い、通信は行いません。
+`verify-corporate-registry-zip.mts` は、保存した一つの配布ZIPを対象に、取得時hash・全エントリ・各XMLの署名を検査します。前節と同じLinux/Python 3/GnuPG 2環境を使い、通信は行いません。
 
 入力manifestには `archive`、取得時の `sha256`、`publicKey`、信頼する `fingerprint`、`source`、`expectedXmlParts` を指定します。パスはmanifest基準です。次は保存実差分の検証に使った例で、取得日時とhashは自分の取得記録に置き換えてください。
 
@@ -447,7 +447,7 @@ edinet-ts import-corporate-registry-file \
 ```
 
 ```sh
-python3 scripts/roadmap/verify-corporate-registry-zip.py \
+node scripts/roadmap/verify-corporate-registry-zip.mts \
   --manifest zip-input.json --out verified-zip
 edinet-ts import-corporate-registry-file \
   --db corporate-registry.sqlite --manifest verified-zip/part-000-import.json
@@ -465,10 +465,10 @@ ZIPの全エントリが、宣言したXML名と各 `名前.xml.asc` の組に�
 
 ## 指定日の差分を取得し、検証して保存する
 
-`fetch-corporate-registry-diff.py` は公式の差分一覧を取得し、指定日の**XML欄**からファイルIDを選びます。そのセッションでZIPを取得し、前節の全entry/署名検査へ渡します。CSVのIDやZIPサイズから形式を推測しません。
+`fetch-corporate-registry-diff.mts` は公式の差分一覧を取得し、指定日の**XML欄**からファイルIDを選びます。そのセッションでZIPを取得し、前節の全entry/署名検査へ渡します。CSVのIDやZIPサイズから形式を推測しません。
 
 ```sh
-python3 scripts/roadmap/fetch-corporate-registry-diff.py \
+node scripts/roadmap/fetch-corporate-registry-diff.mts \
   --date 2026-10-30 --public-key nta-public-key.asc \
   --fingerprint F4109E821F0DE67C4BA1947C4BCD87A24D615230 \
   --out retained/diff-20261030
@@ -524,7 +524,7 @@ edinet-ts plan-corporate-registry-differences \
 取得まで進める場合は次のコマンドを使います。リポジトリをNode 26でbuild済みにし、Python 3/GnuPG 2を用意してください。別の固定SDKを使う場合は `--sdk-cli /path/to/dist/cli.js` を指定できます。
 
 ```sh
-python3 scripts/roadmap/collect-corporate-registry-differences.py \
+node scripts/roadmap/collect-corporate-registry-differences.mts \
   --calendar calendar.json --query query.json \
   --public-key nta-public-key.asc \
   --fingerprint F4109E821F0DE67C4BA1947C4BCD87A24D615230 \
@@ -543,10 +543,10 @@ python3 scripts/roadmap/collect-corporate-registry-differences.py \
 
 ## 全国全件のXML原本を取得する
 
-`fetch-corporate-registry-full.py` は、[公式全件一覧](https://www.houjin-bangou.nta.go.jp/download/zenken/)の **XML欄・全国** を選び、掲載された全ZIPを取得します。都道府県データやCSV欄を全国XMLへ読み替えません。一つのZIPに複数XMLがある場合も、すべてのXMLと対応署名を検査します。
+`fetch-corporate-registry-full.mts` は、[公式全件一覧](https://www.houjin-bangou.nta.go.jp/download/zenken/)の **XML欄・全国** を選び、掲載された全ZIPを取得します。都道府県データやCSV欄を全国XMLへ読み替えません。一つのZIPに複数XMLがある場合も、すべてのXMLと対応署名を検査します。
 
 ```sh
-python3 scripts/roadmap/fetch-corporate-registry-full.py \
+node scripts/roadmap/fetch-corporate-registry-full.mts \
   --date 2026-10-30 --public-key nta-public-key.asc \
   --fingerprint F4109E821F0DE67C4BA1947C4BCD87A24D615230 \
   --out retained/full-20261030 --max-zips 1
@@ -684,7 +684,7 @@ edinet-ts reconstruct-corporate-registry-streams \
 
 manifestは `[{scope:"national",expectedParts:6,parts:[{file,source,sha256},...]}]` のJSONです。fileはmanifestからの相対パスまたは絶対パス。CLIは単一リンクの通常ファイルを固定FDで読み、読取前後のパス・サイズ・mtime/ctimeも確認します。manifest/queryは各2 MiB以下です。
 
-ZIPを使う場合は、リポジトリの `scripts/roadmap/stream-corporate-registry-member.py --receipt archive-verification.json --entry PART.xml` が、既存の全パート署名検証receiptに結び付いたXMLをstdoutへ送れます。ZIPとXMLのhash・CRC・不変性を再確認し、展開ファイルを作りません。この補助スクリプト自体がPGPの信頼を再認証するものではなく、SDKのPython依存でもありません。SDKへ接続する生成側では、stdoutの終了だけでなく子プロセスの正常終了も確認してください。後検査の失敗を無視してはいけません。
+ZIPを使う場合は、リポジトリの `node dist/companies/registry/stream-verified-xml.js --receipt archive-verification.json --entry PART.xml` が、既存の全パート署名検証receiptに結び付いたXMLをstdoutへ送れます。ZIPとXMLのhash・CRC・不変性を再確認し、展開ファイルを作りません。この補助コマンド自体はPGPの信頼を再認証しません。通常のSDK buildに含まれ、Nodeで動きます。SDKへ接続する生成側では、stdoutの終了だけでなく子プロセスの正常終了も確認してください。後検査の失敗を無視してはいけません。
 
 ### 全国実原本の確認結果
 

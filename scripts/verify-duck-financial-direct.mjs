@@ -155,7 +155,7 @@ async function main() {
           elapsedMs: performance.now() - started,
           maxRssKiB: process.resourceUsage().maxRSS,
           scope:
-            "same SDK direct XML path versus parsed SQLite/DuckDB; independent Python value verification remains required",
+            "same SDK direct XML path versus parsed SQLite/DuckDB; independent TypeScript value verification remains required",
         },
         null,
         2,

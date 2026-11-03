@@ -7,15 +7,15 @@ GitHubの保存量を増やさず、固定sourceからローカルで配布物�
 
 ## 固定入力と実行
 
-`python3 scripts/build-local.py` は、実行時の作業ブランチではなく、明示的に固定されたsource `3cc4618e5fa8d3e35604e15dc49c31f9f35ebdd7` とlockfileを一時checkoutしてbuildする。期待する配布物SHA-256は `69e50093645fdd38a31c46c5b676e7efe32b523033e37def135c3d5b657d7a94`。
+`node scripts/build-local.mts` は、実行時の作業ブランチではなく、明示的に固定されたsource `3cc4618e5fa8d3e35604e15dc49c31f9f35ebdd7` とlockfileを一時checkoutしてbuildする。期待する配布物SHA-256は `69e50093645fdd38a31c46c5b676e7efe32b523033e37def135c3d5b657d7a94`。
 
 現在のheadの配布物を自動で作るスクリプトではない。
 
 ```sh
 OUT=/absolute/private/path/edinet-ts-artifacts
-python3 scripts/build-local.py --output "$OUT" --dry-run
-python3 scripts/build-local.py --output "$OUT"
-python3 scripts/test_artifact_store.py
+node scripts/build-local.mts --output "$OUT" --dry-run
+node scripts/build-local.mts --output "$OUT"
+npm test -- test/local-artifact-store.test.ts
 ```
 
 公開対象外の保存先を指定する。スクリプトはoffline npm cacheのみを使い、cache不足時にネットワークへ黙ってfallbackしない。
@@ -35,7 +35,7 @@ python3 scripts/test_artifact_store.py
 rollbackはhashを確認してpointerを切り替える。
 
 ```sh
-python3 scripts/build-local.py --output "$OUT" --rollback GENERATION_BASENAME
+node scripts/build-local.mts --output "$OUT" --rollback GENERATION_BASENAME
 ```
 
 2026-10-30の現在版は3cc4618・202ファイル/2,512,120 bytesです。以下の53eb2ad/e673e8aの件数は前世代の履歴で、現在の検証は末尾に追記します。

@@ -135,9 +135,10 @@ it.each([
       }
     }
     const result = spawnSync(
-      "python3",
+      process.execPath,
       [
-        resolve("scripts/roadmap/verify-financial-values.py"),
+        resolve("dist/pipeline/verification/verify-source-values.js"),
+        "sqlite",
         indexPath,
         archivePath,
         "g",
@@ -158,15 +159,15 @@ it.each([
   }
 });
 
-it("Python最適化で検証assertを除去した実行は入力を読む前に拒否する", () => {
+it("引数不足では入力を読む前に拒否する", () => {
   const result = spawnSync(
-    "python3",
-    ["-O", resolve("scripts/roadmap/verify-financial-values.py")],
+    process.execPath,
+    [resolve("dist/pipeline/verification/verify-source-values.js")],
     { encoding: "utf8" },
   );
   expect(result.status).toBe(1);
   expect(result.stdout).toBe("");
-  expect(result.stderr).toContain("requires assertions");
+  expect(result.stderr).toContain("Independent financial source verification failed");
 });
 
 it.each([
@@ -369,9 +370,10 @@ it.each([
     }
     const archiveHash = sha(readFileSync(archivePath)),
       result = spawnSync(
-        "python3",
+        process.execPath,
         [
-          resolve("scripts/roadmap/verify-financial-values.py"),
+          resolve("dist/pipeline/verification/verify-source-values.js"),
+          "sqlite",
           indexPath,
           archivePath,
           "g",
@@ -382,7 +384,7 @@ it.each([
     if (["matching", "missing", "empty", "original-target"].includes(field)) {
       expect(result.status, result.stderr).toBe(0);
       expect(JSON.parse(result.stdout)).toMatchObject({
-        method: "python-sqlite-gzip-elementtree-direct-facts-lineage-generic-dei-sql-v5",
+        method: "node-saxes-direct-facts-lineage-dei-v1",
         selectedValues: 5,
         lineageRowsChecked: 2,
         explicitTargetDocumentsChecked: field === "matching" ? 1 : 0,
@@ -701,10 +703,10 @@ it.each([
       checked.close();
     }
     const result = spawnSync(
-      "python3",
+      process.execPath,
       [
-        "-I",
-        resolve("scripts/roadmap/verify-financial-values.py"),
+        resolve("dist/pipeline/verification/verify-source-values.js"),
+        "sqlite",
         indexPath,
         archivePath,
         "g",
@@ -715,7 +717,7 @@ it.each([
     if (field.startsWith("current-") || field.startsWith("legacy-")) {
       expect(result.status, result.stderr).toBe(0);
       expect(JSON.parse(result.stdout)).toMatchObject({
-        method: "python-sqlite-gzip-elementtree-direct-facts-lineage-generic-dei-sql-v5",
+        method: "node-saxes-direct-facts-lineage-dei-v1",
         rows: expectedRows,
         selectedValues: expectedValues,
         currentStandaloneIfrsRowsChecked: field.startsWith("legacy-") ? 0 : expectedRows,

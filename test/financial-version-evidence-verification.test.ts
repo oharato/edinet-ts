@@ -32,7 +32,7 @@ const canonical = (v: any): string =>
     })(v),
   );
 const digest = (v: any) => sha(canonical(v));
-const script = resolve("scripts/roadmap/verify-financial-version-evidence.py");
+const script = resolve("scripts/roadmap/verify-financial-version-evidence.mts");
 async function fixture(dir: string, retainOriginalFiling = false) {
   const observations: any[] = [],
     sources: any[] = [],
@@ -327,7 +327,7 @@ it.each([
     writeFileSync(bundlePath, JSON.stringify(b));
     writeFileSync(proofPath, JSON.stringify(p));
     const result = spawnSync(
-      "python3",
+      process.execPath,
       [
         script,
         "--bundle",
@@ -359,10 +359,11 @@ it.each([
     rmSync(dir, { recursive: true, force: true });
   }
 });
-it("最適化実行は検査前に拒否する", () => {
-  const result = spawnSync("python3", ["-O", script], { encoding: "utf8" });
+it("引数不足は入力を読む前に拒否する", () => {
+  const result = spawnSync(process.execPath, [script], { encoding: "utf8" });
   expect(result.status).toBe(1);
-  expect(result.stderr).toContain("requires assertions");
+  expect(result.stdout).toBe("");
+  expect(result.stderr).toContain("Independent financial version evidence verification failed");
 });
 
 it.each([
@@ -409,7 +410,7 @@ it.each([
   "state-finish-gen",
   "state-missing-finish",
   "state-plan-hash",
-])("SDK構築済v2の世代/plan/parts/保存行をPythonだけで再結合する: %s", async (field) => {
+])("SDK構築済v2の世代/plan/parts/保存行を独立したTypeScript処理で再結合する: %s", async (field) => {
   const dir = mkdtempSync(join(tmpdir(), "financial-version-sql-verifier-"));
   try {
     const { bundle, proof, binding } = await fixture(dir),
@@ -653,7 +654,7 @@ it.each([
         field === "wrong-archive" ? "0".repeat(64) : archiveSha256,
       );
     if (!["partial-args", "partial-state"].includes(field)) args.push("--build-state", statePath);
-    const result = spawnSync("python3", args, { encoding: "utf8" });
+    const result = spawnSync(process.execPath, args, { encoding: "utf8" });
     if (field === "valid") {
       expect(result.status, result.stderr).toBe(0);
       expect(JSON.parse(result.stdout)).toMatchObject({

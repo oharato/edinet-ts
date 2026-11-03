@@ -79,7 +79,9 @@ async function main() {
     "src/db/duck-financial-search-index.ts",
     "src/db/financial-search-index.ts",
     "scripts/roadmap/duck-financial-value-verification.ts",
-    "scripts/roadmap/verify-financial-values.py",
+    "src/pipeline/verification/verify-source-values.ts",
+    "src/pipeline/verification/read-source-xbrl.ts",
+    "src/pipeline/verification/source-verifier-command.ts",
     "scripts/verify-duck-financial-verification.ts",
   ];
   writeFileSync(

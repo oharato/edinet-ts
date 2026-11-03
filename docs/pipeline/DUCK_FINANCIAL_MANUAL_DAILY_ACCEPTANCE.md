@@ -6,7 +6,7 @@
 
 同じ固定SDK・Node・解析版・共有解析Storeを2日間使う。SDKを途中でbuildし直したり、既存候補のinputやhandoffを書き換えたりしない。版を変える場合は別の検証rootからやり直す。NASは使わない。
 
-必要なものはNode 26.12.1以上、通常build済みSDK、DuckDB optional driver、Python 3、Linux `/usr/bin/flock`、GNU time（`/usr/bin/time`）、EDINETの有効な認証情報、日次metadata設定、母集団snapshot、検証用のローカル保存先。認証情報は既存metadata設定のenvPathから読み、ログへ出さない。
+必要なものはNode 26.13.0以上、通常build済みSDK、DuckDB optional driver、Linux `/usr/bin/flock`、GNU time（`/usr/bin/time`）、EDINETの有効な認証情報、日次metadata設定、母集団snapshot、検証用のローカル保存先。認証情報は既存metadata設定のenvPathから読み、ログへ出さない。
 
 この手順の`DUCK_SDK`には、`scripts/roadmap`とbuild済み`dist`の両方を含む固定実行treeを指定する。npmのtgzだけを展開したpackageには日次スクリプトが含まれない。スクリプト・dist・package manifest・依存環境を揃え、日次実行に必要なモジュールを事前に配置する。
 
@@ -175,7 +175,7 @@ cat "$DUCK_EVIDENCE/$DUCK_ATTEMPT.json"
 
 2日分それぞれについて、以下を同じ証跡ディレクトリへ記録する。
 
-- 実日付、固定SDKのsource manifest・配布hash、Node/Python版、設定hash。
+- 実日付、固定SDKのsource manifest・配布hash、Node版、設定hash。
 - 原本取得完了時刻と照合完了時刻、その差が24時間以内であること。`candidate/acquisition.json`のbody.receipt.completedAtが取得完了の記録。ログのwall timeだけで代替しない。
 - day、候補ID、generation、input/hash、品質結果、原本照合結果、全ログと終了コード。
 - 初日の解析件数、翌日の新規解析件数とcache再利用件数。上のreadOnly APIによる比較結果を保存し、推測で件数を補わない。

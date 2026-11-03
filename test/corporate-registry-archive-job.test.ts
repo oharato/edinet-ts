@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { it, expect, vi } from "vitest";
 vi.mock("node:fs", async (original) => {
   const fs = await original<typeof import("node:fs")>();
@@ -13,7 +14,7 @@ vi.mock("node:fs", async (original) => {
 import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync, statfsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { createStoredZip } from "./fixtures/create-stored-zip";
 import { createHash } from "node:crypto";
 import { Database } from "../src/db/node-sqlite";
 import { CorporateRegistryBlockStore } from "../src/db/corporate-registry-block-store";
@@ -35,12 +36,18 @@ function fixture(bad = false, duplicate = false) {
     dbPath = join(dir, "registry.sqlite"),
     checkpointPath = join(dir, "checkpoint.json");
   texts.forEach((t, i) => writeFileSync(join(dir, i + ".xml"), t));
-  const zipped = spawnSync("python3", [
-    "-c",
-    "import zipfile,sys,pathlib; p=pathlib.Path(sys.argv[1]); z=zipfile.ZipFile(p/'source.zip','w',zipfile.ZIP_DEFLATED); [(z.writestr(str(i)+'.xml',(p/(str(i)+'.xml')).read_bytes()),z.writestr(str(i)+'.xml.asc',b'test-signature')) for i in range(2)]; z.close()",
-    dir,
-  ]);
-  expect(zipped.status).toBe(0);
+  writeFileSync(
+    archive,
+    createStoredZip(
+      texts.flatMap(
+        (text, i) =>
+          [
+            [i + ".xml", text],
+            [i + ".xml.asc", "test-signature"],
+          ] as [string, string][],
+      ),
+    ),
+  );
   const receipt = {
     format: "edinet-ts-corporate-registry-verified-archive-v1",
     signaturesVerified: true,

@@ -184,6 +184,29 @@ export class DuckFinancialSearchIndex {
   screen(cohort: FinancialIndexCohort, options: FinancialIndexSearchOptions) {
     return this.read(this.queries.screen(cohort, options));
   }
+  /** 一時SQLiteを作らず、固定DuckDBの原本照合が終わるまでcloseを待機させる。 */
+  withVerificationSnapshot<T>(
+    verify: (path: string) => Promise<T>,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<T> {
+    return this.track(async () => {
+      if (
+        typeof verify !== "function" ||
+        !options ||
+        typeof options !== "object" ||
+        Array.isArray(options) ||
+        Object.keys(options).some((k) => k !== "signal") ||
+        (options.signal !== undefined && !(options.signal instanceof AbortSignal))
+      )
+        throw Error("A verification callback and optional signal are required");
+      options.signal?.throwIfAborted();
+      return this.snapshot.withSnapshotFile(async (path) => {
+        const result = await verify(path);
+        options.signal?.throwIfAborted();
+        return result;
+      });
+    });
+  }
   /** Internal bridge to the existing independent SQLite/XML verifier. The private projection is always removed. */
   withVerificationProjection<T>(
     verify: (path: string) => Promise<T>,

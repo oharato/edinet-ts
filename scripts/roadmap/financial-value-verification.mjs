@@ -1,8 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { FinancialSearchIndex } from "../../dist/index.js";
 import {
   atomicJSON,
@@ -12,8 +9,10 @@ import {
   sha256,
 } from "./operational-files.mjs";
 
-const verifier = fileURLToPath(new URL("./verify-financial-values.py", import.meta.url)),
-  execute = promisify(execFile);
+import {
+  financialSourceVerifierSha256,
+  runFinancialSourceVerifier,
+} from "../../dist/pipeline/verification/source-verifier-command.js";
 const binding = (built) => ({
   inputSha256: built.inputSha256,
   generation: built.generation,
@@ -36,24 +35,18 @@ async function check(built, archivePath, signal) {
   } finally {
     index.close();
   }
-  let stdout;
   try {
-    ({ stdout } = await execute(
-      "python3",
-      [
-        "-I",
-        verifier,
-        built.indexPath,
-        archivePath,
-        built.generation,
-        built.publicationCandidate.archiveSha256,
-      ],
-      { signal, maxBuffer: 1024 * 1024 },
-    ));
+    return await runFinancialSourceVerifier(
+      "sqlite",
+      built.indexPath,
+      archivePath,
+      built.generation,
+      built.publicationCandidate.archiveSha256,
+      signal,
+    );
   } catch {
     throw Error("Independent financial source verification failed");
   }
-  return JSON.parse(stdout);
 }
 /** A complete direct-fact replay, not a manual approval flag. Caller holds candidate lock. */
 export async function recordFinancialValueVerification(
@@ -70,7 +63,7 @@ export async function recordFinancialValueVerification(
     body = {
       version: 1,
       binding: binding(built),
-      verifierSha256: sha256(readFileSync(verifier)),
+      verifierSha256: financialSourceVerifierSha256(),
       checks,
       verifiedAt: new Date().toISOString(),
     };
@@ -101,7 +94,7 @@ export async function validateFinancialValueVerification(
     record.version !== 1 ||
     digest !== sha256(canonical(body)) ||
     canonical(record.binding) !== canonical(binding(built)) ||
-    record.verifierSha256 !== sha256(readFileSync(verifier)) ||
+    record.verifierSha256 !== financialSourceVerifierSha256() ||
     typeof record.verifiedAt !== "string" ||
     !Number.isFinite(Date.parse(record.verifiedAt))
   )

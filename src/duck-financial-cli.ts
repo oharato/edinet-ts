@@ -170,7 +170,7 @@ export function registerDuckFinancialCommands(program: Command) {
         output(result, options.pretty);
       } catch {
         console.error(
-          "候補・固定入力hash・原本・検証記録・Python実行環境を確認してください（入力内容は非表示）",
+          "候補・固定入力hash・原本・検証記録・Node実行環境を確認してください（入力内容は非表示）",
         );
         process.exitCode = controller.signal.aborted ? 2 : 1;
       } finally {

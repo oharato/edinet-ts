@@ -32,12 +32,11 @@
     }
   },
   "scripts": {
-    "build": "npm run clean && npm run generate-type-docs && npm run prepare-financial-verifier && tsc && npm run add-js-extensions",
+    "build": "npm run clean && npm run generate-type-docs && tsc && npm run add-js-extensions",
     "generate-type-docs": "node --import tsx scripts/generate-type-docs.ts && oxfmt src/utils/type-doc-defs.ts",
     "add-js-extensions": "node scripts/add-js-extensions.js",
-    "test": "npm run prepare-financial-verifier && vitest run --exclude=data/** --exclude=artifacts/**",
+    "test": "vitest run --exclude=data/** --exclude=artifacts/**",
     "clean": "node -e \"require('node:fs').rmSync('dist', {recursive:true, force:true})\"",
-    "prepare-financial-verifier": "node scripts/copy-financial-verifier.js",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint src scripts test",
@@ -48,11 +47,16 @@
     "dayjs": "1.11.23",
     "dotenv": "18.0.9",
     "fast-xml-parser": "5.11.2",
-    "jszip": "3.10.2"
+    "htmlparser2": "12.0.0",
+    "jszip": "3.10.2",
+    "saxes": "6.0.0",
+    "tough-cookie": "6.0.2",
+    "yauzl": "3.4.0"
   },
   "devDependencies": {
     "@types/cli-progress": "3.11.6",
     "@types/node": "26.6.6",
+    "@types/yauzl": "3.4.0",
     "cli-progress": "3.12.0",
     "oxfmt": "0.75.0",
     "oxlint": "1.90.0",

@@ -1,5 +1,7 @@
 # 取得用DuckDBの検証計画
 
+> 2026-11-03: この文書は完了済み検証の記録です。Pythonの実験用スクリプトは削除しました。以下の旧実行コマンドは当時の記録で、現在は実行できません。保存済みの測定結果は削除していません。現行の性能判定は `node scripts/evaluate-duck-financial-performance.mts <summary.json>` を使用します。
+
 2026-10-31。停止済みの `daily-financial-compressed-v2/2026-10-30/candidate/` の `archive.sqlite` と `source-job.sqlite` を読取専用で扱い、前後の全ファイルSHA-256一致を確認する。本番サービス・原本・公開世代・依存定義は変更しない。
 
 ## 対象と比較条件

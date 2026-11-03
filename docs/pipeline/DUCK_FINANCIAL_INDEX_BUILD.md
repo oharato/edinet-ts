@@ -44,16 +44,14 @@ Node driverはoptional依存 `@duckdb/node-api@2.0.0-r.1` に固定。非同期b
 
 `node scripts/verify-duck-financial-direct.mjs <固定SDKディレクトリ> <完成したcycleディレクトリ> <新規証跡ディレクトリ>` は、構築時のSDK指紋が一致する配布コードで、原本を会社別に直接解析し直す。読取専用DuckDBの初回全体監査後、直接経路で生成した全行・全指標のhash、値/根拠を含む本文hash、採用/保留/欠損等の全診断を照合する。
 
-解析済みStoreを期待値にせず、XML解析経路との差を検出する。同一のパーサー・選択/投影処理を使うため、パーサー自体の独立した金額認証は別のPython照合で行う。会社ごとにprogressを保存し、全社一致後だけsummaryを作る。固定入力と完成記録のhash、SDK指紋、終了時の原本hashも確認する。
+解析済みStoreを期待値にせず、XML解析経路との差を検出する。同一のパーサー・選択/投影処理を使うため、パーサー自体の独立した金額認証は別のTypeScript照合で行う。会社ごとにprogressを保存し、全社一致後だけsummaryを作る。固定入力と完成記録のhash、SDK指紋、終了時の原本hashも確認する。
 
 完成前の候補には実行しない。34 GiBの保護余裕と原本コピー分の容量を確認し、構築処理と大容量の私有コピーを重ねない。
 
-## 全社検証の連鎖実行
+## 完成した候補の原本照合
 
-`python3 scripts/verify-duck-financial-full.py --pid <実構築worker PID> --sdk <固定SDK> --run <batch-002.jsonを保存する実行directory> --node <Node26実行path> --output <新規directory>` はLinux pidfdで実workerの終了を待つ。PID番号の再利用やstatusファイルだけで完了を推定しない。
+原本照合は `node scripts/verify-duck-financial-raw.mjs <固定SDK> <完成cycle> <新規証跡directory>` で実行します。構築が終了し、完成記録がbuiltになっていることを確認してから実行してください。SDK同梱のTypeScript照合処理が別のNodeプロセスでDuckDBと保存済みXMLを直接読み、全available値の検証件数と品質APIの件数を確認します。本体とは別のXMLパーサーを使用します。
 
-終了後のbatch結果がbuiltの場合だけ、直接XML比較→独立Python原本照合→同一世代のreader性能比較を逐次実行する。検証スクリプトは開始時に出力配下へ固定コピーし、hashと各段階の終了コード・時間・stdout/stderr・time記録を保存する。容量保護付きの各検証を直列にし、大容量コピーを重ねない。失敗時は後続へ進まず、中断時は実行中の検証childを終了させる。待機中の制御を止めても元の構築workerは終了させない。
+catalogは変更しません。数値照合の成功は、品質基準の達成や正式切替の承認とは別です。大容量コピーが重ならないよう、直接XML比較・原本照合・性能測定を順番に実行してください。各コマンドが成功したことを確認してから次へ進みます。
 
-原本照合単独は `node scripts/verify-duck-financial-raw.mjs <固定SDK> <完成cycle> <新規証跡directory>`。SDK同梱Pythonを利用し、全available値の検証件数が品質APIのavailable件数と一致することも確認する。catalogを変更せず、品質未達候補を正式承認した扱いにはしない。
-
-制御の最終状態 `validation-finished-not-publication-approved` は検証連鎖の完了を示す。速度/RSS/容量の受入基準や正式切替の承認は別途必要。
+初回の全社検証で使用したPythonのPID待機・連鎖実行スクリプトは、完了済み実験のため削除しました。当時の証跡と固定runtimeは保持しています。

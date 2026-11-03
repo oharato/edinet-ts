@@ -149,8 +149,8 @@ function main() {
         before = { archive: sha(archive), duck: sha(db) };
       assert(!existsSync(join(root, "scripts")), "Consumer must not contain repository scripts");
       assert.equal(
-        sha(join(root, "dist/assets/verify-financial-values.py")),
-        sha("scripts/roadmap/verify-financial-values.py"),
+        sha(join(root, "dist/pipeline/verification/verify-source-values.js")),
+        sha("dist/pipeline/verification/verify-source-values.js"),
       );
       writeFileSync(
         join(dir, "verify-source.mjs"),

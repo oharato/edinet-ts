@@ -1,5 +1,7 @@
 # DuckDB 2.0 検証計画
 
+> 2026-11-03: この文書は完了済み検証の記録です。Pythonの実験用スクリプトは削除しました。以下の旧実行コマンドは当時の記録で、現在は実行できません。保存済みの測定結果は削除していません。現行の性能判定は `node scripts/evaluate-duck-financial-performance.mts <summary.json>` を使用します。
+
 対象は停止済みの日次財務索引の集約1世代。原本DB・サービス・公開先は変更しない。
 
 1. 元SQLiteを読取専用で開き、集約世代のfinancial_rows / financial_valuesだけを検証用SQLiteへコピーする。元DBの前後SHA-256一致を確認する。
