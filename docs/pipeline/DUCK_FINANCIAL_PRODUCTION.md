@@ -62,3 +62,7 @@ SDKはdist/scripts/src/package lock・README・LICENSEを通常ファイルで�
 metadataと財務serviceは新runtimeでそれぞれ終了0を確認しました。財務の最初の結果は一覧100,000観測までの `partial` です。これは日次候補の完成・正式公開・連続2日運転の合格を意味しません。両timerは切替前の有効・稼働状態へ戻しています。正式catalogのactiveと履歴、検索DBの全hashは更新前後で同一です。
 
 今回の更新直前のDuckDB用unitはdeployment.jsonの `previousRuntimeUnits`、最初のSQLite用unitは `unitsBackup` にあります。どの世代へ戻すかに対応したunit・設定・SDKを組で使ってください。
+
+日次一覧の凍結時刻より後に取得した原本は、準備時の時刻条件では転記されません。そのため、上記1,300原本は当日の書込可能な取得cacheへ別途転記しました。元の取得時刻と原観測、凍結入力・handoff・取得jobを保持し、SDKの再利用経路で扱います。証跡は `node-runtime-837d1aba0c9a/late-source-cache-transfer.json` です。
+
+さらに、一覧根拠を確認済みの訂正親93書類を20件単位で取得し、失敗0・全93原本のhash検査と保存を確認しました。対応する原観測111件が日次候補と一致することを確認してからcacheへ転記しています。これを旧cutoffでの採用や金額照合の合格とは扱いません。`data/roadmap/missing-parent-source-job-20261103/completion.json` に記録しています。転記後は財務serviceと元のtimerを再開しました。翌日の固定poolへの継承は[残作業](../plans/REMAINING_WORK.md)で追跡します。
