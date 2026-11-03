@@ -9,8 +9,8 @@ import {
   registryStreamRow as row,
   registryStreamSource as source,
 } from "./fixtures/corporate-registry-stream";
-import { reconstructCorporateRegistryStreamStates } from "../src/companies/registry/reconstruct-stream-states";
-import { readCorporateRegistryFileChunks } from "../src/companies/registry/read-registry-stream";
+import { reconstructCorporateRegistryStreamStates } from "../src/platform/registry/reconstruct-stream-states";
+import { readCorporateRegistryFileChunks } from "../src/platform/registry/read-registry-stream";
 it("固定FDのCLI全量検査がAPIと一致し、対象発見後のhash不一致を拒否する", async () => {
   const dir = mkdtempSync(join(tmpdir(), "registry-stream-state-cli-"));
   try {

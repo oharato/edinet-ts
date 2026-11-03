@@ -1,6 +1,6 @@
 /** 全国全件XMLを、取得ZIP数の予算と容量保護を保って取得・検証する。 */
 import { parseArgs } from "node:util";
-import { fetchNationalRegistry } from "../../dist/companies/registry/fetch-national-baseline.js";
+import { fetchNationalRegistry } from "../../dist/platform/registry/fetch-national-baseline.js";
 const { values } = parseArgs({
   options: {
     date: { type: "string" },

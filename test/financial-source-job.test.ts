@@ -10,7 +10,7 @@ import {
   FinancialSourceJob,
   type FinancialSourceJobInput,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const xml = reportingInstance(),
   cutoff = "2026-07-01T00:00:00Z";

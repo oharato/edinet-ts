@@ -4,7 +4,7 @@ import {
   factKey,
   readSourceXbrl,
   XBRL,
-} from "../src/pipeline/verification/read-source-xbrl";
+} from "../src/platform/pipeline/verification/read-source-xbrl";
 
 const uri = "urn:test:financial";
 const xml = (body: string) =>

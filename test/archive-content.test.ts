@@ -1,6 +1,6 @@
 import { it, expect } from "vitest";
 import { createHash } from "node:crypto";
-import { encodeArchiveContent, decodeArchiveContent } from "../src/db/archive-content";
+import { encodeArchiveContent, decodeArchiveContent } from "../src/core/archive/archive-content";
 const raw = Buffer.from("\ufeff<x>日本語と原文の空白  </x>\n".repeat(1000)),
   hash = createHash("sha256").update(raw).digest("hex");
 it.each(["plain", "gzip"] as const)(

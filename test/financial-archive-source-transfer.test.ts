@@ -8,7 +8,7 @@ import {
   EdinetRepository,
   archiveFinancialDocumentObservations,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 const hash = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
 const canonical = (value: unknown): string =>
   JSON.stringify(value, (_k, v) =>

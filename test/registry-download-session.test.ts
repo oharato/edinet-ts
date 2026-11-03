@@ -5,7 +5,7 @@ import { join } from "node:path";
 import {
   createRegistrySession,
   downloadRegistryFile,
-} from "../src/companies/registry/download-session";
+} from "../src/platform/registry/download-session";
 it("同じoriginでcookieのpathを守り、HTTP自動展開とredirectを要求しない", async () => {
   const fetcher = vi.fn(async (url: string) => {
     const response = new Response("fixture", {

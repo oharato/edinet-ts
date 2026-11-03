@@ -7,7 +7,7 @@ import {
   createFinancialDetailSnapshot,
   type FinancialDetailGenerationRecord,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { instance, fact } from "./fixtures/metric-boundaries";
 const context =
   '<xbrli:context id="current"><xbrli:entity><xbrli:identifier scheme="synthetic">A</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>2024-04-01</xbrli:startDate><xbrli:endDate>2025-03-31</xbrli:endDate></xbrli:period></xbrli:context>';

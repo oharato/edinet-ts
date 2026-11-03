@@ -4,7 +4,7 @@ import {
   financialIndexGenerationSha256,
   financialIndexBuildPartId,
   type FinancialIndexGeneration,
-} from "../src/db/financial-search-index";
+} from "../src/platform/db/stores/financial/financial-search-index";
 const legacy = (v: unknown): string =>
   JSON.stringify(v, (_k, x) =>
     x && typeof x === "object" && !Array.isArray(x)

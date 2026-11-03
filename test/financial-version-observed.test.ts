@@ -5,15 +5,15 @@ import { join } from "node:path";
 import {
   authenticateFinancialVersionEvidence,
   FINANCIAL_VERSION_POLICY,
-} from "../src/financial/selection/select-financial-source-versions";
+} from "../src/domain/financial/selection/select-financial-source-versions";
 import {
   createSourceBackedObservedFinancialSnapshots,
   createSourceBackedObservedFinancialSnapshotsUsing,
-} from "../src/financial/snapshots/create-versioned-snapshots";
-import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
-import { createObservedFinancialSnapshots } from "../src/financial/snapshots/create-observed-snapshots";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
-import { projectFinancialIndexGeneration } from "../src/db/financial-search-index";
+} from "../src/domain/financial/snapshots/create-versioned-snapshots";
+import { createAutomaticFinancialSnapshots } from "../src/domain/financial/snapshots/create-financial-snapshots";
+import { createObservedFinancialSnapshots } from "../src/domain/financial/snapshots/create-observed-snapshots";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
+import { projectFinancialIndexGeneration } from "../src/platform/db/stores/financial/financial-search-index";
 import {
   financialVersionEvidenceFixture,
   signFinancialVersionBundle,

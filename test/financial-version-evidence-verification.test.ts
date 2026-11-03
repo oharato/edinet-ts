@@ -9,11 +9,11 @@ import {
   authenticateFinancialVersionEvidence,
   financialVersionEvidenceManifestSha256,
   readFinancialVersionProof,
-} from "../src/financial/selection/select-financial-source-versions";
+} from "../src/domain/financial/selection/select-financial-source-versions";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
-import { FinancialSearchIndex } from "../src/db/financial-search-index";
-import { FinancialIndexBuild } from "../src/db/financial-index-build";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
+import { FinancialSearchIndex } from "../src/platform/db/stores/financial/financial-search-index";
+import { FinancialIndexBuild } from "../src/platform/pipeline/financial/jobs/financial-index-build";
 import { DatabaseSync } from "node:sqlite";
 
 const sha = (v: string | Buffer) => createHash("sha256").update(v).digest("hex");

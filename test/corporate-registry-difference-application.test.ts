@@ -15,17 +15,17 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { CorporateRegistryBlockStore } from "../src/db/corporate-registry-block-store";
+import { CorporateRegistryBlockStore } from "../src/platform/db/stores/registry/corporate-registry-block-store";
 import {
   registryStreamRow as row,
   registryStreamXml as xml,
   registryStreamSource as source,
 } from "./fixtures/corporate-registry-stream";
 import { registryCalendarFixture } from "./fixtures/corporate-registry-calendar";
-import { parseCorporateRegistryPublicationCalendar } from "../src/companies/registry/publication-calendar";
+import { parseCorporateRegistryPublicationCalendar } from "../src/platform/registry/publication-calendar";
 import { applyCorporateRegistryDifferences as run } from "../scripts/roadmap/apply-corporate-registry-differences.mts";
 const mocks = vi.hoisted(() => ({ collect: vi.fn() }));
-vi.mock("../src/companies/registry/collect-differences", () => ({
+vi.mock("../src/platform/registry/collect-differences", () => ({
   collectRegistryDifferences: mocks.collect,
 }));
 vi.mock("node:fs", async (original) => {
@@ -47,7 +47,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 const hash = (v: string | Buffer) => createHash("sha256").update(v).digest("hex");
-async function fixture() {
+async function fixture(layout: "legacy-flat" | "layered" = "legacy-flat") {
   const dir = mkdtempSync(join(tmpdir(), "registry-apply-"));
   dirs.push(dir);
   chmodSync(dir, 0o700);
@@ -158,17 +158,26 @@ async function fixture() {
   const runtime = join(dir, "runtime"),
     sdkPath = join(runtime, "dist/index.js"),
     runtimeVerifierPath = join(runtime, "run-financial-pinned.mjs");
-  const runtimeFiles = [
-    "index",
-    "utils/with-operational-locks",
-    "companies/registry/collect-differences",
-  ];
+  const runtimeSources: Record<string, string> = {
+    index: "index",
+    [layout === "legacy-flat" ? "xbrl/parse-xbrl" : "core/parser/parse-xbrl"]:
+      "core/parser/parse-xbrl",
+    [layout === "legacy-flat"
+      ? "utils/with-operational-locks"
+      : "platform/locks/with-operational-locks"]: "platform/locks/with-operational-locks",
+    [layout === "legacy-flat"
+      ? "companies/registry/collect-differences"
+      : "platform/registry/collect-differences"]: "platform/registry/collect-differences",
+  };
+  const runtimeFiles = Object.keys(runtimeSources);
   for (const name of runtimeFiles) {
     const file = join(runtime, "dist", name + ".js");
     mkdirSync(join(file, ".."), { recursive: true });
     writeFileSync(
       file,
-      "export * from " + JSON.stringify(pathToFileURL(resolve("src/" + name + ".ts")).href) + ";",
+      "export * from " +
+        JSON.stringify(pathToFileURL(resolve("src/" + runtimeSources[name] + ".ts")).href) +
+        ";",
     );
   }
   const dependency = join(runtime, "dependency.txt");
@@ -209,6 +218,26 @@ async function fixture() {
     },
   };
 }
+it("新layered SDKも通信0で固定resolver identityへ適用できる", async () => {
+  const f = await fixture("layered"),
+    result = await run({ ...f.input, maxDays: 1 });
+  expect(result.status).toBe("complete");
+  expect(result.appliedThisRun).toBe(1);
+  expect(result.checkpoint?.binding.operationIdentity.sdkLayout.layout).toBe("layered");
+  expect(result.checkpoint?.binding.operationIdentity.resolverSha256).toBe(
+    hash(readFileSync(resolve("scripts/roadmap/resolve-sdk-module.mts"))),
+  );
+  expect((await run({ ...f.input, maxDays: 1 })).appliedThisRun).toBe(0);
+});
+it("SDK verifier拒否をlayout解決より先に適用し元DBを保持する", async () => {
+  const f = await fixture();
+  rmSync(join(f.dir, "runtime/dist/xbrl/parse-xbrl.js"));
+  await expect(
+    run({ ...f.input, runtimeVerifierSha256: "0".repeat(64), maxDays: 1 }),
+  ).rejects.toThrow("Pinned verifier changed");
+  expect(mocks.collect).not.toHaveBeenCalled();
+  expect(hash(readFileSync(f.input.dbPath))).toBe(f.input.baselineDbSha256);
+});
 it("通信0の再検査→適用→再実行で同じchainとDBを保持する", async () => {
   const f = await fixture(),
     first = await run(f.input);

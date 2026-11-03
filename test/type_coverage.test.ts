@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import { EdinetXbrlParser } from "../src/core/parser/parse-xbrl";
 import * as path from "path";
 import * as fs from "fs";
 

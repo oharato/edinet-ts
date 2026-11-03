@@ -4,13 +4,13 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { BalanceSheetSqliteStore } from "../src/index";
 import {
   runLocalBalanceSheetImport,
   LOCAL_IMPORT_LIMITS,
   type LocalBalanceSheetImportOptions,
-} from "../src/pipeline/import-local-balance-sheets";
+} from "../src/platform/pipeline/import-local-balance-sheets";
 import { instance, fact } from "./fixtures/metric-boundaries";
 const cli = resolve("src/cli.ts"),
   loader = resolve("node_modules/tsx/dist/loader.mjs");

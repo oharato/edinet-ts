@@ -1,4 +1,4 @@
-import { readRegularFile } from "../pipeline/import-local-balance-sheets";
+import { readRegularFile } from "../platform/pipeline/import-local-balance-sheets";
 
 /** Only messages composed by the CLI may be shown; parser errors may contain input values. */
 export class CliInputError extends Error {}

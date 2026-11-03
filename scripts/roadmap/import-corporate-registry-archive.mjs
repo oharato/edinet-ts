@@ -26,7 +26,7 @@ const format = "edinet-ts-corporate-registry-archive-job-v1",
   reserve = 34 * 1024 ** 3,
   margin = 64 * 1024 ** 2;
 const helper = fileURLToPath(
-  new URL("../../dist/companies/registry/stream-verified-xml.js", import.meta.url),
+  new URL("../../dist/platform/registry/stream-verified-xml.js", import.meta.url),
 );
 const digest = (v) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
 const capacity = (db, limit) => {

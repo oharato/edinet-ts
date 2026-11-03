@@ -12,7 +12,7 @@ import {
   type FinancialDetailStoreCohort,
   type FinancialDetailScreeningOptions,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { instance, fact, standalone } from "./fixtures/metric-boundaries";
 const cohort: FinancialDetailStoreCohort = {
   instant: "2025-03-31",

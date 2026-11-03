@@ -17,12 +17,12 @@ import { deflateRawSync, inflateRawSync } from "node:zlib";
 import {
   CorporateRegistryBlockStore as Blocks,
   CORPORATE_REGISTRY_BLOCK_MAX_DB_BYTES as maxBytes,
-} from "../src/db/corporate-registry-block-store";
-import { CorporateRegistryStore as Rows } from "../src/db/corporate-registry-store";
-import { Database } from "../src/db/node-sqlite";
-import { recoverDedicatedSqliteSnapshot } from "../src/db/sqlite-recovery";
+} from "../src/platform/db/stores/registry/corporate-registry-block-store";
+import { CorporateRegistryStore as Rows } from "../src/platform/db/stores/registry/corporate-registry-store";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { recoverDedicatedSqliteSnapshot } from "../src/platform/db/engines/sqlite/sqlite-recovery";
 import { crashDatabase } from "./fixtures/sqlite-crash";
-import { CORPORATE_REGISTRY_FIELDS as fields } from "../src/companies/registry/registry-records";
+import { CORPORATE_REGISTRY_FIELDS as fields } from "../src/platform/registry/registry-records";
 import {
   registryStreamXml as xml,
   registryStreamRow as row,

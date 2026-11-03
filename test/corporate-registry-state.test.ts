@@ -5,7 +5,7 @@ import {
   type CorporateRegistryDelivery,
   type CorporateRegistryStateQuery,
   type CorporateRegistrySource,
-} from "../src/companies/registry/registry-records";
+} from "../src/platform/registry/registry-records";
 const number = "1010001001202";
 const q: CorporateRegistryStateQuery = {
   corporateNumber: number,

@@ -12,7 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { LOCAL_IMPORT_LIMITS } from "../src/pipeline/import-local-balance-sheets";
+import { LOCAL_IMPORT_LIMITS } from "../src/platform/pipeline/import-local-balance-sheets";
 import { instance, fact } from "./fixtures/metric-boundaries";
 const cli = resolve("src/cli.ts"),
   loader = resolve("node_modules/tsx/dist/loader.mjs");

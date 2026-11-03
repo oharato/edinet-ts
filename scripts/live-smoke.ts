@@ -15,7 +15,10 @@
  *   - 340の書類名は別途買付け関係であり、大量保有ではない
  *   - 360の書類名は「訂正報告書」で始まる
  */
-import { EdinetXbrlDownloader, type EdinetDocument } from "../src/edinet/api-client";
+import {
+  EdinetXbrlDownloader,
+  type EdinetDocument,
+} from "../src/platform/client/edinet/api-client";
 
 export interface LiveSmokeSummary {
   total: number;

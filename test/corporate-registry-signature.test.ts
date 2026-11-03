@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { readFileSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { verifyDetachedSignature } from "../src/companies/registry/verify-detached-signature";
+import { verifyDetachedSignature } from "../src/platform/registry/verify-detached-signature";
 import { sha256, signedRegistryFixture } from "./fixtures/signed-corporate-registry";
 const linux = it.runIf(process.platform === "linux");
 linux.each(["valid", "wrong-trust", "changed-xml", "wrong-hash", "symlink", "missing-signature"])(

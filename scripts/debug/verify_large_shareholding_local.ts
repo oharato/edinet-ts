@@ -1,4 +1,4 @@
-import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import { EdinetXbrlParser } from "../../src/core/parser/parse-xbrl";
 import * as fs from "fs";
 import * as path from "path";
 

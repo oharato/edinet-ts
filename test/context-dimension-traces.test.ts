@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { EdinetXbrlParser, EdinetXbrlObject, type ContextDimensionTraceMap } from "../src/index";
-import { ContextParser } from "../src/xbrl/parse-contexts";
+import { ContextParser } from "../src/core/parser/parse-contexts";
 import { instance, fact, standalone } from "./fixtures/metric-boundaries";
 const XI = "http://www.xbrl.org/2003/instance",
   XD = "http://xbrl.org/2006/xbrldi";

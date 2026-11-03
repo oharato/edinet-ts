@@ -4,8 +4,8 @@ import { join } from "node:path";
 import {
   verifyRegistryZip,
   verifyRegistryArchiveParts,
-} from "../src/companies/registry/verify-archive-parts";
-import * as retained from "../src/utils/retained-files";
+} from "../src/platform/registry/verify-archive-parts";
+import * as retained from "../src/platform/files/retained-files";
 import { signedRegistryFixture, sha256 } from "./fixtures/signed-corporate-registry";
 import { createStoredZip } from "./fixtures/create-stored-zip";
 const linux = it.runIf(process.platform === "linux");

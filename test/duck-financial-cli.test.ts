@@ -6,7 +6,7 @@ import { registerDuckFinancialCommands } from "../src/cli/register-duck-financia
 import {
   FinancialIndexPublication,
   type FinancialIndexPublicationPolicy,
-} from "../src/db/financial-index-publication";
+} from "../src/platform/db/stores/financial/financial-index-publication";
 import { duckFinancialReaderFixture as fixture } from "./fixtures/duck-financial-reader";
 async function run(args: string[]) {
   const log = vi.spyOn(console, "log").mockImplementation(() => {}),

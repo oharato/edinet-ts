@@ -1,4 +1,4 @@
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { syncBuiltinESMExports } from "node:module";
 import fs from "node:fs";
 import { it, expect, vi } from "vitest";

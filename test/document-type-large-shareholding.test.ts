@@ -3,11 +3,11 @@ import {
   EdinetDocumentType,
   isFinancialReport,
   isLargeShareholding,
-} from "../src/edinet/document-types";
+} from "../src/domain/edinet/document-types";
 import { resolveCliDocumentType } from "../src/cli/parse-document-type";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
-import { EdinetXbrlDownloader } from "../src/edinet/api-client";
+import { EdinetXbrlDownloader } from "../src/platform/client/edinet/api-client";
 
 // 公式仕様（EDINET API仕様書 Version 2、2026年6月）第4章と実APIサンプルに基づく:
 // 350=大量保有報告書（変更報告書も同じ350、様式コード010002等で区別）、360=訂正大量保有報告書、

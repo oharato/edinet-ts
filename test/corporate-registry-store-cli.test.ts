@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { CorporateRegistryStore } from "../src/db/corporate-registry-store";
+import { CorporateRegistryStore } from "../src/platform/db/stores/registry/corporate-registry-store";
 import {
   registryStreamSource as source,
   registryStreamXml as xml,

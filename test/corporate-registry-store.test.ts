@@ -3,8 +3,8 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, linkSync, symlinkSync
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
-import { CorporateRegistryStore } from "../src/db/corporate-registry-store";
-import { Database } from "../src/db/node-sqlite";
+import { CorporateRegistryStore } from "../src/platform/db/stores/registry/corporate-registry-store";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import {
   registryStreamSource as source,
   registryStreamXml as xml,

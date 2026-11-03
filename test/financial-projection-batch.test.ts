@@ -1,11 +1,11 @@
 import { it, expect } from "vitest";
 import { DuckDBInstance } from "@duckdb/node-api";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import {
   FinancialIndexReadQueries,
   financialIndexSqliteSchema,
   financialIndexValueColumns,
-} from "../src/db/financial-search-index";
+} from "../src/platform/db/stores/financial/financial-search-index";
 
 it.each([
   { engine: "sqlite", limit: 1000 },

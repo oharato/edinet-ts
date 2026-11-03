@@ -13,9 +13,9 @@ import { resolve, dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
-import { Database } from "../src/db/node-sqlite";
-import { FinancialSearchIndex } from "../src/db/financial-search-index";
-import { FinancialIndexPublication } from "../src/db/financial-index-publication";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { FinancialSearchIndex } from "../src/platform/db/stores/financial/financial-search-index";
+import { FinancialIndexPublication } from "../src/platform/db/stores/financial/financial-index-publication";
 import { Project, SyntaxKind } from "ts-morph";
 
 const root = process.cwd(),
@@ -75,7 +75,7 @@ async function main() {
     connection.closeSync();
     instance.closeSync();
     // Reuse read algorithms verbatim; make DB calls asynchronous, translate the SQLite index hint and unbounded LIMIT.
-    const sourcePath = resolve("src/db/financial-search-index.ts"),
+    const sourcePath = resolve("src/platform/db/stores/financial/financial-search-index.ts"),
       source = readFileSync(sourcePath, "utf8"),
       project = new Project({ useInMemoryFileSystem: true }),
       file = project.createSourceFile("/index.ts", source),

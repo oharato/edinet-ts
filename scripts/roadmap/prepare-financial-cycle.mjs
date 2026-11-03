@@ -22,8 +22,8 @@ import {
   FinancialSourceJob,
   archiveFinancialDocumentObservations,
 } from "../../dist/index.js";
-import { normalizeFinancialSourceJobInput } from "../../dist/db/financial-source-job.js";
-import { parseDocumentTimestamp } from "../../dist/edinet/parse-document-timestamp.js";
+import { normalizeFinancialSourceJobInput } from "../../dist/platform/pipeline/financial/jobs/financial-source-job.js";
+import { parseDocumentTimestamp } from "../../dist/domain/edinet/parse-document-timestamp.js";
 import { assertDailyNoticeState } from "./daily-metadata-notices.mjs";
 import { assertCompletedMetadataRun } from "./daily-metadata-control.mjs";
 import {

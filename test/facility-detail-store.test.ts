@@ -3,12 +3,12 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { FacilityDetailStore } from "../src/db/facility-detail-store";
+import { FacilityDetailStore } from "../src/platform/db/stores/disclosures/facility-detail-store";
 import {
   screenFacilityDetails,
   type FacilityScreeningOptions,
-} from "../src/disclosures/extract-facilities";
-import { Database } from "../src/db/node-sqlite";
+} from "../src/domain/disclosures/business/extract-facilities";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { facilityDocument as document, facilityTable as table } from "./fixtures/facility-details";
 const hash = (v: Buffer) => createHash("sha256").update(v).digest("hex");
 function fixture(use: (file: string) => void) {

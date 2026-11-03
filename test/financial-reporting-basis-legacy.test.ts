@@ -7,8 +7,8 @@ import {
   ParsedFinancialStore,
   parsedFinancialMappingVersions,
   parsedFinancialExtractionId,
-} from "../src/db/parsed-financial-store";
-import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
+} from "../src/platform/db/stores/financial/parsed-financial-store";
+import { createAutomaticFinancialSnapshots } from "../src/domain/financial/snapshots/create-financial-snapshots";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 
 it("keeps serialized basis4 outcomes readable and uses a different extraction key for the current basis", () => {

@@ -1,0 +1,5922 @@
+[
+  {
+    "name": "AFFILIATED_COMPANY_DETAILS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "AFFILIATED_COMPANY_DETAILS_VERSION"
+  },
+  {
+    "name": "AUDIT_FEE_REGISTRY",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/governance/audit-fee-metric-definitions.ts",
+    "importedName": "AUDIT_FEE_REGISTRY"
+  },
+  {
+    "name": "AUDIT_FEE_REGISTRY_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/governance/audit-fee-metric-definitions.ts",
+    "importedName": "AUDIT_FEE_REGISTRY_VERSION"
+  },
+  {
+    "name": "AccountingStandard",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/metric-definitions.ts",
+    "importedName": "AccountingStandard"
+  },
+  {
+    "name": "AdjustedPerSharePoint",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "AdjustedPerSharePoint"
+  },
+  {
+    "name": "AffiliatedCapital",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "AffiliatedCapital"
+  },
+  {
+    "name": "AffiliatedCompanyDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "AffiliatedCompanyDocument"
+  },
+  {
+    "name": "AffiliatedCompanyExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "AffiliatedCompanyExtraction"
+  },
+  {
+    "name": "AffiliatedCompanyRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "AffiliatedCompanyRow"
+  },
+  {
+    "name": "AffiliatedCompanySearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "AffiliatedCompanySearchOptions"
+  },
+  {
+    "name": "AffiliatedPercent",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "AffiliatedPercent"
+  },
+  {
+    "name": "AffiliatedRelationship",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "AffiliatedRelationship"
+  },
+  {
+    "name": "AffiliatedVotingDisplay",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "AffiliatedVotingDisplay"
+  },
+  {
+    "name": "AnalyzedDocumentObservation",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "AnalyzedDocumentObservation"
+  },
+  {
+    "name": "AnnualDividendPayment",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "AnnualDividendPayment"
+  },
+  {
+    "name": "AnnualDividendPaymentStatus",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "AnnualDividendPaymentStatus"
+  },
+  {
+    "name": "AnnualDividendReconstructionOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "AnnualDividendReconstructionOptions"
+  },
+  {
+    "name": "AnnualDividendReconstructionResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "AnnualDividendReconstructionResult"
+  },
+  {
+    "name": "AnnualDividendUnavailableReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "AnnualDividendUnavailableReason"
+  },
+  {
+    "name": "AnnualGrowthCondition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualGrowthCondition"
+  },
+  {
+    "name": "AnnualGrowthMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualGrowthMetricId"
+  },
+  {
+    "name": "AnnualGrowthScreeningOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualGrowthScreeningOptions"
+  },
+  {
+    "name": "AnnualGrowthScreeningResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualGrowthScreeningResult"
+  },
+  {
+    "name": "AnnualGrowthUnavailableReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualGrowthUnavailableReason"
+  },
+  {
+    "name": "AnnualNetIncomeDocument",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "AnnualNetIncomeDocument"
+  },
+  {
+    "name": "AnnualNetIncomeGrowthCondition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "AnnualNetIncomeGrowthCondition"
+  },
+  {
+    "name": "AnnualNetIncomeGrowthMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "AnnualNetIncomeGrowthMetricId"
+  },
+  {
+    "name": "AnnualNetIncomeGrowthResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "AnnualNetIncomeGrowthResult"
+  },
+  {
+    "name": "AnnualNetIncomeGrowthScreeningOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "AnnualNetIncomeGrowthScreeningOptions"
+  },
+  {
+    "name": "AnnualNetIncomeGrowthScreeningResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "AnnualNetIncomeGrowthScreeningResult"
+  },
+  {
+    "name": "AnnualNetIncomeMetadata",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "AnnualNetIncomeMetadata"
+  },
+  {
+    "name": "AnnualNetIncomePair",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "AnnualNetIncomePair"
+  },
+  {
+    "name": "AnnualNetIncomePoint",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "AnnualNetIncomePoint"
+  },
+  {
+    "name": "AnnualOperatingIncomeDocument",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "AnnualOperatingIncomeDocument"
+  },
+  {
+    "name": "AnnualOperatingIncomeGrowthCondition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "AnnualOperatingIncomeGrowthCondition"
+  },
+  {
+    "name": "AnnualOperatingIncomeGrowthMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "AnnualOperatingIncomeGrowthMetricId"
+  },
+  {
+    "name": "AnnualOperatingIncomeGrowthResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "AnnualOperatingIncomeGrowthResult"
+  },
+  {
+    "name": "AnnualOperatingIncomeGrowthScreeningOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "AnnualOperatingIncomeGrowthScreeningOptions"
+  },
+  {
+    "name": "AnnualOperatingIncomeGrowthScreeningResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "AnnualOperatingIncomeGrowthScreeningResult"
+  },
+  {
+    "name": "AnnualOperatingIncomeMetadata",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "AnnualOperatingIncomeMetadata"
+  },
+  {
+    "name": "AnnualOperatingIncomePair",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "AnnualOperatingIncomePair"
+  },
+  {
+    "name": "AnnualOperatingIncomePoint",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "AnnualOperatingIncomePoint"
+  },
+  {
+    "name": "AnnualResponse",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "AnnualResponse"
+  },
+  {
+    "name": "AnnualRevenueDocument",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualRevenueDocument"
+  },
+  {
+    "name": "AnnualRevenueGrowthResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualRevenueGrowthResult"
+  },
+  {
+    "name": "AnnualRevenueMetadata",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualRevenueMetadata"
+  },
+  {
+    "name": "AnnualRevenuePair",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualRevenuePair"
+  },
+  {
+    "name": "AnnualRevenuePoint",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "AnnualRevenuePoint"
+  },
+  {
+    "name": "ArchivedFinancialSnapshotOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "ArchivedFinancialSnapshotOptions"
+  },
+  {
+    "name": "ArchivedFinancialSnapshots",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "ArchivedFinancialSnapshots"
+  },
+  {
+    "name": "AuditFeeDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/screen-audit-fees.ts",
+    "importedName": "AuditFeeDocument"
+  },
+  {
+    "name": "AuditFeeMetricId",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/governance/audit-fee-metric-definitions.ts",
+    "importedName": "AuditFeeMetricId"
+  },
+  {
+    "name": "AuditFeeScreeningOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/screen-audit-fees.ts",
+    "importedName": "AuditFeeScreeningOptions"
+  },
+  {
+    "name": "AuditFeeScreeningResult",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/screen-audit-fees.ts",
+    "importedName": "AuditFeeScreeningResult"
+  },
+  {
+    "name": "AuditFeeSnapshot",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/screen-audit-fees.ts",
+    "importedName": "AuditFeeSnapshot"
+  },
+  {
+    "name": "AuthenticatedFinancialVersionContext",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "AuthenticatedFinancialVersionContext"
+  },
+  {
+    "name": "AutomaticFinancialSnapshotOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/snapshots/create-financial-snapshots.ts",
+    "importedName": "AutomaticFinancialSnapshotOptions"
+  },
+  {
+    "name": "AutomaticFinancialSnapshots",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/snapshots/create-financial-snapshots.ts",
+    "importedName": "AutomaticFinancialSnapshots"
+  },
+  {
+    "name": "AverageAssetsReturnInput",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/average-assets-return.ts",
+    "importedName": "AverageAssetsReturnInput"
+  },
+  {
+    "name": "AverageAssetsReturnMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/analysis/average-assets-return.ts",
+    "importedName": "AverageAssetsReturnMetricId"
+  },
+  {
+    "name": "AverageAssetsReturnOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/average-assets-return.ts",
+    "importedName": "AverageAssetsReturnOptions"
+  },
+  {
+    "name": "AverageAssetsReturnResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/average-assets-return.ts",
+    "importedName": "AverageAssetsReturnResult"
+  },
+  {
+    "name": "AverageAssetsReturnUnavailableReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/average-assets-return.ts",
+    "importedName": "AverageAssetsReturnUnavailableReason"
+  },
+  {
+    "name": "AverageEquityReturnInput",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/average-equity-return.ts",
+    "importedName": "AverageEquityReturnInput"
+  },
+  {
+    "name": "AverageEquityReturnReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/average-equity-return.ts",
+    "importedName": "AverageEquityReturnReason"
+  },
+  {
+    "name": "AverageEquityReturnResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/average-equity-return.ts",
+    "importedName": "AverageEquityReturnResult"
+  },
+  {
+    "name": "BALANCE_SHEET_REGISTRY",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/balance-sheet-metric-definitions.ts",
+    "importedName": "BALANCE_SHEET_REGISTRY"
+  },
+  {
+    "name": "BALANCE_SHEET_REGISTRY_VERSION",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/financial/extraction/balance-sheet-metric-definitions.ts",
+    "importedName": "BALANCE_SHEET_REGISTRY_VERSION"
+  },
+  {
+    "name": "BalanceSheetComparisonIssue",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/financial/compare-balance-sheet-versions.ts",
+    "importedName": "BalanceSheetComparisonIssue"
+  },
+  {
+    "name": "BalanceSheetCondition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "BalanceSheetCondition"
+  },
+  {
+    "name": "BalanceSheetDiagnostic",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "BalanceSheetDiagnostic"
+  },
+  {
+    "name": "BalanceSheetDiffStatus",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/platform/queries/financial/compare-balance-sheet-versions.ts",
+    "importedName": "BalanceSheetDiffStatus"
+  },
+  {
+    "name": "BalanceSheetImportItem",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/import-balance-sheets.ts",
+    "importedName": "BalanceSheetImportItem"
+  },
+  {
+    "name": "BalanceSheetImportPlan",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/import-balance-sheets.ts",
+    "importedName": "BalanceSheetImportPlan"
+  },
+  {
+    "name": "BalanceSheetImportResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/import-balance-sheets.ts",
+    "importedName": "BalanceSheetImportResult"
+  },
+  {
+    "name": "BalanceSheetImportSource",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/import-balance-sheets.ts",
+    "importedName": "BalanceSheetImportSource"
+  },
+  {
+    "name": "BalanceSheetImportStatus",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/platform/pipeline/import-balance-sheets.ts",
+    "importedName": "BalanceSheetImportStatus"
+  },
+  {
+    "name": "BalanceSheetInventoryEntry",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/balance-sheet-store.ts",
+    "importedName": "BalanceSheetInventoryEntry"
+  },
+  {
+    "name": "BalanceSheetMetricDiff",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/financial/compare-balance-sheet-versions.ts",
+    "importedName": "BalanceSheetMetricDiff"
+  },
+  {
+    "name": "BalanceSheetMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/balance-sheet-metric-definitions.ts",
+    "importedName": "BalanceSheetMetricId"
+  },
+  {
+    "name": "BalanceSheetProvenance",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/balance-sheet-store.ts",
+    "importedName": "BalanceSheetProvenance"
+  },
+  {
+    "name": "BalanceSheetPutOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/balance-sheet-store.ts",
+    "importedName": "BalanceSheetPutOptions"
+  },
+  {
+    "name": "BalanceSheetScreeningMetric",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "BalanceSheetScreeningMetric"
+  },
+  {
+    "name": "BalanceSheetScreeningOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "BalanceSheetScreeningOptions"
+  },
+  {
+    "name": "BalanceSheetScreeningResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "BalanceSheetScreeningResult"
+  },
+  {
+    "name": "BalanceSheetScreeningRow",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "BalanceSheetScreeningRow"
+  },
+  {
+    "name": "BalanceSheetSnapshot",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "BalanceSheetSnapshot"
+  },
+  {
+    "name": "BalanceSheetSnapshotMetadata",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "BalanceSheetSnapshotMetadata"
+  },
+  {
+    "name": "BalanceSheetSqliteStore",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/balance-sheet-store.ts",
+    "importedName": "BalanceSheetSqliteStore"
+  },
+  {
+    "name": "BalanceSheetStoreCohort",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/balance-sheet-store.ts",
+    "importedName": "BalanceSheetStoreCohort"
+  },
+  {
+    "name": "BalanceSheetStoreInput",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/balance-sheet-store.ts",
+    "importedName": "BalanceSheetStoreInput"
+  },
+  {
+    "name": "BalanceSheetStoreInventory",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/balance-sheet-store.ts",
+    "importedName": "BalanceSheetStoreInventory"
+  },
+  {
+    "name": "BalanceSheetStoreOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/balance-sheet-store.ts",
+    "importedName": "BalanceSheetStoreOptions"
+  },
+  {
+    "name": "BalanceSheetValueComparison",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/platform/queries/financial/compare-balance-sheet-versions.ts",
+    "importedName": "BalanceSheetValueComparison"
+  },
+  {
+    "name": "BalanceSheetVersionDiff",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/financial/compare-balance-sheet-versions.ts",
+    "importedName": "BalanceSheetVersionDiff"
+  },
+  {
+    "name": "BasicCagrMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "BasicCagrMetricId"
+  },
+  {
+    "name": "COMPANY_PROFILE_SELECTION_VERSION",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/companies/read-company-profile.ts",
+    "importedName": "COMPANY_PROFILE_SELECTION_VERSION"
+  },
+  {
+    "name": "CORPORATE_REGISTRY_BLOCK_MAX_DB_BYTES",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/platform/db/stores/registry/corporate-registry-block-store.ts",
+    "importedName": "CORPORATE_REGISTRY_BLOCK_MAX_DB_BYTES"
+  },
+  {
+    "name": "CORPORATE_REGISTRY_FIELDS",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CORPORATE_REGISTRY_FIELDS"
+  },
+  {
+    "name": "CORPORATE_REGISTRY_RECORD_MAX_BYTES",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/platform/registry/read-registry-stream.ts",
+    "importedName": "CORPORATE_REGISTRY_RECORD_MAX_BYTES"
+  },
+  {
+    "name": "CORPORATE_REGISTRY_STREAM_MAX_BYTES",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/platform/registry/read-registry-stream.ts",
+    "importedName": "CORPORATE_REGISTRY_STREAM_MAX_BYTES"
+  },
+  {
+    "name": "CURRENT_RATIO_DEFINITION",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "CURRENT_RATIO_DEFINITION"
+  },
+  {
+    "name": "CagrCondition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "CagrCondition"
+  },
+  {
+    "name": "CagrMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "CagrMetricId"
+  },
+  {
+    "name": "CagrPoint",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "CagrPoint"
+  },
+  {
+    "name": "CagrResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "CagrResult"
+  },
+  {
+    "name": "CagrScreeningOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "CagrScreeningOptions"
+  },
+  {
+    "name": "CagrUnavailableReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "CagrUnavailableReason"
+  },
+  {
+    "name": "CapitalCurrency",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "CapitalCurrency"
+  },
+  {
+    "name": "CategoryRemunerationEntry",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "CategoryRemunerationEntry"
+  },
+  {
+    "name": "ChildcareCalculationMethod",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "ChildcareCalculationMethod"
+  },
+  {
+    "name": "CommonMetadata",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "CommonMetadata"
+  },
+  {
+    "name": "CompanyCorporateStateLink",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/link-corporate-states.ts",
+    "importedName": "CompanyCorporateStateLink"
+  },
+  {
+    "name": "CompanyCorporateStateLinkReason",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/link-corporate-states.ts",
+    "importedName": "CompanyCorporateStateLinkReason"
+  },
+  {
+    "name": "CompanyCorporateStateQuery",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/link-corporate-states.ts",
+    "importedName": "CompanyCorporateStateQuery"
+  },
+  {
+    "name": "CompanyCorporateStateResult",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/link-corporate-states.ts",
+    "importedName": "CompanyCorporateStateResult"
+  },
+  {
+    "name": "CompanyCorporateStreamStateResult",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/link-corporate-states.ts",
+    "importedName": "CompanyCorporateStreamStateResult"
+  },
+  {
+    "name": "CompanyDocument",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/screen-company-profiles.ts",
+    "importedName": "CompanyDocument"
+  },
+  {
+    "name": "CompanyFinancialScreeningOptions",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/screen-company-financials.ts",
+    "importedName": "CompanyFinancialScreeningOptions"
+  },
+  {
+    "name": "CompanyFinancialScreeningResult",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/screen-company-financials.ts",
+    "importedName": "CompanyFinancialScreeningResult"
+  },
+  {
+    "name": "CompanyFinancialScreeningRow",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/screen-company-financials.ts",
+    "importedName": "CompanyFinancialScreeningRow"
+  },
+  {
+    "name": "CompanyIndustryComparisonOptions",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/compare-industries.ts",
+    "importedName": "CompanyIndustryComparisonOptions"
+  },
+  {
+    "name": "CompanyIndustryComparisonResult",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/compare-industries.ts",
+    "importedName": "CompanyIndustryComparisonResult"
+  },
+  {
+    "name": "CompanyIndustryGroup",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/compare-industries.ts",
+    "importedName": "CompanyIndustryGroup"
+  },
+  {
+    "name": "CompanyMasterChange",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/compare-company-masters.ts",
+    "importedName": "CompanyMasterChange"
+  },
+  {
+    "name": "CompanyMasterChangedField",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/compare-company-masters.ts",
+    "importedName": "CompanyMasterChangedField"
+  },
+  {
+    "name": "CompanyMasterObservation",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/companies/company-master-store.ts",
+    "importedName": "CompanyMasterObservation"
+  },
+  {
+    "name": "CompanyMasterQuery",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/company-master.ts",
+    "importedName": "CompanyMasterQuery"
+  },
+  {
+    "name": "CompanyMasterRecord",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/company-master.ts",
+    "importedName": "CompanyMasterRecord"
+  },
+  {
+    "name": "CompanyMasterSnapshot",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/company-master.ts",
+    "importedName": "CompanyMasterSnapshot"
+  },
+  {
+    "name": "CompanyMasterStore",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/companies/company-master-store.ts",
+    "importedName": "CompanyMasterStore"
+  },
+  {
+    "name": "CompanyProfile",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/read-company-profile.ts",
+    "importedName": "CompanyProfile"
+  },
+  {
+    "name": "CompanyProfileCondition",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/screen-company-profiles.ts",
+    "importedName": "CompanyProfileCondition"
+  },
+  {
+    "name": "CompanyProfileDiagnostic",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/read-company-profile.ts",
+    "importedName": "CompanyProfileDiagnostic"
+  },
+  {
+    "name": "CompanyProfileEvidence",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/read-company-profile.ts",
+    "importedName": "CompanyProfileEvidence"
+  },
+  {
+    "name": "CompanyProfileFieldId",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/companies/read-company-profile.ts",
+    "importedName": "CompanyProfileFieldId"
+  },
+  {
+    "name": "CompanyProfileOperator",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/companies/screen-company-profiles.ts",
+    "importedName": "CompanyProfileOperator"
+  },
+  {
+    "name": "CompanyProfileReason",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/read-company-profile.ts",
+    "importedName": "CompanyProfileReason"
+  },
+  {
+    "name": "CompanyProfileSelection",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/read-company-profile.ts",
+    "importedName": "CompanyProfileSelection"
+  },
+  {
+    "name": "CompanyScreeningDiagnostic",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/screen-company-profiles.ts",
+    "importedName": "CompanyScreeningDiagnostic"
+  },
+  {
+    "name": "CompanyScreeningOptions",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/screen-company-profiles.ts",
+    "importedName": "CompanyScreeningOptions"
+  },
+  {
+    "name": "CompanyScreeningResult",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/companies/screen-company-profiles.ts",
+    "importedName": "CompanyScreeningResult"
+  },
+  {
+    "name": "ComparisonOperator",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/financial-types.ts",
+    "importedName": "ComparisonOperator"
+  },
+  {
+    "name": "ConsolidationScope",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/financial-types.ts",
+    "importedName": "ConsolidationScope"
+  },
+  {
+    "name": "ContextDimensionEntryTrace",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/trace-context-dimensions.ts",
+    "importedName": "ContextDimensionEntryTrace"
+  },
+  {
+    "name": "ContextDimensionTraceCandidate",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/trace-context-dimensions.ts",
+    "importedName": "ContextDimensionTraceCandidate"
+  },
+  {
+    "name": "ContextDimensionTraceMap",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/trace-context-dimensions.ts",
+    "importedName": "ContextDimensionTraceMap"
+  },
+  {
+    "name": "ContextDimensionsTraceResult",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/trace-context-dimensions.ts",
+    "importedName": "ContextDimensionsTraceResult"
+  },
+  {
+    "name": "CorporateRegistryBlockStore",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/registry/corporate-registry-block-store.ts",
+    "importedName": "CorporateRegistryBlockStore"
+  },
+  {
+    "name": "CorporateRegistryCalendarSource",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/publication-calendar.ts",
+    "importedName": "CorporateRegistryCalendarSource"
+  },
+  {
+    "name": "CorporateRegistryChunkImport",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/registry/corporate-registry-block-store.ts",
+    "importedName": "CorporateRegistryChunkImport"
+  },
+  {
+    "name": "CorporateRegistryCompanyLink",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryCompanyLink"
+  },
+  {
+    "name": "CorporateRegistryDelivery",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryDelivery"
+  },
+  {
+    "name": "CorporateRegistryDifferencePlan",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/publication-calendar.ts",
+    "importedName": "CorporateRegistryDifferencePlan"
+  },
+  {
+    "name": "CorporateRegistryDifferencePlanQuery",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/publication-calendar.ts",
+    "importedName": "CorporateRegistryDifferencePlanQuery"
+  },
+  {
+    "name": "CorporateRegistryDownload",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryDownload"
+  },
+  {
+    "name": "CorporateRegistryField",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryField"
+  },
+  {
+    "name": "CorporateRegistryFileImport",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/registry/corporate-registry-store.ts",
+    "importedName": "CorporateRegistryFileImport"
+  },
+  {
+    "name": "CorporateRegistryLinkReason",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryLinkReason"
+  },
+  {
+    "name": "CorporateRegistryNonPublicationDay",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/publication-calendar.ts",
+    "importedName": "CorporateRegistryNonPublicationDay"
+  },
+  {
+    "name": "CorporateRegistryPublicationCalendar",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/publication-calendar.ts",
+    "importedName": "CorporateRegistryPublicationCalendar"
+  },
+  {
+    "name": "CorporateRegistryPublicationCalendarInput",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/publication-calendar.ts",
+    "importedName": "CorporateRegistryPublicationCalendarInput"
+  },
+  {
+    "name": "CorporateRegistryRecord",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryRecord"
+  },
+  {
+    "name": "CorporateRegistryRecordReference",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryRecordReference"
+  },
+  {
+    "name": "CorporateRegistrySource",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistrySource"
+  },
+  {
+    "name": "CorporateRegistryStateQuery",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryStateQuery"
+  },
+  {
+    "name": "CorporateRegistryStateResult",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryStateResult"
+  },
+  {
+    "name": "CorporateRegistryStateSelection",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryStateSelection"
+  },
+  {
+    "name": "CorporateRegistryStore",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/registry/corporate-registry-store.ts",
+    "importedName": "CorporateRegistryStore"
+  },
+  {
+    "name": "CorporateRegistryStoredDelivery",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/registry/corporate-registry-store.ts",
+    "importedName": "CorporateRegistryStoredDelivery"
+  },
+  {
+    "name": "CorporateRegistryStoredFile",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/registry/corporate-registry-store.ts",
+    "importedName": "CorporateRegistryStoredFile"
+  },
+  {
+    "name": "CorporateRegistryStoredQuery",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/registry/corporate-registry-store.ts",
+    "importedName": "CorporateRegistryStoredQuery"
+  },
+  {
+    "name": "CorporateRegistryStoredStateResult",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/registry/corporate-registry-store.ts",
+    "importedName": "CorporateRegistryStoredStateResult"
+  },
+  {
+    "name": "CorporateRegistryStreamDelivery",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/reconstruct-stream-states.ts",
+    "importedName": "CorporateRegistryStreamDelivery"
+  },
+  {
+    "name": "CorporateRegistryStreamOptions",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/read-registry-stream.ts",
+    "importedName": "CorporateRegistryStreamOptions"
+  },
+  {
+    "name": "CorporateRegistryStreamPart",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/reconstruct-stream-states.ts",
+    "importedName": "CorporateRegistryStreamPart"
+  },
+  {
+    "name": "CorporateRegistryStreamReceipt",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/read-registry-stream.ts",
+    "importedName": "CorporateRegistryStreamReceipt"
+  },
+  {
+    "name": "CorporateRegistryStreamStateQuery",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/reconstruct-stream-states.ts",
+    "importedName": "CorporateRegistryStreamStateQuery"
+  },
+  {
+    "name": "CorporateRegistryStreamStateResult",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/reconstruct-stream-states.ts",
+    "importedName": "CorporateRegistryStreamStateResult"
+  },
+  {
+    "name": "CorporateRegistryXmlInput",
+    "facade": "registry",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "CorporateRegistryXmlInput"
+  },
+  {
+    "name": "CoverageDocument",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/measure-detail-coverage.ts",
+    "importedName": "CoverageDocument"
+  },
+  {
+    "name": "CurrentRatioResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "CurrentRatioResult"
+  },
+  {
+    "name": "CurrentRatioUnavailableReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "CurrentRatioUnavailableReason"
+  },
+  {
+    "name": "DEFAULT_FINANCIAL_DETAIL_METRICS",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/detail-metric-definitions.ts",
+    "importedName": "DEFAULT_FINANCIAL_DETAIL_METRICS"
+  },
+  {
+    "name": "DEFAULT_IFRS_BALANCE_SHEET_METRICS",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/ifrs-balance-sheet-metric-definitions.ts",
+    "importedName": "DEFAULT_IFRS_BALANCE_SHEET_METRICS"
+  },
+  {
+    "name": "DEFAULT_IFRS_FINANCIAL_DETAIL_METRICS",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/ifrs-detail-metric-definitions.ts",
+    "importedName": "DEFAULT_IFRS_FINANCIAL_DETAIL_METRICS"
+  },
+  {
+    "name": "DISCLOSURE_TABLE_LIMITS",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "DISCLOSURE_TABLE_LIMITS"
+  },
+  {
+    "name": "DOCUMENT_FORMAT_KEYS",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/edinet/document-formats.ts",
+    "importedName": "DOCUMENT_FORMAT_KEYS"
+  },
+  {
+    "name": "DOCUMENT_RELATIONS_MAX_OBSERVATIONS",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DOCUMENT_RELATIONS_MAX_OBSERVATIONS"
+  },
+  {
+    "name": "DOCUMENT_RELATIONS_MAX_PARENT_REFERENCES",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DOCUMENT_RELATIONS_MAX_PARENT_REFERENCES"
+  },
+  {
+    "name": "DeclaredDocumentRelation",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DeclaredDocumentRelation"
+  },
+  {
+    "name": "DedicatedSqliteRecoveryKind",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/engines/sqlite/sqlite-recovery.ts",
+    "importedName": "DedicatedSqliteRecoveryKind"
+  },
+  {
+    "name": "DedicatedSqliteRecoveryOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/engines/sqlite/sqlite-recovery.ts",
+    "importedName": "DedicatedSqliteRecoveryOptions"
+  },
+  {
+    "name": "DedicatedSqliteRecoveryResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/engines/sqlite/sqlite-recovery.ts",
+    "importedName": "DedicatedSqliteRecoveryResult"
+  },
+  {
+    "name": "DerivedFinancialMetrics",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-snapshots.ts",
+    "importedName": "DerivedFinancialMetrics"
+  },
+  {
+    "name": "DimensionNamespaceBinding",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/trace-context-dimensions.ts",
+    "importedName": "DimensionNamespaceBinding"
+  },
+  {
+    "name": "DimensionQNameTrace",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/trace-context-dimensions.ts",
+    "importedName": "DimensionQNameTrace"
+  },
+  {
+    "name": "DimensionTraceDiagnostic",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/trace-context-dimensions.ts",
+    "importedName": "DimensionTraceDiagnostic"
+  },
+  {
+    "name": "DimensionTraceDiagnosticCode",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/trace-context-dimensions.ts",
+    "importedName": "DimensionTraceDiagnosticCode"
+  },
+  {
+    "name": "DisclosureTable",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "DisclosureTable"
+  },
+  {
+    "name": "DisclosureTableCell",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "DisclosureTableCell"
+  },
+  {
+    "name": "DisclosureTableCellMatch",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "DisclosureTableCellMatch"
+  },
+  {
+    "name": "DisclosureTableDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "DisclosureTableDocument"
+  },
+  {
+    "name": "DisclosureTableExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "DisclosureTableExtraction"
+  },
+  {
+    "name": "DisclosureTableKind",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "DisclosureTableKind"
+  },
+  {
+    "name": "DisclosureTableSource",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "DisclosureTableSource"
+  },
+  {
+    "name": "DocumentDisclosureStatus",
+    "facade": "core",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentDisclosureStatus"
+  },
+  {
+    "name": "DocumentFormatFlag",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-formats.ts",
+    "importedName": "DocumentFormatFlag"
+  },
+  {
+    "name": "DocumentFormatStatus",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-formats.ts",
+    "importedName": "DocumentFormatStatus"
+  },
+  {
+    "name": "DocumentFormats",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-formats.ts",
+    "importedName": "DocumentFormats"
+  },
+  {
+    "name": "DocumentInfoEditStatus",
+    "facade": "core",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentInfoEditStatus"
+  },
+  {
+    "name": "DocumentParentResolution",
+    "facade": "core",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentParentResolution"
+  },
+  {
+    "name": "DocumentRelationDiagnostic",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentRelationDiagnostic"
+  },
+  {
+    "name": "DocumentRelationDiagnosticCode",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentRelationDiagnosticCode"
+  },
+  {
+    "name": "DocumentRelationDocument",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentRelationDocument"
+  },
+  {
+    "name": "DocumentRelationGroup",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentRelationGroup"
+  },
+  {
+    "name": "DocumentRelationObservation",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentRelationObservation"
+  },
+  {
+    "name": "DocumentRelationsResult",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentRelationsResult"
+  },
+  {
+    "name": "DocumentSearchCriteria",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/metadata/edinet-repository.ts",
+    "importedName": "DocumentSearchCriteria"
+  },
+  {
+    "name": "DocumentVersionDecision",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/select-document-versions.ts",
+    "importedName": "DocumentVersionDecision"
+  },
+  {
+    "name": "DocumentVersionObservation",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/select-document-versions.ts",
+    "importedName": "DocumentVersionObservation"
+  },
+  {
+    "name": "DocumentVersionReason",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/select-document-versions.ts",
+    "importedName": "DocumentVersionReason"
+  },
+  {
+    "name": "DocumentWithdrawalStatus",
+    "facade": "core",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "DocumentWithdrawalStatus"
+  },
+  {
+    "name": "DuckFinancialBuiltCycle",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/build-duck-financial-cycle.ts",
+    "importedName": "DuckFinancialBuiltCycle"
+  },
+  {
+    "name": "DuckFinancialConnection",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/duck-financial-index-build.ts",
+    "importedName": "DuckFinancialConnection"
+  },
+  {
+    "name": "DuckFinancialCycleInput",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/build-duck-financial-cycle.ts",
+    "importedName": "DuckFinancialCycleInput"
+  },
+  {
+    "name": "DuckFinancialCycleResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/build-duck-financial-cycle.ts",
+    "importedName": "DuckFinancialCycleResult"
+  },
+  {
+    "name": "DuckFinancialIndexBuild",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/financial/jobs/duck-financial-index-build.ts",
+    "importedName": "DuckFinancialIndexBuild"
+  },
+  {
+    "name": "DuckFinancialPublicationReader",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/duck-financial-publication-reader.ts",
+    "importedName": "DuckFinancialPublicationReader"
+  },
+  {
+    "name": "DuckFinancialSearchIndex",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/duck-financial-search-index.ts",
+    "importedName": "DuckFinancialSearchIndex"
+  },
+  {
+    "name": "DuckFinancialVerificationBinding",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/verification/verify-duck-financial-publication.ts",
+    "importedName": "DuckFinancialVerificationBinding"
+  },
+  {
+    "name": "DuckFinancialVerificationChecks",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/verification/verify-duck-financial-publication.ts",
+    "importedName": "DuckFinancialVerificationChecks"
+  },
+  {
+    "name": "DuckFinancialVerificationInput",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/verification/verify-duck-financial-publication.ts",
+    "importedName": "DuckFinancialVerificationInput"
+  },
+  {
+    "name": "DuckFinancialVerificationRecord",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/verification/verify-duck-financial-publication.ts",
+    "importedName": "DuckFinancialVerificationRecord"
+  },
+  {
+    "name": "Edinet",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/client/edinet/edinet-client.ts",
+    "importedName": "Edinet"
+  },
+  {
+    "name": "EdinetClientOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/client/edinet/api-client.ts",
+    "importedName": "EdinetClientOptions"
+  },
+  {
+    "name": "EdinetConfig",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/client/edinet/edinet-client.ts",
+    "importedName": "EdinetConfig"
+  },
+  {
+    "name": "EdinetData",
+    "facade": "core",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "EdinetData"
+  },
+  {
+    "name": "EdinetDataUtil",
+    "facade": "core",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/core/parser/read-node-values.ts",
+    "importedName": "EdinetDataUtil"
+  },
+  {
+    "name": "EdinetDocument",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/client/edinet/api-client.ts",
+    "importedName": "EdinetDocument"
+  },
+  {
+    "name": "EdinetDocumentType",
+    "facade": "core",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/edinet/document-types.ts",
+    "importedName": "EdinetDocumentType"
+  },
+  {
+    "name": "EdinetInfoSeeder",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/metadata/seed-document-lists.ts",
+    "importedName": "EdinetInfoSeeder"
+  },
+  {
+    "name": "EdinetInfoSeederOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/metadata/seed-document-lists.ts",
+    "importedName": "EdinetInfoSeederOptions"
+  },
+  {
+    "name": "EdinetListResponse",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/client/edinet/api-client.ts",
+    "importedName": "EdinetListResponse"
+  },
+  {
+    "name": "EdinetMetadata",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/edinet-metadata.ts",
+    "importedName": "EdinetMetadata"
+  },
+  {
+    "name": "EdinetRepository",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/metadata/edinet-repository.ts",
+    "importedName": "EdinetRepository"
+  },
+  {
+    "name": "EdinetRepositoryOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/metadata/edinet-repository.ts",
+    "importedName": "EdinetRepositoryOptions"
+  },
+  {
+    "name": "EdinetRequestError",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/client/edinet/api-client.ts",
+    "importedName": "EdinetRequestError"
+  },
+  {
+    "name": "EdinetRequestErrorCode",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/platform/client/edinet/api-client.ts",
+    "importedName": "EdinetRequestErrorCode"
+  },
+  {
+    "name": "EdinetRequestOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/client/edinet/api-client.ts",
+    "importedName": "EdinetRequestOptions"
+  },
+  {
+    "name": "EdinetXbrlDownloader",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/client/edinet/api-client.ts",
+    "importedName": "EdinetXbrlDownloader"
+  },
+  {
+    "name": "EdinetXbrlObject",
+    "facade": "core",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "EdinetXbrlObject"
+  },
+  {
+    "name": "EdinetXbrlParser",
+    "facade": "core",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/core/parser/parse-xbrl.ts",
+    "importedName": "EdinetXbrlParser"
+  },
+  {
+    "name": "ExtraordinaryResponse",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "ExtraordinaryResponse"
+  },
+  {
+    "name": "FACILITY_DETAILS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "FACILITY_DETAILS_VERSION"
+  },
+  {
+    "name": "FACILITY_DETAIL_STORE_VERSION",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/platform/db/stores/disclosures/facility-detail-store.ts",
+    "importedName": "FACILITY_DETAIL_STORE_VERSION"
+  },
+  {
+    "name": "FINANCIAL_DETAIL_REGISTRY",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/detail-metric-definitions.ts",
+    "importedName": "FINANCIAL_DETAIL_REGISTRY"
+  },
+  {
+    "name": "FINANCIAL_DETAIL_REGISTRY_VERSION",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/financial/extraction/detail-metric-definitions.ts",
+    "importedName": "FINANCIAL_DETAIL_REGISTRY_VERSION"
+  },
+  {
+    "name": "FINANCIAL_DETAIL_STORE_METRICS",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/platform/db/stores/financial/financial-detail-store.ts",
+    "importedName": "FINANCIAL_DETAIL_STORE_METRICS"
+  },
+  {
+    "name": "FINANCIAL_INDEX_BUILD_VERSION",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/platform/pipeline/financial/jobs/financial-index-build.ts",
+    "importedName": "FINANCIAL_INDEX_BUILD_VERSION"
+  },
+  {
+    "name": "FINANCIAL_INDEX_PUBLICATION_VERSION",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/platform/db/stores/financial/financial-index-publication.ts",
+    "importedName": "FINANCIAL_INDEX_PUBLICATION_VERSION"
+  },
+  {
+    "name": "FINANCIAL_REPORTING_BASIS_VERSION",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/financial/extraction/resolve-reporting-basis.ts",
+    "importedName": "FINANCIAL_REPORTING_BASIS_VERSION"
+  },
+  {
+    "name": "FINANCIAL_SCREENING_METRICS",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/screening/screen-financial-snapshots.ts",
+    "importedName": "FINANCIAL_SCREENING_METRICS"
+  },
+  {
+    "name": "FINANCIAL_SEARCH_INDEX_VERSION",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FINANCIAL_SEARCH_INDEX_VERSION"
+  },
+  {
+    "name": "FINANCIAL_SOURCE_JOB_VERSION",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/platform/pipeline/financial/jobs/financial-source-job.ts",
+    "importedName": "FINANCIAL_SOURCE_JOB_VERSION"
+  },
+  {
+    "name": "FINANCIAL_VERSION_POLICY",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FINANCIAL_VERSION_POLICY"
+  },
+  {
+    "name": "FacilityDetailDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "FacilityDetailDocument"
+  },
+  {
+    "name": "FacilityDetailRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "FacilityDetailRow"
+  },
+  {
+    "name": "FacilityDetailStore",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/disclosures/facility-detail-store.ts",
+    "importedName": "FacilityDetailStore"
+  },
+  {
+    "name": "FacilityDetailStoreAppendResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/disclosures/facility-detail-store.ts",
+    "importedName": "FacilityDetailStoreAppendResult"
+  },
+  {
+    "name": "FacilityDetailStoreSearchOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/disclosures/facility-detail-store.ts",
+    "importedName": "FacilityDetailStoreSearchOptions"
+  },
+  {
+    "name": "FacilityDetailStoreSearchResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/disclosures/facility-detail-store.ts",
+    "importedName": "FacilityDetailStoreSearchResult"
+  },
+  {
+    "name": "FacilityDetailsExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "FacilityDetailsExtraction"
+  },
+  {
+    "name": "FacilityField",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "FacilityField"
+  },
+  {
+    "name": "FacilityLocationParts",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/parse-facility-location.ts",
+    "importedName": "FacilityLocationParts"
+  },
+  {
+    "name": "FacilityOrganization",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "FacilityOrganization"
+  },
+  {
+    "name": "FacilityScreeningOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "FacilityScreeningOptions"
+  },
+  {
+    "name": "FacilityTableDeclaration",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "FacilityTableDeclaration"
+  },
+  {
+    "name": "FacilityValue",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "FacilityValue"
+  },
+  {
+    "name": "FactSelectionEvidence",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/select-metric-facts.ts",
+    "importedName": "FactSelectionEvidence"
+  },
+  {
+    "name": "FactSelectionResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/select-metric-facts.ts",
+    "importedName": "FactSelectionResult"
+  },
+  {
+    "name": "FinancialArchiveSourceTransferOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "FinancialArchiveSourceTransferOptions"
+  },
+  {
+    "name": "FinancialArchiveSourceTransferResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "FinancialArchiveSourceTransferResult"
+  },
+  {
+    "name": "FinancialCondition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-snapshots.ts",
+    "importedName": "FinancialCondition"
+  },
+  {
+    "name": "FinancialCoverageState",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/measure-detail-coverage.ts",
+    "importedName": "FinancialCoverageState"
+  },
+  {
+    "name": "FinancialDetailCondition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-details.ts",
+    "importedName": "FinancialDetailCondition"
+  },
+  {
+    "name": "FinancialDetailCoverageInput",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/measure-detail-coverage.ts",
+    "importedName": "FinancialDetailCoverageInput"
+  },
+  {
+    "name": "FinancialDetailDiagnostic",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-details.ts",
+    "importedName": "FinancialDetailDiagnostic"
+  },
+  {
+    "name": "FinancialDetailDocument",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-details.ts",
+    "importedName": "FinancialDetailDocument"
+  },
+  {
+    "name": "FinancialDetailGenerationPlan",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-detail-generations.ts",
+    "importedName": "FinancialDetailGenerationPlan"
+  },
+  {
+    "name": "FinancialDetailGenerationRecord",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-detail-generations.ts",
+    "importedName": "FinancialDetailGenerationRecord"
+  },
+  {
+    "name": "FinancialDetailGenerations",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/financial-detail-generations.ts",
+    "importedName": "FinancialDetailGenerations"
+  },
+  {
+    "name": "FinancialDetailMetadata",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-details.ts",
+    "importedName": "FinancialDetailMetadata"
+  },
+  {
+    "name": "FinancialDetailMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/detail-metric-definitions.ts",
+    "importedName": "FinancialDetailMetricId"
+  },
+  {
+    "name": "FinancialDetailScreeningOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-details.ts",
+    "importedName": "FinancialDetailScreeningOptions"
+  },
+  {
+    "name": "FinancialDetailScreeningResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-details.ts",
+    "importedName": "FinancialDetailScreeningResult"
+  },
+  {
+    "name": "FinancialDetailSnapshot",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-details.ts",
+    "importedName": "FinancialDetailSnapshot"
+  },
+  {
+    "name": "FinancialDetailSqliteStore",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/financial-detail-store.ts",
+    "importedName": "FinancialDetailSqliteStore"
+  },
+  {
+    "name": "FinancialDetailStoreCohort",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-detail-store.ts",
+    "importedName": "FinancialDetailStoreCohort"
+  },
+  {
+    "name": "FinancialDetailStoreInput",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-detail-store.ts",
+    "importedName": "FinancialDetailStoreInput"
+  },
+  {
+    "name": "FinancialDetailStoreOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-detail-store.ts",
+    "importedName": "FinancialDetailStoreOptions"
+  },
+  {
+    "name": "FinancialDetailStoreProvenance",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-detail-store.ts",
+    "importedName": "FinancialDetailStoreProvenance"
+  },
+  {
+    "name": "FinancialHistory",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/client/edinet/edinet-client.ts",
+    "importedName": "FinancialHistory"
+  },
+  {
+    "name": "FinancialIndexAssembly",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexAssembly"
+  },
+  {
+    "name": "FinancialIndexAsyncReader",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-index-publication.ts",
+    "importedName": "FinancialIndexAsyncReader"
+  },
+  {
+    "name": "FinancialIndexBuild",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/financial/jobs/financial-index-build.ts",
+    "importedName": "FinancialIndexBuild"
+  },
+  {
+    "name": "FinancialIndexBuildInput",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-index-build.ts",
+    "importedName": "FinancialIndexBuildInput"
+  },
+  {
+    "name": "FinancialIndexBuildPlan",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-index-build.ts",
+    "importedName": "FinancialIndexBuildPlan"
+  },
+  {
+    "name": "FinancialIndexBuildProgress",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-index-build.ts",
+    "importedName": "FinancialIndexBuildProgress"
+  },
+  {
+    "name": "FinancialIndexBuildTask",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-index-build.ts",
+    "importedName": "FinancialIndexBuildTask"
+  },
+  {
+    "name": "FinancialIndexCohort",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexCohort"
+  },
+  {
+    "name": "FinancialIndexCohortQuality",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexCohortQuality"
+  },
+  {
+    "name": "FinancialIndexDiagnostic",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexDiagnostic"
+  },
+  {
+    "name": "FinancialIndexGeneration",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexGeneration"
+  },
+  {
+    "name": "FinancialIndexGenerationV1",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexGenerationV1"
+  },
+  {
+    "name": "FinancialIndexGenerationV2",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexGenerationV2"
+  },
+  {
+    "name": "FinancialIndexMetricId",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexMetricId"
+  },
+  {
+    "name": "FinancialIndexPopulation",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexPopulation"
+  },
+  {
+    "name": "FinancialIndexPublication",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/financial-index-publication.ts",
+    "importedName": "FinancialIndexPublication"
+  },
+  {
+    "name": "FinancialIndexPublicationCandidate",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-index-publication.ts",
+    "importedName": "FinancialIndexPublicationCandidate"
+  },
+  {
+    "name": "FinancialIndexPublicationPolicy",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-index-publication.ts",
+    "importedName": "FinancialIndexPublicationPolicy"
+  },
+  {
+    "name": "FinancialIndexPublicationTransition",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-index-publication.ts",
+    "importedName": "FinancialIndexPublicationTransition"
+  },
+  {
+    "name": "FinancialIndexQuality",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexQuality"
+  },
+  {
+    "name": "FinancialIndexQualityCounts",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexQualityCounts"
+  },
+  {
+    "name": "FinancialIndexQualityState",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexQualityState"
+  },
+  {
+    "name": "FinancialIndexRow",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexRow"
+  },
+  {
+    "name": "FinancialIndexSearchOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexSearchOptions"
+  },
+  {
+    "name": "FinancialIndexSearchResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialIndexSearchResult"
+  },
+  {
+    "name": "FinancialListBackfillOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/sync-financial-documents.ts",
+    "importedName": "FinancialListBackfillOptions"
+  },
+  {
+    "name": "FinancialListBackfillResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/sync-financial-documents.ts",
+    "importedName": "FinancialListBackfillResult"
+  },
+  {
+    "name": "FinancialObservationTransferOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/sync-financial-documents.ts",
+    "importedName": "FinancialObservationTransferOptions"
+  },
+  {
+    "name": "FinancialObservationTransferResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/sync-financial-documents.ts",
+    "importedName": "FinancialObservationTransferResult"
+  },
+  {
+    "name": "FinancialPeriodType",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/financial-types.ts",
+    "importedName": "FinancialPeriodType"
+  },
+  {
+    "name": "FinancialReportingBasis",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/resolve-reporting-basis.ts",
+    "importedName": "FinancialReportingBasis"
+  },
+  {
+    "name": "FinancialReportingBasisField",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/resolve-reporting-basis.ts",
+    "importedName": "FinancialReportingBasisField"
+  },
+  {
+    "name": "FinancialReportingBasisIssue",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/resolve-reporting-basis.ts",
+    "importedName": "FinancialReportingBasisIssue"
+  },
+  {
+    "name": "FinancialScreeningMetric",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-snapshots.ts",
+    "importedName": "FinancialScreeningMetric"
+  },
+  {
+    "name": "FinancialScreeningOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-snapshots.ts",
+    "importedName": "FinancialScreeningOptions"
+  },
+  {
+    "name": "FinancialScreeningResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-snapshots.ts",
+    "importedName": "FinancialScreeningResult"
+  },
+  {
+    "name": "FinancialSearchIndex",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/financial-search-index.ts",
+    "importedName": "FinancialSearchIndex"
+  },
+  {
+    "name": "FinancialSnapshot",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-financial-snapshots.ts",
+    "importedName": "FinancialSnapshot"
+  },
+  {
+    "name": "FinancialSourceAcquisitionItem",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "FinancialSourceAcquisitionItem"
+  },
+  {
+    "name": "FinancialSourceAcquisitionOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "FinancialSourceAcquisitionOptions"
+  },
+  {
+    "name": "FinancialSourceAcquisitionPlan",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "FinancialSourceAcquisitionPlan"
+  },
+  {
+    "name": "FinancialSourceAcquisitionResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "FinancialSourceAcquisitionResult"
+  },
+  {
+    "name": "FinancialSourceJob",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/financial/jobs/financial-source-job.ts",
+    "importedName": "FinancialSourceJob"
+  },
+  {
+    "name": "FinancialSourceJobAttempt",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-source-job.ts",
+    "importedName": "FinancialSourceJobAttempt"
+  },
+  {
+    "name": "FinancialSourceJobAudit",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-source-job.ts",
+    "importedName": "FinancialSourceJobAudit"
+  },
+  {
+    "name": "FinancialSourceJobAuditOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-source-job.ts",
+    "importedName": "FinancialSourceJobAuditOptions"
+  },
+  {
+    "name": "FinancialSourceJobInput",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-source-job.ts",
+    "importedName": "FinancialSourceJobInput"
+  },
+  {
+    "name": "FinancialSourceJobPlan",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-source-job.ts",
+    "importedName": "FinancialSourceJobPlan"
+  },
+  {
+    "name": "FinancialSourceJobProgress",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-source-job.ts",
+    "importedName": "FinancialSourceJobProgress"
+  },
+  {
+    "name": "FinancialSourceJobTask",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/financial-source-job.ts",
+    "importedName": "FinancialSourceJobTask"
+  },
+  {
+    "name": "FinancialVersionDecision",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionDecision"
+  },
+  {
+    "name": "FinancialVersionEvidenceBundle",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionEvidenceBundle"
+  },
+  {
+    "name": "FinancialVersionEvidenceInput",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionEvidenceInput"
+  },
+  {
+    "name": "FinancialVersionHoldReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionHoldReason"
+  },
+  {
+    "name": "FinancialVersionIdentity",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionIdentity"
+  },
+  {
+    "name": "FinancialVersionOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionOptions"
+  },
+  {
+    "name": "FinancialVersionProof",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionProof"
+  },
+  {
+    "name": "FinancialVersionRuntimeBinding",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionRuntimeBinding"
+  },
+  {
+    "name": "FinancialVersionSourceProof",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionSourceProof"
+  },
+  {
+    "name": "FinancialVersionZipEvidence",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionZipEvidence"
+  },
+  {
+    "name": "FinancialVersionZipProof",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "FinancialVersionZipProof"
+  },
+  {
+    "name": "IFRS_BALANCE_SHEET_REGISTRY",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/ifrs-balance-sheet-metric-definitions.ts",
+    "importedName": "IFRS_BALANCE_SHEET_REGISTRY"
+  },
+  {
+    "name": "IFRS_BALANCE_SHEET_REGISTRY_VERSION",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/financial/extraction/ifrs-balance-sheet-metric-definitions.ts",
+    "importedName": "IFRS_BALANCE_SHEET_REGISTRY_VERSION"
+  },
+  {
+    "name": "IFRS_BALANCE_SHEET_SCREENING_MAX_CONDITIONS",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "IFRS_BALANCE_SHEET_SCREENING_MAX_CONDITIONS"
+  },
+  {
+    "name": "IFRS_BALANCE_SHEET_SCREENING_MAX_DOCUMENTS",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "IFRS_BALANCE_SHEET_SCREENING_MAX_DOCUMENTS"
+  },
+  {
+    "name": "IFRS_FINANCIAL_DETAIL_REGISTRY",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/ifrs-detail-metric-definitions.ts",
+    "importedName": "IFRS_FINANCIAL_DETAIL_REGISTRY"
+  },
+  {
+    "name": "IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/financial/extraction/ifrs-detail-metric-definitions.ts",
+    "importedName": "IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION"
+  },
+  {
+    "name": "IFRS_FINANCIAL_DETAIL_SCREENING_MAX_CONDITIONS",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "IFRS_FINANCIAL_DETAIL_SCREENING_MAX_CONDITIONS"
+  },
+  {
+    "name": "IFRS_FINANCIAL_DETAIL_SCREENING_MAX_DOCUMENTS",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "IFRS_FINANCIAL_DETAIL_SCREENING_MAX_DOCUMENTS"
+  },
+  {
+    "name": "IfrsBalanceSheetCondition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "IfrsBalanceSheetCondition"
+  },
+  {
+    "name": "IfrsBalanceSheetDiagnostic",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "IfrsBalanceSheetDiagnostic"
+  },
+  {
+    "name": "IfrsBalanceSheetDocument",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "IfrsBalanceSheetDocument"
+  },
+  {
+    "name": "IfrsBalanceSheetMetadata",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "IfrsBalanceSheetMetadata"
+  },
+  {
+    "name": "IfrsBalanceSheetMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/ifrs-balance-sheet-metric-definitions.ts",
+    "importedName": "IfrsBalanceSheetMetricId"
+  },
+  {
+    "name": "IfrsBalanceSheetScreeningOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "IfrsBalanceSheetScreeningOptions"
+  },
+  {
+    "name": "IfrsBalanceSheetScreeningResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "IfrsBalanceSheetScreeningResult"
+  },
+  {
+    "name": "IfrsBalanceSheetSnapshot",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "IfrsBalanceSheetSnapshot"
+  },
+  {
+    "name": "IfrsFinancialDetailCondition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "IfrsFinancialDetailCondition"
+  },
+  {
+    "name": "IfrsFinancialDetailDiagnostic",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "IfrsFinancialDetailDiagnostic"
+  },
+  {
+    "name": "IfrsFinancialDetailDocument",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "IfrsFinancialDetailDocument"
+  },
+  {
+    "name": "IfrsFinancialDetailMetadata",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "IfrsFinancialDetailMetadata"
+  },
+  {
+    "name": "IfrsFinancialDetailMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/ifrs-detail-metric-definitions.ts",
+    "importedName": "IfrsFinancialDetailMetricId"
+  },
+  {
+    "name": "IfrsFinancialDetailScreeningOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "IfrsFinancialDetailScreeningOptions"
+  },
+  {
+    "name": "IfrsFinancialDetailScreeningResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "IfrsFinancialDetailScreeningResult"
+  },
+  {
+    "name": "IfrsFinancialDetailSnapshot",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "IfrsFinancialDetailSnapshot"
+  },
+  {
+    "name": "IndividualRemunerationEntry",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "IndividualRemunerationEntry"
+  },
+  {
+    "name": "IndustryExactValue",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/compare-industries.ts",
+    "importedName": "IndustryExactValue"
+  },
+  {
+    "name": "IndustryMetricStatistics",
+    "facade": "companies",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/queries/companies/compare-industries.ts",
+    "importedName": "IndustryMetricStatistics"
+  },
+  {
+    "name": "InternalControlResponse",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "InternalControlResponse"
+  },
+  {
+    "name": "JpcrpCorTaxonomy",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/taxonomy/jpcrp_cor_taxonomy.ts",
+    "importedName": "JpcrpCorTaxonomy"
+  },
+  {
+    "name": "JppfsCorTaxonomy",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/taxonomy/jppfs_cor_taxonomy.ts",
+    "importedName": "JppfsCorTaxonomy"
+  },
+  {
+    "name": "KeyMetricSource",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "KeyMetricSource"
+  },
+  {
+    "name": "KeyMetricSources",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "KeyMetricSources"
+  },
+  {
+    "name": "KeyMetrics",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "KeyMetrics"
+  },
+  {
+    "name": "LARGE_HOLDING_REPORT_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "LARGE_HOLDING_REPORT_VERSION"
+  },
+  {
+    "name": "LARGE_HOLDING_STORE_VERSION",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/platform/db/stores/disclosures/large-holding-store.ts",
+    "importedName": "LARGE_HOLDING_STORE_VERSION"
+  },
+  {
+    "name": "LARGE_HOLDING_TRANSACTIONS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/extract-transactions.ts",
+    "importedName": "LARGE_HOLDING_TRANSACTIONS_VERSION"
+  },
+  {
+    "name": "LARGE_HOLDING_VERSIONS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/select-report-versions.ts",
+    "importedName": "LARGE_HOLDING_VERSIONS_VERSION"
+  },
+  {
+    "name": "LargeHoldingDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "LargeHoldingDocument"
+  },
+  {
+    "name": "LargeHoldingEvidence",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "LargeHoldingEvidence"
+  },
+  {
+    "name": "LargeHoldingMetadata",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "LargeHoldingMetadata"
+  },
+  {
+    "name": "LargeHoldingMetric",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "LargeHoldingMetric"
+  },
+  {
+    "name": "LargeHoldingReport",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "LargeHoldingReport"
+  },
+  {
+    "name": "LargeHoldingRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "LargeHoldingRow"
+  },
+  {
+    "name": "LargeHoldingSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "LargeHoldingSearchOptions"
+  },
+  {
+    "name": "LargeHoldingSelection",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "LargeHoldingSelection"
+  },
+  {
+    "name": "LargeHoldingStore",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/disclosures/large-holding-store.ts",
+    "importedName": "LargeHoldingStore"
+  },
+  {
+    "name": "LargeHoldingStoreAppendResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/disclosures/large-holding-store.ts",
+    "importedName": "LargeHoldingStoreAppendResult"
+  },
+  {
+    "name": "LargeHoldingStoreSearchResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/disclosures/large-holding-store.ts",
+    "importedName": "LargeHoldingStoreSearchResult"
+  },
+  {
+    "name": "LargeHoldingTransactionNumber",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/extract-transactions.ts",
+    "importedName": "LargeHoldingTransactionNumber"
+  },
+  {
+    "name": "LargeHoldingTransactionRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/extract-transactions.ts",
+    "importedName": "LargeHoldingTransactionRow"
+  },
+  {
+    "name": "LargeHoldingTransactionSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/extract-transactions.ts",
+    "importedName": "LargeHoldingTransactionSearchOptions"
+  },
+  {
+    "name": "LargeHoldingTransactionSource",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/extract-transactions.ts",
+    "importedName": "LargeHoldingTransactionSource"
+  },
+  {
+    "name": "LargeHoldingTransactions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/extract-transactions.ts",
+    "importedName": "LargeHoldingTransactions"
+  },
+  {
+    "name": "LargeHoldingVersionDecision",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/select-report-versions.ts",
+    "importedName": "LargeHoldingVersionDecision"
+  },
+  {
+    "name": "LargeHoldingVersionDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/select-report-versions.ts",
+    "importedName": "LargeHoldingVersionDocument"
+  },
+  {
+    "name": "LargeHoldingVersionObservation",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/select-report-versions.ts",
+    "importedName": "LargeHoldingVersionObservation"
+  },
+  {
+    "name": "LargeHoldingVersionReason",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/select-report-versions.ts",
+    "importedName": "LargeHoldingVersionReason"
+  },
+  {
+    "name": "LargeHoldingVersionSelection",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/select-report-versions.ts",
+    "importedName": "LargeHoldingVersionSelection"
+  },
+  {
+    "name": "LargeShareholdingInfo",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "LargeShareholdingInfo"
+  },
+  {
+    "name": "LargeShareholdingResponse",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "LargeShareholdingResponse"
+  },
+  {
+    "name": "LocalClosingPriceResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/select-local-closing-price.ts",
+    "importedName": "LocalClosingPriceResult"
+  },
+  {
+    "name": "LocalPriceRequest",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/select-local-closing-price.ts",
+    "importedName": "LocalPriceRequest"
+  },
+  {
+    "name": "LocalPriceRow",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/select-local-closing-price.ts",
+    "importedName": "LocalPriceRow"
+  },
+  {
+    "name": "MAIN_CUSTOMER_DETAILS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/business/extract-main-customers.ts",
+    "importedName": "MAIN_CUSTOMER_DETAILS_VERSION"
+  },
+  {
+    "name": "MAJOR_SHAREHOLDER_DETAILS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "MAJOR_SHAREHOLDER_DETAILS_VERSION"
+  },
+  {
+    "name": "METRIC_REGISTRY",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/metric-definitions.ts",
+    "importedName": "METRIC_REGISTRY"
+  },
+  {
+    "name": "METRIC_REGISTRY_VERSION",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/financial/extraction/metric-definitions.ts",
+    "importedName": "METRIC_REGISTRY_VERSION"
+  },
+  {
+    "name": "MainCustomerDiagnosticReason",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-main-customers.ts",
+    "importedName": "MainCustomerDiagnosticReason"
+  },
+  {
+    "name": "MainCustomerDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-main-customers.ts",
+    "importedName": "MainCustomerDocument"
+  },
+  {
+    "name": "MainCustomerExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-main-customers.ts",
+    "importedName": "MainCustomerExtraction"
+  },
+  {
+    "name": "MainCustomerRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-main-customers.ts",
+    "importedName": "MainCustomerRow"
+  },
+  {
+    "name": "MainCustomerSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-main-customers.ts",
+    "importedName": "MainCustomerSearchOptions"
+  },
+  {
+    "name": "MajorShareholderDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "MajorShareholderDocument"
+  },
+  {
+    "name": "MajorShareholderExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "MajorShareholderExtraction"
+  },
+  {
+    "name": "MajorShareholderGroup",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "MajorShareholderGroup"
+  },
+  {
+    "name": "MajorShareholderRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "MajorShareholderRow"
+  },
+  {
+    "name": "MajorShareholderSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "MajorShareholderSearchOptions"
+  },
+  {
+    "name": "MajorShareholderTableKind",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "MajorShareholderTableKind"
+  },
+  {
+    "name": "MajorShareholderValue",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "MajorShareholderValue"
+  },
+  {
+    "name": "MetricDefinition",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/metric-definitions.ts",
+    "importedName": "MetricDefinition"
+  },
+  {
+    "name": "MetricFactBehavior",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/select-metric-facts.ts",
+    "importedName": "MetricFactBehavior"
+  },
+  {
+    "name": "MetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/extraction/metric-definitions.ts",
+    "importedName": "MetricId"
+  },
+  {
+    "name": "MetricSelectionOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/select-metric-facts.ts",
+    "importedName": "MetricSelectionOptions"
+  },
+  {
+    "name": "MetricUnit",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/metric-definitions.ts",
+    "importedName": "MetricUnit"
+  },
+  {
+    "name": "OBSERVED_FINANCIAL_ARCHIVE_VERSION",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "OBSERVED_FINANCIAL_ARCHIVE_VERSION"
+  },
+  {
+    "name": "OBSERVED_FINANCIAL_SNAPSHOT_VERSION",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/financial/snapshots/create-observed-snapshots.ts",
+    "importedName": "OBSERVED_FINANCIAL_SNAPSHOT_VERSION"
+  },
+  {
+    "name": "OFFICER_DETAILS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "OFFICER_DETAILS_VERSION"
+  },
+  {
+    "name": "OFFICER_REMUNERATION_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "OFFICER_REMUNERATION_VERSION"
+  },
+  {
+    "name": "ORDER_DETAILS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "ORDER_DETAILS_VERSION"
+  },
+  {
+    "name": "ObservedDocumentStatus",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "ObservedDocumentStatus"
+  },
+  {
+    "name": "ObservedFinancialArchive",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "ObservedFinancialArchive"
+  },
+  {
+    "name": "ObservedFinancialArchiveOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "ObservedFinancialArchiveOptions"
+  },
+  {
+    "name": "ObservedFinancialSnapshotOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/snapshots/create-observed-snapshots.ts",
+    "importedName": "ObservedFinancialSnapshotOptions"
+  },
+  {
+    "name": "ObservedFinancialSnapshotRecord",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/snapshots/create-observed-snapshots.ts",
+    "importedName": "ObservedFinancialSnapshotRecord"
+  },
+  {
+    "name": "ObservedFinancialSource",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/snapshots/create-observed-snapshots.ts",
+    "importedName": "ObservedFinancialSource"
+  },
+  {
+    "name": "ObservedFinancialSourceReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/snapshots/create-observed-snapshots.ts",
+    "importedName": "ObservedFinancialSourceReason"
+  },
+  {
+    "name": "ObservedLargeHoldingSource",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/search-observed-reports.ts",
+    "importedName": "ObservedLargeHoldingSource"
+  },
+  {
+    "name": "OfficerCellReference",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "OfficerCellReference"
+  },
+  {
+    "name": "OfficerDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "OfficerDocument"
+  },
+  {
+    "name": "OfficerExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "OfficerExtraction"
+  },
+  {
+    "name": "OfficerGroup",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "OfficerGroup"
+  },
+  {
+    "name": "OfficerRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "OfficerRow"
+  },
+  {
+    "name": "OfficerSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "OfficerSearchOptions"
+  },
+  {
+    "name": "OfficerShares",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "OfficerShares"
+  },
+  {
+    "name": "OfficerTableDeclaration",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "OfficerTableDeclaration"
+  },
+  {
+    "name": "OrderDetailDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "OrderDetailDocument"
+  },
+  {
+    "name": "OrderDetailExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "OrderDetailExtraction"
+  },
+  {
+    "name": "OrderDetailRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "OrderDetailRow"
+  },
+  {
+    "name": "OrderMetric",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "OrderMetric"
+  },
+  {
+    "name": "OrderPeriod",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "OrderPeriod"
+  },
+  {
+    "name": "OrderSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "OrderSearchOptions"
+  },
+  {
+    "name": "OrderTableDeclaration",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "OrderTableDeclaration"
+  },
+  {
+    "name": "OrderValue",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "OrderValue"
+  },
+  {
+    "name": "PARSED_FINANCIAL_STORE_VERSION",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/platform/db/stores/financial/parsed-financial-store.ts",
+    "importedName": "PARSED_FINANCIAL_STORE_VERSION"
+  },
+  {
+    "name": "POLICY_SHAREHOLDINGS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "POLICY_SHAREHOLDINGS_VERSION"
+  },
+  {
+    "name": "ParsedFinancialExtraction",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/parsed-financial-store.ts",
+    "importedName": "ParsedFinancialExtraction"
+  },
+  {
+    "name": "ParsedFinancialIdentity",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/parsed-financial-store.ts",
+    "importedName": "ParsedFinancialIdentity"
+  },
+  {
+    "name": "ParsedFinancialJob",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/financial/jobs/parsed-financial-job.ts",
+    "importedName": "ParsedFinancialJob"
+  },
+  {
+    "name": "ParsedFinancialJobInput",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/parsed-financial-job.ts",
+    "importedName": "ParsedFinancialJobInput"
+  },
+  {
+    "name": "ParsedFinancialJobPlan",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/parsed-financial-job.ts",
+    "importedName": "ParsedFinancialJobPlan"
+  },
+  {
+    "name": "ParsedFinancialJobProgress",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/parsed-financial-job.ts",
+    "importedName": "ParsedFinancialJobProgress"
+  },
+  {
+    "name": "ParsedFinancialOutcome",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/parsed-financial-store.ts",
+    "importedName": "ParsedFinancialOutcome"
+  },
+  {
+    "name": "ParsedFinancialStore",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/parsed-financial-store.ts",
+    "importedName": "ParsedFinancialStore"
+  },
+  {
+    "name": "ParsedFinancialTask",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/financial/jobs/parsed-financial-job.ts",
+    "importedName": "ParsedFinancialTask"
+  },
+  {
+    "name": "PerShareAnnualDocument",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-basis.ts",
+    "importedName": "PerShareAnnualDocument"
+  },
+  {
+    "name": "PerShareAnnualPair",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "PerShareAnnualPair"
+  },
+  {
+    "name": "PerShareCagrMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "PerShareCagrMetricId"
+  },
+  {
+    "name": "PerShareGrowthMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "PerShareGrowthMetricId"
+  },
+  {
+    "name": "PerShareGrowthResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "PerShareGrowthResult"
+  },
+  {
+    "name": "PolicyShareholdingDeclaration",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "PolicyShareholdingDeclaration"
+  },
+  {
+    "name": "PolicyShareholdingDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "PolicyShareholdingDocument"
+  },
+  {
+    "name": "PolicyShareholdingEntry",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "PolicyShareholdingEntry"
+  },
+  {
+    "name": "PolicyShareholdingExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "PolicyShareholdingExtraction"
+  },
+  {
+    "name": "PolicyShareholdingKind",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "PolicyShareholdingKind"
+  },
+  {
+    "name": "PolicyShareholdingSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "PolicyShareholdingSearchOptions"
+  },
+  {
+    "name": "PolicyShareholdingValue",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "PolicyShareholdingValue"
+  },
+  {
+    "name": "PriceShareBasis",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/valuation.ts",
+    "importedName": "PriceShareBasis"
+  },
+  {
+    "name": "PublishedFinancialIndex",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/sqlite-financial-publication-reader.ts",
+    "importedName": "PublishedFinancialIndex"
+  },
+  {
+    "name": "PublishedFinancialIndexSearchResult",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/sqlite-financial-publication-reader.ts",
+    "importedName": "PublishedFinancialIndexSearchResult"
+  },
+  {
+    "name": "PublishedFinancialIndexSnapshot",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/sqlite-financial-publication-reader.ts",
+    "importedName": "PublishedFinancialIndexSnapshot"
+  },
+  {
+    "name": "QualitativeInfo",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "QualitativeInfo"
+  },
+  {
+    "name": "QuarterlyResponse",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "QuarterlyResponse"
+  },
+  {
+    "name": "ROIC_DEBT_METRICS",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/analysis/roic.ts",
+    "importedName": "ROIC_DEBT_METRICS"
+  },
+  {
+    "name": "ReconstructedAnnualDividendPayment",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "ReconstructedAnnualDividendPayment"
+  },
+  {
+    "name": "RemunerationCellReference",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "RemunerationCellReference"
+  },
+  {
+    "name": "RemunerationComponent",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "RemunerationComponent"
+  },
+  {
+    "name": "RemunerationDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "RemunerationDocument"
+  },
+  {
+    "name": "RemunerationEntry",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "RemunerationEntry"
+  },
+  {
+    "name": "RemunerationExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "RemunerationExtraction"
+  },
+  {
+    "name": "RemunerationSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "RemunerationSearchOptions"
+  },
+  {
+    "name": "RemunerationTableDeclaration",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "RemunerationTableDeclaration"
+  },
+  {
+    "name": "RemunerationValue",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "RemunerationValue"
+  },
+  {
+    "name": "ReportingBasisEvidence",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/resolve-reporting-basis.ts",
+    "importedName": "ReportingBasisEvidence"
+  },
+  {
+    "name": "ReportingBasisFieldSelection",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/resolve-reporting-basis.ts",
+    "importedName": "ReportingBasisFieldSelection"
+  },
+  {
+    "name": "ResolvedFinancialReportingMetadata",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/resolve-reporting-basis.ts",
+    "importedName": "ResolvedFinancialReportingMetadata"
+  },
+  {
+    "name": "RoicCapitalDeclaration",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/roic.ts",
+    "importedName": "RoicCapitalDeclaration"
+  },
+  {
+    "name": "RoicCapitalDocument",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/roic.ts",
+    "importedName": "RoicCapitalDocument"
+  },
+  {
+    "name": "RoicDebtMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/roic.ts",
+    "importedName": "RoicDebtMetricId"
+  },
+  {
+    "name": "RoicInput",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/roic.ts",
+    "importedName": "RoicInput"
+  },
+  {
+    "name": "RoicResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/roic.ts",
+    "importedName": "RoicResult"
+  },
+  {
+    "name": "RoicUnavailableReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/roic.ts",
+    "importedName": "RoicUnavailableReason"
+  },
+  {
+    "name": "SEGMENT_DETAILS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SEGMENT_DETAILS_VERSION"
+  },
+  {
+    "name": "SHAREHOLDER_CATEGORIES_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "SHAREHOLDER_CATEGORIES_VERSION"
+  },
+  {
+    "name": "SQLITE_RECOVERY_MAX_BYTES",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "number",
+    "leaf": "src/platform/db/engines/sqlite/sqlite-recovery.ts",
+    "importedName": "SQLITE_RECOVERY_MAX_BYTES"
+  },
+  {
+    "name": "SUBSIDIARY_HUMAN_CAPITAL_LABEL_LIMITS",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SUBSIDIARY_HUMAN_CAPITAL_LABEL_LIMITS"
+  },
+  {
+    "name": "SUBSIDIARY_HUMAN_CAPITAL_METRICS_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SUBSIDIARY_HUMAN_CAPITAL_METRICS_VERSION"
+  },
+  {
+    "name": "SecuritiesRegistrationResponse",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "SecuritiesRegistrationResponse"
+  },
+  {
+    "name": "SeedingStatus",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/pipeline/metadata/seed-document-lists.ts",
+    "importedName": "SeedingStatus"
+  },
+  {
+    "name": "SegmentColumn",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SegmentColumn"
+  },
+  {
+    "name": "SegmentColumnRole",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SegmentColumnRole"
+  },
+  {
+    "name": "SegmentDetailDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SegmentDetailDocument"
+  },
+  {
+    "name": "SegmentDetailExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SegmentDetailExtraction"
+  },
+  {
+    "name": "SegmentMetric",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SegmentMetric"
+  },
+  {
+    "name": "SegmentPeriod",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SegmentPeriod"
+  },
+  {
+    "name": "SegmentSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SegmentSearchOptions"
+  },
+  {
+    "name": "SegmentTableDeclaration",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SegmentTableDeclaration"
+  },
+  {
+    "name": "SegmentValue",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "SegmentValue"
+  },
+  {
+    "name": "SelectedDocumentVersion",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/edinet/select-document-versions.ts",
+    "importedName": "SelectedDocumentVersion"
+  },
+  {
+    "name": "SelectedLargeHoldingObservation",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/large-holdings/select-report-versions.ts",
+    "importedName": "SelectedLargeHoldingObservation"
+  },
+  {
+    "name": "SelectionReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/extraction/select-metric-facts.ts",
+    "importedName": "SelectionReason"
+  },
+  {
+    "name": "SemiAnnualResponse",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "SemiAnnualResponse"
+  },
+  {
+    "name": "ShareBasis",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-basis.ts",
+    "importedName": "ShareBasis"
+  },
+  {
+    "name": "ShareBasisAssessment",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-basis.ts",
+    "importedName": "ShareBasisAssessment"
+  },
+  {
+    "name": "ShareBasisProofKey",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-basis.ts",
+    "importedName": "ShareBasisProofKey"
+  },
+  {
+    "name": "ShareSplitAdjustmentOptions",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "ShareSplitAdjustmentOptions"
+  },
+  {
+    "name": "ShareSplitAdjustmentResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "ShareSplitAdjustmentResult"
+  },
+  {
+    "name": "ShareSplitEvent",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "ShareSplitEvent"
+  },
+  {
+    "name": "ShareSplitLedger",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "ShareSplitLedger"
+  },
+  {
+    "name": "ShareSplitSource",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "ShareSplitSource"
+  },
+  {
+    "name": "ShareSplitUnavailableReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "ShareSplitUnavailableReason"
+  },
+  {
+    "name": "ShareholderCategory",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "ShareholderCategory"
+  },
+  {
+    "name": "ShareholderCategoryDeclaration",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "ShareholderCategoryDeclaration"
+  },
+  {
+    "name": "ShareholderCategoryDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "ShareholderCategoryDocument"
+  },
+  {
+    "name": "ShareholderCategoryEntry",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "ShareholderCategoryEntry"
+  },
+  {
+    "name": "ShareholderCategoryExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "ShareholderCategoryExtraction"
+  },
+  {
+    "name": "ShareholderCategoryGroup",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "ShareholderCategoryGroup"
+  },
+  {
+    "name": "ShareholderCategoryMetric",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "ShareholderCategoryMetric"
+  },
+  {
+    "name": "ShareholderCategorySearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "ShareholderCategorySearchOptions"
+  },
+  {
+    "name": "ShareholderCategoryValue",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "ShareholderCategoryValue"
+  },
+  {
+    "name": "ShareholderInfo",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "ShareholderInfo"
+  },
+  {
+    "name": "SortOrder",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/financial-types.ts",
+    "importedName": "SortOrder"
+  },
+  {
+    "name": "SourceBackedArchivedFinancialSnapshotOptions",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "SourceBackedArchivedFinancialSnapshotOptions"
+  },
+  {
+    "name": "SourceBackedArchivedFinancialSnapshots",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "importedName": "SourceBackedArchivedFinancialSnapshots"
+  },
+  {
+    "name": "SourceBackedObservedFinancialSnapshots",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/snapshots/create-versioned-snapshots.ts",
+    "importedName": "SourceBackedObservedFinancialSnapshots"
+  },
+  {
+    "name": "StoredBalanceSheetSnapshot",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/balance-sheet-store.ts",
+    "importedName": "StoredBalanceSheetSnapshot"
+  },
+  {
+    "name": "StoredFinancialDetailSnapshot",
+    "facade": "platform",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/platform/db/stores/financial/financial-detail-store.ts",
+    "importedName": "StoredFinancialDetailSnapshot"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalAnnotation",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalAnnotation"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalAnnotationInput",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalAnnotationInput"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalAutoNoteEvidence",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/interpret-subsidiary-human-capital-notes.ts",
+    "importedName": "SubsidiaryHumanCapitalAutoNoteEvidence"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelCondition",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelCondition"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelDiagnostic",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelDiagnostic"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelDimension",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelDimension"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelDocument"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelEvidence",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelEvidence"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelExtraction"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelMetadata",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelMetadata"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelOperator",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelOperator"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelReason",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelReason"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelRow"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelSearchOptions"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelSearchResult",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelSearchResult"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalLabelTrace",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "SubsidiaryHumanCapitalLabelTrace"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalMetricDiagnostic",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalMetricDiagnostic"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalMetricDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalMetricDocument"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalMetricEvidence",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalMetricEvidence"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalMetricId",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalMetricId"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalMetricRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalMetricRow"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalMetricSearchRow",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalMetricSearchRow"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalMetricSelection",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalMetricSelection"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalMetricsExtraction",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalMetricsExtraction"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalMetricsSearchOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalMetricsSearchOptions"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalNoteInterpretation",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/interpret-subsidiary-human-capital-notes.ts",
+    "importedName": "SubsidiaryHumanCapitalNoteInterpretation"
+  },
+  {
+    "name": "SubsidiaryHumanCapitalNoteProof",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "SubsidiaryHumanCapitalNoteProof"
+  },
+  {
+    "name": "TenderOfferResponse",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/xbrl-document.ts",
+    "importedName": "TenderOfferResponse"
+  },
+  {
+    "name": "TypedDimensionElementTrace",
+    "facade": "core",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/core/parser/trace-context-dimensions.ts",
+    "importedName": "TypedDimensionElementTrace"
+  },
+  {
+    "name": "ValuationInput",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/valuation.ts",
+    "importedName": "ValuationInput"
+  },
+  {
+    "name": "ValuationMetricId",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/financial/analysis/valuation.ts",
+    "importedName": "ValuationMetricId"
+  },
+  {
+    "name": "ValuationResult",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/valuation.ts",
+    "importedName": "ValuationResult"
+  },
+  {
+    "name": "ValuationUnavailableReason",
+    "facade": "financial",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/financial/analysis/valuation.ts",
+    "importedName": "ValuationUnavailableReason"
+  },
+  {
+    "name": "WORKFORCE_REGISTRY",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/human-capital/workforce-metric-definitions.ts",
+    "importedName": "WORKFORCE_REGISTRY"
+  },
+  {
+    "name": "WORKFORCE_REGISTRY_VERSION",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "string",
+    "leaf": "src/domain/disclosures/human-capital/workforce-metric-definitions.ts",
+    "importedName": "WORKFORCE_REGISTRY_VERSION"
+  },
+  {
+    "name": "WorkforceCondition",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/screen-workforce.ts",
+    "importedName": "WorkforceCondition"
+  },
+  {
+    "name": "WorkforceDiagnostic",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/screen-workforce.ts",
+    "importedName": "WorkforceDiagnostic"
+  },
+  {
+    "name": "WorkforceDocument",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/screen-workforce.ts",
+    "importedName": "WorkforceDocument"
+  },
+  {
+    "name": "WorkforceMetadata",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/screen-workforce.ts",
+    "importedName": "WorkforceMetadata"
+  },
+  {
+    "name": "WorkforceMetricId",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": "object",
+    "leaf": "src/domain/disclosures/human-capital/workforce-metric-definitions.ts",
+    "importedName": "WorkforceMetricId"
+  },
+  {
+    "name": "WorkforceScreeningOptions",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/screen-workforce.ts",
+    "importedName": "WorkforceScreeningOptions"
+  },
+  {
+    "name": "WorkforceScreeningResult",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/screen-workforce.ts",
+    "importedName": "WorkforceScreeningResult"
+  },
+  {
+    "name": "WorkforceSnapshot",
+    "facade": "disclosures",
+    "type": true,
+    "runtimeType": null,
+    "leaf": "src/domain/disclosures/human-capital/screen-workforce.ts",
+    "importedName": "WorkforceSnapshot"
+  },
+  {
+    "name": "activateVerifiedDuckFinancialPublication",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/verification/verify-duck-financial-publication.ts",
+    "importedName": "activateVerifiedDuckFinancialPublication"
+  },
+  {
+    "name": "adjustPerShareValuesForSplits",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "adjustPerShareValuesForSplits"
+  },
+  {
+    "name": "analyzeDocumentRelations",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/edinet/document-relations.ts",
+    "importedName": "analyzeDocumentRelations"
+  },
+  {
+    "name": "archiveFinancialDocumentObservations",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/sync-financial-documents.ts",
+    "importedName": "archiveFinancialDocumentObservations"
+  },
+  {
+    "name": "authenticateFinancialVersionEvidence",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "authenticateFinancialVersionEvidence"
+  },
+  {
+    "name": "backfillFinancialDocumentLists",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/sync-financial-documents.ts",
+    "importedName": "backfillFinancialDocumentLists"
+  },
+  {
+    "name": "buildDuckFinancialCycle",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/build-duck-financial-cycle.ts",
+    "importedName": "buildDuckFinancialCycle"
+  },
+  {
+    "name": "calculateAnnualNetIncomeGrowth",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "calculateAnnualNetIncomeGrowth"
+  },
+  {
+    "name": "calculateAnnualOperatingIncomeGrowth",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "calculateAnnualOperatingIncomeGrowth"
+  },
+  {
+    "name": "calculateAnnualRevenueGrowth",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "calculateAnnualRevenueGrowth"
+  },
+  {
+    "name": "calculateAverageAssetsReturn",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/average-assets-return.ts",
+    "importedName": "calculateAverageAssetsReturn"
+  },
+  {
+    "name": "calculateAverageEquityReturn",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/average-equity-return.ts",
+    "importedName": "calculateAverageEquityReturn"
+  },
+  {
+    "name": "calculateCagr",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "calculateCagr"
+  },
+  {
+    "name": "calculateCurrentRatio",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "calculateCurrentRatio"
+  },
+  {
+    "name": "calculateFinancialMetrics",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-financial-snapshots.ts",
+    "importedName": "calculateFinancialMetrics"
+  },
+  {
+    "name": "calculatePerShareGrowth",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "calculatePerShareGrowth"
+  },
+  {
+    "name": "calculateRoic",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/roic.ts",
+    "importedName": "calculateRoic"
+  },
+  {
+    "name": "calculateValuation",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/valuation.ts",
+    "importedName": "calculateValuation"
+  },
+  {
+    "name": "cleanHtml",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/core/text/html-cleaner.ts",
+    "importedName": "cleanHtml"
+  },
+  {
+    "name": "compareBalanceSheetVersions",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/queries/financial/compare-balance-sheet-versions.ts",
+    "importedName": "compareBalanceSheetVersions"
+  },
+  {
+    "name": "compareCompanyFinancialsByIndustry",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/queries/companies/compare-industries.ts",
+    "importedName": "compareCompanyFinancialsByIndustry"
+  },
+  {
+    "name": "compareCompanyMasterSnapshots",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/companies/compare-company-masters.ts",
+    "importedName": "compareCompanyMasterSnapshots"
+  },
+  {
+    "name": "compareDuckCompanyFinancialsByIndustry",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/queries/companies/compare-industries.ts",
+    "importedName": "compareDuckCompanyFinancialsByIndustry"
+  },
+  {
+    "name": "createAuditFeeSnapshot",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/governance/screen-audit-fees.ts",
+    "importedName": "createAuditFeeSnapshot"
+  },
+  {
+    "name": "createAutomaticFinancialSnapshots",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/snapshots/create-financial-snapshots.ts",
+    "importedName": "createAutomaticFinancialSnapshots"
+  },
+  {
+    "name": "createBalanceSheetSnapshot",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "createBalanceSheetSnapshot"
+  },
+  {
+    "name": "createCompanyProfile",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/companies/read-company-profile.ts",
+    "importedName": "createCompanyProfile"
+  },
+  {
+    "name": "createFinancialDetailSnapshot",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-financial-details.ts",
+    "importedName": "createFinancialDetailSnapshot"
+  },
+  {
+    "name": "createIfrsBalanceSheetSnapshot",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "createIfrsBalanceSheetSnapshot"
+  },
+  {
+    "name": "createIfrsFinancialDetailSnapshot",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "createIfrsFinancialDetailSnapshot"
+  },
+  {
+    "name": "createObservedFinancialSnapshots",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/snapshots/create-observed-snapshots.ts",
+    "importedName": "createObservedFinancialSnapshots"
+  },
+  {
+    "name": "createSourceBackedObservedFinancialSnapshots",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/snapshots/create-versioned-snapshots.ts",
+    "importedName": "createSourceBackedObservedFinancialSnapshots"
+  },
+  {
+    "name": "createWorkforceSnapshot",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/human-capital/screen-workforce.ts",
+    "importedName": "createWorkforceSnapshot"
+  },
+  {
+    "name": "decodeHtmlEntities",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/core/text/html-cleaner.ts",
+    "importedName": "decodeHtmlEntities"
+  },
+  {
+    "name": "describeDocumentFormats",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/edinet/document-formats.ts",
+    "importedName": "describeDocumentFormats"
+  },
+  {
+    "name": "extractAffiliatedCompanies",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "extractAffiliatedCompanies"
+  },
+  {
+    "name": "extractDisclosureTables",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "extractDisclosureTables"
+  },
+  {
+    "name": "extractFacilityDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "extractFacilityDetails"
+  },
+  {
+    "name": "extractLargeHoldingReport",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "extractLargeHoldingReport"
+  },
+  {
+    "name": "extractLargeHoldingTransactions",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/extract-transactions.ts",
+    "importedName": "extractLargeHoldingTransactions"
+  },
+  {
+    "name": "extractMainCustomerDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-main-customers.ts",
+    "importedName": "extractMainCustomerDetails"
+  },
+  {
+    "name": "extractMajorShareholderDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "extractMajorShareholderDetails"
+  },
+  {
+    "name": "extractOfficerDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "extractOfficerDetails"
+  },
+  {
+    "name": "extractOfficerRemuneration",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "extractOfficerRemuneration"
+  },
+  {
+    "name": "extractOrderDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "extractOrderDetails"
+  },
+  {
+    "name": "extractPolicyShareholdings",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "extractPolicyShareholdings"
+  },
+  {
+    "name": "extractSegmentDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "extractSegmentDetails"
+  },
+  {
+    "name": "extractShareholderCategories",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "extractShareholderCategories"
+  },
+  {
+    "name": "extractSubsidiaryHumanCapitalLabels",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "extractSubsidiaryHumanCapitalLabels"
+  },
+  {
+    "name": "extractSubsidiaryHumanCapitalMetrics",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "extractSubsidiaryHumanCapitalMetrics"
+  },
+  {
+    "name": "fetchEdinetCompanyMaster",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/client/edinet/fetch-company-master.ts",
+    "importedName": "fetchEdinetCompanyMaster"
+  },
+  {
+    "name": "financialVersionEvidenceManifestSha256",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "financialVersionEvidenceManifestSha256"
+  },
+  {
+    "name": "identicalMetricFacts",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/extraction/select-metric-facts.ts",
+    "importedName": "identicalMetricFacts"
+  },
+  {
+    "name": "importBalanceSheets",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/import-balance-sheets.ts",
+    "importedName": "importBalanceSheets"
+  },
+  {
+    "name": "isFinancialReport",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/edinet/document-types.ts",
+    "importedName": "isFinancialReport"
+  },
+  {
+    "name": "isLargeShareholding",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/edinet/document-types.ts",
+    "importedName": "isLargeShareholding"
+  },
+  {
+    "name": "linkCompanyMasterCorporateRecords",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "linkCompanyMasterCorporateRecords"
+  },
+  {
+    "name": "linkCompanyMasterCorporateStates",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/queries/companies/link-corporate-states.ts",
+    "importedName": "linkCompanyMasterCorporateStates"
+  },
+  {
+    "name": "linkCompanyMasterCorporateStreamStates",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/queries/companies/link-corporate-states.ts",
+    "importedName": "linkCompanyMasterCorporateStreamStates"
+  },
+  {
+    "name": "measureFinancialDetailCoverage",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/measure-detail-coverage.ts",
+    "importedName": "measureFinancialDetailCoverage"
+  },
+  {
+    "name": "normalizeDocumentFormatFlag",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/edinet/document-formats.ts",
+    "importedName": "normalizeDocumentFormatFlag"
+  },
+  {
+    "name": "normalizeFinancialDetailSnapshot",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-saved-financial-details.ts",
+    "importedName": "normalizeFinancialDetailSnapshot"
+  },
+  {
+    "name": "parseCorporateRegistryDownloadXml",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "parseCorporateRegistryDownloadXml"
+  },
+  {
+    "name": "parseCorporateRegistryPublicationCalendar",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/registry/publication-calendar.ts",
+    "importedName": "parseCorporateRegistryPublicationCalendar"
+  },
+  {
+    "name": "parseCorporateRegistryStreamRecord",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "parseCorporateRegistryStreamRecord"
+  },
+  {
+    "name": "parseEdinetCodeList",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/companies/company-master.ts",
+    "importedName": "parseEdinetCodeList"
+  },
+  {
+    "name": "parseFacilitySiteAndLocation",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/parse-facility-location.ts",
+    "importedName": "parseFacilitySiteAndLocation"
+  },
+  {
+    "name": "parsedFinancialExtractionId",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/parsed-financial-store.ts",
+    "importedName": "parsedFinancialExtractionId"
+  },
+  {
+    "name": "parsedFinancialMappingVersions",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/stores/financial/parsed-financial-store.ts",
+    "importedName": "parsedFinancialMappingVersions"
+  },
+  {
+    "name": "planBalanceSheetImport",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/import-balance-sheets.ts",
+    "importedName": "planBalanceSheetImport"
+  },
+  {
+    "name": "planCorporateRegistryDifferences",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/registry/publication-calendar.ts",
+    "importedName": "planCorporateRegistryDifferences"
+  },
+  {
+    "name": "queryCompanyMaster",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/companies/company-master.ts",
+    "importedName": "queryCompanyMaster"
+  },
+  {
+    "name": "queryCorporateRegistryDownloads",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "queryCorporateRegistryDownloads"
+  },
+  {
+    "name": "readFinancialVersionProof",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "readFinancialVersionProof"
+  },
+  {
+    "name": "reconstructAnnualDividendPerShare",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/share-split-adjustment.ts",
+    "importedName": "reconstructAnnualDividendPerShare"
+  },
+  {
+    "name": "reconstructCorporateRegistryState",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/registry/registry-records.ts",
+    "importedName": "reconstructCorporateRegistryState"
+  },
+  {
+    "name": "reconstructCorporateRegistryStreamStates",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/registry/reconstruct-stream-states.ts",
+    "importedName": "reconstructCorporateRegistryStreamStates"
+  },
+  {
+    "name": "recordDuckFinancialValueVerification",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/verification/verify-duck-financial-publication.ts",
+    "importedName": "recordDuckFinancialValueVerification"
+  },
+  {
+    "name": "recoverDedicatedSqliteSnapshot",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/db/engines/sqlite/sqlite-recovery.ts",
+    "importedName": "recoverDedicatedSqliteSnapshot"
+  },
+  {
+    "name": "resolveFinancialReportingBasis",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/extraction/resolve-reporting-basis.ts",
+    "importedName": "resolveFinancialReportingBasis"
+  },
+  {
+    "name": "screenAnnualNetIncomeGrowth",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-net-income-growth.ts",
+    "importedName": "screenAnnualNetIncomeGrowth"
+  },
+  {
+    "name": "screenAnnualOperatingIncomeGrowth",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-operating-income-growth.ts",
+    "importedName": "screenAnnualOperatingIncomeGrowth"
+  },
+  {
+    "name": "screenAnnualRevenueGrowth",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-revenue-growth.ts",
+    "importedName": "screenAnnualRevenueGrowth"
+  },
+  {
+    "name": "screenAuditFeeDocuments",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/governance/screen-audit-fees.ts",
+    "importedName": "screenAuditFeeDocuments"
+  },
+  {
+    "name": "screenAverageAssetsReturn",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/average-assets-return.ts",
+    "importedName": "screenAverageAssetsReturn"
+  },
+  {
+    "name": "screenAverageEquityReturn",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/average-equity-return.ts",
+    "importedName": "screenAverageEquityReturn"
+  },
+  {
+    "name": "screenBalanceSheetSnapshots",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-balance-sheets.ts",
+    "importedName": "screenBalanceSheetSnapshots"
+  },
+  {
+    "name": "screenCagr",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "screenCagr"
+  },
+  {
+    "name": "screenCompanyDocuments",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/companies/screen-company-profiles.ts",
+    "importedName": "screenCompanyDocuments"
+  },
+  {
+    "name": "screenCompanyFinancials",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/queries/companies/screen-company-financials.ts",
+    "importedName": "screenCompanyFinancials"
+  },
+  {
+    "name": "screenDuckCompanyFinancials",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/queries/companies/screen-company-financials.ts",
+    "importedName": "screenDuckCompanyFinancials"
+  },
+  {
+    "name": "screenFacilityDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-facilities.ts",
+    "importedName": "screenFacilityDetails"
+  },
+  {
+    "name": "screenFinancialDetailDocuments",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-financial-details.ts",
+    "importedName": "screenFinancialDetailDocuments"
+  },
+  {
+    "name": "screenFinancialDetailSnapshots",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-saved-financial-details.ts",
+    "importedName": "screenFinancialDetailSnapshots"
+  },
+  {
+    "name": "screenFinancialSnapshots",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-financial-snapshots.ts",
+    "importedName": "screenFinancialSnapshots"
+  },
+  {
+    "name": "screenIfrsBalanceSheetDocuments",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-ifrs-balance-sheets.ts",
+    "importedName": "screenIfrsBalanceSheetDocuments"
+  },
+  {
+    "name": "screenIfrsFinancialDetailDocuments",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/screening/screen-ifrs-financial-details.ts",
+    "importedName": "screenIfrsFinancialDetailDocuments"
+  },
+  {
+    "name": "screenPerShareGrowth",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/annual-cagr.ts",
+    "importedName": "screenPerShareGrowth"
+  },
+  {
+    "name": "screenRoic",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/roic.ts",
+    "importedName": "screenRoic"
+  },
+  {
+    "name": "screenSubsidiaryHumanCapitalMetrics",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/human-capital/extract-subsidiary-human-capital.ts",
+    "importedName": "screenSubsidiaryHumanCapitalMetrics"
+  },
+  {
+    "name": "screenValuation",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/valuation.ts",
+    "importedName": "screenValuation"
+  },
+  {
+    "name": "screenWorkforceDocuments",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/human-capital/screen-workforce.ts",
+    "importedName": "screenWorkforceDocuments"
+  },
+  {
+    "name": "searchAffiliatedCompanies",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-affiliated-companies.ts",
+    "importedName": "searchAffiliatedCompanies"
+  },
+  {
+    "name": "searchDisclosureTableCells",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/shared/read-disclosure-tables.ts",
+    "importedName": "searchDisclosureTableCells"
+  },
+  {
+    "name": "searchLargeHoldingReports",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/read-large-holding-report.ts",
+    "importedName": "searchLargeHoldingReports"
+  },
+  {
+    "name": "searchLargeHoldingTransactions",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/extract-transactions.ts",
+    "importedName": "searchLargeHoldingTransactions"
+  },
+  {
+    "name": "searchMainCustomerDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-main-customers.ts",
+    "importedName": "searchMainCustomerDetails"
+  },
+  {
+    "name": "searchMajorShareholderDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/extract-major-shareholders.ts",
+    "importedName": "searchMajorShareholderDetails"
+  },
+  {
+    "name": "searchObservedLargeHoldingReports",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/search-observed-reports.ts",
+    "importedName": "searchObservedLargeHoldingReports"
+  },
+  {
+    "name": "searchOfficerDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/governance/extract-officers.ts",
+    "importedName": "searchOfficerDetails"
+  },
+  {
+    "name": "searchOfficerRemuneration",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/governance/extract-officer-remuneration.ts",
+    "importedName": "searchOfficerRemuneration"
+  },
+  {
+    "name": "searchOrderDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-orders.ts",
+    "importedName": "searchOrderDetails"
+  },
+  {
+    "name": "searchPolicyShareholdings",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/extract-policy-shareholdings.ts",
+    "importedName": "searchPolicyShareholdings"
+  },
+  {
+    "name": "searchSegmentDetails",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/business/extract-segments.ts",
+    "importedName": "searchSegmentDetails"
+  },
+  {
+    "name": "searchShareholderCategories",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/extract-shareholder-categories.ts",
+    "importedName": "searchShareholderCategories"
+  },
+  {
+    "name": "searchSubsidiaryHumanCapitalLabels",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/human-capital/read-subsidiary-human-capital-labels.ts",
+    "importedName": "searchSubsidiaryHumanCapitalLabels"
+  },
+  {
+    "name": "selectCompanyProfile",
+    "facade": "companies",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/companies/read-company-profile.ts",
+    "importedName": "selectCompanyProfile"
+  },
+  {
+    "name": "selectDefinedMetricFact",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/extraction/select-metric-facts.ts",
+    "importedName": "selectDefinedMetricFact"
+  },
+  {
+    "name": "selectDocumentVersions",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/edinet/select-document-versions.ts",
+    "importedName": "selectDocumentVersions"
+  },
+  {
+    "name": "selectLargeHoldingReportVersions",
+    "facade": "disclosures",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/disclosures/ownership/large-holdings/select-report-versions.ts",
+    "importedName": "selectLargeHoldingReportVersions"
+  },
+  {
+    "name": "selectLocalClosingPrice",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/analysis/select-local-closing-price.ts",
+    "importedName": "selectLocalClosingPrice"
+  },
+  {
+    "name": "selectMetricFact",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/extraction/select-metric-facts.ts",
+    "importedName": "selectMetricFact"
+  },
+  {
+    "name": "streamCorporateRegistryRecords",
+    "facade": "registry",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/registry/read-registry-stream.ts",
+    "importedName": "streamCorporateRegistryRecords"
+  },
+  {
+    "name": "stripHtmlTags",
+    "facade": "core",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/core/text/html-cleaner.ts",
+    "importedName": "stripHtmlTags"
+  },
+  {
+    "name": "toSafeMetricNumber",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/extraction/select-metric-facts.ts",
+    "importedName": "toSafeMetricNumber"
+  },
+  {
+    "name": "validateDuckFinancialValueVerification",
+    "facade": "platform",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/platform/pipeline/verification/verify-duck-financial-publication.ts",
+    "importedName": "validateDuckFinancialValueVerification"
+  },
+  {
+    "name": "verifyFinancialVersionContext",
+    "facade": "financial",
+    "type": false,
+    "runtimeType": "function",
+    "leaf": "src/domain/financial/selection/select-financial-source-versions.ts",
+    "importedName": "verifyFinancialVersionContext"
+  }
+]

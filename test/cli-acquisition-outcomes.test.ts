@@ -15,7 +15,7 @@ function fixture(
     writeFileSync(xml, "<xbrl/>");
     writeFileSync(
       preload,
-      `import {EdinetXbrlDownloader as D} from ${JSON.stringify(pathToFileURL(resolve("src/edinet/api-client.ts")).href)};import {EdinetXbrlParser as P} from ${JSON.stringify(pathToFileURL(resolve("src/xbrl/parse-xbrl.ts")).href)};
+      `import {EdinetXbrlDownloader as D} from ${JSON.stringify(pathToFileURL(resolve("src/platform/client/edinet/api-client.ts")).href)};import {EdinetXbrlParser as P} from ${JSON.stringify(pathToFileURL(resolve("src/core/parser/parse-xbrl.ts")).href)};
 const mode=process.env.CLI_TEST_MODE;D.prototype.search=async()=>mode==='empty'?[]:[{docID:'S100TEST'},{docID:'S100NEXT'}];D.prototype.download=async function(id){if(mode==='fail'||mode==='partial'&&id==='S100NEXT')throw Error('SECRET_API_VALUE');return ${JSON.stringify(xml)}};D.prototype.downloadByTicker=async function(id){if(mode==='fail'||mode==='partial'&&id==='9984')throw Error('SECRET_API_VALUE');return mode==='empty'?null:${JSON.stringify(xml)}};P.prototype.parse=()=>({getKeyMetrics:()=>({revenue:1}),getLargeShareholdingInfo:()=>({})});`,
     );
     work((args, mode = "success") =>

@@ -5,7 +5,7 @@ import {
   recordDuckFinancialValueVerification,
   validateDuckFinancialValueVerification,
 } from "../../dist/index.js";
-import { isFinancialIndexGenerationId } from "../../dist/db/financial-search-index.js";
+import { isFinancialIndexGenerationId } from "../../dist/platform/db/stores/financial/financial-search-index.js";
 import { buildReconstructedDuckFinancialCycle } from "./build-duck-financial-cycle.mjs";
 import { readJSONSnapshot, canonical } from "./operational-files.mjs";
 

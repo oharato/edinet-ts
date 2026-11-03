@@ -9,6 +9,7 @@ import { promisify, parseArgs } from "node:util";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { atomicJSON, canonical, normalFile, readJSONSnapshot } from "./operational-files.mjs";
+import { resolveSdkModules, type ResolvedSdkLayout } from "./resolve-sdk-module.mts";
 const FORMAT = "edinet-ts-corporate-registry-daily-v1",
   HERE = fileURLToPath(import.meta.url),
   RESERVE = 34n * 1024n ** 3n,
@@ -136,6 +137,8 @@ async function load(configPath: string) {
     c.runtimeVerifierPath,
     c.applyScriptPath,
     path.join(path.dirname(c.applyScriptPath), "operational-files.mjs"),
+    path.join(path.dirname(c.applyScriptPath), "resolve-sdk-module.mts"),
+    path.join(path.dirname(HERE), "resolve-sdk-module.mts"),
     c.metadataDeploymentPath,
     HERE,
   ];
@@ -162,6 +165,10 @@ async function load(configPath: string) {
     applyHelperSha256: await fileHash(
       path.join(path.dirname(c.applyScriptPath), "operational-files.mjs"),
     ),
+    resolverSha256: await fileHash(path.join(path.dirname(HERE), "resolve-sdk-module.mts")),
+    applyResolverSha256: await fileHash(
+      path.join(path.dirname(c.applyScriptPath), "resolve-sdk-module.mts"),
+    ),
     nodeVersion: process.version,
     calendarManifestSha256: calendar.sha256,
     calendarSources: await Promise.all(
@@ -172,6 +179,12 @@ async function load(configPath: string) {
     ),
     publicKeySha256: await fileHash(c.publicKeyPath),
   };
+  const requestedModules = [
+    "withOperationalLocks",
+    "collectRegistryDifferences",
+    "createRegistrySession",
+  ] as const;
+  let resolvedLayout: ResolvedSdkLayout | undefined;
   const verify = async () => {
     assert.equal(snapshot(configPath).sha256, identity.configSha256, "Config changed");
     assert.equal(await fileHash(HERE), identity.wrapperSha256);
@@ -189,6 +202,16 @@ async function load(configPath: string) {
     for (const p of identity.calendarSources)
       assert.equal(await fileHash(p.path), p.sha256, "Calendar changed");
     assert.equal(await fileHash(c.publicKeyPath), identity.publicKeySha256);
+    assert.equal(
+      await fileHash(path.join(path.dirname(HERE), "resolve-sdk-module.mts")),
+      identity.resolverSha256,
+      "SDK resolver changed",
+    );
+    assert.equal(
+      await fileHash(path.join(path.dirname(c.applyScriptPath), "resolve-sdk-module.mts")),
+      identity.applyResolverSha256,
+      "Apply SDK resolver changed",
+    );
     assert.equal(await fileHash(c.runtimeVerifierPath), c.runtimeVerifierSha256);
     const { stdout } = await promisify(execFile)(
       process.execPath,
@@ -197,12 +220,21 @@ async function load(configPath: string) {
     );
     const r = JSON.parse(stdout);
     assert(r.status === "verified" && r.networkRequested === false, "Runtime verification failed");
+    if (resolvedLayout)
+      assert.equal(
+        canonical(resolveSdkModules(c.sdkPath, requestedModules)),
+        canonical(resolvedLayout),
+        "SDK layout changed",
+      );
   };
   await verify();
+  const sdkModules = resolveSdkModules(c.sdkPath, requestedModules);
+  resolvedLayout = sdkModules;
   const sdk = await import(pathToFileURL(c.sdkPath).href);
   return {
     c,
-    identity,
+    identity: { ...identity, sdkLayout: sdkModules },
+    sdkModules,
     verify,
     sdk,
     calendar: {
@@ -379,6 +411,8 @@ async function cleanProbes(c: CorporateRegistryDailyConfig, job: any, records: a
     HERE,
     path.join(path.dirname(HERE), "operational-files.mjs"),
     path.join(path.dirname(c.applyScriptPath), "operational-files.mjs"),
+    path.join(path.dirname(c.applyScriptPath), "resolve-sdk-module.mts"),
+    path.join(path.dirname(HERE), "resolve-sdk-module.mts"),
   ]);
   const cal = snapshot(c.calendarPath).value;
   protectedPaths.add(cal.policy.file);
@@ -737,7 +771,7 @@ async function monitor(
 }
 async function collectWorker(jobPath: string, budget: number, coordPath?: string) {
   const job = snapshot(jobPath).value,
-    { c, identity, verify } = await load(job.configPath);
+    { c, identity, verify, sdkModules } = await load(job.configPath);
   assert.equal(canonical(identity), canonical(job.identity), "Pending operation changed");
   assert.equal(job.root, c.root);
   checkFD(3, path.join(c.root, ".daily.lock"));
@@ -750,10 +784,10 @@ async function collectWorker(jobPath: string, budget: number, coordPath?: string
   }
   const base = path.dirname(c.sdkPath),
     { collectRegistryDifferences } = await import(
-      pathToFileURL(path.join(base, "companies/registry/collect-differences.js")).href
+      pathToFileURL(sdkModules.modules.collectRegistryDifferences).href
     ),
     { createRegistrySession } = await import(
-      pathToFileURL(path.join(base, "companies/registry/download-session.js")).href
+      pathToFileURL(sdkModules.modules.createRegistrySession).href
     );
   let requests = 0;
   const ledger = httpLedger(job);
@@ -825,7 +859,7 @@ export async function runCorporateRegistryDaily(
     );
   }
   const started = performance.now(),
-    { c, identity, verify, sdk, calendar } = await load(configPath),
+    { c, identity, verify, sdk, calendar, sdkModules } = await load(configPath),
     rootLock = path.join(c.root, ".daily.lock");
   resources(c.root, process.pid);
   return lock(rootLock, async (rootFD) => {
@@ -1023,7 +1057,7 @@ export async function runCorporateRegistryDaily(
       };
     };
     const { withOperationalLocks } = await import(
-      pathToFileURL(path.join(path.dirname(c.sdkPath), "utils/with-operational-locks.js")).href
+      pathToFileURL(sdkModules.modules.withOperationalLocks).href
     );
     if (fs.existsSync(acceptedPath))
       return withOperationalLocks([db + ".lock", checkpoint + ".lock"], () =>

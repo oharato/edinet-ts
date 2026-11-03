@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { queryCorporateRegistryDownloads } from "../src/companies/registry/registry-records";
+import { queryCorporateRegistryDownloads } from "../src/platform/registry/registry-records";
 it("法人番号は文字列プリミティブだけを受け入れる", () => {
   expect(() =>
     queryCorporateRegistryDownloads([], {

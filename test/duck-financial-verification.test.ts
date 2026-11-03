@@ -5,9 +5,9 @@ import { createHash } from "node:crypto";
 import {
   FinancialIndexPublication,
   type FinancialIndexPublicationPolicy,
-} from "../src/db/financial-index-publication";
-import { FinancialSearchIndex } from "../src/db/financial-search-index";
-import { Database } from "../src/db/node-sqlite";
+} from "../src/platform/db/stores/financial/financial-index-publication";
+import { FinancialSearchIndex } from "../src/platform/db/stores/financial/financial-search-index";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { duckFinancialReaderFixture as fixture } from "./fixtures/duck-financial-reader";
 import {
   recordDuckFinancialValueVerification as record,

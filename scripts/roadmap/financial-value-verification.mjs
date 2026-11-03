@@ -12,7 +12,7 @@ import {
 import {
   financialSourceVerifierSha256,
   runFinancialSourceVerifier,
-} from "../../dist/pipeline/verification/source-verifier-command.js";
+} from "../../dist/platform/pipeline/verification/source-verifier-command.js";
 const binding = (built) => ({
   inputSha256: built.inputSha256,
   generation: built.generation,

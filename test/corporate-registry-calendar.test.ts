@@ -1,10 +1,10 @@
 import { it, expect } from "vitest";
 import { createHash } from "node:crypto";
-import { parseCorporateRegistryPublicationCalendar as parse } from "../src/companies/registry/publication-calendar";
+import { parseCorporateRegistryPublicationCalendar as parse } from "../src/platform/registry/publication-calendar";
 import {
   reconstructCorporateRegistryState as state,
   type CorporateRegistryDelivery,
-} from "../src/companies/registry/registry-records";
+} from "../src/platform/registry/registry-records";
 import { registryCalendarFixture } from "./fixtures/corporate-registry-calendar";
 const query = (asOf: string) => ({
   corporateNumber: "1010001001202",

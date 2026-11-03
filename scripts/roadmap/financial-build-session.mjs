@@ -7,7 +7,7 @@ import {
   verifyFinancialVersionContext,
 } from "../../dist/index.js";
 
-import { captureFinancialVersionEvidenceBundle } from "../../dist/financial/selection/select-financial-source-versions.js";
+import { captureFinancialVersionEvidenceBundle } from "../../dist/domain/financial/selection/select-financial-source-versions.js";
 
 /** 呼出元は全バッチ終了まで候補の排他と容量・入力指紋の検査を維持します。 */
 export async function withFinancialBuildSession(

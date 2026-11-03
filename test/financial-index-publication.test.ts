@@ -10,7 +10,7 @@ import {
   FinancialIndexPublication,
   type FinancialIndexPublicationPolicy,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const query = { cutoff: "2026-10-28T00:00:00Z", extractorVersion: "publication-test" },
   population = {

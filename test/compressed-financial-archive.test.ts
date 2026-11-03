@@ -1,10 +1,10 @@
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { it, expect } from "vitest";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 it("圧縮原本を再読込し、非圧縮と同じ財務値・証跡を返し、原時刻付きで転送する", () => {

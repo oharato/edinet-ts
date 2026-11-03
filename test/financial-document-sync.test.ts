@@ -2,13 +2,13 @@ import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { it, expect, vi } from "vitest";
-import { EdinetRepository } from "../src/db/edinet-repository";
+import { EdinetRepository } from "../src/platform/db/stores/metadata/edinet-repository";
 import {
   ObservedFinancialArchive,
   backfillFinancialDocumentLists,
   archiveFinancialDocumentObservations,
 } from "../src/index";
-import type { EdinetDocument } from "../src/edinet/api-client";
+import type { EdinetDocument } from "../src/platform/client/edinet/api-client";
 const doc = (docID: string): EdinetDocument => ({
   docID,
   docDescription: "fixture",

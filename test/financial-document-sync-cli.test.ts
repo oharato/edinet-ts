@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { it, expect } from "vitest";
-import { EdinetRepository } from "../src/db/edinet-repository";
+import { EdinetRepository } from "../src/platform/db/stores/metadata/edinet-repository";
 import { ObservedFinancialArchive } from "../src/index";
 it("CLIで一覧cacheを再利用し、cursor転送・再投入・秘匿エラーを扱う", () => {
   const dir = mkdtempSync(join(tmpdir(), "financial-document-sync-cli-"));

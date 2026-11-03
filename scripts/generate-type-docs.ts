@@ -255,22 +255,22 @@ function main() {
   // 設定: どのファイルからどのインターフェースを抽出するか定義
   const interfaceConfig = [
     {
-      sourceFile: path.join(__dirname, "..", "src", "xbrl", "xbrl-document.ts"),
+      sourceFile: path.join(__dirname, "..", "src", "core", "parser", "xbrl-document.ts"),
       interfaces: ["CommonMetadata", "KeyMetrics", "LargeShareholdingInfo", "QualitativeInfo"],
     },
     {
-      sourceFile: path.join(__dirname, "..", "src", "types", "jppfs_cor_taxonomy.ts"),
+      sourceFile: path.join(__dirname, "..", "src", "core", "taxonomy", "jppfs_cor_taxonomy.ts"),
       interfaces: ["JppfsCorTaxonomy"],
     },
     {
-      sourceFile: path.join(__dirname, "..", "src", "types", "jpcrp_cor_taxonomy.ts"),
+      sourceFile: path.join(__dirname, "..", "src", "core", "taxonomy", "jpcrp_cor_taxonomy.ts"),
       interfaces: ["JpcrpCorTaxonomy"],
     },
   ];
 
   const documentTypeConfig = [
     {
-      sourceFile: path.join(__dirname, "..", "src", "xbrl", "xbrl-document.ts"),
+      sourceFile: path.join(__dirname, "..", "src", "core", "parser", "xbrl-document.ts"),
       interfaces: [
         "AnnualResponse",
         "QuarterlyResponse",
@@ -343,7 +343,7 @@ function main() {
   }
 
   // コード生成
-  const outputFilePath = path.join(__dirname, "..", "src", "utils", "type-doc-defs.ts");
+  const outputFilePath = path.join(__dirname, "..", "src", "cli", "help", "type-doc-defs.ts");
   const sourceFile = generateTypeDocCode(project, outputFilePath, allInterfaces, allDocTypes);
 
   // 出力を書き込み

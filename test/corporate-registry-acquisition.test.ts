@@ -8,10 +8,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { fetchRegistryDifference } from "../src/companies/registry/fetch-difference";
-import { parseRegistryListing } from "../src/companies/registry/parse-download-listing";
-import { withOperationalLocks } from "../src/utils/with-operational-locks";
-import * as retained from "../src/utils/retained-files";
+import { fetchRegistryDifference } from "../src/platform/registry/fetch-difference";
+import { parseRegistryListing } from "../src/platform/registry/parse-download-listing";
+import { withOperationalLocks } from "../src/platform/locks/with-operational-locks";
+import * as retained from "../src/platform/files/retained-files";
 import { signedRegistryFixture, sha256 } from "./fixtures/signed-corporate-registry";
 import { createStoredZip } from "./fixtures/create-stored-zip";
 import { differenceListing, mockRegistrySession } from "./fixtures/registry-download-response";

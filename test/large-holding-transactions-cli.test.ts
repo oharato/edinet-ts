@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { largeDocument } from "./fixtures/large-holding-report";
-import { searchLargeHoldingTransactions } from "../src/disclosures/large-holdings/extract-transactions";
+import { searchLargeHoldingTransactions } from "../src/domain/disclosures/ownership/large-holdings/extract-transactions";
 it("取引CLIは別cwdからAPIと一致し、不正条件・原本・訂正系列を拒否する", () => {
   const dir = mkdtempSync(join(tmpdir(), "holding-transactions-cli-"));
   try {

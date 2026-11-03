@@ -12,7 +12,7 @@ import {
   type BalanceSheetStoreInput,
   type BalanceSheetScreeningOptions,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 const sizes = process.argv.slice(2).map(Number);
 if (!sizes.length) sizes.push(100, 500, 1000);
 if (sizes.some((n) => !Number.isSafeInteger(n) || n < 1 || n > 8000))

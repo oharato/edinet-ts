@@ -1,12 +1,12 @@
 import { expect, it, vi } from "vitest";
-vi.mock("../src/companies/registry/create-difference-plan", () => ({
+vi.mock("../src/platform/registry/create-difference-plan", () => ({
   createRegistryDifferencePlan: vi.fn(),
 }));
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { collectRegistryDifferences } from "../src/companies/registry/collect-differences";
-import { createRegistryDifferencePlan } from "../src/companies/registry/create-difference-plan";
-import * as retained from "../src/utils/retained-files";
+import { collectRegistryDifferences } from "../src/platform/registry/collect-differences";
+import { createRegistryDifferencePlan } from "../src/platform/registry/create-difference-plan";
+import * as retained from "../src/platform/files/retained-files";
 import { signedRegistryFixture } from "./fixtures/signed-corporate-registry";
 import { createStoredZip } from "./fixtures/create-stored-zip";
 import { differenceListing, mockRegistrySession } from "./fixtures/registry-download-response";

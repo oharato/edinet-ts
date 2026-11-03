@@ -6,7 +6,7 @@ import {
   FinancialIndexReadQueries,
   financialIndexRowColumns,
   type FinancialReadQuery,
-} from "../src/db/financial-search-index";
+} from "../src/platform/db/stores/financial/financial-search-index";
 
 it("世代監査と品質をまとめても従来結果と一致し、行は本文付きで一巡だけ読む", () =>
   fixture(async ({ sqlite }) => {

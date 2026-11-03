@@ -4,7 +4,7 @@ import {
   type AnnualDividendPayment,
   type AnnualDividendReconstructionOptions,
   type ShareSplitLedger,
-} from "../src/financial/analysis/share-split-adjustment";
+} from "../src/domain/financial/analysis/share-split-adjustment";
 
 const source = {
   name: "reviewed synthetic split notice",

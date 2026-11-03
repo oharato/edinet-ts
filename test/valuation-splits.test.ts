@@ -3,7 +3,7 @@ import {
   calculateValuation,
   screenValuation,
   type ValuationInput,
-} from "../src/financial/analysis/valuation";
+} from "../src/domain/financial/analysis/valuation";
 import { point } from "./fixtures/per-share";
 
 const source = {

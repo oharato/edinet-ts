@@ -1,6 +1,6 @@
 /** 固定SDKのカレンダー計画に従い、指定日数ずつXML差分の取得を進める。 */
 import { parseArgs } from "node:util";
-import { collectRegistryDifferences } from "../../dist/companies/registry/collect-differences.js";
+import { collectRegistryDifferences } from "../../dist/platform/registry/collect-differences.js";
 const { values } = parseArgs({
   options: {
     calendar: { type: "string" },

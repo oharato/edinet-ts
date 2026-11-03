@@ -1,0 +1,143 @@
+# DEIから財務基準・当期を確定する
+
+原本の基本情報（DEI）から、会計基準・連結区分・当期を確認します。判定結果を使って財務値を抽出する方法と、「条件が決まった」「値を採用できた」の違いを説明します。
+
+## 判定と抽出の違い
+
+```mermaid
+flowchart LR
+    XML[XBRL原本] --> DEI[DEIとcontextを照合]
+    DEI --> Resolved[基準・当期・範囲を確定]
+    DEI --> Unresolved[未確定の理由を返す]
+    Resolved --> BS[期末残高の抽出]
+    Resolved --> YTD[累計期間の明細抽出]
+```
+
+`resolveFinancialReportingBasis(xml, docID)` は、DEIの宣言と実contextを照合して、会計基準・提出者・主たる財務範囲・当期の開始/終了日を返します。`createAutomaticFinancialSnapshots` はその結果を既存のBS/財務明細snapshotへ接続します。
+
+判定版は `FINANCIAL_REPORTING_BASIS_VERSION = "5"` です。
+
+## 読む宣言と整合性
+
+[2026年版の公式タクソノミ](https://www.fsa.go.jp/search/20251111.html)に含まれるjpdei/2013-08-31 XSDで、以下11要素が非abstractのinstant項目であることを確認しました。
+
+| 項目                                        | DEIタグ                                                                                                                                                                                                 |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 提出者                                      | EDINETCodeDEI                                                                                                                                                                                           |
+| 証券コード（任意）                          | SecurityCodeDEI                                                                                                                                                                                         |
+| 様式                                        | DocumentTypeDEI                                                                                                                                                                                         |
+| 基準                                        | AccountingStandardsDEI                                                                                                                                                                                  |
+| 連結作成の宣言                              | WhetherConsolidatedFinancialStatementsArePreparedDEI                                                                                                                                                    |
+| 年度開始/年度末                             | CurrentFiscalYearStartDateDEI / CurrentFiscalYearEndDateDEI                                                                                                                                             |
+| 当期末/当期の符号                           | CurrentPeriodEndDateDEI / TypeOfCurrentPeriodDEI                                                                                                                                                        |
+| 連結/単体の業種別財務諸表規則コード（任意） | IndustryCodeWhenConsolidatedFinancialStatementsArePreparedInAccordanceWithIndustrySpecificRegulationsDEI / IndustryCodeWhenFinancialStatementsArePreparedInAccordanceWithIndustrySpecificRegulationsDEI |
+
+各fieldはselected/missing/unsupported/ambiguousと原値・全候補・namespace/context/entity/単位等の証跡を返します。DEIは正規namespace・次元のない有効instant・単位なしを確認し、複数候補は完全一致でも自動採用しません。
+
+nil/空欄/不在と不正値を分けます。単一の既知entityを必要とし、EDINETCodeDEIのEコードとentityのEDINET scheme・Eコード-000を照合します。
+
+選択されたDEIのentity/instantが食い違う場合は確定しません。証券コードと業種コードのnil/不在は保持できますが、曖昧/非対応を無視して埋めません。業種コードは原文のまま主範囲の値を保持し、JPX業種や一般事業/金融の意味へ自動変換しません。株式コードと企業マスター、呼出元のdocIDと原本の対応は別の確認です。
+
+訂正対象 `IdentificationOfDocumentSubjectToAmendmentDEI` も任意項目として同じnamespace/context/entity検査で読み、選択時は `metadata.amendmentTargetDocID` に保持します。欠落・空欄は旧原本との互換を保ちますが、複数候補や不正contextはbasisを保留します。basis単独では訂正系列の正しさを認証しません。観測付き抽出では選択訂正の明示対象を系列の厳密な祖先と照合し、自分自身や系列外なら `correction-target-mismatch` で金融値を採用しません。
+
+版5では対応様式を追加したため解析キーが変わります。版4の保存済み結果は読取りを継続でき、新しい結果とは別キーで保持します。[互換テスト](../../../test/financial-reporting-basis-legacy.test.ts)を参照してください。
+
+## 基準・範囲・期間
+
+Japan GAAPはJ-GAAP、IFRSはIFRSとして確定します。US GAAP/JMIS/未知値を他基準へ切り替えません。連結作成フラグtrue/1を主範囲Consolidated、false/0をNonConsolidatedとして扱い、財務contextも実際のscope・次元・entityで照合します。
+
+| DEIの当期符号     | 期間分類 | durationの対象                                                  |
+| ----------------- | -------- | --------------------------------------------------------------- |
+| FY                | annual   | 年度開始から当期末。年度末と当期末の一致を確認                  |
+| HY / Q1 / Q2 / Q3 | ytd      | 年度開始から当期末。年度末へ延長しない                          |
+| Q4                | ytd      | 延長年度内の第4四半期。下記の当期末・実単四半期条件を必要とする |
+
+年度開始≦当期末≦年度末、当期末≦DEIのinstantを確認します。FY以外は当期末が年度末より前であることを確認します。annualはFYの宣言に基づく分類で、12か月の保証ではありません。変則期間の元日付を保持し、単四半期や12か月へ換算しません。
+
+様式はFYの第三号、HYの第四号の三/第五号、Q1/Q2/Q3/Q4の第四号の三を対象とします。Japan GAAPに限り、外国会社のFY第八号・HY第九号の三も対象です。issuer・実期間の検査は共通で、形式を認識しても、後段でUSDとJPYの候補が混在する値を任意に採用しません。様式だけで期間を決めず、当期符号・各DEI日付・実contextと併せて検査します。
+
+第五号様式の半期報告書の表紙は[金融庁の様式資料](https://www.fsa.go.jp/news/r7/shouken/20251126/01.pdf)でも確認しています。Q1/Q3・第五号の経路は現時点では合成検証までです。
+
+返却する `metadata` では、次の期間・時点を区別します。
+
+| フィールド          | 意味                                                             |
+| ------------------- | ---------------------------------------------------------------- |
+| `period`            | 年度開始から当期末までの累計期間                                 |
+| `fiscalYear`        | 年度開始から年度末までの年度全体                                 |
+| `instant`           | 当期末の時点                                                     |
+| `deiContextInstant` | DEIが参照する時点。提出日時・取得日時・`knownAt`には読み替えない |
+| `quarterPeriod`     | Q2/Q3/Q4で実contextを確認できた場合だけ返す、単四半期の期間      |
+
+`quarterPeriod` は、年度開始からQ2なら3か月、Q3なら6か月、Q4なら9か月後を開始候補とし、当期末がその四半期内にあることを確認します。開始日の計算で日付が翌月へ繰り越される場合は採用しません。さらに、期間・名前空間・連結区分・提出者・次元が一致する実contextを必要とし、該当contextに重複IDがある場合も返しません。
+
+これは書類一覧との期間照合に使う情報です。抽出する財務明細の `period` は累計のままで、差し引きによる単四半期値への換算は行いません。contextのID名だけで期間を推測することもありません。Q2/Q3のこの照合は合成テストで確認しています。
+
+Q4は、当期末が年度開始から12暦月後の前日で、DEIの年度末が当期末より後にある延長年度だけを対象とします。開始から9暦月後を起点とする実単四半期contextが必要で、欠落・不正scope/entity/namespace・重複IDならbasisを未確定にします。日付の繰り越しは許容しません。12か月累計でもFYへ変えず、Q5等へ一般化しません。通常の12か月年度のQ4は対象外です。
+
+実例は旅工房の15か月年度（2023-04-01〜2024-06-30）内のQ4です。`period` は2023-04-01〜2024-03-31、`quarterPeriod` は2024-01-01〜2024-03-31、`periodType` は `ytd` を保持します。14/18か月年度も同じ境界で通ることは合成検証で確認しています。年度を15か月へ固定する条件ではありません。
+
+複数の同義contextがあればID一覧を保持し、重複したIDはblockedDuplicateContextsへ期間型とともに記録します。
+
+## APIとsnapshot接続
+
+```ts
+import { resolveFinancialReportingBasis, createAutomaticFinancialSnapshots } from "edinet-ts";
+
+const basis = resolveFinancialReportingBasis(xml, "SAMPLE");
+if (basis.status === "selected") {
+  console.log(basis.metadata.accountingStandard, basis.metadata.period);
+}
+const result = createAutomaticFinancialSnapshots(xml, {
+  docID: "SAMPLE",
+  detailMetricIds: ["costOfSales"],
+});
+```
+
+解析済みobjectでは `object.selectFinancialReportingBasis()` も使えます。Object入口では元XML hashを作らず、xmlを渡す入口だけUTF-8文字列のSHA-256を付けます。BOMを保持します。hashは真正性やdocIDとの対応の保証ではありません。
+
+自動接続の結果は、基準に応じて以下の既存契約を返します。
+
+| 判定     | balanceSheet                                              | detailsの既定                      |
+| -------- | --------------------------------------------------------- | ---------------------------------- |
+| J-GAAP   | 既存BS3 snapshot                                          | 既存のduration2科目（原価/販管費） |
+| IFRS連結 | [IFRS BS8項目](IFRS_BALANCE_SHEET_SELECTION.md)のsnapshot | IFRS PL5 snapshot                  |
+
+detailMetricIdsで、その基準のduration明細を明示できます。期間型/基準にない項目や未知/重複/疎配列は拒否します。IFRS単体はDEI/実contextで確認できる当期主範囲だけを専用IFRS抽出器へ渡し、日本基準へ切り替えません。
+
+status:resolvedはDEIから接続条件を確定できたことを意味します。各groupのstatus:createdはsnapshotを作成できたことで、すべての値の採用を意味しません。
+
+値のnil/曖昧/非対応はsnapshot内で確認します。対象contextがなければgroupをunavailableとし、通常の不在と重複IDによる利用不能を区別します。Q4でも、DEIと実単四半期を認証できた後の主YTD/BS contextの欠落・重複はbasis全体を未確定にしません。該当groupだけを `current-period-context-absent` / `duplicate-current-period-context` で利用不可とし、もう一方のgroupを保持します。
+
+基準が未確定、証券コードなしではstatus:unresolvedと理由を返します。証券コードなしでもbasis自体の期間/提出者情報は保持できます。現在のsnapshot型が証券コードを必要とするため、架空のコードを作りません。
+
+targetCurrency:JPYは抽出器の対象単位です。DEIから表示通貨を認定する項目ではなく、外貨factは既存の単位検査でunsupported-unitとなります。換算やJPYの推定補完は行いません。自動接続ではXMLを一度解析し、basis・BS・明細へ解析済みobjectを共有します。各公開XML入口の検証と原本hash・来歴の契約は維持します。
+
+<a id="cli"></a>
+
+## CLIで実行する
+
+```sh
+edinet-ts financial-reporting-basis --file saved.xbrl --doc-id SAMPLE --pretty
+edinet-ts financial-reporting-basis --file saved.xbrl --doc-id SAMPLE \
+  --with-snapshots --detail-metrics costOfSales,sellingGeneralAndAdministrativeExpenses
+```
+
+--detail-metricsは--with-snapshotsと組み合わせます。入力/読込/解析の不正は内容を表示せず終了1、正常に判定した未確定は理由付きJSON/終了0です。
+
+## 実原本と残工程
+
+> 以下は各検証を実施した時点の記録です。件数・配布先・未確認範囲を含めて読み、現在の稼働状態とは分けてください。
+
+取得済み10原本で、J-GAAP/IFRS、FY/HY/Q2の累計、連結/単体を確認しました。独立XML処理でDEI110件（105採用/5nil）、当期duration10・instant10のcontextと日付/範囲/提出者が一致しました。
+
+9原本は18snapshotを生成し、60財務選択すべての原値・単位・当期contextと160fact証跡を元XMLで確認しました。別処理でDEIを読んで作った既存APIの手動metadata/snapshotとも完全一致しています。
+
+IFRS単体1原本は対象外として停止しました。
+
+元XMLはミライト2025年3月期、ユキグニ/アイティメディア/パーソル2026年3月期、ソフトバンク2024年3月期に加え、保存済みの年次/半期/Q2記載原本を使用しました。この追加確認はXMLと既存APIの照合であり、新規対象すべての財務値のPDF照合とは区別します。外部取得・費用はなく、元stock-dataキャッシュは読取専用で扱いました。
+
+全DEI版/様式、複数entityの主提出者分離、別scopeへの自動切替、非上場のsnapshot型、US/JMIS・当期外のIFRS単体認証・外貨、単四半期化・比較期間/訂正全文の再構成は残工程です。観測cutoff/最新版選択は[文書パイプライン](../../ops/DOCUMENT_PIPELINE.md)と別に接続し、DEIの時点から未観測の履歴を作りません。
+
+永続索引、利用先の固定配布物と本番反映も引き続き対象です。
+
+観測cutoff・訂正選択からこのAPIへ接続する入口は、[文書パイプラインの自動財務snapshot](../../ops/DOCUMENT_PIPELINE.md#選択原本からの自動財務snapshot)を参照してください。DEIだけでknownAtを作らず、選択原本の直接値を返します。

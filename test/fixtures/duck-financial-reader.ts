@@ -3,20 +3,20 @@ import { mkdtempSync, rmSync, chmodSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { DuckDBInstance } from "@duckdb/node-api";
-import { DuckFinancialIndexBuild } from "../../src/db/duck-financial-index-build";
-import { DuckFinancialSearchIndex } from "../../src/db/duck-financial-search-index";
-import { ObservedFinancialArchive } from "../../src/db/observed-financial-archive";
+import { DuckFinancialIndexBuild } from "../../src/platform/pipeline/financial/jobs/duck-financial-index-build";
+import { DuckFinancialSearchIndex } from "../../src/platform/db/stores/financial/duck-financial-search-index";
+import { ObservedFinancialArchive } from "../../src/platform/db/stores/financial/observed-financial-archive";
 import {
   ParsedFinancialStore,
   parsedFinancialMappingVersions,
-} from "../../src/db/parsed-financial-store";
-import { ParsedFinancialJob } from "../../src/db/parsed-financial-job";
-import { FinancialIndexBuild } from "../../src/db/financial-index-build";
+} from "../../src/platform/db/stores/financial/parsed-financial-store";
+import { ParsedFinancialJob } from "../../src/platform/pipeline/financial/jobs/parsed-financial-job";
+import { FinancialIndexBuild } from "../../src/platform/pipeline/financial/jobs/financial-index-build";
 import {
   FinancialSearchIndex,
   type FinancialIndexCohort,
   type FinancialIndexSearchOptions,
-} from "../../src/db/financial-search-index";
+} from "../../src/platform/db/stores/financial/financial-search-index";
 import { reportingInstance } from "./financial-reporting-basis";
 export async function duckFinancialReaderFixture(
   fn: (s: {

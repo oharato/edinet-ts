@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
-import { reconstructCorporateRegistryState } from "../src/companies/registry/registry-records";
+import { reconstructCorporateRegistryState } from "../src/platform/registry/registry-records";
 it("CLIはAPIと同じ空の全国全件を返し、分割不足を読み込み前に拒否する", () => {
   const dir = mkdtempSync(join(tmpdir(), "registry-state-cli-"));
   try {

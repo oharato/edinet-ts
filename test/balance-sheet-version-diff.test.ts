@@ -12,8 +12,8 @@ import {
   BalanceSheetValueComparison,
   type BalanceSheetStoreInput,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
-import { runLocalBalanceSheetDiff } from "../src/pipeline/import-local-balance-sheets";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { runLocalBalanceSheetDiff } from "../src/platform/pipeline/import-local-balance-sheets";
 import { instance, fact, standalone } from "./fixtures/metric-boundaries";
 const sharedHash = createHash("sha256")
   .update("synthetic-original-with-old-and-new-extraction-fixtures")

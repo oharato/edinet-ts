@@ -16,8 +16,8 @@ import {
   createObservedFinancialSnapshots,
   type DocumentVersionObservation,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
-import { FINANCIAL_REPORTING_BASIS_VERSION } from "../src/financial/extraction/resolve-reporting-basis";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { FINANCIAL_REPORTING_BASIS_VERSION } from "../src/domain/financial/extraction/resolve-reporting-basis";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const query = { cutoff: "2026-10-28T00:00:00Z", extractorVersion: "test-1" };
 function observation(

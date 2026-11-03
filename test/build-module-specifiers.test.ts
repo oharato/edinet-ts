@@ -17,6 +17,14 @@ it("配布型の親/現在directory参照をindex.jsへ解決し、既存拡張�
       file,
       `export type Parent = import("..").Parent;\nexport type Self = import(".").Self;\nexport type Directory = import("../").Directory;\nexport type File = import("./model").File;\nexport type Json = import("./data.json").Json;\nexport type Package = import("package").Package;\nexport { Child } from './child';\nexport { Existing } from './existing.js';\n`,
     );
+    const chains = ["../..", "../../..", "../../../..", "./../..", ".././.."];
+    for (const [i, chain] of chains.entries())
+      writeFileSync(
+        file,
+        `export type Chain${i} = import("${chain}").Value;\nexport { Static${i} } from "${chain}";\n`,
+        { flag: "a" },
+      );
+    writeFileSync(file, `export type DotName = import("./model..").Value;\n`, { flag: "a" });
     const run = () =>
       spawnSync(process.execPath, [join(root, "scripts/add-js-extensions.js")], {
         encoding: "utf8",
@@ -33,6 +41,11 @@ it("配布型の親/現在directory参照をindex.jsへ解決し、既存拡張�
       "./existing.js",
     ])
       expect(body).toContain(path);
+    for (const [i, chain] of chains.entries()) {
+      expect(body).toContain(`export type Chain${i} = import("${chain}/index.js").Value;`);
+      expect(body).toContain(`export { Static${i} } from "${chain}/index.js";`);
+    }
+    expect(body).toContain('import("./model...js")');
     expect(body).not.toContain('import("..")');
     expect(body).not.toContain('import(".")');
     expect(run().status).toBe(0);

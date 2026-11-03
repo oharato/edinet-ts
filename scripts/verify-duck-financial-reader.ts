@@ -2,13 +2,13 @@ import { strict as assert } from "node:assert";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { DuckFinancialSearchIndex } from "../src/db/duck-financial-search-index";
+import { DuckFinancialSearchIndex } from "../src/platform/db/stores/financial/duck-financial-search-index";
 import {
   FinancialSearchIndex,
   financialIndexGenerationSha256,
   type FinancialIndexCohort,
   type FinancialIndexSearchOptions,
-} from "../src/db/financial-search-index";
+} from "../src/platform/db/stores/financial/financial-search-index";
 const hash = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
 async function main() {
   const input = resolve(process.argv[2]),
@@ -65,9 +65,9 @@ async function main() {
   assert.equal(hash(duckPath), before.duck);
   assert.equal(hash(sqlitePath), before.sqlite);
   const files = [
-    "src/db/duck-financial-search-index.ts",
-    "src/db/duck-financial-snapshot.ts",
-    "src/db/financial-search-index.ts",
+    "src/platform/db/stores/financial/duck-financial-search-index.ts",
+    "src/platform/db/engines/duckdb/duck-financial-snapshot.ts",
+    "src/platform/db/stores/financial/financial-search-index.ts",
     "scripts/verify-duck-financial-reader.ts",
   ];
   writeFileSync(

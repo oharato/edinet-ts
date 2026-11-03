@@ -3,13 +3,13 @@ import { expect, it } from "vitest";
 import {
   reconstructCorporateRegistryStreamStates as scan,
   type CorporateRegistryStreamDelivery,
-} from "../src/companies/registry/reconstruct-stream-states";
+} from "../src/platform/registry/reconstruct-stream-states";
 import {
   reconstructCorporateRegistryState as raw,
   CORPORATE_REGISTRY_FIELDS as fields,
   type CorporateRegistrySource,
   type CorporateRegistryDelivery,
-} from "../src/companies/registry/registry-records";
+} from "../src/platform/registry/registry-records";
 const a = "1010001001202",
   b = "2010001001201",
   sha = (v: string) => createHash("sha256").update(v).digest("hex");

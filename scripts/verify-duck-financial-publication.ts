@@ -2,8 +2,8 @@ import { strict as assert } from "node:assert";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { createHash } from "node:crypto";
-import { DuckFinancialSearchIndex } from "../src/db/duck-financial-search-index";
-import { FinancialIndexPublication } from "../src/db/financial-index-publication";
+import { DuckFinancialSearchIndex } from "../src/platform/db/stores/financial/duck-financial-search-index";
+import { FinancialIndexPublication } from "../src/platform/db/stores/financial/financial-index-publication";
 const hash = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
 async function main() {
   const input = resolve(process.argv[2]),
@@ -55,8 +55,8 @@ async function main() {
   }
   assert.equal(hash(file), before);
   const files = [
-    "src/db/financial-index-publication.ts",
-    "src/db/duck-financial-search-index.ts",
+    "src/platform/db/stores/financial/financial-index-publication.ts",
+    "src/platform/db/stores/financial/duck-financial-search-index.ts",
     "scripts/verify-duck-financial-publication.ts",
   ];
   writeFileSync(

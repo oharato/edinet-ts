@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decodeHtmlEntities, stripHtmlTags, cleanHtml } from "../src/utils/html-cleaner";
+import { decodeHtmlEntities, stripHtmlTags, cleanHtml } from "../src/core/text/html-cleaner";
 
 describe("html-cleaner", () => {
   describe("decodeHtmlEntities", () => {

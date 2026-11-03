@@ -85,7 +85,7 @@ function main() {
   assert.deepEqual(run(100, 100), third);
   assert.equal(hash(archivePath), archiveBefore);
   const files = [
-    "src/pipeline/build-duck-financial-cycle.ts",
+    "src/platform/pipeline/build-duck-financial-cycle.ts",
     "src/cli/register-duck-financial-commands.ts",
     "src/index.ts",
     "scripts/verify-duck-financial-cycle.ts",

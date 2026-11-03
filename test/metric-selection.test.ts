@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import { EdinetXbrlParser } from "../src/core/parser/parse-xbrl";
 import {
   AccountingStandard,
   MetricId,
   METRIC_REGISTRY,
-} from "../src/financial/extraction/metric-definitions";
+} from "../src/domain/financial/extraction/metric-definitions";
 import {
   MetricSelectionOptions,
   toSafeMetricNumber,
-} from "../src/financial/extraction/select-metric-facts";
+} from "../src/domain/financial/extraction/select-metric-facts";
 import { context, fact, instance, period, standalone } from "./fixtures/metric-boundaries";
 const options: MetricSelectionOptions = {
   accountingStandard: "J-GAAP",

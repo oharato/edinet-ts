@@ -14,10 +14,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { DuckDBInstance, DuckDBResult, DuckDBDataChunk } from "@duckdb/node-api";
-import { DuckFinancialSnapshot } from "../src/db/duck-financial-snapshot";
-import { DuckFinancialIndexBuild } from "../src/db/duck-financial-index-build";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
-import { ParsedFinancialStore } from "../src/db/parsed-financial-store";
+import { DuckFinancialSnapshot } from "../src/platform/db/engines/duckdb/duck-financial-snapshot";
+import { DuckFinancialIndexBuild } from "../src/platform/pipeline/financial/jobs/duck-financial-index-build";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
+import { ParsedFinancialStore } from "../src/platform/db/stores/financial/parsed-financial-store";
 const digest = (path: string) => createHash("sha256").update(readFileSync(path)).digest("hex");
 async function fixture(fn: (path: string, dir: string) => Promise<void>, complete = true) {
   const dir = mkdtempSync(join(tmpdir(), "duck-snapshot-test-")),

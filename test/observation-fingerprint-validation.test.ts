@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { ObservedFinancialArchive, type DocumentVersionObservation } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 const observation = (id = "A"): DocumentVersionObservation => ({
   observationId: id,
   observedAt: "2026-06-25T00:00:00Z",

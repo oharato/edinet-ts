@@ -6,8 +6,10 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { resolveSdkModules } from "./roadmap/resolve-sdk-module.mts";
 const sha = (file) => createHash("sha256").update(readFileSync(file)).digest("hex");
 async function worker(mode, sdk, legacy, candidate) {
+  const sdkLayout = resolveSdkModules(join(sdk, "dist/index.js"), ["duckFinancialIndexBuild"]);
   let legacyEngine;
   if (mode === "mixed") {
     const { DuckDBInstance } = await import(pathToFileURL(legacy).href),
@@ -24,7 +26,7 @@ async function worker(mode, sdk, legacy, candidate) {
   const require = createRequire(pathToFileURL(join(sdk, "dist/index.js"))),
     { DuckDBInstance } = require("@duckdb/node-api"),
     { DuckFinancialIndexBuild, assertDuckFinancialEngine } = await import(
-      pathToFileURL(join(sdk, "dist/db/duck-financial-index-build.js")).href
+      pathToFileURL(sdkLayout.modules.duckFinancialIndexBuild).href
     ),
     { DuckFinancialSearchIndex } = await import(pathToFileURL(join(sdk, "dist/index.js")).href),
     db = await DuckDBInstance.create(":memory:"),
@@ -81,6 +83,13 @@ async function main() {
     candidate = resolve(process.argv[4]),
     out = resolve(process.argv[5]);
   assert(!existsSync(out));
+  const sdkLayout = resolveSdkModules(join(sdk, "dist/index.js"), [
+      "duckFinancialIndexBuild",
+      "duckFinancialSnapshot",
+    ]),
+    resolverSha256 = sha(
+      fileURLToPath(new URL("./roadmap/resolve-sdk-module.mts", import.meta.url)),
+    );
   mkdirSync(out, { recursive: true });
   const results = [];
   for (const mode of ["isolated", "mixed"]) {
@@ -92,21 +101,28 @@ async function main() {
     assert.equal(child.status, 0, child.stderr);
     results.push(JSON.parse(child.stdout));
   }
+  assert.equal(
+    sha(fileURLToPath(new URL("./roadmap/resolve-sdk-module.mts", import.meta.url))),
+    resolverSha256,
+    "SDK resolver changed",
+  );
   writeFileSync(
     join(out, "summary.json"),
     JSON.stringify(
       {
         node: process.version,
+        resolverSha256,
+        sdkLayout,
         sdk,
         legacy,
         candidate,
         results,
         verifierSha256: sha(fileURLToPath(import.meta.url)),
         sourceSha256: Object.fromEntries(
-          ["duck-financial-index-build", "duck-financial-snapshot"].map((name) => [
-            name,
-            sha(join(sdk, "dist/db", name + ".js")),
-          ]),
+          [
+            ["duck-financial-index-build", sdkLayout.modules.duckFinancialIndexBuild],
+            ["duck-financial-snapshot", sdkLayout.modules.duckFinancialSnapshot],
+          ].map(([name, file]) => [name, sha(file)]),
         ),
       },
       null,

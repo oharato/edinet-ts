@@ -2,17 +2,17 @@ import { strict as assert } from "node:assert";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
 import {
   ParsedFinancialStore,
   parsedFinancialMappingVersions,
-} from "../src/db/parsed-financial-store";
-import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
-import { DuckFinancialIndexBuild } from "../src/db/duck-financial-index-build";
-import { FinancialIndexBuild } from "../src/db/financial-index-build";
-import { FinancialSearchIndex } from "../src/db/financial-search-index";
-import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
-import { Database } from "../src/db/node-sqlite";
+} from "../src/platform/db/stores/financial/parsed-financial-store";
+import { ParsedFinancialJob } from "../src/platform/pipeline/financial/jobs/parsed-financial-job";
+import { DuckFinancialIndexBuild } from "../src/platform/pipeline/financial/jobs/duck-financial-index-build";
+import { FinancialIndexBuild } from "../src/platform/pipeline/financial/jobs/financial-index-build";
+import { FinancialSearchIndex } from "../src/platform/db/stores/financial/financial-search-index";
+import { EdinetXbrlParser } from "../src/core/parser/parse-xbrl";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 const sha = (s: Buffer | string) => createHash("sha256").update(s).digest("hex");
 const plain = (r: Record<string, unknown>) =>
   JSON.parse(
@@ -179,11 +179,11 @@ async function main() {
   assert.equal(sha(readFileSync(archivePath)), archiveBefore);
   assert.equal(sha(readFileSync(parsedPath)), parsedBefore);
   const files = [
-    "src/db/duck-financial-index-build.ts",
-    "src/db/financial-search-index.ts",
-    "src/db/parsed-financial-snapshots.ts",
-    "src/db/observed-financial-archive.ts",
-    "src/financial/snapshots/create-observed-snapshots.ts",
+    "src/platform/pipeline/financial/jobs/duck-financial-index-build.ts",
+    "src/platform/db/stores/financial/financial-search-index.ts",
+    "src/platform/pipeline/financial/parsed-financial-snapshots.ts",
+    "src/platform/db/stores/financial/observed-financial-archive.ts",
+    "src/domain/financial/snapshots/create-observed-snapshots.ts",
   ];
   writeFileSync(
     join(out, "summary.json"),

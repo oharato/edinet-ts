@@ -2,8 +2,9 @@
 import { strict as assert } from "node:assert";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, statfsSync } from "node:fs";
 import { resolve, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { pathToFileURL, fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+import { resolveSdkModules } from "./roadmap/resolve-sdk-module.mts";
 const canonical = (value) =>
     JSON.stringify(value, (_k, v) =>
       v && typeof v === "object" && !Array.isArray(v)
@@ -28,8 +29,15 @@ async function main() {
   assert.equal(saved.body?.status, "built");
   assert.equal(saved.body.indexPath, join(cycle, "index.duckdb"));
   assert(!existsSync(out));
+  const sdkLayout = resolveSdkModules(join(sdk, "dist/index.js"), [
+      "buildDuckFinancialCycle",
+      "sourceVerifierCommand",
+    ]),
+    resolverSha256 = sha(
+      readFileSync(fileURLToPath(new URL("./roadmap/resolve-sdk-module.mts", import.meta.url))),
+    );
   const { duckFinancialSdkSha256 } = await import(
-    pathToFileURL(join(sdk, "dist/pipeline/build-duck-financial-cycle.js")).href
+    pathToFileURL(sdkLayout.modules.buildDuckFinancialCycle).href
   );
   assert.equal(duckFinancialSdkSha256(), marker.input.sdkSha256);
   const space = statfsSync(cycle, { bigint: true });
@@ -42,7 +50,7 @@ async function main() {
   );
   mkdirSync(out, { mode: 0o700 });
   const { financialSourceVerifierSha256, runFinancialSourceVerifier } = await import(
-    pathToFileURL(join(sdk, "dist/pipeline/verification/source-verifier-command.js")).href
+    pathToFileURL(sdkLayout.modules.sourceVerifierCommand).href
   );
   const verifierSha256 = financialSourceVerifierSha256(),
     { DuckFinancialSearchIndex } = await import(pathToFileURL(join(sdk, "dist/index.js")).href),
@@ -66,11 +74,20 @@ async function main() {
     assert.match(checks.valuesSha256, /^[a-f0-9]{64}$/);
     assert.equal(financialSourceVerifierSha256(), verifierSha256);
     assert.equal(duckFinancialSdkSha256(), marker.input.sdkSha256);
+    assert.equal(
+      sha(
+        readFileSync(fileURLToPath(new URL("./roadmap/resolve-sdk-module.mts", import.meta.url))),
+      ),
+      resolverSha256,
+      "SDK resolver changed",
+    );
     writeFileSync(
       join(out, "summary.json"),
       JSON.stringify(
         {
           node: process.version,
+          resolverSha256,
+          sdkLayout,
           inputSha256: marker.inputSha256,
           sdkSha256: marker.input.sdkSha256,
           duckdbSha256: await reader.snapshotSha256(),

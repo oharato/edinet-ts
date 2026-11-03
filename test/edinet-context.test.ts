@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ContextParser } from "../src/xbrl/parse-contexts";
+import { ContextParser } from "../src/core/parser/parse-contexts";
 
 describe("ContextParser", () => {
   describe("parse", () => {

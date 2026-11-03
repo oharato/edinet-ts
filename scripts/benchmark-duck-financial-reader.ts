@@ -4,12 +4,12 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve, join } from "node:path";
 import { createHash } from "node:crypto";
-import { DuckFinancialSearchIndex } from "../src/db/duck-financial-search-index";
+import { DuckFinancialSearchIndex } from "../src/platform/db/stores/financial/duck-financial-search-index";
 import {
   FinancialSearchIndex,
   FinancialIndexReadQueries,
   type FinancialIndexCohort,
-} from "../src/db/financial-search-index";
+} from "../src/platform/db/stores/financial/financial-search-index";
 const hash = (v: string) => createHash("sha256").update(v).digest("hex");
 async function main() {
   if (process.argv[2] === "--worker") {
@@ -91,8 +91,8 @@ async function main() {
   assert.deepEqual(results[0].outputs, results[1].outputs);
   assert.deepEqual(results[1].outputs, results[2].outputs);
   const files = [
-    "src/db/duck-financial-search-index.ts",
-    "src/db/financial-search-index.ts",
+    "src/platform/db/stores/financial/duck-financial-search-index.ts",
+    "src/platform/db/stores/financial/financial-search-index.ts",
     "scripts/benchmark-duck-financial-reader.ts",
   ];
   writeFileSync(

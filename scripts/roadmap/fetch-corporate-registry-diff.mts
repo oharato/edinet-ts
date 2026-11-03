@@ -1,6 +1,6 @@
 /** 日付と信頼鍵を明示して、国税庁の一日分のXML差分を取得・検証する。 */
 import { parseArgs } from "node:util";
-import { fetchRegistryDifference } from "../../dist/companies/registry/fetch-difference.js";
+import { fetchRegistryDifference } from "../../dist/platform/registry/fetch-difference.js";
 const { values } = parseArgs({
   options: {
     date: { type: "string" },

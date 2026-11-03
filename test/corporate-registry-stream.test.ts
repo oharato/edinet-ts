@@ -7,8 +7,8 @@ import {
   readCorporateRegistryFile,
   streamCorporateRegistryRecords as stream,
   CORPORATE_REGISTRY_RECORD_MAX_BYTES,
-} from "../src/companies/registry/read-registry-stream";
-import { parseCorporateRegistryDownloadXml } from "../src/companies/registry/registry-records";
+} from "../src/platform/registry/read-registry-stream";
+import { parseCorporateRegistryDownloadXml } from "../src/platform/registry/registry-records";
 import {
   registryStreamSource as source,
   registryStreamXml as xml,

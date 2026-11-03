@@ -1,4 +1,4 @@
-import type { RegistryRequest } from "../../src/companies/registry/download-session";
+import type { RegistryRequest } from "../../src/platform/registry/download-session";
 export const differenceListing = (date = "2026-10-28") =>
   `<form id="appForm" action="/download/sabun/index.html" method="post"><input type="hidden" name="token" value="private"><input type="hidden" name="event" value="download"><input type="hidden" name="selDlFileNo" value=""><h2 id="csv-sjis">CSV</h2><tr class="type0_corpHistory1"><td>令和${Number(date.slice(0, 4)) - 2018}年${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日</td><td><a onclick="return doDownload(11);">CSV</a></td></tr><h2 id="xml-unicode">XML</h2><tr class="type2_corpHistory1"><td>令和${Number(date.slice(0, 4)) - 2018}年${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日</td><td><a onclick="return doDownload(33);">XML</a></td></tr></form>`;
 export const fullListing =

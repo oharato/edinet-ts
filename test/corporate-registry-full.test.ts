@@ -1,10 +1,10 @@
 import { expect, it, vi } from "vitest";
 import { appendFileSync, existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { fetchNationalRegistry } from "../src/companies/registry/fetch-national-baseline";
-import { parseRegistryListing } from "../src/companies/registry/parse-download-listing";
-import * as retained from "../src/utils/retained-files";
-import * as audit from "../src/companies/registry/verify-archive-parts";
+import { fetchNationalRegistry } from "../src/platform/registry/fetch-national-baseline";
+import { parseRegistryListing } from "../src/platform/registry/parse-download-listing";
+import * as retained from "../src/platform/files/retained-files";
+import * as audit from "../src/platform/registry/verify-archive-parts";
 import { signedRegistryFixture } from "./fixtures/signed-corporate-registry";
 import { createStoredZip } from "./fixtures/create-stored-zip";
 import { fullListing, mockRegistrySession } from "./fixtures/registry-download-response";

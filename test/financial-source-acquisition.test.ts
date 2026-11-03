@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { it, expect, vi } from "vitest";
 import { ObservedFinancialArchive } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const cutoff = "2026-07-01T00:00:00Z",
   xml = reportingInstance({ issuer: "E12001", security: "10010" });

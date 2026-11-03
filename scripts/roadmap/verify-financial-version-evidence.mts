@@ -1,10 +1,10 @@
 /** 固定manifest pinに対し、保存した版の証拠と任意の構築済み索引を独立に検査する。 */
 import { parseArgs } from "node:util";
 import { strict as assert, AssertionError } from "node:assert";
-import { loadVersionJSON } from "../../dist/pipeline/verification/read-version-input.js";
-import { canonical } from "../../dist/pipeline/verification/version-evidence-format.js";
-import { verifyVersionBundle } from "../../dist/pipeline/verification/verify-version-bundle.js";
-import { verifyVersionIndex } from "../../dist/pipeline/verification/verify-version-index.js";
+import { loadVersionJSON } from "../../dist/platform/pipeline/verification/read-version-input.js";
+import { canonical } from "../../dist/platform/pipeline/verification/version-evidence-format.js";
+import { verifyVersionBundle } from "../../dist/platform/pipeline/verification/verify-version-bundle.js";
+import { verifyVersionIndex } from "../../dist/platform/pipeline/verification/verify-version-index.js";
 try {
   const { values } = parseArgs({
     options: {

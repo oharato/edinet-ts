@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { config as loadEnv } from "dotenv";
-import { EdinetRepository } from "../../dist/db/edinet-repository.js";
+import { EdinetRepository } from "../../dist/platform/db/stores/metadata/edinet-repository.js";
 import { EdinetXbrlDownloader } from "../../dist/index.js";
 import { collectDailyMetadata, canStartDailyMetadata } from "./daily-metadata-control.mjs";
 

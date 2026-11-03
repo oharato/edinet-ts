@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { CorporateRegistryBlockStore } from "../src/db/corporate-registry-block-store";
-import { linkCompanyMasterCorporateStates } from "../src/companies/link-corporate-states";
+import { CorporateRegistryBlockStore } from "../src/platform/db/stores/registry/corporate-registry-block-store";
+import { linkCompanyMasterCorporateStates } from "../src/platform/queries/companies/link-corporate-states";
 import {
   registryStreamSource as source,
   registryStreamRow as row,

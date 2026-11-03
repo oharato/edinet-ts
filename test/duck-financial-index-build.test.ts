@@ -3,16 +3,16 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { DuckFinancialSearchIndex } from "../src/db/duck-financial-search-index";
-import { DuckFinancialIndexBuild } from "../src/db/duck-financial-index-build";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
+import { DuckFinancialSearchIndex } from "../src/platform/db/stores/financial/duck-financial-search-index";
+import { DuckFinancialIndexBuild } from "../src/platform/pipeline/financial/jobs/duck-financial-index-build";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
 import {
   ParsedFinancialStore,
   parsedFinancialMappingVersions,
-} from "../src/db/parsed-financial-store";
-import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
-import { FinancialIndexBuild } from "../src/db/financial-index-build";
-import { FinancialSearchIndex } from "../src/db/financial-search-index";
+} from "../src/platform/db/stores/financial/parsed-financial-store";
+import { ParsedFinancialJob } from "../src/platform/pipeline/financial/jobs/parsed-financial-job";
+import { FinancialIndexBuild } from "../src/platform/pipeline/financial/jobs/financial-index-build";
+import { FinancialSearchIndex } from "../src/platform/db/stores/financial/financial-search-index";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const modulePath = process.env.DUCKDB_NODE_MODULE ?? "@duckdb/node-api";
 const options = {

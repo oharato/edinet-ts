@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { assertXmlInput } from "../src/xbrl/validate-xml-input";
+import { assertXmlInput } from "../src/core/parser/validate-xml-input";
 it("参照のない多数の兄弟tagで後方全体のampersand検索を繰り返さない", () => {
   const xml = "<root>" + "<row>plain</row>".repeat(2000) + "</root>",
     original = String.prototype.indexOf;

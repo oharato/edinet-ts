@@ -137,8 +137,8 @@ describe("ESM Import Resolution", () => {
     }
 
     // Check specific exports mentioned in the issue
-    expect(content).toContain('from "./db/edinet-repository.js"');
-    expect(content).toContain('from "./xbrl/parse-xbrl.js"');
+    expect(content).toContain('from "./platform/db/stores/metadata/edinet-repository.js"');
+    expect(content).toContain('from "./core/parser/parse-xbrl.js"');
   });
 
   it("should be able to import from the built package in ESM context", async () => {

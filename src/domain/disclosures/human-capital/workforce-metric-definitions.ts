@@ -1,0 +1,134 @@
+import type { MetricDefinition } from "../../financial/extraction/metric-definitions";
+
+/** 財務科目・既存18指標とは独立した人的資本のID。 */
+export const WorkforceMetricId = Object.freeze({
+  AverageAnnualSalary: "averageAnnualSalary",
+  AverageAgeYears: "averageAgeYears",
+  AverageLengthOfServiceYears: "averageLengthOfServiceYears",
+  NumberOfEmployees: "numberOfEmployees",
+  AverageNumberOfTemporaryEmployees: "averageNumberOfTemporaryEmployees",
+  FemaleManagerRatio: "femaleManagerRatio",
+  MaleChildcareLeaveOrdinanceItem1AllRatio: "maleChildcareLeaveOrdinanceItem1AllRatio",
+  MaleChildcareLeaveOrdinanceItem1RegularRatio: "maleChildcareLeaveOrdinanceItem1RegularRatio",
+  MaleChildcareLeaveOrdinanceItem1NonRegularRatio:
+    "maleChildcareLeaveOrdinanceItem1NonRegularRatio",
+  MaleChildcareLeaveOrdinanceItem2AllRatio: "maleChildcareLeaveOrdinanceItem2AllRatio",
+  MaleChildcareLeaveWomensActAllRatio: "maleChildcareLeaveWomensActAllRatio",
+  GenderWageAllRatio: "genderWageAllRatio",
+  GenderWageRegularRatio: "genderWageRegularRatio",
+  GenderWageNonRegularRatio: "genderWageNonRegularRatio",
+} as const);
+export type WorkforceMetricId = (typeof WorkforceMetricId)[keyof typeof WorkforceMetricId];
+export const WORKFORCE_REGISTRY_VERSION = "5";
+type WorkforceDefinition<Id extends WorkforceMetricId> = MetricDefinition<Id> & {
+  /** XBRL measureとは別の、人が読む原値の単位。yearsを月へ自動換算しません。 */
+  readonly valueUnit: Id extends "averageAnnualSalary"
+    ? "JPY"
+    : Id extends "numberOfEmployees" | "averageNumberOfTemporaryEmployees"
+      ? "people"
+      : Id extends "averageAgeYears" | "averageLengthOfServiceYears"
+        ? "years"
+        : "ratio";
+};
+const define = <Id extends WorkforceMetricId>(
+  id: Id,
+  tag: string,
+  unit: "JPY" | "pure",
+  valueUnit: WorkforceDefinition<Id>["valueUnit"],
+): WorkforceDefinition<Id> =>
+  Object.freeze({
+    id,
+    valueType: "decimal",
+    unit,
+    valueUnit,
+    periodType: "instant",
+    candidates: Object.freeze([
+      Object.freeze({ key: `jpcrp_cor:${tag}`, standard: "J-GAAP" as const, supported: true }),
+    ]),
+    fallback: "ordered-tags-only-no-scope-period-currency-fallback",
+  });
+/** 提出会社単体のみ。集計対象期間・対象社員・注記の範囲はfactだけでは判定しません。 */
+export const WORKFORCE_REGISTRY: { readonly [Id in WorkforceMetricId]: WorkforceDefinition<Id> } =
+  Object.freeze({
+    averageAnnualSalary: define(
+      "averageAnnualSalary",
+      "AverageAnnualSalaryInformationAboutReportingCompanyInformationAboutEmployees",
+      "JPY",
+      "JPY",
+    ),
+    averageAgeYears: define(
+      "averageAgeYears",
+      "AverageAgeYearsInformationAboutReportingCompanyInformationAboutEmployees",
+      "pure",
+      "years",
+    ),
+    averageLengthOfServiceYears: define(
+      "averageLengthOfServiceYears",
+      "AverageLengthOfServiceYearsInformationAboutReportingCompanyInformationAboutEmployees",
+      "pure",
+      "years",
+    ),
+    // 人数の範囲・表示表やFTEを推測しません。重複の扱いは人的資本共通の同一重複ルールに従います。
+    numberOfEmployees: define("numberOfEmployees", "NumberOfEmployees", "pure", "people"),
+    // 年間平均の臨時雇用人員です。平均であることを整数化やFTE換算で消さず、原値を保持します。
+    averageNumberOfTemporaryEmployees: define(
+      "averageNumberOfTemporaryEmployees",
+      "AverageNumberOfTemporaryWorkers",
+      "pure",
+      "people",
+    ),
+    femaleManagerRatio: define(
+      "femaleManagerRatio",
+      "RatioOfFemaleEmployeesInManagerialPositionsMetricsOfReportingCompany",
+      "pure",
+      "ratio",
+    ),
+    maleChildcareLeaveOrdinanceItem1AllRatio: define(
+      "maleChildcareLeaveOrdinanceItem1AllRatio",
+      "AllEmployeesCalculatedBasedOnProvisionsOfArticle714Item1OfOrdinanceForEnforcementOfActOnChildcareLeaveCaregiverLeaveAndOtherMeasuresForTheWelfareOfWorkersCaringForChildrenOrOtherFamilyMembersRatioOfMaleEmployeesTakingChildcareLeaveMetricsOfReportingCompany",
+      "pure",
+      "ratio",
+    ),
+    maleChildcareLeaveOrdinanceItem1RegularRatio: define(
+      "maleChildcareLeaveOrdinanceItem1RegularRatio",
+      "RegularEmployeesCalculatedBasedOnProvisionsOfArticle714Item1OfOrdinanceForEnforcementOfActOnChildcareLeaveCaregiverLeaveAndOtherMeasuresForTheWelfareOfWorkersCaringForChildrenOrOtherFamilyMembersRatioOfMaleEmployeesTakingChildcareLeaveMetricsOfReportingCompany",
+      "pure",
+      "ratio",
+    ),
+    maleChildcareLeaveOrdinanceItem1NonRegularRatio: define(
+      "maleChildcareLeaveOrdinanceItem1NonRegularRatio",
+      "NonRegularEmployeesCalculatedBasedOnProvisionsOfArticle714Item1OfOrdinanceForEnforcementOfActOnChildcareLeaveCaregiverLeaveAndOtherMeasuresForTheWelfareOfWorkersCaringForChildrenOrOtherFamilyMembersRatioOfMaleEmployeesTakingChildcareLeaveMetricsOfReportingCompany",
+      "pure",
+      "ratio",
+    ),
+    maleChildcareLeaveOrdinanceItem2AllRatio: define(
+      "maleChildcareLeaveOrdinanceItem2AllRatio",
+      "AllEmployeesCalculatedBasedOnProvisionsOfArticle714Item2OfOrdinanceForEnforcementOfActOnChildcareLeaveCaregiverLeaveAndOtherMeasuresForTheWelfareOfWorkersCaringForChildrenOrOtherFamilyMembersRatioOfMaleEmployeesTakingChildcareLeaveMetricsOfReportingCompany",
+      "pure",
+      "ratio",
+    ),
+    maleChildcareLeaveWomensActAllRatio: define(
+      "maleChildcareLeaveWomensActAllRatio",
+      "AllEmployeesCalculatedBasedOnProvisionsOfActOnPromotionOfWomensActiveEngagementInProfessionalLifeRatioOfMaleEmployeesTakingChildcareLeaveMetricsOfReportingCompany",
+      "pure",
+      "ratio",
+    ),
+    genderWageAllRatio: define(
+      "genderWageAllRatio",
+      "AllEmployeesDifferencesInWagesBetweenMaleAndFemaleEmployeesMetricsOfReportingCompany",
+      "pure",
+      "ratio",
+    ),
+    genderWageRegularRatio: define(
+      "genderWageRegularRatio",
+      "RegularEmployeesDifferencesInWagesBetweenMaleAndFemaleEmployeesMetricsOfReportingCompany",
+      "pure",
+      "ratio",
+    ),
+    genderWageNonRegularRatio: define(
+      "genderWageNonRegularRatio",
+      "NonRegularEmployeesDifferencesInWagesBetweenMaleAndFemaleEmployeesMetricsOfReportingCompany",
+      "pure",
+      "ratio",
+    ),
+  });

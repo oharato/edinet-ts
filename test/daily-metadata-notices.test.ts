@@ -1,5 +1,5 @@
 import { it, expect, vi } from "vitest";
-import { EdinetRepository } from "../dist/db/edinet-repository.js";
+import { EdinetRepository } from "../dist/platform/db/stores/metadata/edinet-repository.js";
 import {
   scanDailyMetadataNotices,
   assertDailyNoticeState,

@@ -3,9 +3,9 @@ import { mkdtempSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { EdinetRepository } from "../src/db/edinet-repository";
-import { Database } from "../src/db/node-sqlite";
-import type { EdinetDocument } from "../src/edinet/api-client";
+import { EdinetRepository } from "../src/platform/db/stores/metadata/edinet-repository";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import type { EdinetDocument } from "../src/platform/client/edinet/api-client";
 
 const repositories: EdinetRepository[] = [];
 const directories: string[] = [];

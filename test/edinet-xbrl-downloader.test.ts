@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { EdinetXbrlDownloader } from "../src/edinet/api-client";
+import { EdinetXbrlDownloader } from "../src/platform/client/edinet/api-client";
 
 // Mock fetch
 const fetchMock = vi.fn();

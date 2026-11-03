@@ -5,7 +5,7 @@ import {
   FinancialIndexReadQueries,
   financialIndexRowColumns,
   financialIndexValueColumns,
-} from "../src/db/financial-search-index";
+} from "../src/platform/db/stores/financial/financial-search-index";
 
 it("リスト転記でも同一行の複数指標・途中cursor・本文がSQLiteと一致する", () =>
   fixture(async ({ sqlite, duck }) => {

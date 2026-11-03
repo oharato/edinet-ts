@@ -3,14 +3,14 @@ import { mkdtempSync, rmSync, readFileSync, writeFileSync, symlinkSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import {
   ParsedFinancialStore,
   parsedFinancialExtractionId,
   parsedFinancialMappingVersions,
   type ParsedFinancialExtraction,
-} from "../src/db/parsed-financial-store";
-import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
+} from "../src/platform/db/stores/financial/parsed-financial-store";
+import { createAutomaticFinancialSnapshots } from "../src/domain/financial/snapshots/create-financial-snapshots";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const clean = (v: unknown) => JSON.parse(JSON.stringify(v));
 const hash = (v: string) => createHash("sha256").update(v).digest("hex");

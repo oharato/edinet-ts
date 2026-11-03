@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EdinetDataUtil } from "../src/xbrl/read-node-values";
+import { EdinetDataUtil } from "../src/core/parser/read-node-values";
 
 describe("EdinetDataUtil", () => {
   describe("getKey", () => {

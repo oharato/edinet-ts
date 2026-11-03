@@ -3,16 +3,16 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
 import {
   ParsedFinancialStore,
   parsedFinancialMappingVersions,
-} from "../src/db/parsed-financial-store";
-import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
-import { createParsedFinancialSnapshots } from "../src/db/parsed-financial-snapshots";
-import { createObservedFinancialSnapshotsFromParsed } from "../src/financial/snapshots/create-observed-snapshots";
-import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
-import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+} from "../src/platform/db/stores/financial/parsed-financial-store";
+import { ParsedFinancialJob } from "../src/platform/pipeline/financial/jobs/parsed-financial-job";
+import { createParsedFinancialSnapshots } from "../src/platform/pipeline/financial/parsed-financial-snapshots";
+import { createObservedFinancialSnapshotsFromParsed } from "../src/domain/financial/snapshots/create-observed-snapshots";
+import { createAutomaticFinancialSnapshots } from "../src/domain/financial/snapshots/create-financial-snapshots";
+import { EdinetXbrlParser } from "../src/core/parser/parse-xbrl";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const options = {

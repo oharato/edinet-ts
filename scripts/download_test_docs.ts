@@ -1,4 +1,4 @@
-import { EdinetXbrlDownloader } from "../src/edinet/api-client";
+import { EdinetXbrlDownloader } from "../src/platform/client/edinet/api-client";
 import fs from "fs";
 import path from "path";
 

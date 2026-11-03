@@ -1,7 +1,7 @@
 import { it, expect } from "vitest";
-import { FacilityDetailStore } from "../src/db/facility-detail-store";
+import { FacilityDetailStore } from "../src/platform/db/stores/disclosures/facility-detail-store";
 import { facilityDocument, facilityTable } from "./fixtures/facility-details";
-import { parseFacilitySiteAndLocation } from "../src/disclosures/parse-facility-location";
+import { parseFacilitySiteAndLocation } from "../src/domain/disclosures/business/parse-facility-location";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";

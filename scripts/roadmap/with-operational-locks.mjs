@@ -1,2 +1,2 @@
 /** Compatibility entry for repository workflows. */
-export { withOperationalLocks } from "../../dist/utils/with-operational-locks.js";
+export { withOperationalLocks } from "../../dist/platform/locks/with-operational-locks.js";

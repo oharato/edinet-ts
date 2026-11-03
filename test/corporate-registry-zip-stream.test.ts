@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { Writable } from "node:stream";
 import { createStoredZip } from "./fixtures/create-stored-zip";
 import { sha256 } from "./fixtures/signed-corporate-registry";
-import { streamVerifiedXml } from "../src/companies/registry/stream-verified-xml";
+import { streamVerifiedXml } from "../src/platform/registry/stream-verified-xml";
 it.each([
   "valid",
   "archive-hash",

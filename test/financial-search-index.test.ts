@@ -22,7 +22,7 @@ import {
   type IfrsFinancialDetailDocument,
   type DocumentVersionObservation,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const query = { cutoff: "2026-10-28T00:00:00Z", extractorVersion: "index-test-1" };
 const cohort = (standard: "J-GAAP" | "IFRS" = "J-GAAP"): FinancialIndexCohort => ({

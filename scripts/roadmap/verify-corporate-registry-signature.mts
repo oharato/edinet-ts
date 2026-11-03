@@ -2,8 +2,8 @@
 import { parseArgs } from "node:util";
 import { mkdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { verifyDetachedSignature } from "../../dist/companies/registry/verify-detached-signature.js";
-import { writeJSON } from "../../dist/companies/registry/verify-archive-parts.js";
+import { verifyDetachedSignature } from "../../dist/platform/registry/verify-detached-signature.js";
+import { writeJSON } from "../../dist/platform/registry/verify-archive-parts.js";
 const { values } = parseArgs({
   options: { manifest: { type: "string" }, out: { type: "string" } },
 });

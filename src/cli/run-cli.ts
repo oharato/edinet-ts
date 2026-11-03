@@ -1,111 +1,117 @@
 #!/usr/bin/env node
 import { Help } from "commander";
 import { CliInputError, readCliJSON, cliInputMessage } from "./input-diagnostics";
-import { planCorporateRegistryDifferences } from "../companies/registry/publication-calendar";
-import { parseDocumentTimestamp } from "../edinet/parse-document-timestamp";
+import { planCorporateRegistryDifferences } from "../platform/registry/publication-calendar";
+import { parseDocumentTimestamp } from "../domain/edinet/parse-document-timestamp";
 import {
   recoverDedicatedSqliteSnapshot,
   type DedicatedSqliteRecoveryKind,
-} from "../db/sqlite-recovery";
-import { PublishedFinancialIndex } from "../db/sqlite-financial-publication-reader";
-import { FinancialIndexPublication } from "../db/financial-index-publication";
+} from "../platform/db/engines/sqlite/sqlite-recovery";
+import { PublishedFinancialIndex } from "../platform/db/stores/financial/sqlite-financial-publication-reader";
+import { FinancialIndexPublication } from "../platform/db/stores/financial/financial-index-publication";
 import {
   backfillFinancialDocumentLists,
   archiveFinancialDocumentObservations,
-} from "../pipeline/sync-financial-documents";
-import { FinancialSourceJob, normalizeFinancialSourceJobInput } from "../db/financial-source-job";
-import { searchOfficerRemuneration } from "../disclosures/extract-officer-remuneration";
-import { searchOfficerDetails } from "../disclosures/extract-officers";
-import { searchPolicyShareholdings } from "../disclosures/extract-policy-shareholdings";
-import { reconstructCorporateRegistryStreamStates } from "../companies/registry/reconstruct-stream-states";
-import { readCorporateRegistryFileChunks } from "../companies/registry/read-registry-stream";
+} from "../platform/pipeline/sync-financial-documents";
+import {
+  FinancialSourceJob,
+  normalizeFinancialSourceJobInput,
+} from "../platform/pipeline/financial/jobs/financial-source-job";
+import { searchOfficerRemuneration } from "../domain/disclosures/governance/extract-officer-remuneration";
+import { searchOfficerDetails } from "../domain/disclosures/governance/extract-officers";
+import { searchPolicyShareholdings } from "../domain/disclosures/ownership/extract-policy-shareholdings";
+import { reconstructCorporateRegistryStreamStates } from "../platform/registry/reconstruct-stream-states";
+import { readCorporateRegistryFileChunks } from "../platform/registry/read-registry-stream";
 import {
   linkCompanyMasterCorporateStates,
   linkCompanyMasterCorporateStreamStates,
-} from "../companies/link-corporate-states";
-import { FacilityDetailStore } from "../db/facility-detail-store";
-import { parseFacilitySiteAndLocation } from "../disclosures/parse-facility-location";
-import { LargeHoldingStore } from "../db/large-holding-store";
-import { searchObservedLargeHoldingReports } from "../disclosures/large-holdings/search-observed-reports";
-import { searchLargeHoldingReports } from "../disclosures/large-holdings/read-large-holding-report";
-import { searchLargeHoldingTransactions } from "../disclosures/large-holdings/extract-transactions";
-import { searchMajorShareholderDetails } from "../disclosures/extract-major-shareholders";
-import { searchShareholderCategories } from "../disclosures/extract-shareholder-categories";
-import { searchOrderDetails } from "../disclosures/extract-orders";
-import { searchAffiliatedCompanies } from "../disclosures/extract-affiliated-companies";
-import { searchSegmentDetails } from "../disclosures/extract-segments";
-import { searchMainCustomerDetails } from "../disclosures/extract-main-customers";
-import { screenSubsidiaryHumanCapitalMetrics } from "../disclosures/extract-subsidiary-human-capital";
+} from "../platform/queries/companies/link-corporate-states";
+import { FacilityDetailStore } from "../platform/db/stores/disclosures/facility-detail-store";
+import { parseFacilitySiteAndLocation } from "../domain/disclosures/business/parse-facility-location";
+import { LargeHoldingStore } from "../platform/db/stores/disclosures/large-holding-store";
+import { searchObservedLargeHoldingReports } from "../domain/disclosures/ownership/large-holdings/search-observed-reports";
+import { searchLargeHoldingReports } from "../domain/disclosures/ownership/large-holdings/read-large-holding-report";
+import { searchLargeHoldingTransactions } from "../domain/disclosures/ownership/large-holdings/extract-transactions";
+import { searchMajorShareholderDetails } from "../domain/disclosures/ownership/extract-major-shareholders";
+import { searchShareholderCategories } from "../domain/disclosures/ownership/extract-shareholder-categories";
+import { searchOrderDetails } from "../domain/disclosures/business/extract-orders";
+import { searchAffiliatedCompanies } from "../domain/disclosures/business/extract-affiliated-companies";
+import { searchSegmentDetails } from "../domain/disclosures/business/extract-segments";
+import { searchMainCustomerDetails } from "../domain/disclosures/business/extract-main-customers";
+import { screenSubsidiaryHumanCapitalMetrics } from "../domain/disclosures/human-capital/extract-subsidiary-human-capital";
 import { Command } from "commander";
 import { registerDuckFinancialCommands } from "./register-duck-financial-commands";
-import { analyzeDocumentRelations } from "../edinet/document-relations";
-import { createCompanyProfile, CompanyProfileFieldId } from "../companies/read-company-profile";
+import { analyzeDocumentRelations } from "../domain/edinet/document-relations";
+import {
+  createCompanyProfile,
+  CompanyProfileFieldId,
+} from "../domain/companies/read-company-profile";
 import {
   screenCompanyDocuments,
   CompanyProfileOperator,
-} from "../companies/screen-company-profiles";
-import { screenWorkforceDocuments } from "../disclosures/screen-workforce";
+} from "../domain/companies/screen-company-profiles";
+import { screenWorkforceDocuments } from "../domain/disclosures/human-capital/screen-workforce";
 import {
   searchSubsidiaryHumanCapitalLabels,
   SubsidiaryHumanCapitalLabelOperator,
-} from "../disclosures/read-subsidiary-human-capital-labels";
-import { resolveFinancialReportingBasis } from "../financial/extraction/resolve-reporting-basis";
-import { createAutomaticFinancialSnapshots } from "../financial/snapshots/create-financial-snapshots";
+} from "../domain/disclosures/human-capital/read-subsidiary-human-capital-labels";
+import { resolveFinancialReportingBasis } from "../domain/financial/extraction/resolve-reporting-basis";
+import { createAutomaticFinancialSnapshots } from "../domain/financial/snapshots/create-financial-snapshots";
 import {
   createObservedFinancialSnapshots,
   captureObservedFinancialSources,
-} from "../financial/snapshots/create-observed-snapshots";
-import { captureDocumentVersionObservations } from "../edinet/select-document-versions";
+} from "../domain/financial/snapshots/create-observed-snapshots";
+import { captureDocumentVersionObservations } from "../domain/edinet/select-document-versions";
 import { createHash } from "node:crypto";
 import {
   ObservedFinancialArchive,
   normalizeArchivedFinancialSnapshotOptions,
-} from "../db/observed-financial-archive";
+} from "../platform/db/stores/financial/observed-financial-archive";
 import {
   FinancialSearchIndex,
   normalizeFinancialIndexSearch,
   isFinancialIndexGenerationId,
-} from "../db/financial-search-index";
-import { screenCompanyFinancials } from "../companies/screen-company-financials";
-import { compareCompanyFinancialsByIndustry } from "../companies/compare-industries";
-import { reconstructCorporateRegistryState } from "../companies/registry/registry-records";
-import { CorporateRegistryStore } from "../db/corporate-registry-store";
-import { CorporateRegistryBlockStore } from "../db/corporate-registry-block-store";
+} from "../platform/db/stores/financial/financial-search-index";
+import { screenCompanyFinancials } from "../platform/queries/companies/screen-company-financials";
+import { compareCompanyFinancialsByIndustry } from "../platform/queries/companies/compare-industries";
+import { reconstructCorporateRegistryState } from "../platform/registry/registry-records";
+import { CorporateRegistryStore } from "../platform/db/stores/registry/corporate-registry-store";
+import { CorporateRegistryBlockStore } from "../platform/db/stores/registry/corporate-registry-block-store";
 import {
   FinancialIndexBuild,
   normalizeFinancialIndexBuildInput,
-} from "../db/financial-index-build";
-import { screenIfrsFinancialDetailDocuments } from "../financial/screening/screen-ifrs-financial-details";
-import { screenIfrsBalanceSheetDocuments } from "../financial/screening/screen-ifrs-balance-sheets";
+} from "../platform/pipeline/financial/jobs/financial-index-build";
+import { screenIfrsFinancialDetailDocuments } from "../domain/financial/screening/screen-ifrs-financial-details";
+import { screenIfrsBalanceSheetDocuments } from "../domain/financial/screening/screen-ifrs-balance-sheets";
 import "dotenv/config";
-import { EdinetXbrlDownloader } from "../edinet/api-client";
-import { EdinetXbrlParser } from "../xbrl/parse-xbrl";
-import { EdinetRepository } from "../db/edinet-repository";
-import { generateFullHelpMarkdown } from "../utils/type-doc-helpers";
-import { screenAnnualRevenueGrowth } from "../financial/analysis/annual-revenue-growth";
-import { screenAnnualOperatingIncomeGrowth } from "../financial/analysis/annual-operating-income-growth";
-import { screenAnnualNetIncomeGrowth } from "../financial/analysis/annual-net-income-growth";
+import { EdinetXbrlDownloader } from "../platform/client/edinet/api-client";
+import { EdinetXbrlParser } from "../core/parser/parse-xbrl";
+import { EdinetRepository } from "../platform/db/stores/metadata/edinet-repository";
+import { generateFullHelpMarkdown } from "./help/type-doc-helpers";
+import { screenAnnualRevenueGrowth } from "../domain/financial/analysis/annual-revenue-growth";
+import { screenAnnualOperatingIncomeGrowth } from "../domain/financial/analysis/annual-operating-income-growth";
+import { screenAnnualNetIncomeGrowth } from "../domain/financial/analysis/annual-net-income-growth";
 import {
   screenCagr,
   screenPerShareGrowth,
   PerShareGrowthMetricId,
-} from "../financial/analysis/annual-cagr";
-import { screenFinancialDetailDocuments } from "../financial/screening/screen-financial-details";
-import { screenFinancialDetailSnapshots } from "../financial/screening/screen-saved-financial-details";
+} from "../domain/financial/analysis/annual-cagr";
+import { screenFinancialDetailDocuments } from "../domain/financial/screening/screen-financial-details";
+import { screenFinancialDetailSnapshots } from "../domain/financial/screening/screen-saved-financial-details";
 import {
   readRegularFile,
   assertRegularFileByteBudget,
   LOCAL_IMPORT_LIMITS,
-} from "../pipeline/import-local-balance-sheets";
+} from "../platform/pipeline/import-local-balance-sheets";
 import {
   runLocalBalanceSheetImport,
   runLocalBalanceSheetDiff,
-} from "../pipeline/import-local-balance-sheets";
+} from "../platform/pipeline/import-local-balance-sheets";
 import {
   createBalanceSheetSnapshot,
   screenBalanceSheetSnapshots,
-} from "../financial/screening/screen-balance-sheets";
-import { screenFinancialSnapshots } from "../financial/screening/screen-financial-snapshots";
+} from "../domain/financial/screening/screen-balance-sheets";
+import { screenFinancialSnapshots } from "../domain/financial/screening/screen-financial-snapshots";
 import * as fs from "fs";
 import * as path from "path";
 

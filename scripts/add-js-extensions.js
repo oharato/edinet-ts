@@ -31,7 +31,8 @@ function findJsFiles(dir, fileList = []) {
  * Add .js extension to relative imports/exports in a file
  */
 function withJsExtension(importPath) {
-  if (importPath === "." || importPath === "..") return importPath + "/index.js";
+  if (importPath.split("/").every((part) => part === "." || part === ".."))
+    return importPath + "/index.js";
   return importPath.endsWith("/") ? importPath + "index.js" : importPath + ".js";
 }
 

@@ -13,6 +13,7 @@ import { resolve, join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { resolveSdkModules } from "./roadmap/resolve-sdk-module.mts";
 const canonical = (value) =>
   JSON.stringify(value, (_k, v) =>
     v && typeof v === "object" && !Array.isArray(v)
@@ -25,12 +26,19 @@ const canonical = (value) =>
   );
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const benchmarkSha256 = sha(readFileSync(fileURLToPath(import.meta.url)));
+const resolverSha256 = sha(
+  readFileSync(fileURLToPath(new URL("./roadmap/resolve-sdk-module.mts", import.meta.url))),
+);
 const read = (file) => JSON.parse(readFileSync(file, "utf8"));
-const load = (sdk, file) => import(pathToFileURL(join(sdk, "dist", file)).href);
 async function worker(sdk, out, mode) {
   assert(["sqlite", "uncached", "cached"].includes(mode));
-  const { DuckFinancialSearchIndex, FinancialSearchIndex } = await load(sdk, "index.js"),
-    { FinancialIndexReadQueries } = await load(sdk, "db/financial-search-index.js"),
+  const sdkLayout = resolveSdkModules(join(sdk, "dist/index.js"), ["financialSearchIndex"]);
+  const { DuckFinancialSearchIndex, FinancialSearchIndex } = await import(
+      pathToFileURL(join(sdk, "dist/index.js")).href
+    ),
+    { FinancialIndexReadQueries } = await import(
+      pathToFileURL(sdkLayout.modules.financialSearchIndex).href
+    ),
     cases = read(join(out, "cases.json")),
     generation = cases[0].cohort.generation,
     binding = read(join(out, "input.json"));
@@ -72,6 +80,8 @@ async function worker(sdk, out, mode) {
     console.log(
       JSON.stringify({
         mode,
+        resolverSha256,
+        sdkLayout,
         openMs,
         qualityMs,
         initialReadMs,
@@ -99,7 +109,10 @@ async function main() {
   assert.equal(saved.sha256, sha(canonical([saved.inputSha256, saved.body])));
   assert.equal(saved.body.indexPath, join(cycle, "index.duckdb"));
   assert(!existsSync(out));
-  const { duckFinancialSdkSha256 } = await load(sdk, "pipeline/build-duck-financial-cycle.js");
+  const sdkLayout = resolveSdkModules(join(sdk, "dist/index.js"), ["buildDuckFinancialCycle"]);
+  const { duckFinancialSdkSha256 } = await import(
+    pathToFileURL(sdkLayout.modules.buildDuckFinancialCycle).href
+  );
   assert.equal(duckFinancialSdkSha256(), marker.input.sdkSha256);
   const space = statfsSync(cycle, { bigint: true });
   assert(
@@ -116,7 +129,7 @@ async function main() {
       sdkSha256: marker.input.sdkSha256,
     }) + "\n",
   );
-  const { DuckFinancialSearchIndex } = await load(sdk, "index.js"),
+  const { DuckFinancialSearchIndex } = await import(pathToFileURL(join(sdk, "dist/index.js")).href),
     reader = await DuckFinancialSearchIndex.open(saved.body.indexPath);
   let cases = [];
   try {
@@ -218,10 +231,16 @@ async function main() {
     );
     assert.equal(run.status, 0, run.stderr);
     const result = JSON.parse(run.stdout);
+    assert.equal(result.resolverSha256, resolverSha256, "SDK resolver changed");
     writeFileSync(join(out, mode + ".json"), JSON.stringify(result, null, 2) + "\n");
     results.push(result);
   }
   assert.equal(sha(readFileSync(fileURLToPath(import.meta.url))), benchmarkSha256);
+  assert.equal(
+    sha(readFileSync(fileURLToPath(new URL("./roadmap/resolve-sdk-module.mts", import.meta.url)))),
+    resolverSha256,
+    "SDK resolver changed",
+  );
   assert.deepEqual(results[0].hashes, results[1].hashes);
   assert.deepEqual(results[1].hashes, results[2].hashes);
   assert.equal(duckFinancialSdkSha256(), marker.input.sdkSha256);
@@ -231,6 +250,8 @@ async function main() {
       {
         node: process.version,
         benchmarkSha256,
+        resolverSha256,
+        sdkLayout,
         inputSha256: marker.inputSha256,
         sdkSha256: marker.input.sdkSha256,
         cases: cases.length,

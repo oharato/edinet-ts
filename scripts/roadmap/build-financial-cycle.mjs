@@ -1,7 +1,7 @@
-import { financialSourceVerifierSha256 } from "../../dist/pipeline/verification/source-verifier-command.js";
+import { financialSourceVerifierSha256 } from "../../dist/platform/pipeline/verification/source-verifier-command.js";
 import { readFileSync, existsSync, statSync, statfsSync } from "node:fs";
 import { join, isAbsolute, resolve } from "node:path";
-import { isFinancialIndexGenerationId } from "../../dist/db/financial-search-index.js";
+import { isFinancialIndexGenerationId } from "../../dist/platform/db/stores/financial/financial-search-index.js";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { FinancialSearchIndex, FinancialIndexPublication } from "../../dist/index.js";

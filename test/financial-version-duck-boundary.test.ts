@@ -1,6 +1,6 @@
 import { it, expect } from "vitest";
-import { DuckFinancialIndexBuild } from "../src/db/duck-financial-index-build";
-import { FINANCIAL_VERSION_POLICY } from "../src/financial/selection/select-financial-source-versions";
+import { DuckFinancialIndexBuild } from "../src/platform/pipeline/financial/jobs/duck-financial-index-build";
+import { FINANCIAL_VERSION_POLICY } from "../src/domain/financial/selection/select-financial-source-versions";
 it("未対応のDuckDB構築へ金融版planを渡してもDBへ接続・書込みしない", async () => {
   let calls = 0;
   const connection = {

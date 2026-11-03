@@ -137,7 +137,7 @@ it.each([
     const result = spawnSync(
       process.execPath,
       [
-        resolve("dist/pipeline/verification/verify-source-values.js"),
+        resolve("dist/platform/pipeline/verification/verify-source-values.js"),
         "sqlite",
         indexPath,
         archivePath,
@@ -162,7 +162,7 @@ it.each([
 it("引数不足では入力を読む前に拒否する", () => {
   const result = spawnSync(
     process.execPath,
-    [resolve("dist/pipeline/verification/verify-source-values.js")],
+    [resolve("dist/platform/pipeline/verification/verify-source-values.js")],
     { encoding: "utf8" },
   );
   expect(result.status).toBe(1);
@@ -372,7 +372,7 @@ it.each([
       result = spawnSync(
         process.execPath,
         [
-          resolve("dist/pipeline/verification/verify-source-values.js"),
+          resolve("dist/platform/pipeline/verification/verify-source-values.js"),
           "sqlite",
           indexPath,
           archivePath,
@@ -705,7 +705,7 @@ it.each([
     const result = spawnSync(
       process.execPath,
       [
-        resolve("dist/pipeline/verification/verify-source-values.js"),
+        resolve("dist/platform/pipeline/verification/verify-source-values.js"),
         "sqlite",
         indexPath,
         archivePath,

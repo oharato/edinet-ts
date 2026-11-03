@@ -4,7 +4,7 @@ import {
   FinancialIndexPublication,
   type FinancialIndexAsyncReader,
   type FinancialIndexPublicationPolicy,
-} from "../src/db/financial-index-publication";
+} from "../src/platform/db/stores/financial/financial-index-publication";
 import { duckFinancialReaderFixture as fixture } from "./fixtures/duck-financial-reader";
 const policy: FinancialIndexPublicationPolicy = {
   minimumCompaniesWithUsableValues: 4,

@@ -5,7 +5,7 @@ import {
   auditColdSqliteUsage,
   retireColdSqlite,
   restoreColdSqlite,
-} from "../../dist/pipeline/storage/cold-sqlite-archive.js";
+} from "../../dist/platform/pipeline/storage/cold-sqlite-archive.js";
 const command = process.argv[2];
 const { values } = parseArgs({
   args: process.argv.slice(3),

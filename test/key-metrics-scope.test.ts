@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { EdinetContext } from "../src/xbrl/parse-contexts";
-import { EdinetData, EdinetXbrlObject, KeyMetrics } from "../src/xbrl/xbrl-document";
+import { EdinetContext } from "../src/core/parser/parse-contexts";
+import { EdinetData, EdinetXbrlObject, KeyMetrics } from "../src/core/parser/xbrl-document";
 
 type PeriodType = "Duration" | "Instant";
 type MetricCase = [keyof KeyMetrics, PeriodType, string];

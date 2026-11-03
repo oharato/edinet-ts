@@ -6,9 +6,9 @@ import { expect, it } from "vitest";
 import {
   extractFacilityDetails,
   screenFacilityDetails,
-} from "../src/disclosures/extract-facilities";
-import { FacilityDetailStore } from "../src/db/facility-detail-store";
-import { Database } from "../src/db/node-sqlite";
+} from "../src/domain/disclosures/business/extract-facilities";
+import { FacilityDetailStore } from "../src/platform/db/stores/disclosures/facility-detail-store";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { facilityDocument, facilityTable } from "./fixtures/facility-details";
 const query = { asOfDate: "2026-03-31" };
 function table() {

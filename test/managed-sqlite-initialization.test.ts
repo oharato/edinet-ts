@@ -3,10 +3,10 @@ import { writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
-import { FinancialIndexPublication } from "../src/db/financial-index-publication";
-import { initializeManagedSqlite } from "../src/db/managed-sqlite-recovery";
-import { ParsedFinancialStore } from "../src/db/parsed-financial-store";
+import { ParsedFinancialJob } from "../src/platform/pipeline/financial/jobs/parsed-financial-job";
+import { FinancialIndexPublication } from "../src/platform/db/stores/financial/financial-index-publication";
+import { initializeManagedSqlite } from "../src/platform/db/engines/sqlite/managed-sqlite-recovery";
+import { ParsedFinancialStore } from "../src/platform/db/stores/financial/parsed-financial-store";
 import { duckFinancialReaderFixture as fixture } from "./fixtures/duck-financial-reader";
 it.each(
   (
@@ -30,7 +30,7 @@ it.each(
           "--import",
           resolve("node_modules/tsx/dist/loader.mjs"),
           script,
-          pathToFileURL(resolve("src/db/managed-sqlite-recovery.ts")).href,
+          pathToFileURL(resolve("src/platform/db/engines/sqlite/managed-sqlite-recovery.ts")).href,
           source,
           kind,
           stage,

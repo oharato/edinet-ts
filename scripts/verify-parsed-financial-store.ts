@@ -12,13 +12,13 @@ import {
 import { join, resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { execFileSync } from "node:child_process";
-import { Database } from "../src/db/node-sqlite";
-import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { createAutomaticFinancialSnapshots } from "../src/domain/financial/snapshots/create-financial-snapshots";
 import {
   ParsedFinancialStore,
   parsedFinancialMappingVersions,
   type ParsedFinancialExtraction,
-} from "../src/db/parsed-financial-store";
+} from "../src/platform/db/stores/financial/parsed-financial-store";
 const hash = (v: string | Buffer) => createHash("sha256").update(v).digest("hex");
 async function fileHash(path: string) {
   const h = createHash("sha256");
@@ -102,9 +102,9 @@ async function main() {
     reader = new ParsedFinancialStore(join(out, "parsed.sqlite"), { readOnly: true });
   try {
     for (const input of inputs) {
-      const id = (await import("../src/db/parsed-financial-store")).parsedFinancialExtractionId(
-        input.identity,
-      );
+      const id = (
+        await import("../src/platform/db/stores/financial/parsed-financial-store")
+      ).parsedFinancialExtractionId(input.identity);
       assert.deepEqual(reader.get(id), JSON.parse(JSON.stringify(input)));
     }
     assert.equal(reader.page().records.length, 2);

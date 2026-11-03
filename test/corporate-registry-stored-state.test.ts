@@ -6,20 +6,20 @@ import { createHash } from "node:crypto";
 import {
   CorporateRegistryStore,
   type CorporateRegistryStoredDelivery,
-} from "../src/db/corporate-registry-store";
+} from "../src/platform/db/stores/registry/corporate-registry-store";
 import {
   reconstructCorporateRegistryState as reconstruct,
   type CorporateRegistryDelivery,
   type CorporateRegistryStateQuery,
   CORPORATE_REGISTRY_FIELDS,
-} from "../src/companies/registry/registry-records";
+} from "../src/platform/registry/registry-records";
 import { registryCalendarFixture } from "./fixtures/corporate-registry-calendar";
 import {
   registryStreamXml as xml,
   registryStreamRow as row,
   registryStreamSource,
 } from "./fixtures/corporate-registry-stream";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 const q: CorporateRegistryStateQuery = {
   corporateNumber: "1010001001202",
   asOf: "2026-10-29",

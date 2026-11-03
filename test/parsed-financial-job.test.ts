@@ -3,13 +3,16 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ParsedFinancialJob, type ParsedFinancialJobInput } from "../src/db/parsed-financial-job";
+import {
+  ParsedFinancialJob,
+  type ParsedFinancialJobInput,
+} from "../src/platform/pipeline/financial/jobs/parsed-financial-job";
 import {
   ParsedFinancialStore,
   parsedFinancialMappingVersions,
-} from "../src/db/parsed-financial-store";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
-import { Database } from "../src/db/node-sqlite";
+} from "../src/platform/db/stores/financial/parsed-financial-store";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const hash = (v: string) => createHash("sha256").update(v).digest("hex");
 async function fixture(fn: (s: any) => Promise<void> | void, compression?: "gzip") {

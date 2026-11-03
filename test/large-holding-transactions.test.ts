@@ -1,10 +1,10 @@
 import { it, expect } from "vitest";
 import { largeDocument } from "./fixtures/large-holding-report";
-import { extractLargeHoldingReport } from "../src/disclosures/large-holdings/read-large-holding-report";
+import { extractLargeHoldingReport } from "../src/domain/disclosures/ownership/large-holdings/read-large-holding-report";
 import {
   extractLargeHoldingTransactions as extract,
   searchLargeHoldingTransactions as search,
-} from "../src/disclosures/large-holdings/extract-transactions";
+} from "../src/domain/disclosures/ownership/large-holdings/extract-transactions";
 const tag =
     "DetailsOfAcquisitionsAndDisposalsOfStocksEtcIssuedByIssuerOfSaidStocksEtcDuringLast60DaysTextBlock",
   header = [

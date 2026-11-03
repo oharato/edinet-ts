@@ -13,7 +13,10 @@ import {
   type BalanceSheetSnapshot,
   type BalanceSheetScreeningOptions,
 } from "../src/index";
-import { readRegularFile, LOCAL_IMPORT_LIMITS } from "../src/pipeline/import-local-balance-sheets";
+import {
+  readRegularFile,
+  LOCAL_IMPORT_LIMITS,
+} from "../src/platform/pipeline/import-local-balance-sheets";
 
 const moneyIds = ["currentAssets", "currentLiabilities", "totalLiabilities"] as const;
 const baselineVersion = "offline-verification-base",

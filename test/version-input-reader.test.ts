@@ -1,5 +1,8 @@
 import { expect, it } from "vitest";
-import { strictJSON, readVersionXml } from "../src/pipeline/verification/read-version-input";
+import {
+  strictJSON,
+  readVersionXml,
+} from "../src/platform/pipeline/verification/read-version-input";
 it.each(['{"a":1,"a":2}', '{"a":1,"\\u0061":2}', '{"nested":{"key":1,"key":2}}', '{"x":1e400}'])(
   "重複キー・非有限値を証拠として受け付けない: %s",
   (text) => {

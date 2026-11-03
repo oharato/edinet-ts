@@ -8,12 +8,12 @@ import {
   findCachedXbrl,
   persistZipArchive,
   readCachedXbrl,
-} from "../src/edinet/document-cache";
+} from "../src/platform/client/edinet/document-cache";
 import {
   ZIP_LIMITS,
   type LoadedZipArchive,
   type ZipArchiveEntry,
-} from "../src/edinet/read-document-zip";
+} from "../src/core/archive/read-document-zip";
 
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs");

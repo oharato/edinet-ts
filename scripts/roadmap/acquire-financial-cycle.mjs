@@ -3,7 +3,7 @@ import { join, isAbsolute, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { FinancialSourceJob, ObservedFinancialArchive } from "../../dist/index.js";
-import { normalizeFinancialSourceJobInput } from "../../dist/db/financial-source-job.js";
+import { normalizeFinancialSourceJobInput } from "../../dist/platform/pipeline/financial/jobs/financial-source-job.js";
 import { financialCycleSoftware, readFinancialCycleProgress } from "./prepare-financial-cycle.mjs";
 import {
   selectSourceBatch,

@@ -1,6 +1,6 @@
-import { EdinetXbrlDownloader } from "../src/edinet/api-client";
-import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
-import { EdinetDocumentType } from "../src/edinet/document-types";
+import { EdinetXbrlDownloader } from "../../src/platform/client/edinet/api-client";
+import { EdinetXbrlParser } from "../../src/core/parser/parse-xbrl";
+import { EdinetDocumentType } from "../../src/domain/edinet/document-types";
 import * as fs from "fs";
 import * as path from "path";
 

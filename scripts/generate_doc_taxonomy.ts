@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 const EXCEL_PATH = path.resolve(__dirname, "../taxonomy/AccountList.xlsx");
-const OUTPUT_PATH = path.resolve(__dirname, "../docs/generated/TAXONOMY_JPPFS_COR.md");
+const OUTPUT_PATH = path.resolve(__dirname, "../docs/specs/generated/TAXONOMY_JPPFS_COR.md");
 
 // 列インデックス（0始まり） scripts/generate_types.ts での確認に基づく
 const COL_LABEL_JP = 1; // B列: 標準ラベル（日本語）

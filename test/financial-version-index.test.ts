@@ -9,12 +9,12 @@ import {
   FinancialSearchIndex,
   financialIndexBuildPartId,
   projectFinancialIndexGeneration,
-} from "../src/db/financial-search-index";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
+} from "../src/platform/db/stores/financial/financial-search-index";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
 import {
   authenticateFinancialVersionEvidence,
   FINANCIAL_VERSION_POLICY,
-} from "../src/financial/selection/select-financial-source-versions";
+} from "../src/domain/financial/selection/select-financial-source-versions";
 import {
   financialVersionEvidenceFixture,
   signFinancialVersionBundle,

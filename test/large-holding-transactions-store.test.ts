@@ -4,10 +4,10 @@ import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { LargeHoldingStore } from "../src/db/large-holding-store";
-import { Database } from "../src/db/node-sqlite";
+import { LargeHoldingStore } from "../src/platform/db/stores/disclosures/large-holding-store";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { largeDocument } from "./fixtures/large-holding-report";
-import { searchLargeHoldingTransactions } from "../src/disclosures/large-holdings/extract-transactions";
+import { searchLargeHoldingTransactions } from "../src/domain/disclosures/ownership/large-holdings/extract-transactions";
 const hash = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");
 const canonical = (v: unknown): string =>
   JSON.stringify(v, (_k, x) =>

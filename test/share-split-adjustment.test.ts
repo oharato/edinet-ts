@@ -3,7 +3,7 @@ import {
   adjustPerShareValuesForSplits,
   type ShareSplitAdjustmentOptions,
   type ShareSplitLedger,
-} from "../src/financial/analysis/share-split-adjustment";
+} from "../src/domain/financial/analysis/share-split-adjustment";
 import {
   calculateCagr,
   calculatePerShareGrowth,
@@ -11,7 +11,7 @@ import {
   screenPerShareGrowth,
   CagrMetricId as C,
   PerShareGrowthMetricId as G,
-} from "../src/financial/analysis/annual-cagr";
+} from "../src/domain/financial/analysis/annual-cagr";
 import { point } from "./fixtures/per-share";
 
 const source = {

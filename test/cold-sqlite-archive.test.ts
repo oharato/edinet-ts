@@ -7,14 +7,14 @@ import * as fs from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import {
   packColdSqlite,
   restoreColdSqlite,
   retireColdSqlite,
   auditColdSqliteUsage,
-} from "../src/pipeline/storage/cold-sqlite-archive";
-import * as retained from "../src/utils/retained-files";
+} from "../src/platform/pipeline/storage/cold-sqlite-archive";
+import * as retained from "../src/platform/files/retained-files";
 import { sha256 } from "./fixtures/signed-corporate-registry";
 async function fixture(
   run: (f: {

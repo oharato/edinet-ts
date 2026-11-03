@@ -16,7 +16,7 @@ import {
   closeSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, extname, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -25,6 +25,7 @@ import { parseArgs } from "node:util";
 import { DatabaseSync } from "node:sqlite";
 import assert from "node:assert/strict";
 import { atomicJSON, canonical, normalFile, readJSONSnapshot } from "./operational-files.mjs";
+import { resolveSdkModules, type ResolvedSdkLayout } from "./resolve-sdk-module.mts";
 const format = "edinet-ts-corporate-registry-difference-application-v1";
 const digest = (v: unknown) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
 async function fileHash(file: string) {
@@ -98,6 +99,7 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
     "Canonical calendar sources required",
   );
   const inputs = [
+    fileURLToPath(new URL("./resolve-sdk-module.mts", import.meta.url)),
     ...calendarChildren,
     config.calendarPath,
     config.queryPath,
@@ -129,6 +131,10 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
     join(dirname(config.runtimeVerifierPath), "dist/index.js"),
     "SDK must belong to the pinned verifier release",
   );
+  const resolverPath = fileURLToPath(new URL("./resolve-sdk-module.mts", import.meta.url)),
+    resolverSha256 = await fileHash(resolverPath);
+  const requestedModules = ["withOperationalLocks", "collectRegistryDifferences"] as const;
+  let sdkLayout: ResolvedSdkLayout | undefined;
   const verifyRuntime = async () => {
     assert.equal(
       await fileHash(config.runtimeVerifierPath),
@@ -143,6 +149,13 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
     const result = JSON.parse(stdout);
     assert.equal(result.status, "verified");
     assert.equal(result.networkRequested, false);
+    assert.equal(await fileHash(resolverPath), resolverSha256, "SDK resolver changed");
+    if (sdkLayout)
+      assert.equal(
+        canonical(resolveSdkModules(config.sdkPath, requestedModules)),
+        canonical(sdkLayout),
+        "SDK layout changed",
+      );
   };
   const protectedRuntime = dirname(config.runtimeVerifierPath);
   assert(
@@ -152,7 +165,11 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
     "Output overlaps pinned runtime",
   );
   await verifyRuntime();
+  const sdkModules = resolveSdkModules(config.sdkPath, requestedModules);
+  sdkLayout = sdkModules;
   const operationIdentity = {
+    resolverSha256,
+    sdkLayout,
     scriptSha256: await fileHash(fileURLToPath(import.meta.url)),
     helpersSha256: await fileHash(
       fileURLToPath(new URL("./operational-files.mjs", import.meta.url)),
@@ -167,14 +184,12 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
   );
   assert(!(lstatSync(dirname(config.dbPath)).mode & 0o077), "Private job directory required");
   const sdk = await import(pathToFileURL(normalFile(config.sdkPath)).href),
-    extension = extname(config.sdkPath),
+    extension = sdkModules.extension,
     { withOperationalLocks } = await import(
-      pathToFileURL(join(dirname(config.sdkPath), "utils/with-operational-locks" + extension)).href
+      pathToFileURL(sdkModules.modules.withOperationalLocks).href
     ),
     { collectRegistryDifferences } = await import(
-      pathToFileURL(
-        join(dirname(config.sdkPath), "companies/registry/collect-differences" + extension),
-      ).href
+      pathToFileURL(sdkModules.modules.collectRegistryDifferences).href
     );
   return withOperationalLocks(
     [config.dbPath + ".lock", config.checkpointPath + ".lock"],
@@ -277,6 +292,7 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
           checkApplied(prepared.next.applied);
           await checkCalendarSources();
           const current = await fileHash(config.dbPath);
+          await verifyRuntime();
           if (current === prepared.before) {
             assert.equal(await fileHash(stage), prepared.after);
             renameSync(stage, config.dbPath);

@@ -2,23 +2,26 @@ import { readCliJSON, cliInputMessage } from "./input-diagnostics";
 import {
   recordDuckFinancialValueVerification,
   validateDuckFinancialValueVerification,
-} from "../pipeline/verification/verify-duck-financial-publication";
+} from "../platform/pipeline/verification/verify-duck-financial-publication";
 import { Option, type Command } from "commander";
 import { spawn } from "node:child_process";
 import { lstatSync } from "node:fs";
 import { isAbsolute } from "node:path";
-import { buildDuckFinancialCycle } from "../pipeline/build-duck-financial-cycle";
+import { buildDuckFinancialCycle } from "../platform/pipeline/build-duck-financial-cycle";
 import { resolve } from "node:path";
-import { DuckFinancialSearchIndex } from "../db/duck-financial-search-index";
-import { FinancialIndexPublication } from "../db/financial-index-publication";
+import { DuckFinancialSearchIndex } from "../platform/db/stores/financial/duck-financial-search-index";
+import { FinancialIndexPublication } from "../platform/db/stores/financial/financial-index-publication";
 import {
   normalizeFinancialIndexSearch,
   type FinancialIndexSearchOptions,
   type FinancialIndexCohort,
-} from "../db/financial-search-index";
-import { screenDuckCompanyFinancials } from "../companies/screen-company-financials";
-import { compareDuckCompanyFinancialsByIndustry } from "../companies/compare-industries";
-import { readRegularFile, LOCAL_IMPORT_LIMITS } from "../pipeline/import-local-balance-sheets";
+} from "../platform/db/stores/financial/financial-search-index";
+import { screenDuckCompanyFinancials } from "../platform/queries/companies/screen-company-financials";
+import { compareDuckCompanyFinancialsByIndustry } from "../platform/queries/companies/compare-industries";
+import {
+  readRegularFile,
+  LOCAL_IMPORT_LIMITS,
+} from "../platform/pipeline/import-local-balance-sheets";
 const readJSON = (file: string) =>
   JSON.parse(
     new TextDecoder("utf-8", { fatal: true }).decode(

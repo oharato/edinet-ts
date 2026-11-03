@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import { EdinetXbrlParser } from "../src/core/parser/parse-xbrl";
 import {
   METRIC_REGISTRY,
   METRIC_REGISTRY_VERSION,
   type MetricId,
-} from "../src/financial/extraction/metric-definitions";
+} from "../src/domain/financial/extraction/metric-definitions";
 import { context, fact, instance, period, standalone } from "./fixtures/metric-boundaries";
 const definitions = [
   ["netSales", "Revenues", "duration"],

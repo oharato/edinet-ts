@@ -4,7 +4,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { CorporateRegistryBlockStore } from "../src/db/corporate-registry-block-store";
+import { CorporateRegistryBlockStore } from "../src/platform/db/stores/registry/corporate-registry-block-store";
 import {
   registryStreamXml as xml,
   registryStreamRow as row,
@@ -31,7 +31,7 @@ afterEach(() => {
     f.close();
   }
 });
-async function fixture() {
+async function fixture(layout: "legacy-flat" | "layered" = "legacy-flat") {
   const f = signedRegistryFixture();
   active.push({ close: f.close, env: process.env.NODE_OPTIONS });
   const root = path.join(f.root, "daily"),
@@ -129,26 +129,35 @@ async function fixture() {
     metadata,
     JSON.stringify({ checkpointPath: path.join(f.root, "metadata-checkpoint.json") }),
   );
-  const runtimeFiles = [
-    "index",
-    "utils/with-operational-locks",
-    "companies/registry/collect-differences",
-    "companies/registry/download-session",
-  ];
+  const runtimeSources: Record<string, string> = {
+    index: "index",
+    [layout === "legacy-flat" ? "xbrl/parse-xbrl" : "core/parser/parse-xbrl"]:
+      "core/parser/parse-xbrl",
+    [layout === "legacy-flat"
+      ? "utils/with-operational-locks"
+      : "platform/locks/with-operational-locks"]: "platform/locks/with-operational-locks",
+    [layout === "legacy-flat"
+      ? "companies/registry/collect-differences"
+      : "platform/registry/collect-differences"]: "platform/registry/collect-differences",
+    [layout === "legacy-flat"
+      ? "companies/registry/download-session"
+      : "platform/registry/download-session"]: "platform/registry/download-session",
+  };
+  const runtimeFiles = Object.keys(runtimeSources);
   for (const name of runtimeFiles) {
     const dest = path.join(runtime, "dist", name + ".js");
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(
       dest,
       "export * from " +
-        JSON.stringify(pathToFileURL(path.resolve("src/" + name + ".ts")).href) +
+        JSON.stringify(pathToFileURL(path.resolve("src/" + runtimeSources[name] + ".ts")).href) +
         ";",
     );
   }
   const cli = path.join(runtime, "dist/cli.js");
   fs.writeFileSync(
     cli,
-    `import fs from'node:fs';import {planCorporateRegistryDifferences as plan}from ${JSON.stringify(pathToFileURL(path.resolve("src/companies/registry/publication-calendar.ts")).href)};const flag=k=>process.argv[process.argv.indexOf(k)+1],c=JSON.parse(fs.readFileSync(flag('--calendar'))),q=JSON.parse(fs.readFileSync(flag('--query')));console.log(JSON.stringify(plan({policy:{sourceUrl:c.policy.sourceUrl,observedAt:c.policy.observedAt,html:fs.readFileSync(c.policy.file,'utf8')},holidays:{sourceUrl:c.holidays.sourceUrl,observedAt:c.holidays.observedAt,csv:new TextDecoder('shift_jis').decode(fs.readFileSync(c.holidays.file))}},q)));`,
+    `import fs from'node:fs';import {planCorporateRegistryDifferences as plan}from ${JSON.stringify(pathToFileURL(path.resolve("src/platform/registry/publication-calendar.ts")).href)};const flag=k=>process.argv[process.argv.indexOf(k)+1],c=JSON.parse(fs.readFileSync(flag('--calendar'))),q=JSON.parse(fs.readFileSync(flag('--query')));console.log(JSON.stringify(plan({policy:{sourceUrl:c.policy.sourceUrl,observedAt:c.policy.observedAt,html:fs.readFileSync(c.policy.file,'utf8')},holidays:{sourceUrl:c.holidays.sourceUrl,observedAt:c.holidays.observedAt,csv:new TextDecoder('shift_jis').decode(fs.readFileSync(c.holidays.file))}},q)));`,
   );
   const preload = path.join(runtime, "fetch.mjs");
   fs.writeFileSync(
@@ -248,6 +257,19 @@ it("休日は架空raw/checkpointを作らずcoverageだけ受理する", async 
   expect(f.requests()).toHaveLength(0);
   expect(fs.existsSync(path.join(f.root, "apply-" + r.jobId + ".json"))).toBe(false);
 }, 20000);
+it("新layered SDKも同じ固定identityで公表1日を受理する", async () => {
+  const f = await fixture("layered"),
+    result = await run(f.configPath, { targetThrough: "2026-10-26", acquire: true });
+  expect(result.status).toBe("accepted");
+  const job = JSON.parse(
+    fs.readFileSync(path.join(f.root, "jobs", result.jobId, "job.json"), "utf8"),
+  );
+  expect(job.identity.sdkLayout.layout).toBe("layered");
+  expect(job.identity.resolverSha256).toBe(
+    hash(fs.readFileSync(path.resolve("scripts/roadmap/resolve-sdk-module.mts"))),
+  );
+  expect(f.requests()).toHaveLength(2);
+}, 30000);
 it("実SDK/署名済みfixtureで2jobを適用し旧受理SHAとcurrentを区別する", async () => {
   const f = await fixture(),
     a = await run(f.configPath, { targetThrough: "2026-10-26", acquire: true });

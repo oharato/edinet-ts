@@ -12,14 +12,14 @@ import {
 import { resolve, join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { execFileSync } from "node:child_process";
-import { Database } from "../src/db/node-sqlite";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
 import {
   ParsedFinancialStore,
   parsedFinancialMappingVersions,
-} from "../src/db/parsed-financial-store";
-import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
-import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
+} from "../src/platform/db/stores/financial/parsed-financial-store";
+import { ParsedFinancialJob } from "../src/platform/pipeline/financial/jobs/parsed-financial-job";
+import { createAutomaticFinancialSnapshots } from "../src/domain/financial/snapshots/create-financial-snapshots";
 const hash = (v: string | Buffer) => createHash("sha256").update(v).digest("hex");
 async function fileHash(path: string) {
   const h = createHash("sha256");

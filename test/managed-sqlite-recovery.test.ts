@@ -2,14 +2,14 @@ import { it, expect } from "vitest";
 import { join } from "node:path";
 import { readFileSync, existsSync, writeFileSync, symlinkSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { Database } from "../src/db/node-sqlite";
-import { ParsedFinancialStore } from "../src/db/parsed-financial-store";
-import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
-import { recoverManagedSqliteJournal } from "../src/db/managed-sqlite-recovery";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { ParsedFinancialStore } from "../src/platform/db/stores/financial/parsed-financial-store";
+import { ParsedFinancialJob } from "../src/platform/pipeline/financial/jobs/parsed-financial-job";
+import { recoverManagedSqliteJournal } from "../src/platform/db/engines/sqlite/managed-sqlite-recovery";
 import {
   FinancialIndexPublication,
   type FinancialIndexPublicationPolicy,
-} from "../src/db/financial-index-publication";
+} from "../src/platform/db/stores/financial/financial-index-publication";
 import { duckFinancialReaderFixture as fixture } from "./fixtures/duck-financial-reader";
 import { crashDatabase } from "./fixtures/sqlite-crash";
 const hash = (path: string) => createHash("sha256").update(readFileSync(path)).digest("hex");

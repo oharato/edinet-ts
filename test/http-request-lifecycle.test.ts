@@ -3,10 +3,10 @@ import {
   EdinetXbrlDownloader,
   EdinetRequestError,
   EdinetRequestErrorCode,
-} from "../src/edinet/api-client";
-import { EdinetDocumentType } from "../src/edinet/document-types";
-import { RateLimiter } from "../src/utils/rate-limiter";
-import { Edinet } from "../src/edinet/edinet-client";
+} from "../src/platform/client/edinet/api-client";
+import { EdinetDocumentType } from "../src/domain/edinet/document-types";
+import { RateLimiter } from "../src/platform/client/rate-limiter";
+import { Edinet } from "../src/platform/client/edinet/edinet-client";
 
 const empty = () =>
   new Response(

@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "paths": {},
+    "noEmit": true,
+    "declaration": false,
+    "skipLibCheck": false,
+    "types": ["node"]
+  },
+  "include": ["public-facades.mts"]
+}

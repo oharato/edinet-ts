@@ -5,12 +5,12 @@ import { syncBuiltinESMExports } from "node:module";
 import {
   buildDuckFinancialCycle,
   type DuckFinancialCycleInput,
-} from "../src/pipeline/build-duck-financial-cycle";
-import { DuckFinancialSearchIndex } from "../src/db/duck-financial-search-index";
+} from "../src/platform/pipeline/build-duck-financial-cycle";
+import { DuckFinancialSearchIndex } from "../src/platform/db/stores/financial/duck-financial-search-index";
 import { createHash } from "node:crypto";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
-import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import { EdinetXbrlParser } from "../src/core/parser/parse-xbrl";
 import { duckFinancialReaderFixture as fixture } from "./fixtures/duck-financial-reader";
 import { tmpdir } from "node:os";
 async function config(

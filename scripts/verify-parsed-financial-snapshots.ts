@@ -3,12 +3,12 @@ import { strict as assert } from "node:assert";
 import { createHash } from "node:crypto";
 import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { Database } from "../src/db/node-sqlite";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
-import { ParsedFinancialStore } from "../src/db/parsed-financial-store";
-import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
-import { createParsedFinancialSnapshots } from "../src/db/parsed-financial-snapshots";
-import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
+import { ParsedFinancialStore } from "../src/platform/db/stores/financial/parsed-financial-store";
+import { ParsedFinancialJob } from "../src/platform/pipeline/financial/jobs/parsed-financial-job";
+import { createParsedFinancialSnapshots } from "../src/platform/pipeline/financial/parsed-financial-snapshots";
+import { EdinetXbrlParser } from "../src/core/parser/parse-xbrl";
 async function fileHash(path: string) {
   const h = createHash("sha256");
   for await (const data of createReadStream(path)) h.update(data);
@@ -84,9 +84,9 @@ async function main() {
     assert.equal(contentReads, 0);
     assert.equal(await fileHash(prior.original), prior.originalSha256);
     const sourceFiles = [
-      "src/financial/snapshots/create-observed-snapshots.ts",
-      "src/db/observed-financial-archive.ts",
-      "src/db/parsed-financial-snapshots.ts",
+      "src/domain/financial/snapshots/create-observed-snapshots.ts",
+      "src/platform/db/stores/financial/observed-financial-archive.ts",
+      "src/platform/pipeline/financial/parsed-financial-snapshots.ts",
     ];
     writeFileSync(
       join(out, "summary.json"),

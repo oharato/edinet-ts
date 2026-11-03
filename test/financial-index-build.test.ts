@@ -10,8 +10,8 @@ import {
   type FinancialIndexBuildInput,
   type FinancialIndexPopulation,
 } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
-import { financialIndexBuildPartId } from "../src/db/financial-search-index";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { financialIndexBuildPartId } from "../src/platform/db/stores/financial/financial-search-index";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const options = { cutoff: "2026-10-28T00:00:00Z", extractorVersion: "build-test-1" };
 const population = (codes = ["E12001", "E12002", "E12003"]): FinancialIndexPopulation => ({

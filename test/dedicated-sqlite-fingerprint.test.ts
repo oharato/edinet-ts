@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { it, expect, vi } from "vitest";
-import { DedicatedSqliteDatabase } from "../src/db/dedicated-sqlite";
+import { DedicatedSqliteDatabase } from "../src/platform/db/engines/sqlite/dedicated-sqlite";
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
   return { ...actual, readSync: vi.fn(actual.readSync) };

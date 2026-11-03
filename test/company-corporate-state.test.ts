@@ -6,13 +6,13 @@ import { expect, it } from "vitest";
 import {
   CorporateRegistryStore,
   type CorporateRegistryStoredDelivery,
-} from "../src/db/corporate-registry-store";
+} from "../src/platform/db/stores/registry/corporate-registry-store";
 import {
   linkCompanyMasterCorporateStates as link,
   type CompanyCorporateStateQuery,
-} from "../src/companies/link-corporate-states";
-import { CORPORATE_REGISTRY_FIELDS as fields } from "../src/companies/registry/registry-records";
-import type { CompanyMasterSnapshot } from "../src/companies/company-master";
+} from "../src/platform/queries/companies/link-corporate-states";
+import { CORPORATE_REGISTRY_FIELDS as fields } from "../src/platform/registry/registry-records";
+import type { CompanyMasterSnapshot } from "../src/domain/companies/company-master";
 const number = "1010001001202",
   sha = (v: string | Buffer) => createHash("sha256").update(v).digest("hex");
 const row = (patch: Record<string, string> = {}) => {

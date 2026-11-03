@@ -1,4 +1,4 @@
-import { EdinetDocumentType } from "../edinet/document-types";
+import { EdinetDocumentType } from "../domain/edinet/document-types";
 
 /** CLI内部の別名変換。旧別名と未知入力の有報fallbackは互換のため維持します。 */
 const DOCUMENT_TYPE_MAP: Record<string, EdinetDocumentType | EdinetDocumentType[]> = {

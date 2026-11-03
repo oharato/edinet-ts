@@ -2,8 +2,8 @@ import { strict as assert } from "node:assert";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { DuckFinancialSearchIndex } from "../src/db/duck-financial-search-index";
-import { FinancialIndexPublication } from "../src/db/financial-index-publication";
+import { DuckFinancialSearchIndex } from "../src/platform/db/stores/financial/duck-financial-search-index";
+import { FinancialIndexPublication } from "../src/platform/db/stores/financial/financial-index-publication";
 import {
   recordDuckFinancialValueVerification as record,
   activateVerifiedDuckFinancialPublication as activate,
@@ -76,12 +76,12 @@ async function main() {
   assert.equal(hash(join(input, "index.duckdb")), before.duck);
   assert.equal(hash(archivePath), before.archive);
   const files = [
-    "src/db/duck-financial-search-index.ts",
-    "src/db/financial-search-index.ts",
+    "src/platform/db/stores/financial/duck-financial-search-index.ts",
+    "src/platform/db/stores/financial/financial-search-index.ts",
     "scripts/roadmap/duck-financial-value-verification.ts",
-    "src/pipeline/verification/verify-source-values.ts",
-    "src/pipeline/verification/read-source-xbrl.ts",
-    "src/pipeline/verification/source-verifier-command.ts",
+    "src/platform/pipeline/verification/verify-source-values.ts",
+    "src/platform/pipeline/verification/read-source-xbrl.ts",
+    "src/platform/pipeline/verification/source-verifier-command.ts",
     "scripts/verify-duck-financial-verification.ts",
   ];
   writeFileSync(

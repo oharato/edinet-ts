@@ -10,8 +10,9 @@ import {
   createReadStream,
 } from "node:fs";
 import { resolve, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { pathToFileURL, fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+import { resolveSdkModules } from "./roadmap/resolve-sdk-module.mts";
 const canonical = (value) =>
   JSON.stringify(value, (_key, item) =>
     item && typeof item === "object" && !Array.isArray(item)
@@ -41,15 +42,22 @@ async function main() {
   assert.equal(saved.body.indexPath, join(cycle, "index.duckdb"));
   assert.equal(saved.inputSha256, marker.inputSha256);
   assert.equal(saved.sha256, sha(canonical([saved.inputSha256, saved.body])));
+  const sdkLayout = resolveSdkModules(join(sdk, "dist/index.js"), [
+      "buildDuckFinancialCycle",
+      "financialSearchIndex",
+    ]),
+    resolverSha256 = sha(
+      readFileSync(fileURLToPath(new URL("./roadmap/resolve-sdk-module.mts", import.meta.url))),
+    );
   const { duckFinancialSdkSha256 } = await import(
-    pathToFileURL(join(sdk, "dist/pipeline/build-duck-financial-cycle.js")).href
+    pathToFileURL(sdkLayout.modules.buildDuckFinancialCycle).href
   );
   assert.equal(duckFinancialSdkSha256(), marker.input.sdkSha256, "SDK differs from build");
   const { ObservedFinancialArchive, DuckFinancialSearchIndex } = await import(
       pathToFileURL(join(sdk, "dist/index.js")).href
     ),
     { projectFinancialIndexGeneration } = await import(
-      pathToFileURL(join(sdk, "dist/db/financial-search-index.js")).href
+      pathToFileURL(sdkLayout.modules.financialSearchIndex).href
     ),
     input = marker.input.build;
   const space = statfsSync(cycle, { bigint: true });
@@ -140,11 +148,20 @@ async function main() {
     assert.equal(rowCount, report.rows.length);
     assert.equal(duckFinancialSdkSha256(), marker.input.sdkSha256);
     assert.equal(await fileHash(marker.input.archivePath), input.archiveSha256);
+    assert.equal(
+      sha(
+        readFileSync(fileURLToPath(new URL("./roadmap/resolve-sdk-module.mts", import.meta.url))),
+      ),
+      resolverSha256,
+      "SDK resolver changed",
+    );
     writeFileSync(
       join(out, "summary.json"),
       JSON.stringify(
         {
           node: process.version,
+          resolverSha256,
+          sdkLayout,
           sdkSha256: marker.input.sdkSha256,
           inputSha256: marker.inputSha256,
           archiveUnchanged: true,

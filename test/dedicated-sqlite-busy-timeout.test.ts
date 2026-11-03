@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, type ChildProcess } from "node:child_process";
 import { performance } from "node:perf_hooks";
-import { DedicatedSqliteDatabase } from "../src/db/dedicated-sqlite";
+import { DedicatedSqliteDatabase } from "../src/platform/db/engines/sqlite/dedicated-sqlite";
 
 class Samples extends DedicatedSqliteDatabase {
   constructor(file: string, options: { readOnly?: boolean } = {}) {

@@ -149,8 +149,8 @@ function main() {
         before = { archive: sha(archive), duck: sha(db) };
       assert(!existsSync(join(root, "scripts")), "Consumer must not contain repository scripts");
       assert.equal(
-        sha(join(root, "dist/pipeline/verification/verify-source-values.js")),
-        sha("dist/pipeline/verification/verify-source-values.js"),
+        sha(join(root, "dist/platform/pipeline/verification/verify-source-values.js")),
+        sha("dist/platform/pipeline/verification/verify-source-values.js"),
       );
       writeFileSync(
         join(dir, "verify-source.mjs"),
@@ -188,7 +188,7 @@ await catalog.prepareAsync('old',reader,quality.generation,policy);const input={
       "src/index.ts",
       "src/cli.ts",
       "src/cli/register-duck-financial-commands.ts",
-      "src/db/duck-financial-snapshot.ts",
+      "src/platform/db/engines/duckdb/duck-financial-snapshot.ts",
     ];
     writeFileSync(
       join(out, "summary.json"),

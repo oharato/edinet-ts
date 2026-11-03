@@ -16,8 +16,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createStoredZip } from "./fixtures/create-stored-zip";
 import { createHash } from "node:crypto";
-import { Database } from "../src/db/node-sqlite";
-import { CorporateRegistryBlockStore } from "../src/db/corporate-registry-block-store";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
+import { CorporateRegistryBlockStore } from "../src/platform/db/stores/registry/corporate-registry-block-store";
 import {
   registryStreamXml as xml,
   registryStreamRow as row,

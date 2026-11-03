@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { it, expect } from "vitest";
 import { ObservedFinancialArchive, FinancialSearchIndex } from "../src/index";
-import { Database } from "../src/db/node-sqlite";
+import { Database } from "../src/platform/db/engines/sqlite/node-sqlite";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 it("CLIは世代の全品質をreadOnlyで返し、本文破損/不正世代を終了1にする", () => {
   const dir = mkdtempSync(join(tmpdir(), "index-quality-cli-"));

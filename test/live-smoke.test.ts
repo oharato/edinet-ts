@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkLargeShareholdingSamples } from "../scripts/live-smoke";
-import type { EdinetDocument } from "../src/edinet/api-client";
+import type { EdinetDocument } from "../src/platform/client/edinet/api-client";
 
 function doc(partial: Partial<EdinetDocument> & { docID: string }): EdinetDocument {
   return {

@@ -3,7 +3,7 @@ import {
   CORPORATE_REGISTRY_FIELDS as fields,
   parseCorporateRegistryDownloadXml as generic,
   parseCorporateRegistryStreamRecord as fast,
-} from "../src/companies/registry/registry-records";
+} from "../src/platform/registry/registry-records";
 const source = {
   sourceUrl: "https://example.test/data.xml",
   observedAt: "2026-10-31T00:00:00Z",

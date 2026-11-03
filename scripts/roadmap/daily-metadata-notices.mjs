@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { setImmediate as yieldTurn } from "node:timers/promises";
-import { parseDocumentTimestamp } from "../../dist/edinet/parse-document-timestamp.js";
+import { parseDocumentTimestamp } from "../../dist/domain/edinet/parse-document-timestamp.js";
 
 export const DAILY_NOTICE_RULES_VERSION = 3;
 

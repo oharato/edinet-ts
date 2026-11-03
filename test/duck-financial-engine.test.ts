@@ -3,7 +3,7 @@ import {
   assertDuckFinancialEngine,
   DuckFinancialIndexBuild,
   type DuckFinancialConnection,
-} from "../src/db/duck-financial-index-build";
+} from "../src/platform/pipeline/financial/jobs/duck-financial-index-build";
 it.each(["v1.5.3", "v2.1.0", undefined])(
   "実エンジン%sを構築の書込開始前に拒否する",
   async (version) => {

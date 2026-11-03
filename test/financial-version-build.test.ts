@@ -4,23 +4,23 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
+import { ObservedFinancialArchive } from "../src/platform/db/stores/financial/observed-financial-archive";
 import {
   FinancialSearchIndex,
   financialIndexBuildPartId,
   financialIndexGenerationSha256,
-} from "../src/db/financial-search-index";
+} from "../src/platform/db/stores/financial/financial-search-index";
 import {
   FinancialIndexBuild,
   normalizeFinancialIndexBuildInput,
   type FinancialIndexBuildInput,
-} from "../src/db/financial-index-build";
-import { FinancialIndexPublication } from "../src/db/financial-index-publication";
+} from "../src/platform/pipeline/financial/jobs/financial-index-build";
+import { FinancialIndexPublication } from "../src/platform/db/stores/financial/financial-index-publication";
 import {
   authenticateFinancialVersionEvidence,
   readFinancialVersionProof,
   FINANCIAL_VERSION_POLICY,
-} from "../src/financial/selection/select-financial-source-versions";
+} from "../src/domain/financial/selection/select-financial-source-versions";
 import {
   financialVersionEvidenceFixture,
   signFinancialVersionBundle,
