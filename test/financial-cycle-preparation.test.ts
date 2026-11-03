@@ -365,3 +365,79 @@ it("原本コピー分が不足していても一覧をcheckpointし、容量回
     }
     expect((await prepareFinancialCycle(s.config)).status).toBe("prepared");
   }, 1001));
+
+it("明示した継承cacheはcutoff後の原取得時刻を保持し、再取得せず履歴利用不可を示す", () =>
+  fixture(
+    async (s) => {
+      vi.setSystemTime(new Date("2026-10-30T05:00:00Z"));
+      const pool = new ObservedFinancialArchive(s.config.sourceArchivePath);
+      try {
+        pool.append(
+          [],
+          [
+            {
+              docID: "B",
+              availableAt: "2026-10-30T04:00:00Z",
+              sourceSha256: sha256("<late/>"),
+              xml: "<late/>",
+            },
+          ],
+        );
+      } finally {
+        pool.close();
+      }
+      const ro = new ObservedFinancialArchive(s.config.sourceArchivePath, { readOnly: true });
+      try {
+        s.config.sourceArchiveSha256 = ro.snapshotSha256();
+      } finally {
+        ro.close();
+      }
+      const standard = await prepareFinancialCycle(s.config);
+      expect(standard.pendingSources).toBe(1);
+      const cached = await prepareFinancialCycle({
+        ...s.config,
+        retainLaterSourceCache: true,
+        outputDirectory: join(s.dir, "cached"),
+      });
+      expect(cached.pendingSources).toBe(0);
+      expect(cached.reusedSources).toBe(2);
+      const frozen = new ObservedFinancialArchive(cached.archivePath, { readOnly: true }),
+        state = new FinancialSourceJob(cached.statePath);
+      try {
+        const progress = state.progress(s.config.input.id),
+          late = progress.plan.documents.find((d) => d.docID === "B");
+        expect(late).toMatchObject({
+          status: "stored",
+          availableAt: "2026-10-30T04:00:00.000Z",
+          availableByCutoff: false,
+        });
+        const fetch = vi.fn(),
+          writable = new ObservedFinancialArchive(cached.archivePath);
+        try {
+          await state.runNext(s.config.input.id, writable, fetch);
+        } finally {
+          writable.close();
+        }
+        expect(fetch).not.toHaveBeenCalled();
+        expect(
+          frozen.readSource({
+            docID: "B",
+            sourceSha256: sha256("<late/>"),
+            availableAt: "2026-10-30T04:00:00Z",
+          })!.xml,
+        ).toBe("<late/>");
+      } finally {
+        state.close();
+        frozen.close();
+      }
+    },
+    2,
+    1,
+  ));
+
+it("継承cache指定にboolean以外を受け入れない", () =>
+  fixture(async (s) => {
+    await expect(
+      prepareFinancialCycle({ ...s.config, retainLaterSourceCache: "yes" }),
+    ).rejects.toThrow("input is invalid");
+  }));

@@ -632,6 +632,17 @@ it(
       atomicJSON(s.daily.checkpointPath, next);
       const second = await runDailyDuckFinancialCycle(config, options);
       expect(second).toMatchObject({ status: "built", day: "2026-10-31" });
+      const inheritedConfig = readJSONSnapshot(second.configPath).value;
+      expect(inheritedConfig.retainLaterSourceCache).toBe(true);
+      expect(inheritedConfig.sourceArchivePath).toBe(
+        join(config.outputDirectory, "2026-10-30/inherited-source-pool/archive.sqlite"),
+      );
+      expect(inheritedConfig.sourceArchivePath).not.toBe(config.sourceArchivePath);
+      const previousHandoff = readJSONSnapshot(
+        join(config.outputDirectory, "2026-10-30/handoff.json"),
+      ).value;
+      expect(previousHandoff.body.config.sourceArchivePath).toBe(config.sourceArchivePath);
+      expect((await runDailyDuckFinancialCycle(config, options)).status).toBe("cycle-complete");
       expect(second.indexPath).not.toBe(first.indexPath);
       expect(readFileSync(first.indexPath)).toEqual(original);
       expect(readFileSync(options.parsedStorePath)).toEqual(cache);

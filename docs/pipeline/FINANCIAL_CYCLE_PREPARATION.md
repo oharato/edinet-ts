@@ -14,13 +14,15 @@ flowchart LR
 
 `scripts/roadmap/prepare-financial-cycle.mjs` は、固定した一覧原観測と保存済みXBRL原本から別候補の `FinancialSourceJob` を準備する運用補助です。通信、財務値の検証、公開切替は行いません。SDKの公開APIではありません。
 
-Node 26.12.1でbuild済みのdistを使用します。設定JSONの全ファイルパスは絶対パスとし、入力は通常の単一リンクファイル、出力は新しい専用ディレクトリを指定します。
+[現行の実行環境](../development/RUNTIME_AND_SQLITE.md)に合わせ、Node 26.13.0以上でbuild済みのdistを使用します。設定JSONの全ファイルパスは絶対パスとし、入力は通常の単一リンクファイル、出力は新しい専用ディレクトリを指定します。
 
 ```sh
 node scripts/roadmap/prepare-financial-cycle.mjs /absolute/path/config.json
 ```
 
 設定は `version: 1`、`metadataPath`、安定した `sourceId`、固定末尾 `throughSequence`、`sourceArchivePath`、原本poolの物理 `sourceArchiveSha256`、原本の取得時刻上限 `availableBy`、`outputDirectory`、既存のFinancialSourceJob入力形式の `input`（id/cutoff/population）を指定します。取得時刻上限はcutoff以前で、cutoffは未来にできません。
+
+`retainLaterSourceCache: true` を明示すると、上限後に取得した原本もキャッシュとして転記します。取得時刻そのものは変更せず、そのcutoffで利用できた証拠にはしません。通常は省略し、日次制御が検証済みの継承poolを使うときに付与します。
 
 対象原観測はcutoff以前の閉じた一覧日のみです。別のcutoffや母集団には別の出力先を作成します。
 
@@ -146,5 +148,7 @@ status acquiringは残りあり、acquisition-pausedは容量余裕/試行上限
 ## 日付を跨いで反復する設定
 
 日次準備設定の `version: 2` では、`outputDirectory` を日別候補の親フォルダとして使います。候補は `YYYY-MM-DD` ごとに分かれ、前日までの未完了候補があれば先に同じ固定入力で再開します。当日の候補を作るには、当日のmetadata完了証跡が必要です。構築済みの日は `cycle-complete` を返します。構築完了と公開適格性は別です。
+
+新しい日を始めるときは、直前の完成日から取得済み原本を[検証付きpool](DUCK_FINANCIAL_CYCLE.md#翌日へ引き継ぐ原本キャッシュ)へ継承します。SQLite経路はSQLiteの、DuckDB経路はDuckDBの完成記録を使います。進行中の日の固定入力は変更しません。
 
 既存の `version: 1` は従来の固定出力先のままです。実行中の候補を版2へ付け替えず、既存処理の完了確認後、新しい親フォルダと固定runtimeで版2を開始してください。
