@@ -2,6 +2,8 @@
 
 法人番号公表サイトのXMLを読み、番号で原記録を探します。EDINETマスターからの番号参照と、全件・日次差分による状態再構成を説明します。原記録をそのまま返す入口と、差分を適用する入口は別です。
 
+2026-11-03現在、実行には[現行Node環境](../development/RUNTIME_AND_SQLITE.md)、署名検証にはGnuPG 2を使います。Pythonは不要です。以下の独立Python照合は過去の検証記録です。全国6パート・5,850,621記録の取込と最終監査は完了しました。連続する実差分の適用・定期運用・正式利用先の更新は、それぞれ別に検証します。
+
 目的に応じて入口を選んでください。
 
 | 目的                                 | 入口                                                                                                                                                         |
@@ -12,6 +14,7 @@
 | EDINET企業と番号・原名称を照合する   | [保存DBを使う](#企業マスターと再構成した法人状態を結び付ける) / [全国原本を一度読む](#全国原本から企業マスター全体を照合する)                                |
 | 原本を検証する                       | [XML署名](#保存済みxmlの署名を確認して取り込む) / [ZIP全entry](#保存zipの全エントリを検査する)                                                               |
 | 差分を取得する                       | [一日](#指定日の差分を取得し検証して保存する) / [期間指定](#複数日を計画し予算内で取得再開する)                                                              |
+| 保存済み差分を全国DBへ適用する       | [通信なしの差分適用・再開](#保存済み差分を全国dbへ適用する)                                                                                                  |
 | 全国の全件原本を取得する             | [全国XML](#全国全件のxml原本を取得する)                                                                                                                      |
 
 `parseCorporateRegistryDownloadXml(xml, source)` と `queryCorporateRegistryDownloads(inputs, query)` は、国税庁の30項目のダウンロードXMLを読みます。既存のXML安全検査を共有し、外部参照/DTDを拒否、1 XMLは64MiB以下・10万記録以下、検索は100入力/合計256MiB以下です。
@@ -59,7 +62,7 @@ sourceは呼出元の宣言です。URLやhashだけで提供者の真正性を�
 
 独立Python/XML処理で、全件/差分の公式55 XML・5,208記録・156,240項目、原XML hash、未知処理区分と削除追加列の診断が一致しました。これは公開サンプルによる形式検証です。
 
-検証: 全135ファイル/3,671テスト・型・buildが成功。source/built/CommonJSで全55入力と法人番号検索6件が一致し、6検索の行/順序/出典も独立処理で照合。配布用NodeNext型検査も成功しました。この時点では固定配布物53eb2adへ未反映でした。現在は3cc4618と利用先vendorへ反映済みです。
+検証: 全135ファイル/3,671テスト・型・buildが成功。source/built/CommonJSで全55入力と法人番号検索6件が一致し、6検索の行/順序/出典も独立処理で照合。配布用NodeNext型検査も成功しました。この時点では固定配布物53eb2adへ未反映でした。後に3cc4618と利用先の検証用worktreeへ反映しました。正式stock-dataのvendor更新とは区別します。
 
 ## EDINETマスターからの番号参照
 
@@ -87,7 +90,7 @@ sourceは呼出元の宣言です。URLやhashだけで提供者の真正性を�
 
 番号参照追加の検証: 全136ファイル/3,683テスト・型・build・公開NodeNext型が成功。実データの全master/上場のみの結果はsource/built/CommonJSで完全一致しました。
 
-初回回帰は結果へquery条件の保持を追加するため停止し、追加後に全件を再実行した結果です。番号参照は固定配布物3cc4618/利用先vendorへ反映済みです。状態再構成は後続で追加しました。完全な法人結合・利用先の実運用は残工程です。
+初回回帰は結果へquery条件の保持を追加するため停止し、追加後に全件を再実行した結果です。番号参照は固定配布物3cc4618と利用先の検証用worktreeへ反映しました。正式環境の更新を示す記録ではありません。状態再構成は後続で追加しました。完全な法人結合・利用先の実運用は残工程です。
 
 ## 全件と日次差分からの状態再構成
 
@@ -384,7 +387,7 @@ Node 26.12.1で、公式サンプル全件・休日・通常日の欠落・未�
 
 ## 保存済みXMLの署名を確認して取り込む
 
-Linux上でPython 3とGnuPG 2を使える場合は、`scripts/roadmap/verify-corporate-registry-signature.mts` で保存済みのXML・分離署名・公開鍵を照合できます。ネットワーク取得やユーザーの鍵環境は使いません。公開鍵を取得しただけで信用せず、[国税庁の公開鍵ページ](https://www.houjin-bangou.nta.go.jp/download/kokaikagi/)等で確認した完全なフィンガープリントを指定してください。
+Linux上でNode 26.13.0以上とGnuPG 2を使える場合は、`scripts/roadmap/verify-corporate-registry-signature.mts` で保存済みのXML・分離署名・公開鍵を照合できます。ネットワーク取得やユーザーの鍵環境は使いません。公開鍵を取得しただけで信用せず、[国税庁の公開鍵ページ](https://www.houjin-bangou.nta.go.jp/download/kokaikagi/)等で確認した完全なフィンガープリントを指定してください。
 
 入力JSONの例です。ファイルの相対パスは、このJSONを置いたディレクトリから解決します。
 
@@ -425,7 +428,7 @@ edinet-ts import-corporate-registry-file \
 
 ## 保存ZIPの全エントリを検査する
 
-`verify-corporate-registry-zip.mts` は、保存した一つの配布ZIPを対象に、取得時hash・全エントリ・各XMLの署名を検査します。前節と同じLinux/Python 3/GnuPG 2環境を使い、通信は行いません。
+`verify-corporate-registry-zip.mts` は、保存した一つの配布ZIPを対象に、取得時hash・全エントリ・各XMLの署名を検査します。前節と同じLinux/Node/GnuPG 2環境を使い、通信は行いません。
 
 入力manifestには `archive`、取得時の `sha256`、`publicKey`、信頼する `fingerprint`、`source`、`expectedXmlParts` を指定します。パスはmanifest基準です。次は保存実差分の検証に使った例で、取得日時とhashは自分の取得記録に置き換えてください。
 
@@ -521,7 +524,7 @@ edinet-ts plan-corporate-registry-differences \
   --calendar calendar.json --query query.json --pretty
 ```
 
-取得まで進める場合は次のコマンドを使います。リポジトリをNode 26でbuild済みにし、Python 3/GnuPG 2を用意してください。別の固定SDKを使う場合は `--sdk-cli /path/to/dist/cli.js` を指定できます。
+取得まで進める場合は次のコマンドを使います。リポジトリを現行Node環境でbuild済みにし、GnuPG 2を用意してください。別の固定SDKを使う場合は `--sdk-cli /path/to/dist/cli.js` を指定できます。
 
 ```sh
 node scripts/roadmap/collect-corporate-registry-differences.mts \
@@ -850,7 +853,7 @@ SIGKILLでhot journalが残った場合は、[専用DBの復旧](../pipeline/SQL
 
 ### 署名検証済みZIPからパート単位で取り込む
 
-保存済みの署名検証receiptを使う場合は、運用スクリプトでXMLをディスクへ展開せずに取り込めます。Linuxの `flock`、Python 3、圧縮Storeを含む固定SDKが必要です。
+保存済みの署名検証receiptを使う場合は、運用スクリプトでXMLをディスクへ展開せずに取り込めます。Linuxの `flock`、現行Node環境、圧縮Storeを含む固定SDKが必要です。
 
 ```bash
 node scripts/roadmap/import-corporate-registry-archive.mjs \
@@ -877,6 +880,53 @@ DBとcheckpointのロックは処理中保持します。終了コードは成�
 Node 26.12.1で関連10ファイル/95テスト、本体・配布公開型・build（226ファイル）が成功しました。ブロック境界、1 MiBでの分割、履歴のページング、全件/差分・改称/削除、上流失敗・中断、圧縮本文/索引/件数/孤立ブロック/意味の改変、容量不足時のrollbackを確認しています。
 
 公式サンプル55 XMLと保存済み実差分の計56入力・7,389記録では、旧Storeと取込receipt・原値・診断・出典・検索が一致しました。保存量は9,744,384→679,936 bytes、readonly監査後も元DBは不変です。これは限定入力の結果です。全国6パートの5,850,621記録を478,253,056 bytesのDBへ取込み、初回監査・11,432行の企業結合が先行する独立照合結果と一致しました。最終の検査強化版でも全記録監査と7,264法人・11,432行の企業結合が一致しました。独立Python処理は原ZIP内の全6 XMLと全175,518,630原値・位置索引・記録hashを照合し、全件一致を確認。法人番号の全体一意性、パート内のsequence一意性、元ZIPとDBの不変も確認しました。ZIP取込スクリプトと設備APIの入力検査修正を含む固定版6ad08fbでは、Node 26.12.1で全194ファイル・4,564テストが成功（skipなし）。build・本体/公開型検査も成功し、全536ソースの検証前後のhashは不変でした。運用6ファイルは通常ディスク、残る188ファイルはローカルtmpfsを使い、本番の容量保護値は維持しています。並行中の財務変更はこの固定版に含みません。連続実差分・定期運用・利用先反映、全市場の性能評価は残ります。証跡は `data/roadmap/corporate-registry-block-store-real-20261031/` と `corporate-registry-block-national-20261031/` です。
+
+## 保存済み差分を全国DBへ適用する
+
+`scripts/roadmap/apply-corporate-registry-differences.mts` は、取得済みの差分collectionを全国DBの私有コピーへ追加します。新しい差分の取得は行いません。通信を拒否した状態でcollectionの署名・カレンダー・保存原本を再検査し、日数上限内の差分を適用します。先に[期間指定の取得](#複数日を計画し予算内で取得再開する)を完了させてください。
+
+### 最初に揃える入力
+
+- 全国DBの取込が `deliveryValidated: true` で完了したmanifest配列と、そのDBのSHA-256。
+- 書込みを止め、sidecarがないことを確認して作った、専用0700ディレクトリ内のDBコピー。元の全国DBへ直接適用しません。
+- その全国起点・既存差分chainの翌日からを指定した取得query、完了collection、公式の未作成日カレンダーと元HTML/祝日CSV、信頼した公開鍵・fingerprint。
+- 固定runtimeの `dist/index.js` と、同じrelease直下の `run-financial-pinned.mjs`、事前に確認したverifierのSHA-256。verifierはSDK全体とNode版を検査します。一般のnpm配布物だけではこの運用用runtimeの代わりになりません。
+
+すべて絶対パスで指定します。checkpointはDBと同じ私有ディレクトリに置き、collection・原入力・固定runtimeの中へ出力しません。DBとcheckpointの既存内容を、別の起点やSDKへ付け替えて再利用しないでください。
+
+```sh
+node scripts/roadmap/apply-corporate-registry-differences.mts \
+  --calendar /absolute/calendar.json \
+  --query /absolute/difference-query.json \
+  --public-key /absolute/nta-public-key.asc \
+  --fingerprint <確認済みの完全fingerprint> \
+  --collection /absolute/retained-differences \
+  --baseline-manifest /absolute/national-deliveries.json \
+  --baseline-db-sha256 <元の全国DBコピーのSHA-256> \
+  --db /absolute/private-job/registry.sqlite \
+  --checkpoint /absolute/private-job/checkpoint.json \
+  --sdk /absolute/pinned-runtime/dist/index.js \
+  --runtime-verifier /absolute/pinned-runtime/run-financial-pinned.mjs \
+  --runtime-verifier-sha256 <確認済みverifierのSHA-256> \
+  --corporate-number <監査対象の13桁法人番号> \
+  --max-days 1
+```
+
+`--corporate-number` は再構成の確認対象です。保存検査はその法人だけに限定せず、全記録と位置索引を監査します。確認対象の結果だけで、全法人の法的同一性や会社マスターの完全一致を認定しません。差分chainが未解決、検査結果の形が不正、全記録検査が未完了ならDBを切り替えません。
+
+### 再開・失敗時の扱い
+
+`--max-days` は0〜100、既定1です。0は保存済みchainの再検査だけを行います。`pending` は保存できた差分または取得予算の先に残作業がある状態です。同じ引数で再実行し、`complete` まで進めます。`complete` は指定collectionの範囲の完了で、未来の差分取得や定期運用の受入完了ではありません。
+
+取込先は一時DBです。全記録・日付chainを検査した後にcommit記録を保存し、DBをrenameしてcheckpointを更新します。DB切替前後で中断しても、次回は前後のhashを照合して引継ぎを完了します。取込・監査の失敗では元のDBを維持し、所有者が確認できる当jobの一時DBだけを片付けます。出所不明の一時ファイルやhot journalを黙って削除して復旧しません。
+
+checkpointは元のsource宣言、SDKが正規化した保存source、manifest指紋を保持します。既適用日の再実行もこれらを比較し、同じXMLでも出典やpartが変わっていれば拒否します。固定SDK・運用スクリプト・Node版・入力指紋が変わった場合も、既存jobの続きを実行しません。
+
+DB・checkpointをロックし、collectionは署名再検査後から取込終了までロックします。競合時は終了75、その他の入力・監査・容量失敗は終了1です。同期監査中の即時中断は保証せず、強制終了後は上記の再開検査を通します。
+
+DBと一時コピーのfilesystemごとに34 GiBを留保し、stage・SQLite journal・SDK検査コピーの追加容量も確保します。同じfilesystemは合算し、constructorの検査コピーと取込journalは同時に存在しないため段階を分けて見積もります。小さいtmpfsを `TMPDIR` にすると停止するため、十分な容量のローカルディスクを使ってください。留保を下げたり、原本・切戻し先を削除したりして通過させません。
+
+境界検証は[差分適用テスト](../../test/corporate-registry-difference-application.test.ts)を参照してください。実差分・全国DBでの検証、定期起動、正式利用先への反映は別々の証拠として記録します。
 
 ## 全国DBの保存量を減らすための予備測定
 
