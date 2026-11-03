@@ -102,6 +102,28 @@ node dist/cli.js schema
 node dist/cli.js schema --json
 ```
 
+### 5. EDINETから最新の有価証券報告書を差分同期する (`sync`)
+
+手元のDuckDBを最新の状態に維持するために、EDINET API v2から最近開示された有価証券報告書（有報: docTypeCode 120）を自動取得し、差分更新します。
+
+```bash
+# 直近7日分の有報を差分同期（デフォルト）
+node dist/cli.js sync --db ./data/screening.duckdb
+
+# 直近30日分の有報を同期
+node dist/cli.js sync --days 30 --db ./data/screening.duckdb
+
+# 期間を明示指定して同期
+node dist/cli.js sync --since 2026-03-01 --until 2026-03-31 --db ./data/screening.duckdb
+
+# ダウンロードやDB更新を行わずに、対象書類の一覧と件数のみ確認 (Dry Run)
+node dist/cli.js sync --days 14 --dry-run
+```
+
+- **自動重複スキップ**: 既にDuckDB内に存在する企業・決算期データは自動的にスキップされるため、重複登録されません。
+- **ローカルキャッシュ**: 取得したXBRLは `data/edinet-cache/` に保存され、不要な再通信を防止します。
+- **環境変数**: `EDINET_API_KEY` を設定しておくと、`--api-key` オプションの入力を省略できます。
+
 ---
 
 ## アーキテクチャと設計原則

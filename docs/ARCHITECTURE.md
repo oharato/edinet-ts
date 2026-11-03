@@ -33,7 +33,7 @@ src/
 │   └── schema-info.ts    # スキーマ定義・クエリ例 (人間 & AI向け案内)
 ├── edinet/
 │   └── client.ts         # EDINET API クライアント
-├── cli.ts                # 直感的な CLI ツール (parse, load, screen, schema, import-archive)
+├── cli.ts                # 直感的な CLI ツール (parse, load, screen, schema, import-archive, sync)
 └── index.ts              # パブリックAPI (わずか5行)
 ```
 
@@ -110,3 +110,7 @@ flowchart TD
 ### 原則 4: ドキュメントを自己増殖させない
 - 仕様書は README と本ファイル（`docs/ARCHITECTURE.md`）の2点に集約します。
 - 一過性のプロンプトログ、中間検証ログ、作業完了報告をリポジトリ内にコミットし続けないでください。
+
+### 原則 5: 同期機構は常駐デーモン化せず、シンプルな差分CLI (`sync`) に留める
+- EDINETとの同期のためにバックグラウンドの常駐プロセス、systemd timer、二段階コミット世代管理カタログなどを自作しないこと。
+- `edinet-ts sync` という単一のCLIコマンドを提供し、未登録の書類のみを差分反映（重複スキップ）＆ローカルキャッシュする設計にします。定期実行が必要な場合は、OS標準の cron や外部スケジューラに任せます。

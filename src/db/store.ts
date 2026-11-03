@@ -140,6 +140,34 @@ export class FinancialStore {
     await stmt.run();
   }
 
+  /**
+   * 登録済みの最新の決算期末日を取得します
+   */
+  public async getLatestPeriodEnd(): Promise<string | undefined> {
+    if (!this.connection) throw new Error("Database not initialized");
+    const reader = await this.connection.runAndReadAll(
+      "SELECT MAX(period_end) as max_date FROM financial_summary WHERE period_end != ''"
+    );
+    const rows = reader.getRows();
+    return rows[0]?.[0] ? String(rows[0][0]) : undefined;
+  }
+
+  /**
+   * 登録済みの全レコードのキー（company_name:period_end）のセットを取得します
+   */
+  public async getExistingKeys(): Promise<Set<string>> {
+    if (!this.connection) throw new Error("Database not initialized");
+    const reader = await this.connection.runAndReadAll(
+      "SELECT company_name, period_end FROM financial_summary"
+    );
+    const rows = reader.getRows();
+    const set = new Set<string>();
+    for (const row of rows) {
+      set.add(`${row[0]}:${row[1]}`);
+    }
+    return set;
+  }
+
   public async screen(criteria: ScreeningCriteria = {}): Promise<ScreeningResultRow[]> {
     if (!this.connection) throw new Error("Database not initialized");
 

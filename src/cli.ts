@@ -6,6 +6,7 @@ import { XbrlParser } from "./xbrl/parser.js";
 import { FinancialExtractor } from "./financial/extractor.js";
 import { FinancialStore } from "./db/store.js";
 import { SCREENING_COLUMNS, QUERY_EXAMPLES } from "./db/schema-info.js";
+import { EdinetClient } from "./edinet/client.js";
 
 const program = new Command();
 program
@@ -327,6 +328,115 @@ program
       console.log(`  説明: ${ex.description}`);
       console.log(`  SQL:  edinet-ts screen --where "${ex.sql}"\n`);
     }
+  });
+
+/**
+ * 5. sync コマンド: EDINET APIから最新の有価証券報告書を取得し、DuckDBに差分反映
+ */
+program
+  .command("sync")
+  .description("EDINET APIから最新の有価証券報告書を取得し、DuckDBに差分更新します")
+  .option("--db <path>", "DuckDBファイルの保存先", "./data/screening.duckdb")
+  .option("-d, --days <number>", "取得する直近の日数 (例: 14 で直近14日分)", "7")
+  .option("--since <date>", "同期開始日 (YYYY-MM-DD)")
+  .option("--until <date>", "同期終了日 (YYYY-MM-DD, デフォルト: 本日)")
+  .option("--api-key <key>", "EDINET APIキー (省略時は環境変数 EDINET_API_KEY を使用)")
+  .option("--dry-run", "実際のダウンロードやDB更新を行わず、対象書類の件数と一覧のみ表示")
+  .action(async (options) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const until = options.until || today;
+
+    let since = options.since;
+    if (!since) {
+      const days = parseInt(options.days, 10) || 7;
+      const d = new Date(until);
+      d.setDate(d.getDate() - (days - 1));
+      since = d.toISOString().slice(0, 10);
+    }
+
+    const apiKey = options.apiKey || process.env.EDINET_API_KEY;
+    if (!apiKey) {
+      console.log("ℹ️  注意: EDINET_API_KEY が設定されていません。v2 API のアクセス制限や仕様に従い動作します。");
+    }
+
+    console.log(`\n🔄 EDINET 同期を開始します (期間: ${since} 〜 ${until})`);
+    const client = new EdinetClient({ apiKey });
+
+    process.stdout.write("開示書類一覧を取得中...");
+    const reports = await client.getAnnualReportsInRange(since, until, (date, count) => {
+      process.stdout.write(`\r開示書類一覧を取得中... [${date}] (${count}件の有報)`);
+    });
+    console.log(`\n合計 ${reports.length} 件の有価証券報告書が見つかりました。\n`);
+
+    if (reports.length === 0) {
+      console.log("同期対象の有価証券報告書はありませんでした。");
+      return;
+    }
+
+    if (options.dryRun) {
+      console.log("【Dry Run】対象書類一覧:");
+      console.table(
+        reports.map((r) => ({
+          書類ID: r.docId,
+          提出日時: r.submitDateTime,
+          コード: r.secCode || r.edinetCode,
+          提出者名: r.filerName,
+          件名: r.docDescription.slice(0, 30),
+        }))
+      );
+      console.log(`Dry Run 終了: ${reports.length} 件が取得候補です。`);
+      return;
+    }
+
+    const dbPath = resolve(process.cwd(), options.db);
+    const store = new FinancialStore(dbPath);
+    await store.init();
+
+    const existingKeys = await store.getExistingKeys();
+    console.log(`DuckDB既存レコード数: ${existingKeys.size} 件`);
+
+    const parser = new XbrlParser();
+    const extractor = new FinancialExtractor();
+
+    let successCount = 0;
+    let skipCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < reports.length; i++) {
+      const report = reports[i];
+      const prefix = `[${i + 1}/${reports.length}] ${report.filerName} (${report.secCode || report.edinetCode})`;
+
+      try {
+        const xml = await client.getXbrlContent(report.docId);
+        const doc = parser.parse(xml);
+        const record = extractor.extract(doc);
+
+        const key = `${record.metadata.companyName}:${record.metadata.periodEnd}`;
+        if (existingKeys.has(key)) {
+          skipCount++;
+          continue;
+        }
+
+        await store.insert(record);
+        existingKeys.add(key);
+        successCount++;
+        console.log(`✅ ${prefix}: 登録完了 (期末: ${record.metadata.periodEnd})`);
+      } catch (err: any) {
+        errorCount++;
+        console.error(`⚠️ ${prefix}: スキップ (${err.message})`);
+      }
+    }
+
+    store.close();
+
+    console.log("\n================ 同期サマリ ================");
+    console.log(`期間:           ${since} 〜 ${until}`);
+    console.log(`対象有報数:     ${reports.length} 件`);
+    console.log(`新規追加:       ${successCount} 件`);
+    console.log(`既存スキップ:   ${skipCount} 件`);
+    console.log(`エラー/除外:    ${errorCount} 件`);
+    console.log(`DB保存先:       ${dbPath}`);
+    console.log("===========================================\n");
   });
 
 program.parse(process.argv);

@@ -64,6 +64,44 @@ export class EdinetClient {
   }
 
   /**
+   * 指定した日付範囲内の有価証券報告書（docTypeCode: "120"）の一覧を取得します。
+   */
+  public async getAnnualReportsInRange(
+    startDate: string,
+    endDate: string,
+    onProgress?: (date: string, count: number) => void,
+  ): Promise<EdinetDocumentSummary[]> {
+    const dates: string[] = [];
+    let current = new Date(startDate);
+    const end = new Date(endDate);
+
+    while (current <= end) {
+      dates.push(current.toISOString().slice(0, 10));
+      current.setDate(current.getDate() + 1);
+    }
+
+    const allReports: EdinetDocumentSummary[] = [];
+
+    for (const date of dates) {
+      try {
+        const docs = await this.getDocumentList(date);
+        // 有価証券報告書 (120) のみ抽出
+        const reports = docs.filter((d) => d.docTypeCode === "120");
+        allReports.push(...reports);
+        if (onProgress) {
+          onProgress(date, reports.length);
+        }
+        // レート制限への配慮
+        await new Promise((r) => setTimeout(r, 200));
+      } catch (e) {
+        // 土日祝日など書類がない日はスキップまたは空配列
+      }
+    }
+
+    return allReports;
+  }
+
+  /**
    * 指定した書類IDのXBRLファイル（ZIPを展開したXMLテキスト）を取得します。
    * キャッシュがあればローカルから返します。
    */
