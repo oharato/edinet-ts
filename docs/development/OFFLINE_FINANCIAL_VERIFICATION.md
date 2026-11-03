@@ -149,4 +149,4 @@ node --import tsx scripts/verify-offline-financial-flow.ts --config /tmp/local-c
 
 このrunnerは[全体計画](../plans/EDINET_TS_ROADMAP.md)の段階8（品質確認）を、段階7（保存・差分取り込み）の実装に対して繰り返す有限な検証です。
 
-最終検証はNode26.12.1で全756テスト（既存742＋新規14件）、本体/使用例/runnerの型検査、build、保存保護Python5件が成功。独立レビュー39件も成功しました。実2社2時点の既定モード実行は2回同じ集計でした。lint設定はありません。
+最終検証はNode26.12.1で全756テスト（既存742＋新規14件）、本体/使用例/runnerの型検査、build、保存保護Python5件が成功。独立レビュー39件も成功しました。実2社2時点の既定モード実行は2回同じ集計でした。この検証時点ではlintを導入していませんでした。

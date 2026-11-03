@@ -205,7 +205,7 @@ node scripts/roadmap/cold-sqlite-archive.mts restore \
 
 `retire` は、gzipと元DBを再照合し、FD監査を前後2回行い、元DBの変更・利用中・検査不能がない場合だけ元のファイルを外します。圧縮原本と監査結果は保持します。`restore` は固定FDでgzipのhash/CRCと全展開byteを検査し、元圧縮物の差し替えも拒否した上で、別の一時ファイルから上書きなしで公開します。
 
-Linux・Python 3向けです。元DBは最大1TiB、receiptは1MiB以下。圧縮/復元中は34GiBの空き留保を確認し、復元前には元サイズ+留保分の容量を要求します。SQLiteを開くときは、復元したファイルをSDKへ渡してください。
+Linuxと[現行Node環境](../development/RUNTIME_AND_SQLITE.md)向けです。Pythonは不要です。元DBは最大1TiB、receiptは1MiB以下。圧縮/復元中は34GiBの空き留保を確認し、復元前には元サイズ+留保分の容量を要求します。SQLiteを開くときは、復元したファイルをSDKへ渡してください。
 
 ### 実DBで確認した範囲
 
