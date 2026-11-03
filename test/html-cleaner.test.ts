@@ -122,3 +122,11 @@ describe("html-cleaner", () => {
     });
   });
 });
+
+it("未終了タグが大量にあっても元のplain textを保持する", () => {
+  const input = "before" + "<".repeat(100000) + "script";
+  expect(stripHtmlTags(input)).toBe(input);
+});
+it("入れ子の開始記号を除去して新しい開始タグを残さない", () => {
+  expect(stripHtmlTags("<scrip<script>text</script>t>")).toBe("textt>");
+});
