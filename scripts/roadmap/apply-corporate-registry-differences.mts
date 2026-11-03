@@ -203,6 +203,12 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
       assert.equal(calendar.sha256, calendarSnapshot.sha256, "Calendar manifest changed");
       const write = (p: string, value: unknown) =>
         atomicJSON(p, value, { createOnly: !existsSync(p) });
+      const checkCalendarSources = async () =>
+        assert.deepEqual(
+          await Promise.all(calendarChildren.map(fileHash)),
+          binding.calendarSourceSha256s,
+          "Calendar sources changed",
+        );
       const collected = await collectRegistryDifferences(
         config.calendarPath,
         config.queryPath,
@@ -269,6 +275,7 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
           assert.equal(canonical(prepared.next.binding), canonical(binding));
           assert.equal(prepared.next.dbSha256, prepared.after);
           checkApplied(prepared.next.applied);
+          await checkCalendarSources();
           const current = await fileHash(config.dbPath);
           if (current === prepared.before) {
             assert.equal(await fileHash(stage), prepared.after);
@@ -383,7 +390,9 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
             );
         };
         const limit = BigInt(sdk.CORPORATE_REGISTRY_BLOCK_MAX_DB_BYTES);
-        space(2n * limit, limit);
+        // The constructor probe is gone before import journal growth can begin.
+        space(limit, limit);
+        space(2n * limit, 0n);
         write(ownerPath, { binding, before });
         copyFileSync(config.dbPath, stage, constants.COPYFILE_EXCL);
         let store: any,
@@ -391,12 +400,13 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
           prepared = false;
         try {
           assert.equal(await fileHash(stage), before);
-          space(limit, limit);
+          space(0n, limit);
           store = new sdk.CorporateRegistryBlockStore(stage);
           const nextApplied = [...applied],
             partSnapshots: { path: string; sha256: string; file: string; sourceSha256: string }[] =
               [];
           for (const day of selected) {
+            space(limit, 0n);
             assert(
               day.importManifest.startsWith(
                 config.collectionPath + "/days/" + day.date + "/attempt-",
@@ -533,6 +543,7 @@ export async function applyCorporateRegistryDifferences(input: RegistryDifferenc
           } finally {
             closeSync(fd);
           }
+          await checkCalendarSources();
           write(commit, { binding, before, after, next });
           prepared = true;
           renameSync(stage, config.dbPath);

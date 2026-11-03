@@ -924,7 +924,7 @@ checkpointは元のsource宣言、SDKが正規化した保存source、manifest�
 
 DB・checkpointをロックし、collectionは署名再検査後から取込終了までロックします。競合時は終了75、その他の入力・監査・容量失敗は終了1です。同期監査中の即時中断は保証せず、強制終了後は上記の再開検査を通します。
 
-DBと一時コピーのfilesystemごとに34 GiBを留保し、stage・SQLite journal・SDK検査コピーの追加容量も確保します。同じfilesystemは合算します。小さいtmpfsを `TMPDIR` にすると停止するため、十分な容量のローカルディスクを使ってください。留保を下げたり、原本・切戻し先を削除したりして通過させません。
+DBと一時コピーのfilesystemごとに34 GiBを留保し、stage・SQLite journal・SDK検査コピーの追加容量も確保します。同じfilesystemは合算し、constructorの検査コピーと取込journalは同時に存在しないため段階を分けて見積もります。小さいtmpfsを `TMPDIR` にすると停止するため、十分な容量のローカルディスクを使ってください。留保を下げたり、原本・切戻し先を削除したりして通過させません。
 
 境界検証は[差分適用テスト](../../test/corporate-registry-difference-application.test.ts)を参照してください。実差分・全国DBでの検証、定期起動、正式利用先への反映は別々の証拠として記録します。
 

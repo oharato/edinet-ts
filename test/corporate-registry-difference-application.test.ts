@@ -359,7 +359,7 @@ it.each(["same-volume", "separate-tmp-volume"])(
       const actual = original.statfsSync(p, options);
       const bytes =
         mode === "same-volume"
-          ? reserve + 2n * limit + 65n * 1024n ** 2n
+          ? reserve + 2n * limit + 63n * 1024n ** 2n
           : String(p) === tmpdir()
             ? reserve + limit - 1n
             : 2n ** 50n;
@@ -577,5 +577,94 @@ it.each([
     expect(await run(f.input)).toMatchObject({ status: "complete", appliedThisRun: 0 });
   } finally {
     vi.mocked(renameSync).mockImplementation(native.renameSync);
+  }
+});
+it("collect中のcalendar副入力変更をcommit前に拒否し元DBを保持する", async () => {
+  const f = await fixture(),
+    good = await mocks.collect(),
+    calendar = JSON.parse(readFileSync(f.input.calendarPath, "utf8"));
+  mocks.collect.mockImplementationOnce(async () => {
+    const html = readFileSync(calendar.policy.file, "utf8") + " ";
+    writeFileSync(calendar.policy.file, html);
+    return {
+      ...good,
+      calendar: {
+        ...good.calendar,
+        sources: {
+          ...good.calendar.sources,
+          policy: { ...good.calendar.sources.policy, inputTextSha256: hash(html) },
+        },
+      },
+    };
+  });
+  await expect(run(f.input)).rejects.toThrow("Calendar sources changed");
+  expect(hash(readFileSync(f.input.dbPath))).toBe(f.input.baselineDbSha256);
+  expect(existsSync(f.input.checkpointPath)).toBe(false);
+  expect(existsSync(f.input.checkpointPath + ".stage.sqlite")).toBe(false);
+});
+it.each([
+  ["constructor-probe", 3],
+  ["import-journal", 4],
+  ["readonly-probe", 5],
+] as const)("%s段階の追加容量不足は元DB不変で止める", async (_phase, target) => {
+  const f = await fixture(),
+    previous = vi.mocked(statfsSync).getMockImplementation()!,
+    native = await vi.importActual<typeof import("node:fs")>("node:fs");
+  let roots = 0,
+    reached = false;
+  vi.mocked(statfsSync).mockImplementation(((p: any, options: any) => {
+    const actual = native.statfsSync(p, options);
+    if (String(p) === f.dir) roots++;
+    const low = String(p) === f.dir && roots === target;
+    reached ||= low;
+    const bytes = low ? 34n * 1024n ** 3n + 640n * 1024n ** 2n + 63n * 1024n ** 2n : 2n ** 50n;
+    return {
+      ...actual,
+      bsize: options?.bigint ? 1n : 1,
+      bavail: options?.bigint ? bytes : Number(bytes),
+    };
+  }) as typeof statfsSync);
+  try {
+    await expect(run(f.input)).rejects.toThrow("Capacity reserve");
+    expect(reached).toBe(true);
+    expect(hash(readFileSync(f.input.dbPath))).toBe(f.input.baselineDbSha256);
+    expect(existsSync(f.input.checkpointPath + ".stage.sqlite")).toBe(false);
+  } finally {
+    vi.mocked(statfsSync).mockImplementation(previous);
+  }
+});
+it("実SDKのwriter constructor probeはimport前に消え、reader probeはcloseまで存在する", async () => {
+  const f = await fixture(),
+    importFile = CorporateRegistryBlockStore.prototype.importFile,
+    reconstruct = CorporateRegistryBlockStore.prototype.reconstruct;
+  let writerChecked = false,
+    readerChecked = false;
+  const writer = vi
+    .spyOn(CorporateRegistryBlockStore.prototype, "importFile")
+    .mockImplementation(function (
+      this: CorporateRegistryBlockStore,
+      ...args: Parameters<typeof importFile>
+    ) {
+      expect((this as any).scratch).toBeUndefined();
+      writerChecked = true;
+      return importFile.apply(this, args);
+    });
+  const reader = vi
+    .spyOn(CorporateRegistryBlockStore.prototype, "reconstruct")
+    .mockImplementation(function (
+      this: CorporateRegistryBlockStore,
+      ...args: Parameters<typeof reconstruct>
+    ) {
+      expect(existsSync((this as any).scratch + "/probe.sqlite")).toBe(true);
+      readerChecked = true;
+      return reconstruct.apply(this, args);
+    });
+  try {
+    expect(await run(f.input)).toMatchObject({ status: "complete" });
+    expect(writerChecked).toBe(true);
+    expect(readerChecked).toBe(true);
+  } finally {
+    writer.mockRestore();
+    reader.mockRestore();
   }
 });
