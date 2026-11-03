@@ -64,7 +64,7 @@ console.log(METRIC_REGISTRY.netSales);
 
 ## 指標辞書の契約
 
-安定IDは `keyof KeyMetrics` と同じ18項目です。辞書versionは `METRIC_REGISTRY_VERSION`（現在 `"1"`）。
+安定IDは `keyof KeyMetrics` と同じ18項目です。辞書versionは `METRIC_REGISTRY_VERSION`（現在 `"2"`）。
 各定義はID、decimal型、単位、instant/duration、会計基準別候補タグと対応可否、fallback方針を持ちます。
 配列・定義・辞書はfreezeしています。既存の候補タグから独立実装したもので、外部ライブラリのmappingは取り込んでいません。
 
@@ -78,7 +78,9 @@ console.log(METRIC_REGISTRY.netSales);
 比率はXBRLの `xbrli:pure` のraw値を採用し、百分率への変換や100倍/100分の1の補正を行いません。
 JPY/shareは単一JPY分子と単一shares分母のdivideだけを扱います。他の複合単位、外貨換算、scale推測は未対応です。
 IFRSの純資産/BPS候補は親会社持分との意味差の精査が残るため `unsupported-semantics` とします。
-US-GAAPと企業拡張タグの対応は未実装です。銀行・保険専用タグを一般事業会社タグへ推測対応しません。
+US-GAAPは、意味が一致する要約タグに限り、売上高・営業利益・純資産総額・総資産・営業/投資/財務CF・現金同等物の8指標を明示選択できます。純資産総額は非支配持分を含み、親会社持分だけのタグを代用しません。純利益・経常利益・EPS・BPS・比率などの未対応指標はそのまま返します。円単位の検査は共通で、USDとの混在は曖昧とし、換算や片方の任意選択をしません。
+
+これは `selectMetric()` の対応範囲です。DEIからのUS-GAAP自動判定や自動snapshot・索引への採用は未対応です。[US要約指標のテスト](../../test/us-gaap-summary-metrics.test.ts)で境界を確認しています。企業拡張タグは未対応で、銀行・保険専用タグを一般事業会社タグへ推測対応しません。
 
 候補タグの順序は辞書の配列で定義します。指定基準・期間・scopeに適合する最初の候補で判定を終えます。
 **後続候補との値の照合や、不採用理由の網羅的監査ではありません。** `evidence` は探索時点までのfactと理由です。

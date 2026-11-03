@@ -389,3 +389,64 @@ it("任意の訂正対象を既存DEIのnamespace/context検査で捕捉し、�
       ).status,
     ).toBe("unresolved");
 });
+
+describe("外国会社の日本基準様式", () => {
+  it.each([
+    { form: "第八号様式", periodCode: "FY", currentEnd: "2026-03-31" },
+    { form: "第九号の三様式", periodCode: "HY", currentEnd: "2025-09-30" },
+  ])("$formを基準・issuer・実期間から認識し、USD/JPY混在は採用しない", (options) => {
+    const foreign =
+      '<xbrli:unit id="foreign-money"><xbrli:measure>iso4217:USD</xbrli:measure></xbrli:unit>' +
+      ["CurrentAssets", "CurrentLiabilities", "Liabilities"]
+        .map(
+          (tag) =>
+            "<jppfs_cor:" +
+            tag +
+            ' contextRef="arbitrary-instant" unitRef="foreign-money" decimals="0">999</jppfs_cor:' +
+            tag +
+            ">",
+        )
+        .join("") +
+      ["CostOfSales", "SellingGeneralAndAdministrativeExpenses"]
+        .map(
+          (tag) =>
+            "<jppfs_cor:" +
+            tag +
+            ' contextRef="InterimDuration" unitRef="foreign-money" decimals="0">999</jppfs_cor:' +
+            tag +
+            ">",
+        )
+        .join("");
+    const source = xml({ ...options, durationId: "InterimDuration", extra: foreign });
+    const selected = resolve(source, "FOREIGN");
+    expect(selected).toMatchObject({
+      status: "selected",
+      metadata: {
+        accountingStandard: "J-GAAP",
+        scope: "Consolidated",
+        period: { startDate: "2025-04-01", endDate: options.currentEnd },
+        contexts: { duration: ["InterimDuration"], instant: ["arbitrary-instant"] },
+      },
+    });
+    const result = auto(source, { docID: "FOREIGN" });
+    expect(result.status).toBe("resolved");
+    if (result.status !== "resolved" || result.accountingStandard !== "J-GAAP") throw Error();
+    expect(result.balanceSheet.status).toBe("created");
+    expect(result.details.status).toBe("created");
+    if (result.balanceSheet.status === "created")
+      for (const value of Object.values(result.balanceSheet.snapshot.selections))
+        expect(value.status).toBe("ambiguous");
+    if (result.details.status === "created")
+      for (const value of Object.values(result.details.snapshot.selections))
+        expect(value.status).toBe("ambiguous");
+  });
+  it.each([
+    { form: "第八号様式", periodCode: "HY", currentEnd: "2025-09-30" },
+    { form: "第九号の三様式", periodCode: "FY" },
+    { form: "第八号様式", standard: "IFRS" },
+    { form: "第九号の三様式", periodCode: "HY", currentEnd: "2025-09-30", entity: "E54321-000" },
+    { form: "第三号様式", periodCode: "FY40" },
+  ])("形式/期間/基準/issuerの不一致を推測補正しない: %j", (options) => {
+    expect(resolve(xml(options), "FOREIGN").status).toBe("unresolved");
+  });
+});
