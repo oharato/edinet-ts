@@ -29,6 +29,12 @@
 
 「値なし」と「0円」は別の状態です。
 
+## 図の読み方
+
+以下のER図は主要な業務テーブルのキーを示し、format表や構築jobの表、JSONの全項目は省略します。PKはDDLの主キーです。複合主キーでは複数の列へPKを付けています。
+
+点線は保存・読取処理が照合する**論理参照**です。ここに示す4組のDDLには `FOREIGN KEY` 制約はありません。SQLの外部キーが参照先の存在を自動保証する図ではなく、内容hash・親子の件数・JSON/SQL列の一致をSDKが検査します。DBをまたぐ参照も設定・manifest・原本hashで結び、SQLで直接joinする前提にはしません。
+
 ## 1. 原本：提出されたXMLそのものを残す
 
 原本SQLiteには、書類の一覧・観測履歴と、取得したXMLを保存します。圧縮形式ではXMLはgzip圧縮したBLOBです。内容hash `H1` は展開後のXMLのbyte列に対するSHA-256です。
@@ -38,6 +44,28 @@
 | `archive_observations` | 書類ID、会社、訂正元の書類ID、いつその一覧情報を確認したか |
 | `archive_sources`      | 書類ID、原本をいつから利用できたか、XML内容hashなどの情報  |
 | `archive_contents`     | XML内容hashとXML本体                                       |
+
+```mermaid
+erDiagram
+    archive_observations {
+        string id PK
+        string doc_id
+        string parent_doc_id "親の書類ID・NULL可"
+    }
+    archive_sources {
+        string id PK
+        string doc_id
+        string body "JSON内のsourceSha256が原本hash"
+    }
+    archive_contents {
+        string sha256 PK "XML byte列のhash"
+        blob xml
+    }
+    archive_observations }o..o{ archive_sources : "同じdoc_idを照合"
+    archive_contents |o..o{ archive_sources : "sha256 = body.sourceSha256"
+```
+
+同じ書類に複数の一覧観測・原本宣言を持てます。宣言だけ保存され、XML内容がまだない場合もあります。訂正元の `parent_doc_id` は観測の一意キーではなく、親の観測が未取得の場合もあるため、外部キーではありません。原本宣言の `sha256` 列は宣言JSONの検査用で、XML内容hashとは別です。
 
 例を縮めると次の関係です。
 
@@ -57,6 +85,28 @@ XMLから値・期間・単位・出典を取り出して保存します。
 | `parsed_extractions` | 解析キー、書類ID、原本hash、解析日時、成功／失敗、結果全体のJSON |
 | `parsed_rows`        | 解析キーごとの財務行。会社・基準・期間・連結区分など             |
 | `parsed_values`      | 財務行ごとの指標値。原文字列・検索用数値・状態・理由・出典など   |
+
+```mermaid
+erDiagram
+    parsed_extractions {
+        string id PK "解析キーK1"
+        string doc_id
+        string source_sha256
+    }
+    parsed_rows {
+        string extraction PK "parsed_extractions.idへの論理参照"
+        string row_id PK
+    }
+    parsed_values {
+        string extraction PK
+        string row_id PK
+        string metric_id PK
+    }
+    parsed_extractions ||..o{ parsed_rows : "id = extraction"
+    parsed_rows ||..|{ parsed_values : "extractionとrow_id"
+```
+
+解析失敗や採用可能なgroupがない結果では、解析記録だけで財務行がないことがあります。作成された財務行は1件以上の指標選択を持ちます。原本への参照は `doc_id` と `source_sha256` で照合する論理参照です。同一内容を異なる時刻に取得した原本宣言と、解析結果のキーは別物です。
 
 解析キー `K1` は、書類ID・原本hash・解析版・対応表版・source commit・対象項目から決まります。
 
@@ -90,6 +140,28 @@ XMLから値・期間・単位・出典を取り出して保存します。
 | `financial_rows`        | その世代に採用した財務行                         |
 | `financial_values`      | その世代の財務行に属する指標値                   |
 
+```mermaid
+erDiagram
+    financial_generations {
+        string id PK "世代G1"
+        string body "入力・選択・来歴のmanifest"
+    }
+    financial_rows {
+        string generation PK
+        string row_id PK
+        string doc_id
+    }
+    financial_values {
+        string generation PK
+        string row_id PK
+        string metric_id PK
+    }
+    financial_generations ||..o{ financial_rows : "id = generation"
+    financial_rows ||..|{ financial_values : "generationとrow_id"
+```
+
+対象会社に採用行がない場合もあり、世代の存在と全社・全項目の利用可能は別です。解析済みSQLiteと検索DuckDBの間には物理FKを張らず、固定入力・解析版・選択根拠と転記した内容を世代manifestで検査します。
+
 例えば世代 `G1` で書類D1を採用した場合です。
 
 **financial_rowsの例**
@@ -120,6 +192,30 @@ XMLから値・期間・単位・出典を取り出して保存します。
 | `publication_active`     | 現在の正式候補                 | C1                   |
 | `publication_history`    | 切替の順序と直前候補           | 1回目：参照なし→C1   |
 
+```mermaid
+erDiagram
+    publication_candidates {
+        string id PK "候補C1"
+        string body "世代G1・指紋・policy"
+    }
+    publication_history {
+        int sequence PK
+        string previous_id "NULL可"
+        string publication_id
+    }
+    publication_active {
+        int singleton PK "常に1・最大1行"
+        string publication_id
+        int sequence
+    }
+    publication_candidates ||..o{ publication_history : "id = publication_id"
+    publication_candidates |o..o{ publication_history : "id = previous_id"
+    publication_candidates ||..o| publication_active : "id = publication_id"
+    publication_history ||..o| publication_active : "sequence・最新の切替"
+```
+
+初期状態ではactiveも履歴も空です。公開後はactiveを最新の履歴1件と一致させます。候補の世代ID・索引の場所とhashはJSONや公開設定で結び付けて検査し、catalogから別ファイルの世代表への物理FKはありません。[catalog保存処理](../../src/db/financial-index-publication.ts)が候補・履歴・pointerの整合性を検査します。
+
 索引ファイルの場所は公開設定で指定します。catalogの候補と実際の索引が一致することを確認してから読みます。同ホストの本番設定と保存先は[本番運用](DUCK_FINANCIAL_PRODUCTION.md)を参照してください。
 
 ```text
@@ -140,6 +236,19 @@ XMLから値・期間・単位・出典を取り出して保存します。
 ```
 
 原本H1・解析K1・旧世代G1は保持します。切戻す場合は、対応するSDK・原本・照合記録を確認して正式参照を旧候補へ戻します。
+
+## 再利用とやり直しの境界
+
+ここで「再解析」はSDKの抽出結果を作る処理を指します。公開前の独立原本照合は別工程であり、下表を理由に省略しません。
+
+| 変わったもの                              | 取得・解析                                                                       | 世代・公開・reader                                                                                        |
+| ----------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 原本XMLのbyte列                           | 新原本が未保存なら取得。異なる内容hashとして残し、新しい解析キーで解析           | 新しい入力・採用結果を別世代にする。旧原本と旧解析結果を上書きしない                                      |
+| 解析版・source commit・対応表版・対象項目 | 同じ原本を再取得せず、変わったidentityの別解析キーで結果を作る                   | 新結果を使う別世代を構築し、検証後に別候補として公開                                                      |
+| cutoff・対象会社・訂正の採用条件          | 必要な原観測・原本が揃っていれば再取得不要。同じ解析identityの結果を再利用できる | 固定入力を変えた別世代を構築する。既存候補の入力を編集しない                                              |
+| 公開する候補                              | 検証済みの候補を使う切替自体は、原本取得やSDK抽出をやり直さない                  | 期待する直前候補・品質・照合記録を確認してcatalogを切替。既存readerは明示reloadで新候補を検査してから切替 |
+
+原本のキーと時刻は[原本アーカイブ](../../src/db/observed-financial-archive.ts)、解析identityは[解析済みStore](../../src/db/parsed-financial-store.ts)、構築入力の固定は[DuckDB cycle](../../src/pipeline/build-duck-financial-cycle.ts)、readerの切替は[公開reader](../../src/db/duck-financial-publication-reader.ts)に実装されています。再開・保持の検証例は[解析Storeのテスト](../../test/parsed-financial-store.test.ts)と[公開readerのテスト](../../test/duck-financial-publication-reader.test.ts)を参照してください。
 
 ## 「原本との独立照合」で比較しているもの
 

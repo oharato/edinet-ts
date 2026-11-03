@@ -1,18 +1,44 @@
 # ドキュメント案内
 
-最初にデータの形を確認する場合は[財務データ構造の説明](pipeline/FINANCIAL_DATA_MODEL.md)、コードの配置を確認する場合は[ソースコードの読み方](development/SOURCE_LAYOUT.md)を参照してください。
-
-使い始める方は[ルートREADME](../README.md)へ進んでください。このページでは、目的に合う詳しい資料を選べます。全ページを順番に読む必要はありません。
+初めて使う方は[READMEの最初の1回](../README.md#このリポジトリを試す)で、APIキー不要のサンプル解析を試してください。このページでは、目的に合う詳しい資料を選べます。全ページを順番に読む必要はありません。
 
 ## 最初に読むページ
 
 | 知りたいこと                     | 読むページ                                                                           |
 | -------------------------------- | ------------------------------------------------------------------------------------ |
 | 動かし方と最小のコード例         | [README](../README.md)                                                               |
+| CLIのmanifest/cohort入力と診断   | [最小JSON例](development/CLI_INPUT_EXAMPLES.md)                                      |
 | 使える機能と制約                 | [提供機能と制約](REQUIREMENTS.md)                                                    |
 | 連結・期間・出典などの言葉の意味 | [用語集](GLOSSARY.md)                                                                |
 | 内部の処理や値の選択規則         | [技術仕様](SPECIFICATIONS.md)                                                        |
 | 今できていることと残作業         | [実装状況](plans/IMPLEMENTATION_STATUS.md)・[今後の計画](plans/EDINET_TS_ROADMAP.md) |
+
+## 要求から設計・検証・運用へ読む
+
+この表の「正本」は、その内容を更新する場所です。まず要求・要件を確認し、仕様 → 構成 → データ → API/CLI → 検証 → 運用の順に進むと、目的と実装のつながりを追えます。進捗や過去の測定結果は、現行の契約と分けて読みます。
+
+| 資料の役割     | 正本・入口                                                                                                                                                                                                             | ここで確認すること                                                                                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 要求・要件     | [提供機能と制約](REQUIREMENTS.md)、将来の要求は[全体ロードマップ](plans/EDINET_TS_ROADMAP.md)                                                                                                                          | 対象利用者・目的・対象外、機能/非機能要件と受入条件。実装状況は[実装追跡](plans/IMPLEMENTATION_STATUS.md)で別に確認する             |
+| 仕様           | [技術仕様](SPECIFICATIONS.md)と下の領域別資料                                                                                                                                                                          | 入出力、値の選択、未取得・曖昧な結果の扱い。個別APIの詳細契約は領域別資料に置く                                                     |
+| アーキテクチャ | [3つの処理経路](SPECIFICATIONS.md#処理の全体像)、[ソースコードの読み方](development/SOURCE_LAYOUT.md)                                                                                                                  | 通信・メモリ内処理・保存の境界、機能ごとの責務、実関数の呼出し順                                                                    |
+| データ設計     | [財務データ構造](pipeline/FINANCIAL_DATA_MODEL.md)、[DDL定義の場所](development/SOURCE_LAYOUT.md#テーブル定義を探す)                                                                                                   | XMLの値と出典、原本・解析済みStore・検索世代・catalogの関係、保存形式と再利用の境界                                                 |
+| API/CLI        | [7つのAPIの責務比較](SPECIFICATIONS.md#条件を指定するapiと自動判定)、[CLI入力JSONと診断](development/CLI_INPUT_EXAMPLES.md)、[DuckDB CLI/API](pipeline/DUCK_FINANCIAL_CLI.md)                                          | 入口を選び、必要な入力・既定値・結果・エラーを調べる。初回の実行例は[README](../README.md)                                          |
+| テスト・受入   | [要件と関連テスト](REQUIREMENTS.md)、[テストの実行手順](../scripts/README.md#全体テスト)、[手動日次受入](pipeline/DUCK_FINANCIAL_MANUAL_DAILY_ACCEPTANCE.md)                                                           | 要求を何で確認するか、実行条件と成功条件、未検証の範囲。テスト成功と実運用の受入を区別する                                          |
+| 運用・復旧     | [DuckDB構築・再開](pipeline/DUCK_FINANCIAL_CYCLE.md)、[照合・正式切替](pipeline/DUCK_FINANCIAL_VERIFICATION.md)、[強制終了復旧](pipeline/DUCK_FINANCIAL_RECOVERY.md)、[保持条件](pipeline/DUCK_FINANCIAL_RETENTION.md) | 汎用の手順・排他・再開・切戻しと削除条件。特定ホストの設定・実施記録は[本番運用記録](pipeline/DUCK_FINANCIAL_PRODUCTION.md)へ分ける |
+| 設計判断       | [ローカル配布ADR](adr/0001-local-distribution.md)、[SQLite/DuckDBの構成判断](plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)、[外部データの採否](plans/EXTERNAL_DATA_DECISIONS.md)                                         | なぜその構成・出典・配布方式を選んだか。日付付き判断と後続の変更を区別し、現行の仕様・手順へ進む                                    |
+
+### API/CLIの細かい条件を探す
+
+入力と返値は[領域別API](#財務値の抽出計算)へ進みます。採用されなかった理由は、たとえば[指標選択の結果と理由](financial/METRIC_SELECTION.md#結果と理由)で確認できます。CLIの引数・省略時の値は使用する版の `edinet-ts <command> --help`、manifest/cohortの形と入力エラーの直し方は[CLI入力例](development/CLI_INPUT_EXAMPLES.md)、索引検索の件数・並び順の既定値や非0終了は[DuckDB CLI](pipeline/DUCK_FINANCIAL_CLI.md)で確認してください。個別APIが返す「値がない・曖昧」と、入力不正や処理失敗のエラーは同じ意味ではありません。
+
+通信・書込みの有無は[処理経路とAPI責務表](SPECIFICATIONS.md)を入口に、取得の時間制限・中断・保存保護は[取得仕様](pipeline/DOWNLOAD_SAFETY.md)、DB書込みと再開は[アーカイブ](pipeline/OBSERVED_FINANCIAL_ARCHIVE.md)・[解析済みStore](pipeline/PARSED_FINANCIAL_STORE.md)・[構築手順](pipeline/DUCK_FINANCIAL_CYCLE.md)で確認します。解析やsnapshot作成だけでDB保存まで行うとは限りません。
+
+### 汎用手順と特定環境の記録を分ける
+
+環境共通の条件は[実行環境](development/RUNTIME_AND_SQLITE.md)、実際の固定SDK・絶対パス・service/timer・更新履歴は[本番運用記録](pipeline/DUCK_FINANCIAL_PRODUCTION.md)にあります。別環境へ導入するときは汎用手順の入力と前提から設定し、ホスト固有のパスや初回移行policyをそのまま流用しません。日付付きの検証件数は、その入力・版での結果です。
+
+設計判断の現行の帰結は、配布ADRから[固定配布物の手順](development/nuc7-local-artifacts.md)、SQLite/DuckDB計画から[現行の構成](SPECIFICATIONS.md#current-storage)へ進みます。[外部データ採否](plans/EXTERNAL_DATA_DECISIONS.md)の古い候補・未取得という記載は当時の判断を保持しているため、後続の[残作業](plans/REMAINING_WORK.md)と[実装追跡](plans/IMPLEMENTATION_STATUS.md)、対象領域の現行仕様も確認してください。
 
 ## 目的別の読み順
 
@@ -35,7 +61,7 @@ flowchart LR
     Quality --> Publish[公開する世代を切り替え]
 ```
 
-対応する資料は、[日別一覧](pipeline/FINANCIAL_DOCUMENT_SYNC.md) → [原本取得](pipeline/FINANCIAL_SOURCE_JOB.md) → [アーカイブ](pipeline/OBSERVED_FINANCIAL_ARCHIVE.md) → [索引構築](pipeline/FINANCIAL_INDEX_BUILD.md) → [品質確認](pipeline/FINANCIAL_INDEX_QUALITY.md) → [公開](pipeline/FINANCIAL_INDEX_PUBLICATION.md)です。
+現行の継続運転は、[日別一覧](pipeline/FINANCIAL_DOCUMENT_SYNC.md) → [原本取得](pipeline/FINANCIAL_SOURCE_JOB.md) → [アーカイブ](pipeline/OBSERVED_FINANCIAL_ARCHIVE.md) → [解析済みStoreとDuckDB構築](pipeline/DUCK_FINANCIAL_CYCLE.md) → [原本照合・正式切替](pipeline/DUCK_FINANCIAL_VERIFICATION.md) → [非同期reader](pipeline/DUCK_FINANCIAL_SEARCH_INDEX.md)へ進みます。[品質分類](pipeline/FINANCIAL_INDEX_QUALITY.md)と[同期SQLite索引](pipeline/FINANCIAL_SEARCH_INDEX.md)・[公開API](pipeline/FINANCIAL_INDEX_PUBLICATION.md)も継続提供しています。
 
 ## 資料の置き場所
 
@@ -116,6 +142,7 @@ flowchart LR
 - [必要な書類だけを財務DBへ取り込む](pipeline/FINANCIAL_INCREMENTAL_IMPORT.md)
 - [母集団全件の分割構築・再開・世代集約](pipeline/FINANCIAL_INDEX_BUILD.md)
 - [品質条件付きの財務世代切替と復帰](pipeline/FINANCIAL_INDEX_PUBLICATION.md)
+- [DuckDB本番運用・正式catalog・切戻し](pipeline/DUCK_FINANCIAL_PRODUCTION.md)
 - [DuckDB日次処理の連続2日手動検証](pipeline/DUCK_FINANCIAL_MANUAL_DAILY_ACCEPTANCE.md)
 - [DuckDB移行後の保存物と整理条件](pipeline/DUCK_FINANCIAL_RETENTION.md)
 - [固定財務索引の品質集計](pipeline/FINANCIAL_INDEX_QUALITY.md)
@@ -131,6 +158,8 @@ flowchart LR
 ## 開発・検証・配布
 
 実行環境、原本照合、タクソノミ更新、固定配布物の手順です。
+
+最初にデータの形を確認する場合は[財務データ構造の説明](pipeline/FINANCIAL_DATA_MODEL.md)、コードの配置を確認する場合は[ソースコードの読み方](development/SOURCE_LAYOUT.md)を参照してください。
 
 - [手元の原本で取り込みから版比較まで確認する](development/OFFLINE_FINANCIAL_VERIFICATION.md)
 - [実際の決算書と数値を照らし合わせた結果](development/REAL_DATA_VALIDATION.md)
@@ -156,7 +185,5 @@ flowchart LR
 ## 文書を更新するとき
 
 文書を追加するときは、まず同じ目的の既存資料へ追記できるか確認します。使い方は領域別資料、現在の進捗は実装追跡、完了した作業の経緯は履歴に置き、同じ説明を複数箇所へコピーしません。
-
-- [DuckDB本番運用・正式catalog・切戻し](pipeline/DUCK_FINANCIAL_PRODUCTION.md)
 
 今後の作業順は[計画の残作業と優先順位](plans/REMAINING_WORK.md)を参照してください。実装済み・実データ検証待ち・正式反映待ち・利用者の手動実施を分けて管理しています。

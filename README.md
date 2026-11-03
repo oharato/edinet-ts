@@ -30,15 +30,24 @@ flowchart LR
 
 このチェックアウトのコードは **Node.js 26.13.0以上 / npm 12.2.1以上** を使います。Pythonの準備は不要です。SQLiteにはNode標準の `node:sqlite` を使用します。[環境と既存DBの互換性](docs/development/RUNTIME_AND_SQLITE.md)も確認してください。
 
-公開パッケージのインストール:
+### npm配布版を使う
+
+空の作業ディレクトリでインストールし、そのディレクトリからCLIを起動します。
 
 ```sh
 npm install edinet-ts
+npx edinet-ts --help
+# 自分で用意した原本を解析
+npx edinet-ts parse --file ./report.xbrl --pretty
 ```
+
+2026-11-03にnpm 1.1.17でCLIのhelp・原本解析と下の最初のTypeScript例を確認しました。保存JSONの検索（`screen`）など、リポジトリ版にだけある機能もあります。
 
 このREADMEはリポジトリの現行コードを説明しています。未リリースの機能を含むため、npm配布版で利用できる機能・必要環境とは異なる場合があります。[実装・検証・配布の状況](docs/plans/IMPLEMENTATION_STATUS.md)を確認してください。
 
-このリポジトリのコードを使う場合は、リポジトリ直下で次を実行します。
+### このリポジトリを試す
+
+リポジトリ直下で次を実行します。
 
 ```sh
 npm ci
@@ -46,11 +55,23 @@ npm run build
 node dist/cli.js --help
 ```
 
-以下のCLI例は、このビルド済みコードを使用します。
+まず同梱の過去のサンプルを解析します。APIキー・DB・自前の原本は不要です。
+
+```sh
+node dist/cli.js parse --file test/test_data/CJ_2371_kakakucom.xbrl --pretty
+```
+
+出力には次の値が含まれます。
+
+```json
+{ "netSales": 45089432000, "operatingIncome": 21161251000 }
+```
+
+これは同梱サンプルの記載で、現在の業績ではありません。このfixtureはリポジトリ用で、npm配布版には同梱していません。以下のCLI例もリポジトリでビルドしたコードを使います。
 
 ## 保存済みの書類を読む
 
-XBRLファイルがあれば、APIキーやデータベースの準備は不要です。
+XBRLファイルがあれば、APIキーやデータベースの準備は不要です。次の例を `read-report.mts` に保存し、Nodeで `node read-report.mts` と実行します。npm利用者はインストールした作業ディレクトリ、リポジトリ利用者はビルド済みのリポジトリ直下へ保存してください。
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -104,7 +125,15 @@ if (result.status === "selected") {
 
 ## 書類を取得する
 
-EDINETから取得する場合はAPIキーが必要です。CLIでは、環境変数 `EDINET_API_KEY` または `.env` に設定します。
+EDINETから取得する場合はAPIキーが必要です。CLIでは環境変数 `EDINET_API_KEY`、または作業ディレクトリの `.env` に設定します。
+
+```sh
+export EDINET_API_KEY="自分のAPIキー"
+# まず1社の最新書類を探し、取得して解析
+node dist/cli.js get --ticker 7203 --save-dir ./downloads --pretty
+```
+
+この1社の取得にseedは必須ではありません。ticker指定の `get` はローカル一覧DBを優先し、見つからなければ既定90日をAPIで探索します。探索幅は `--lookback` で変更できますが、ローカルDB検索には適用されません。tickerとdateは併用しません。`download` は該当書類がなければ `Not found`、`get --ticker` は探索期間で見つからなければ `No document found` と表示します。日付・書類種別・探索幅を確認してください。通信・解析の失敗があれば終了コード1を返します。
 
 ```sh
 # 指定日の書類をダウンロード
@@ -139,7 +168,7 @@ console.log(path); // 見つからなければnull
 
 ### 過去の書類を探すための一覧DB
 
-`getFinancialHistory()` と証券コード指定のCLI `get` は、ローカルの書類一覧DBを使います。リポジトリのビルドとAPIキーの設定後、一覧を取得します。
+複数年度の履歴検索をする場合は、`getFinancialHistory()` などが参照するローカル一覧DBを用意します。これは最初の1社を取得する手順より広い範囲を収集する操作です。リポジトリのビルドとAPIキーの設定後、必要な場合だけ実行してください。
 
 ```sh
 npx tsx scripts/seed.ts
@@ -168,6 +197,8 @@ try {
 
 ## 保存済みの値を検索する
 
+`parse` の出力だけでは `screen` の入力にはなりません。書類ID・期間・scopeなどを確認し、出典付きsnapshotを作って保存します。[原本から検索入力を作る手順](docs/financial/EDINET_DB_COMPARISON.md#ローカルファイルからの使用例)を参照してください。
+
 CLI `screen` は、利用者が用意した `FinancialSnapshot[]` のJSONを読み、複数社に条件・並べ替え・件数制限を適用します。検索中にEDINETからデータを集める処理はありません。
 
 ```sh
@@ -176,13 +207,15 @@ node dist/cli.js screen --file ./snapshots.json \
   --sort-by freeCashFlow --limit 20 --pretty
 ```
 
-この例は「営業利益率10%以上」を条件に、FCF順で最大20件を返します。利益率は `0.1 = 10%` です。計算には、同じ期間・連結区分・通貨の値であることを確認できる出典が必要です。[入力JSONの作り方と検索項目](docs/financial/EDINET_DB_COMPARISON.md)を参照してください。
+この例は「営業利益率10%以上」を条件に、FCF順で最大20件を返します。利益率は `0.1 = 10%` です。計算には、同じ期間・連結区分・通貨の値であることを確認できる出典が必要です。[入力JSONの作り方と検索項目](docs/financial/EDINET_DB_COMPARISON.md#ローカルファイルからの使用例)を参照してください。
 
 流動比率、財務明細、前年比などは専用APIを使います。対応する入力形式はAPIごとに異なるため、[財務機能の一覧](docs/README.md#財務値の抽出計算)から選んでください。
 
 ## SQLiteとDuckDBで保存・検索する
 
 原本・取得履歴・解析済み結果・公開catalogはSQLite、検索用の世代はDuckDBへ保存します。既存の同期SQLite APIも利用できます。具体的な行と値の例は[財務データ構造の説明](docs/pipeline/FINANCIAL_DATA_MODEL.md)を参照してください。
+
+以下は検証済み検索DBを構築した後の読取例です。空の環境では先に[固定原本からの構築手順](docs/pipeline/DUCK_FINANCIAL_CYCLE.md)を確認し、必要な原本・解析Store・検索世代を用意してください。DBや世代は同梱されていません。
 
 ```ts
 import { DuckFinancialSearchIndex } from "edinet-ts";
@@ -208,7 +241,7 @@ node dist/cli.js screen-duck-financial-index --db data/search.duckdb --cohort co
 node dist/cli.js duck-financial-publication-status --catalog data/publication.sqlite --db data/search.duckdb
 ```
 
-[読取CLI](docs/pipeline/DUCK_FINANCIAL_CLI.md)、[非同期reader](docs/pipeline/DUCK_FINANCIAL_SEARCH_INDEX.md)、[独立原本照合gate](docs/pipeline/DUCK_FINANCIAL_VERIFICATION.md)、[移行計画・未完了事項](docs/plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)を参照してください。2026-11-03に同ホストの正式catalogと日次準備サービスをDuckDB経路へ切り替えました。初期公開は2026-10-30時点の固定snapshotです。実連続2日の日次運転は[手動手順](docs/pipeline/DUCK_FINANCIAL_MANUAL_DAILY_ACCEPTANCE.md)で確認します。
+[読取CLI](docs/pipeline/DUCK_FINANCIAL_CLI.md)、[非同期reader](docs/pipeline/DUCK_FINANCIAL_SEARCH_INDEX.md)、[独立原本照合gate](docs/pipeline/DUCK_FINANCIAL_VERIFICATION.md)、[移行計画・未完了事項](docs/plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)を参照してください。特定ホストの切替・検証結果と手動受入は[本番運用記録](docs/pipeline/DUCK_FINANCIAL_PRODUCTION.md)で管理します。
 
 固定原本からの作成は `node dist/cli.js build-duck-financial-cycle --config cycle.json --max-documents 100 --max-companies 100 --max-batches 10` で分割再開できます。共有の解析済みSQLiteを再利用し、候補には構築用の固定snapshotを保存します。出力先・共有Storeのflock排他と既存相当の容量余裕を要求します。構築だけではmetadata最新性や原本照合の合格にせず、正式切替は行いません。[設定と運用](docs/pipeline/DUCK_FINANCIAL_CYCLE.md)を参照してください。
 

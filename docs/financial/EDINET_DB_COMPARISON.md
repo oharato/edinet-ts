@@ -2,6 +2,130 @@
 
 保存済み財務値の検索機能と、その入力形式・計算指標・制約を説明します。外部サービスとの比較は調査時点の記録として読み、現行機能は各APIの資料で確認してください。
 
+## ローカルファイルからの使用例
+
+`parse` の出力は指標の値だけで、検索に必要な書類情報・期間・出典を揃えたsnapshotではありません。まず同梱の過去fixtureでsnapshot作成から検索まで試します。この例を `create-snapshots.mts` としてビルド済みリポジトリ直下に保存し、`node create-snapshots.mts` と実行してください。APIキーやDBは不要です。
+
+証券コード・期末・提出日はfixtureのDEI/表紙にある値です。元のEDINET書類IDを特定する証拠はこの例に含めないため、`docID` は学習用のローカル識別子としています。自分の原本を使う場合は、ファイルパスと書類ID・コード・期末・提出日・通期区分を実際の資料に合わせてください。`getFinancialHistory()` はcache欠損時に通信するため、完全オフラインではparserを直接使います。
+
+```ts
+import { readFileSync, writeFileSync } from "node:fs";
+import { EdinetXbrlParser, screenFinancialSnapshots, type FinancialSnapshot } from "edinet-ts";
+
+const parsed = new EdinetXbrlParser().parse(
+  readFileSync("test/test_data/CJ_2371_kakakucom.xbrl", "utf8"),
+);
+const extracted = parsed.getKeyMetricsWithSources();
+const snapshots: FinancialSnapshot[] = [
+  {
+    secCode: "23710",
+    docID: "local-kakakucom-fixture",
+    docTypeCode: "120",
+    periodEnd: "2017-03-31",
+    submitDate: "2017-06-21",
+    periodType: "annual", // 元書類が通期であることを確認
+    ...extracted, // metrics と metricSources を一緒に保存
+  },
+];
+writeFileSync("./snapshots.json", JSON.stringify(snapshots));
+const result = screenFinancialSnapshots(snapshots, {
+  conditions: [{ metric: "operatingMargin", operator: "gte", value: 0.1 }],
+  sortBy: "freeCashFlow",
+  order: "desc",
+  limit: 20,
+});
+console.log(result);
+```
+
+作成したJSONを、同じリポジトリのビルド済みCLIで検索します。npm 1.1.17は `screenFinancialSnapshots()` / CLI `screen` を提供していないため、この例にはリポジトリ版を使ってください。
+
+```sh
+node dist/cli.js screen --file ./snapshots.json \
+  --conditions '[{"metric":"operatingMargin","operator":"gte","value":0.1}]' \
+  --sort-by freeCashFlow --order desc --as-of 2024-12-31 --limit 20 --pretty
+```
+
+入力JSONや出力は利用者のローカルデータとして保持し、Gitへ追加しない。新しい`screen`の処理はネットワーク・SQLite・認証キーを使用しない。
+
+## 保存JSONの検索API
+
+`src/financial/screening/screen-financial-snapshots.ts` の `calculateFinancialMetrics`、`screenFinancialSnapshots`、`FINANCIAL_SCREENING_METRICS` をトップレベルからexport。CLI `screen` は同じ関数を使用する。
+
+`FinancialHistory.metrics` は実際の返値に合わせ `KeyMetrics` 型にした。既存KeyMetricsの値の選択規則・DBスキーマ・ダウンロード動作は維持する。
+
+追加API `getKeyMetricsWithSources()` は実際に選んだfactのタグ/context・期間・scope・単位を返す。パーサーはISO 4217名前空間URIから単純通貨単位を解決し、unitRefの名前からは推測しない。
+
+### 指標辞書
+
+全21項目はnumber（欠損はundefined、JSON入力のnullも欠損扱い）。全てfilter/sort可。
+
+D=対象期間のフロー、I=期末、S=有報掲載サマリー。数値は自動的に単位変換しない。
+
+標準的な円建てXBRLでは金額=円、EPS/BPS/配当=円/株。率は小数（0.1=10%）。
+
+財務金額を百万円、年収を万円、率を百分率で扱うEDINET DB UIとは区別する。
+
+| edinet-ts項目            | 意味/単位                 | 期間 | ソース・式                                                      |
+| ------------------------ | ------------------------- | ---- | --------------------------------------------------------------- |
+| netSales                 | 売上高/収益・円           | D    | KeyMetrics、J-GAAP/IFRSサマリー                                 |
+| operatingIncome          | 営業利益・円              | D    | KeyMetrics、標準/IFRSタグ。IFRS独自タグは欠損し得る             |
+| ordinaryIncome           | 経常利益・円              | D    | KeyMetrics、J-GAAP。IFRSでは通常未定義                          |
+| netIncome                | 親会社帰属利益・円        | D    | KeyMetrics、J-GAAP/IFRS                                         |
+| netAssets                | 純資産/IFRS親会社持分・円 | I    | KeyMetrics、会計基準で意味差あり                                |
+| totalAssets              | 総資産・円                | I    | KeyMetrics、J-GAAP/IFRS                                         |
+| operatingCashFlow        | 営業CF・円                | D    | KeyMetrics、J-GAAP/IFRS                                         |
+| investingCashFlow        | 投資CF・円                | D    | 同上                                                            |
+| financingCashFlow        | 財務CF・円                | D    | 同上                                                            |
+| cashAndEquivalents       | 現金同等物・円            | I    | KeyMetrics。現預金BS勘定とは別                                  |
+| earningsPerShare         | EPS・円/株                | D/S  | KeyMetrics、分割調整の統一なし                                  |
+| bookValuePerShare        | BPS・円/株                | I/S  | 同上                                                            |
+| equityToTotalAssetsRatio | 自己資本比率・小数        | I/S  | 掲載値、純資産から再計算しない                                  |
+| rateOfReturnOnEquity     | ROE・小数                 | D/S  | 掲載値。平均自己資本からの計算ROEとは別                         |
+| priceEarningsRatio       | PER・倍                   | S    | 掲載値のみ。現在株価から計算しない                              |
+| payoutRatio              | 配当性向・小数            | D/S  | 掲載値                                                          |
+| numberOfIssuedShares     | 発行済株式数・株          | I/S  | 掲載値。自己株控除/分割調整を行わない                           |
+| dividendPaidPerShare     | 一株配当・円/株           | D/S  | 掲載値                                                          |
+| operatingMargin          | 営業利益率・小数          | D    | operatingIncome / netSales                                      |
+| netMargin                | 純利益率・小数            | D    | netIncome / netSales                                            |
+| freeCashFlow             | FCF・円                   | D    | operatingCashFlow + investingCashFlow（投資CFを符号のまま加算） |
+
+欠損理由: 既存18項目はタグ欠損、会計基準差、対象context不在などをundefinedで返し、理由コードはまだない。追加比率は分子/分母欠損、非有限値、売上0以下でundefined。
+
+FCFは片側欠損/非有限値/計算overflowでundefined。加えて両値の来歴（contextRef・期間開始/終了・scope・ISO 4217通貨）が揃い、完全一致する場合だけ計算する。
+
+来歴不明/不一致やsnapshotの期末不一致、periodType不明は計算せず、`unavailableDerivedMetrics`に項目名を返す。欠損を0で代用しない。
+
+連結範囲: `getKeyMetrics` の金額/CFは連結scopeを選んだ後、タグ欠落を理由に単体へ降りない。一株/比率等は既存の互換探索で単体も使う。
+
+さらにDuration/Instantで選択scopeが異なり得る。このため新規計算は同一context・期間・scope・通貨を検証できるPL同士/CF同士のみに限定する。
+
+`getKeyMetrics()`だけの値では計算しない。新APIでも会計基準・年次/YTD分類・分割調整の統一や欠損理由コードは未整備。
+
+単位が複合形式の場合や単純通貨単位の名前空間を解決できない場合は通貨未確定となる。
+
+### 入力と選択規則
+
+`FinancialSnapshot[]` は `secCode, docID, docTypeCode, periodEnd, submitDate, metrics` が必要。
+派生値を利用するには `metricSources`（新APIから取得）と `periodType`（annual/ytd/quarterly）も指定する。選択された銘柄間で、既知のperiodTypeが異なる場合、または条件・並べ替えで利用する指標（派生値ならその元指標）の既知のscope/通貨が異なる場合はエラーとする。
+
+来歴不明のraw18値の検索は互換入力として許すが、数値比較に限られ、意味的に比較可能とは検証できない。来歴で期間長を把握できる場合、比較対象の長さが7日を超えて異なると拒否する（閏年・52/53週の小さな差は許容）。
+
+会計基準、変則決算の経済的比較可能性、分割調整、raw値の不明なscope/単位は自動補完できない。書類種別だけで年次/YTDを推測せず、periodTypeは元書類に従って指定する。
+
+入力は各書類につき1件とする。同一docIDの矛盾する複数snapshotは渡さない。
+
+1. 証券コード4桁は末尾0を補う（英字を含む銘柄にも対応）。既定書類種別は120、`docTypeCode`で切替可能。
+2. `asOf`があれば提出日と決算日の両方を上限で制限。日付指定は当日全体、時刻指定は同じローカル時刻表現で比較。タイムゾーン付き日時は受け付けない。時刻指定cutoffの当日に提出日しか保存されていない行は、未来情報混入を避けるため除外する。日付指定なら当日行を含む。過去時点の訂正反映前データが保存されている保証はなく、厳密なpoint-in-timeデータベースではない。
+3. 銘柄ごとにperiodEnd→submitDate→docIDの降順で最新1件を選ぶ。日付のみのsubmitDateは同日の00:00:00相当で順位付け。訂正有報130を120へ自動統合しない。
+4. その最新1件に条件をAND適用。欠損値は条件不一致。条件なしの一覧/順位取得も可能（EDINET DB APIとの差）。
+5. `sortBy`指定時は既定desc、欠損は昇降順とも末尾。同値とsort未指定は証券コード昇順。offset→limit。limit=0は空配列、未指定は全件（同APIと異なる）。
+
+JSONの数値文字列・非有限値、不正な日付/指標/演算子/負のlimit等はエラー。raw JSONの値を暗黙に単位変換しない。
+
+## 比較・実装経過の記録
+
+以下は記載日当時の比較・検証記録です。現行APIの入口と入力形式は上記を参照してください。
+
 調査日: 2026-10-22。基準コード: `oharato/edinet-ts` の `b2adab5`（PR #19 merge後）。
 本資料では単一銘柄の取得と、複数銘柄の検索を別々に評価する。比較・追加実装の記録は各記載日当時の状態であり、現在の全機能一覧は[文書索引](../README.md)を参照。下記の21指標辞書・入力仕様はこの検索APIの説明として読む。
 
@@ -85,119 +209,6 @@ EDINET DB は正規化済みの財務データサービス、edinet-ts はロー
 - `business_tags`は2026-08-17撤去、引数は受理されても無視。新機能の対象にしない。
 - 2026-10-21更新では本文解析由来の女性管理職/育休指標に配信停止の注意がある。構造化XBRLとの出所を混ぜない。
 - Freeでも全endpoint/fieldが使えるが100req/日。本作業はキー利用・認証API呼び出し・有料利用をしていない。
-
-## 今回追加した独立機能
-
-`src/financial/screening/screen-financial-snapshots.ts` の `calculateFinancialMetrics`、`screenFinancialSnapshots`、`FINANCIAL_SCREENING_METRICS` をトップレベルからexport。CLI `screen` は同じ関数を使用する。
-
-`FinancialHistory.metrics` は実際の返値に合わせ `KeyMetrics` 型にした。既存KeyMetricsの値の選択規則・DBスキーマ・ダウンロード動作は維持する。
-
-追加API `getKeyMetricsWithSources()` は実際に選んだfactのタグ/context・期間・scope・単位を返す。パーサーはISO 4217名前空間URIから単純通貨単位を解決し、unitRefの名前からは推測しない。
-
-### 指標辞書
-
-全21項目はnumber（欠損はundefined、JSON入力のnullも欠損扱い）。全てfilter/sort可。
-
-D=対象期間のフロー、I=期末、S=有報掲載サマリー。数値は自動的に単位変換しない。
-
-標準的な円建てXBRLでは金額=円、EPS/BPS/配当=円/株。率は小数（0.1=10%）。
-
-財務金額を百万円、年収を万円、率を百分率で扱うEDINET DB UIとは区別する。
-
-| edinet-ts項目            | 意味/単位                 | 期間 | ソース・式                                                      |
-| ------------------------ | ------------------------- | ---- | --------------------------------------------------------------- |
-| netSales                 | 売上高/収益・円           | D    | KeyMetrics、J-GAAP/IFRSサマリー                                 |
-| operatingIncome          | 営業利益・円              | D    | KeyMetrics、標準/IFRSタグ。IFRS独自タグは欠損し得る             |
-| ordinaryIncome           | 経常利益・円              | D    | KeyMetrics、J-GAAP。IFRSでは通常未定義                          |
-| netIncome                | 親会社帰属利益・円        | D    | KeyMetrics、J-GAAP/IFRS                                         |
-| netAssets                | 純資産/IFRS親会社持分・円 | I    | KeyMetrics、会計基準で意味差あり                                |
-| totalAssets              | 総資産・円                | I    | KeyMetrics、J-GAAP/IFRS                                         |
-| operatingCashFlow        | 営業CF・円                | D    | KeyMetrics、J-GAAP/IFRS                                         |
-| investingCashFlow        | 投資CF・円                | D    | 同上                                                            |
-| financingCashFlow        | 財務CF・円                | D    | 同上                                                            |
-| cashAndEquivalents       | 現金同等物・円            | I    | KeyMetrics。現預金BS勘定とは別                                  |
-| earningsPerShare         | EPS・円/株                | D/S  | KeyMetrics、分割調整の統一なし                                  |
-| bookValuePerShare        | BPS・円/株                | I/S  | 同上                                                            |
-| equityToTotalAssetsRatio | 自己資本比率・小数        | I/S  | 掲載値、純資産から再計算しない                                  |
-| rateOfReturnOnEquity     | ROE・小数                 | D/S  | 掲載値。平均自己資本からの計算ROEとは別                         |
-| priceEarningsRatio       | PER・倍                   | S    | 掲載値のみ。現在株価から計算しない                              |
-| payoutRatio              | 配当性向・小数            | D/S  | 掲載値                                                          |
-| numberOfIssuedShares     | 発行済株式数・株          | I/S  | 掲載値。自己株控除/分割調整を行わない                           |
-| dividendPaidPerShare     | 一株配当・円/株           | D/S  | 掲載値                                                          |
-| operatingMargin          | 営業利益率・小数          | D    | operatingIncome / netSales                                      |
-| netMargin                | 純利益率・小数            | D    | netIncome / netSales                                            |
-| freeCashFlow             | FCF・円                   | D    | operatingCashFlow + investingCashFlow（投資CFを符号のまま加算） |
-
-欠損理由: 既存18項目はタグ欠損、会計基準差、対象context不在などをundefinedで返し、理由コードはまだない。追加比率は分子/分母欠損、非有限値、売上0以下でundefined。
-
-FCFは片側欠損/非有限値/計算overflowでundefined。加えて両値の来歴（contextRef・期間開始/終了・scope・ISO 4217通貨）が揃い、完全一致する場合だけ計算する。
-
-来歴不明/不一致やsnapshotの期末不一致、periodType不明は計算せず、`unavailableDerivedMetrics`に項目名を返す。欠損を0で代用しない。
-
-連結範囲: `getKeyMetrics` の金額/CFは連結scopeを選んだ後、タグ欠落を理由に単体へ降りない。一株/比率等は既存の互換探索で単体も使う。
-
-さらにDuration/Instantで選択scopeが異なり得る。このため新規計算は同一context・期間・scope・通貨を検証できるPL同士/CF同士のみに限定する。
-
-`getKeyMetrics()`だけの値では計算しない。新APIでも会計基準・年次/YTD分類・分割調整の統一や欠損理由コードは未整備。
-
-単位が複合形式の場合や単純通貨単位の名前空間を解決できない場合は通貨未確定となる。
-
-### 入力と選択規則
-
-`FinancialSnapshot[]` は `secCode, docID, docTypeCode, periodEnd, submitDate, metrics` が必要。
-派生値を利用するには `metricSources`（新APIから取得）と `periodType`（annual/ytd/quarterly）も指定する。選択された銘柄間で、既知のperiodTypeが異なる場合、または条件・並べ替えで利用する指標（派生値ならその元指標）の既知のscope/通貨が異なる場合はエラーとする。
-
-来歴不明のraw18値の検索は互換入力として許すが、数値比較に限られ、意味的に比較可能とは検証できない。来歴で期間長を把握できる場合、比較対象の長さが7日を超えて異なると拒否する（閏年・52/53週の小さな差は許容）。
-
-会計基準、変則決算の経済的比較可能性、分割調整、raw値の不明なscope/単位は自動補完できない。書類種別だけで年次/YTDを推測せず、periodTypeは元書類に従って指定する。
-
-入力は各書類につき1件とする。同一docIDの矛盾する複数snapshotは渡さない。
-
-1. 証券コード4桁は末尾0を補う（英字を含む銘柄にも対応）。既定書類種別は120、`docTypeCode`で切替可能。
-2. `asOf`があれば提出日と決算日の両方を上限で制限。日付指定は当日全体、時刻指定は同じローカル時刻表現で比較。タイムゾーン付き日時は受け付けない。時刻指定cutoffの当日に提出日しか保存されていない行は、未来情報混入を避けるため除外する。日付指定なら当日行を含む。過去時点の訂正反映前データが保存されている保証はなく、厳密なpoint-in-timeデータベースではない。
-3. 銘柄ごとにperiodEnd→submitDate→docIDの降順で最新1件を選ぶ。日付のみのsubmitDateは同日の00:00:00相当で順位付け。訂正有報130を120へ自動統合しない。
-4. その最新1件に条件をAND適用。欠損値は条件不一致。条件なしの一覧/順位取得も可能（EDINET DB APIとの差）。
-5. `sortBy`指定時は既定desc、欠損は昇降順とも末尾。同値とsort未指定は証券コード昇順。offset→limit。limit=0は空配列、未指定は全件（同APIと異なる）。
-
-JSONの数値文字列・非有限値、不正な日付/指標/演算子/負のlimit等はエラー。raw JSONの値を暗黙に単位変換しない。
-
-### ローカルファイルからの使用例
-
-保存XBRLを解析してsnapshotを構築する。以下のメタデータは説明用であり実在銘柄のデータではない。`getFinancialHistory`はキャッシュ欠損時の取得があるため、完全オフラインではparserを直接使用する。
-
-```ts
-import { readFileSync, writeFileSync } from "node:fs";
-import { EdinetXbrlParser, screenFinancialSnapshots, type FinancialSnapshot } from "edinet-ts";
-
-const parsed = new EdinetXbrlParser().parse(readFileSync("./saved-report.xbrl", "utf8"));
-const extracted = parsed.getKeyMetricsWithSources();
-const snapshots: FinancialSnapshot[] = [
-  {
-    secCode: "11110",
-    docID: "EXAMPLE",
-    docTypeCode: "120",
-    periodEnd: "2024-03-31",
-    submitDate: "2024-06-25",
-    periodType: "annual", // 元書類が通期であることを確認
-    ...extracted, // metrics と metricSources を一緒に保存
-  },
-];
-writeFileSync("./snapshots.json", JSON.stringify(snapshots));
-const result = screenFinancialSnapshots(snapshots, {
-  conditions: [{ metric: "operatingMargin", operator: "gte", value: 0.1 }],
-  sortBy: "freeCashFlow",
-  order: "desc",
-  limit: 20,
-});
-```
-
-```sh
-edinet-ts screen --file ./snapshots.json \
-  --conditions '[{"metric":"operatingMargin","operator":"gte","value":0.1}]' \
-  --sort-by freeCashFlow --order desc --as-of 2024-12-31 --limit 20 --pretty
-```
-
-入力JSONや出力は利用者のローカルデータとして保持し、Gitへ追加しない。新しい`screen`の処理はネットワーク・SQLite・認証キーを使用しない。
 
 ## 段階的な拡張方針
 
