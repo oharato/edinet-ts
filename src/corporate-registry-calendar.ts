@@ -26,7 +26,7 @@ export function parseCorporateRegistryPublicationCalendar(input:CorporateRegistr
     const policy=capture(data.policy,'html','https://www.houjin-bangou.nta.go.jp/download/sabun/'),csv=capture(data.holidays,'csv','https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv');
     let text=policy.text,previousPolicy:string;
     // Remove hidden blocks to completion before extracting the visible policy text.
-    do {previousPolicy=text;text=text.replace(/<!--[\s\S]*?-->/g,'').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,'');} while(text!==previousPolicy);
+    do {previousPolicy=text;text=text.replace(/<!--[\s\S]*?-->|<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,'');} while(text!==previousPolicy);
     do {previousPolicy=text;text=text.replace(/<[^>]*>/g,'');} while(text!==previousPolicy);
     text=text.normalize('NFKC').replace(/[<>]/g,'').replace(/\s/g,'');
     if(!text.includes('休日・祝日と12月29日から1月3日は、差分ダウンロードファイルの作成を行いません。'))invalid();
