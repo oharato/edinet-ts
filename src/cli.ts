@@ -45,19 +45,41 @@ program
     console.log(`決算区分: ${result.current.isConsolidated ? "連結" : "単体"}`);
 
     console.log("\n================ 財務比較 ================");
-    const formatYen = (val?: number) => (val !== undefined ? `${(val / 100_000_000).toFixed(2)} 億円` : "N/A");
-    const formatPercent = (val?: number) => (val !== undefined ? `${(val * 100).toFixed(2)} %` : "N/A");
+    const formatYen = (val?: number) =>
+      val !== undefined ? `${(val / 100_000_000).toFixed(2)} 億円` : "N/A";
+    const formatPercent = (val?: number) =>
+      val !== undefined ? `${(val * 100).toFixed(2)} %` : "N/A";
 
-    console.log(`売上高:       当期 ${formatYen(result.current.netSales)} / 前期 ${formatYen(result.prior.netSales)} (前年比: ${formatPercent(result.salesGrowthRate)})`);
-    console.log(`営業利益:     当期 ${formatYen(result.current.operatingIncome)} / 前期 ${formatYen(result.prior.operatingIncome)} (前年比: ${formatPercent(result.operatingIncomeGrowthRate)})`);
-    console.log(`営業利益率:   当期 ${formatPercent(result.operatingMarginCurrent)} / 前期 ${formatPercent(result.operatingMarginPrior)}`);
-    console.log(`利益率成長率: ${formatPercent(result.operatingMarginGrowthRate)} (ポイント差: ${formatPercent(result.operatingMarginDelta)})`);
-    console.log(`自己資本比率: 当期 ${formatPercent(result.equityRatioCurrent)} / 前期 ${formatPercent(result.equityRatioPrior)}`);
-    console.log(`ROE:          当期 ${formatPercent(result.roeCurrent)} / ROA: 当期 ${formatPercent(result.roaCurrent)}`);
-    console.log(`フリーCF:     当期 ${formatYen(result.freeCashFlowCurrent)} / 営業CF: 当期 ${formatYen(result.current.operatingCashFlow)}`);
-    console.log(`1株配当金:    当期 ${result.current.dividendPerShare ? result.current.dividendPerShare + " 円" : "N/A"} (増配率: ${formatPercent(result.dividendGrowthRate)})`);
-    console.log(`1人当たり営業益: ${result.operatingIncomePerEmployee ? (result.operatingIncomePerEmployee / 10_000).toFixed(1) + " 万円/人" : "N/A"} (従業員数: ${result.current.numberOfEmployees ? result.current.numberOfEmployees + " 人" : "N/A"})`);
-    console.log(`EPS:          当期 ${result.current.eps ? result.current.eps.toFixed(2) + " 円" : "N/A"} / BPS: 当期 ${result.current.bps ? result.current.bps.toFixed(2) + " 円" : "N/A"}`);
+    console.log(
+      `売上高:       当期 ${formatYen(result.current.netSales)} / 前期 ${formatYen(result.prior.netSales)} (前年比: ${formatPercent(result.salesGrowthRate)})`,
+    );
+    console.log(
+      `営業利益:     当期 ${formatYen(result.current.operatingIncome)} / 前期 ${formatYen(result.prior.operatingIncome)} (前年比: ${formatPercent(result.operatingIncomeGrowthRate)})`,
+    );
+    console.log(
+      `営業利益率:   当期 ${formatPercent(result.operatingMarginCurrent)} / 前期 ${formatPercent(result.operatingMarginPrior)}`,
+    );
+    console.log(
+      `利益率成長率: ${formatPercent(result.operatingMarginGrowthRate)} (ポイント差: ${formatPercent(result.operatingMarginDelta)})`,
+    );
+    console.log(
+      `自己資本比率: 当期 ${formatPercent(result.equityRatioCurrent)} / 前期 ${formatPercent(result.equityRatioPrior)}`,
+    );
+    console.log(
+      `ROE:          当期 ${formatPercent(result.roeCurrent)} / ROA: 当期 ${formatPercent(result.roaCurrent)}`,
+    );
+    console.log(
+      `フリーCF:     当期 ${formatYen(result.freeCashFlowCurrent)} / 営業CF: 当期 ${formatYen(result.current.operatingCashFlow)}`,
+    );
+    console.log(
+      `1株配当金:    当期 ${result.current.dividendPerShare ? result.current.dividendPerShare + " 円" : "N/A"} (増配率: ${formatPercent(result.dividendGrowthRate)})`,
+    );
+    console.log(
+      `1人当たり営業益: ${result.operatingIncomePerEmployee ? (result.operatingIncomePerEmployee / 10_000).toFixed(1) + " 万円/人" : "N/A"} (従業員数: ${result.current.numberOfEmployees ? result.current.numberOfEmployees + " 人" : "N/A"})`,
+    );
+    console.log(
+      `EPS:          当期 ${result.current.eps ? result.current.eps.toFixed(2) + " 円" : "N/A"} / BPS: 当期 ${result.current.bps ? result.current.bps.toFixed(2) + " 円" : "N/A"}`,
+    );
     console.log("");
   });
 
@@ -106,7 +128,9 @@ program
         const comparison = extractor.extract(doc);
         await store.insert(comparison);
         successCount++;
-        process.stdout.write(`\rLoaded [${successCount}/${files.length}]: ${comparison.metadata.companyName.padEnd(20)}`);
+        process.stdout.write(
+          `\rLoaded [${successCount}/${files.length}]: ${comparison.metadata.companyName.padEnd(20)}`,
+        );
       } catch (e: any) {
         console.error(`\nFailed to parse ${file}: ${e.message}`);
       }
@@ -125,7 +149,7 @@ program
   .option(
     "--archive <path>",
     "archive.sqlite のパス",
-    "/home/oharato/workspace/edinet-ts/data/production/duck-financial/daily/2026-11-03/candidate/archive.sqlite"
+    "/home/oharato/workspace/edinet-ts/data/production/duck-financial/daily/2026-11-03/candidate/archive.sqlite",
   )
   .option("--db <path>", "DuckDBファイルの保存先", "./data/screening.duckdb")
   .option("-l, --limit <number>", "処理する書類の上限件数 (テスト用)", parseInt)
@@ -181,7 +205,7 @@ program
               ? comparison.metadata.companyName.slice(0, 13) + "…"
               : comparison.metadata.companyName;
           process.stdout.write(
-            `\rProgress: [${i + 1}/${rows.length}] (${elapsed}s) - Last: ${name.padEnd(16)}`
+            `\rProgress: [${i + 1}/${rows.length}] (${elapsed}s) - Last: ${name.padEnd(16)}`,
           );
         }
       } catch (e: any) {
@@ -191,7 +215,7 @@ program
 
     const totalSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(
-      `\n\nDone! Successfully imported ${successCount} companies into DuckDB in ${totalSeconds}s.`
+      `\n\nDone! Successfully imported ${successCount} companies into DuckDB in ${totalSeconds}s.`,
     );
     store.close();
   });
@@ -203,13 +227,24 @@ const screenCmd = program
   .command("screen")
   .description("DuckDBから利益率や成長率の条件で企業をスクリーニングします")
   .option("--db <path>", "DuckDBファイルのパス", "./data/screening.duckdb")
-  .option("-w, --where <sql>", "任意のSQL条件式 (例: \"operating_margin_current > 0.15 AND equity_ratio_current > 0.5\")")
-  .option("--min-growth <number>", "営業利益率の前年比成長率の下限 (例: 0.20 で +20%以上)", parseFloat)
+  .option(
+    "-w, --where <sql>",
+    '任意のSQL条件式 (例: "operating_margin_current > 0.15 AND equity_ratio_current > 0.5")',
+  )
+  .option(
+    "--min-growth <number>",
+    "営業利益率の前年比成長率の下限 (例: 0.20 で +20%以上)",
+    parseFloat,
+  )
   .option("--min-margin <number>", "当期営業利益率の下限 (例: 0.10 で 10%以上)", parseFloat)
   .option("--min-sales-growth <number>", "売上成長率の下限", parseFloat)
   .option("--min-equity-ratio <number>", "自己資本比率の下限 (例: 0.50 で 50%以上)", parseFloat)
   .option("--min-roe <number>", "ROEの下限 (例: 0.10 で 10%以上)", parseFloat)
-  .option("--order-by <field>", "ソート項目 (margin_growth, current_margin, sales_growth, equity_ratio, roe)", "current_margin")
+  .option(
+    "--order-by <field>",
+    "ソート項目 (margin_growth, current_margin, sales_growth, equity_ratio, roe)",
+    "current_margin",
+  )
   .option("--order-dir <dir>", "ソート順 (asc, desc)", "desc")
   .option("-l, --limit <number>", "取得件数上限", parseInt, 50)
   .option("--json", "JSON形式で出力")
@@ -240,7 +275,7 @@ const screenCmd = program
   edinet-ts screen --where "equity_ratio_current >= 0.50 AND roe_current >= 0.10"
 
 ※ 詳細な一覧やJSONスキーマは 'edinet-ts schema' を実行してください。
-`
+`,
   )
   .action(async (options) => {
     const dbPath = resolve(process.cwd(), options.db);
@@ -278,14 +313,20 @@ const screenCmd = program
         会社名: r.companyName.length > 11 ? r.companyName.slice(0, 10) + "…" : r.companyName,
         決算期: r.periodEnd,
         "売上(億)": r.netSalesCurrent ? (r.netSalesCurrent / 100_000_000).toFixed(1) : "-",
-        "営業益(億)": r.operatingIncomeCurrent ? (r.operatingIncomeCurrent / 100_000_000).toFixed(1) : "-",
+        "営業益(億)": r.operatingIncomeCurrent
+          ? (r.operatingIncomeCurrent / 100_000_000).toFixed(1)
+          : "-",
         "利益率(%)": r.operatingMarginCurrent ? (r.operatingMarginCurrent * 100).toFixed(2) : "-",
-        "利益率成長(%)": r.operatingMarginGrowthRate ? (r.operatingMarginGrowthRate * 100).toFixed(2) : "-",
+        "利益率成長(%)": r.operatingMarginGrowthRate
+          ? (r.operatingMarginGrowthRate * 100).toFixed(2)
+          : "-",
         "自己資本比率(%)": r.equityRatioCurrent ? (r.equityRatioCurrent * 100).toFixed(2) : "-",
         "ROE(%)": r.roeCurrent ? (r.roeCurrent * 100).toFixed(2) : "-",
         "FCF(億)": r.freeCashFlowCurrent ? (r.freeCashFlowCurrent / 100_000_000).toFixed(1) : "-",
-        "1人当り営業益(万)": r.operatingIncomePerEmployee ? (r.operatingIncomePerEmployee / 10_000).toFixed(0) : "-",
-      }))
+        "1人当り営業益(万)": r.operatingIncomePerEmployee
+          ? (r.operatingIncomePerEmployee / 10_000).toFixed(0)
+          : "-",
+      })),
     );
   });
 
@@ -305,8 +346,8 @@ program
             examples: QUERY_EXAMPLES,
           },
           null,
-          2
-        )
+          2,
+        ),
       );
       return;
     }
@@ -319,7 +360,7 @@ program
         単位: col.unit,
         説明: col.description,
         条件指定例: col.example,
-      }))
+      })),
     );
 
     console.log("\n================ よく使うクエリ例 (レシピ) ================\n");
@@ -356,7 +397,9 @@ program
 
     const apiKey = options.apiKey || process.env.EDINET_API_KEY;
     if (!apiKey) {
-      console.log("ℹ️  注意: EDINET_API_KEY が設定されていません。v2 API のアクセス制限や仕様に従い動作します。");
+      console.log(
+        "ℹ️  注意: EDINET_API_KEY が設定されていません。v2 API のアクセス制限や仕様に従い動作します。",
+      );
     }
 
     console.log(`\n🔄 EDINET 同期を開始します (期間: ${since} 〜 ${until})`);
@@ -382,7 +425,7 @@ program
           コード: r.secCode || r.edinetCode,
           提出者名: r.filerName,
           件名: r.docDescription.slice(0, 30),
-        }))
+        })),
       );
       console.log(`Dry Run 終了: ${reports.length} 件が取得候補です。`);
       return;

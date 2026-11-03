@@ -46,7 +46,9 @@ export class EdinetClient {
 
     const response = await fetch(url.toString());
     if (!response.ok) {
-      throw new Error(`Failed to fetch EDINET document list: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch EDINET document list: ${response.status} ${response.statusText}`,
+      );
     }
 
     const json = (await response.json()) as { results?: any[] };
@@ -121,7 +123,9 @@ export class EdinetClient {
 
     const response = await fetch(url.toString());
     if (!response.ok) {
-      throw new Error(`Failed to download document ${docId}: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to download document ${docId}: ${response.status} ${response.statusText}`,
+      );
     }
 
     const arrayBuffer = await response.arrayBuffer();

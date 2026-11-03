@@ -107,7 +107,9 @@ export class XbrlParser {
                 contextRef,
                 value: text,
                 numericValue: Number.isNaN(num) ? undefined : num,
-                decimals: itemObj["@_decimals"] ? parseInt(String(itemObj["@_decimals"]), 10) : undefined,
+                decimals: itemObj["@_decimals"]
+                  ? parseInt(String(itemObj["@_decimals"]), 10)
+                  : undefined,
                 scale: itemObj["@_scale"] ? parseInt(String(itemObj["@_scale"]), 10) : undefined,
               });
             }
@@ -140,8 +142,7 @@ export class XbrlParser {
 
     // Consolidated か NonConsolidated かの判定
     const isNonConsolidated =
-      id.includes("NonConsolidated") ||
-      JSON.stringify(ctx).includes("NonConsolidatedMember");
+      id.includes("NonConsolidated") || JSON.stringify(ctx).includes("NonConsolidatedMember");
 
     contexts.set(id, {
       id,

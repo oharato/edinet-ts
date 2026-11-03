@@ -18,10 +18,10 @@ describe("FinancialStore with DuckDB", () => {
       current: { netSales: 10000, operatingIncome: 1500, isConsolidated: true },
       prior: { netSales: 10000, operatingIncome: 1000, isConsolidated: true },
       operatingMarginCurrent: 0.15,
-      operatingMarginPrior: 0.10,
-      operatingMarginGrowthRate: 0.50,
+      operatingMarginPrior: 0.1,
+      operatingMarginGrowthRate: 0.5,
       salesGrowthRate: 0.0,
-      operatingIncomeGrowthRate: 0.50,
+      operatingIncomeGrowthRate: 0.5,
     };
 
     // 企業B: 営業利益率 20% -> 25% (成長率 +25%)
@@ -35,7 +35,7 @@ describe("FinancialStore with DuckDB", () => {
       current: { netSales: 20000, operatingIncome: 5000, isConsolidated: true },
       prior: { netSales: 20000, operatingIncome: 4000, isConsolidated: true },
       operatingMarginCurrent: 0.25,
-      operatingMarginPrior: 0.20,
+      operatingMarginPrior: 0.2,
       operatingMarginGrowthRate: 0.25,
       salesGrowthRate: 0.0,
       operatingIncomeGrowthRate: 0.25,
@@ -52,7 +52,7 @@ describe("FinancialStore with DuckDB", () => {
       current: { netSales: 30000, operatingIncome: 9300, isConsolidated: true },
       prior: { netSales: 30000, operatingIncome: 9000, isConsolidated: true },
       operatingMarginCurrent: 0.31,
-      operatingMarginPrior: 0.30,
+      operatingMarginPrior: 0.3,
       operatingMarginGrowthRate: 0.033,
       salesGrowthRate: 0.0,
       operatingIncomeGrowthRate: 0.033,
@@ -64,7 +64,7 @@ describe("FinancialStore with DuckDB", () => {
 
     // スクリーニング: 利益率成長率 >= 20% (0.20)、当期利益率順(DESC)
     const results = await store.screen({
-      minMarginGrowth: 0.20,
+      minMarginGrowth: 0.2,
       orderBy: "current_margin",
       orderDirection: "desc",
     });
@@ -77,7 +77,7 @@ describe("FinancialStore with DuckDB", () => {
 
     expect(results[1].companyName).toBe("成長企業A");
     expect(results[1].operatingMarginCurrent).toBe(0.15);
-    expect(results[1].operatingMarginGrowthRate).toBe(0.50);
+    expect(results[1].operatingMarginGrowthRate).toBe(0.5);
 
     // whereClause によるスクリーニング
     const whereResults = await store.screen({

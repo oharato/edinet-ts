@@ -18,10 +18,7 @@ const OPERATING_INCOME_TAGS = [
   "OperatingProfit",
 ];
 
-const ORDINARY_INCOME_TAGS = [
-  "OrdinaryIncomeSummaryOfBusinessResults",
-  "OrdinaryIncome",
-];
+const ORDINARY_INCOME_TAGS = ["OrdinaryIncomeSummaryOfBusinessResults", "OrdinaryIncome"];
 
 const NET_INCOME_TAGS = [
   "ProfitLossAttributableToOwnersOfParentIFRSSummaryOfBusinessResults",
@@ -83,9 +80,7 @@ const BPS_TAGS = [
   "NetAssetsPerShare",
 ];
 
-const EMPLOYEES_TAGS = [
-  "NumberOfEmployees",
-];
+const EMPLOYEES_TAGS = ["NumberOfEmployees"];
 
 export class FinancialExtractor {
   public extract(doc: ParsedXbrlDocument): CompanyFinancialComparison {
@@ -190,8 +185,7 @@ export class FinancialExtractor {
         : undefined;
 
     const freeCashFlowPrior =
-      priorMetrics.operatingCashFlow !== undefined &&
-      priorMetrics.investingCashFlow !== undefined
+      priorMetrics.operatingCashFlow !== undefined && priorMetrics.investingCashFlow !== undefined
         ? priorMetrics.operatingCashFlow + priorMetrics.investingCashFlow
         : undefined;
 
@@ -235,9 +229,7 @@ export class FinancialExtractor {
 
   private extractMetadata(doc: ParsedXbrlDocument): CompanyMetadata {
     const companyName =
-      doc.dei.get("FilerNameInJapaneseDEI") ||
-      doc.dei.get("CompanyName") ||
-      "Unknown Company";
+      doc.dei.get("FilerNameInJapaneseDEI") || doc.dei.get("CompanyName") || "Unknown Company";
 
     let securityCode = doc.dei.get("SecurityCodeDEI");
     if (securityCode && securityCode.length === 5 && securityCode.endsWith("0")) {
@@ -251,9 +243,7 @@ export class FinancialExtractor {
       "";
 
     const periodEnd =
-      doc.dei.get("CurrentFiscalYearEndDateDEI") ||
-      doc.dei.get("PeriodEndDate") ||
-      "";
+      doc.dei.get("CurrentFiscalYearEndDateDEI") || doc.dei.get("PeriodEndDate") || "";
 
     return {
       edinetCode,
@@ -278,17 +268,29 @@ export class FinancialExtractor {
     isConsolidated: boolean,
   ): FinancialMetrics {
     const netSales = this.findFirstNumericFact(doc, NET_SALES_TAGS, durationContextId);
-    const operatingIncome = this.findFirstNumericFact(doc, OPERATING_INCOME_TAGS, durationContextId);
+    const operatingIncome = this.findFirstNumericFact(
+      doc,
+      OPERATING_INCOME_TAGS,
+      durationContextId,
+    );
     const ordinaryIncome = this.findFirstNumericFact(doc, ORDINARY_INCOME_TAGS, durationContextId);
     const netIncome = this.findFirstNumericFact(doc, NET_INCOME_TAGS, durationContextId);
     const operatingCashFlow = this.findFirstNumericFact(doc, OPERATING_CF_TAGS, durationContextId);
     const investingCashFlow = this.findFirstNumericFact(doc, INVESTING_CF_TAGS, durationContextId);
-    const dividendPerShare = this.findFirstNumericFact(doc, DIVIDEND_PER_SHARE_TAGS, durationContextId);
+    const dividendPerShare = this.findFirstNumericFact(
+      doc,
+      DIVIDEND_PER_SHARE_TAGS,
+      durationContextId,
+    );
     const eps = this.findFirstNumericFact(doc, EPS_TAGS, durationContextId);
 
     const netAssets = this.findFirstNumericFact(doc, NET_ASSETS_TAGS, instantContextId);
     const totalAssets = this.findFirstNumericFact(doc, TOTAL_ASSETS_TAGS, instantContextId);
-    const cashAndEquivalents = this.findFirstNumericFact(doc, CASH_EQUIVALENTS_TAGS, instantContextId);
+    const cashAndEquivalents = this.findFirstNumericFact(
+      doc,
+      CASH_EQUIVALENTS_TAGS,
+      instantContextId,
+    );
     const bps = this.findFirstNumericFact(doc, BPS_TAGS, instantContextId);
     const numberOfEmployees = this.findFirstNumericFact(doc, EMPLOYEES_TAGS, instantContextId);
 

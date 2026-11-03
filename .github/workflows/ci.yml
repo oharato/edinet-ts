@@ -1,4 +1,4 @@
-name: Source checks
+name: CI
 
 on:
   pull_request:
@@ -13,37 +13,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  source-checks:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
-          persist-credentials: false
-      - name: Reserve runner space for guarded SQLite and DuckDB tests
-        run: |
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet
-          df -h . /tmp
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+          version: 12.13.0
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: npm
-      - name: Use declared npm version
-        run: npm install --global npm@12.2.1 --no-audit --no-fund
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Check formatting
-        run: npm run format:check
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check format
+        run: pnpm run format:check
       - name: Lint
-        run: npm run lint
-      - name: Check types
-        run: npx --no-install tsc --noEmit
-      - name: Compile SDK for API and CLI checks
-        run: |
-          npx --no-install tsc
-          npm run add-js-extensions
-      - name: Check public API type examples
-        run: npx --no-install tsc --project test/types/tsconfig.json
-      # ESM integration tests rebuild the package; exercise distribution builds on nuc7.
-      - name: Run source tests
-        run: npm test -- --maxWorkers=1 --testTimeout=30000 --exclude test/esm-imports.test.ts
+        run: pnpm run lint
+      - name: Build
+        run: pnpm run build
+      - name: Test
+        run: pnpm run test

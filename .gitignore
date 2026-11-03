@@ -1,17 +1,18 @@
+# Dependencies
 node_modules/
-.env
-downloads/
-!downloads/.keep
-taxonomy/
-!taxonomy/.keep
-data/
-!data/.keep
-downloads_cache_test/
-!downloads_cache_test/.keep
+
+# Build artifacts
 dist/
-!dist/.keep
 
-# Local Python build tools
-__pycache__/
+# Local databases and cache
+data/
+*.duckdb
+*.duckdb.wal
 
-# Generated SDK copy of the independent verifier
+# Environment variables
+.env
+.env.local
+
+# Logs and OS files
+*.log
+.DS_Store

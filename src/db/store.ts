@@ -129,7 +129,10 @@ export class FinancialStore {
     this.bindNullableDouble(stmt, 28, record.current.eps);
     this.bindNullableDouble(stmt, 29, record.current.bps);
 
-    if (record.current.numberOfEmployees !== undefined && !Number.isNaN(record.current.numberOfEmployees)) {
+    if (
+      record.current.numberOfEmployees !== undefined &&
+      !Number.isNaN(record.current.numberOfEmployees)
+    ) {
       stmt.bindInteger(30, Math.round(record.current.numberOfEmployees));
     } else {
       stmt.bindNull(30);
@@ -146,7 +149,7 @@ export class FinancialStore {
   public async getLatestPeriodEnd(): Promise<string | undefined> {
     if (!this.connection) throw new Error("Database not initialized");
     const reader = await this.connection.runAndReadAll(
-      "SELECT MAX(period_end) as max_date FROM financial_summary WHERE period_end != ''"
+      "SELECT MAX(period_end) as max_date FROM financial_summary WHERE period_end != ''",
     );
     const rows = reader.getRows();
     return rows[0]?.[0] ? String(rows[0][0]) : undefined;
@@ -158,7 +161,7 @@ export class FinancialStore {
   public async getExistingKeys(): Promise<Set<string>> {
     if (!this.connection) throw new Error("Database not initialized");
     const reader = await this.connection.runAndReadAll(
-      "SELECT company_name, period_end FROM financial_summary"
+      "SELECT company_name, period_end FROM financial_summary",
     );
     const rows = reader.getRows();
     const set = new Set<string>();
@@ -211,7 +214,8 @@ export class FinancialStore {
     if (criteria.orderBy === "margin_growth") orderCol = "operating_margin_growth_rate";
     else if (criteria.orderBy === "current_margin") orderCol = "operating_margin_current";
     else if (criteria.orderBy === "sales_growth") orderCol = "sales_growth_rate";
-    else if (criteria.orderBy === "operating_income_growth") orderCol = "operating_income_growth_rate";
+    else if (criteria.orderBy === "operating_income_growth")
+      orderCol = "operating_income_growth_rate";
     else if (criteria.orderBy === "equity_ratio") orderCol = "equity_ratio_current";
     else if (criteria.orderBy === "roe") orderCol = "roe_current";
     else if (criteria.orderBy === "roa") orderCol = "roa_current";
