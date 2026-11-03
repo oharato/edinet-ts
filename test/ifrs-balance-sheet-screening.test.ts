@@ -47,7 +47,7 @@ describe("IFRS専用snapshot", () => {
         expect(() => createIfrsBalanceSheetSnapshot("<broken>", metadata())).toThrow();
     });
     it.each([
-        { scope: "NonConsolidated" }, { accountingStandard: "J-GAAP" }, { currency: "USD" }, { instant: "2026-02-30" }, { instant: "bad" },
+        { accountingStandard: "J-GAAP" }, { currency: "USD" }, { instant: "2026-02-30" }, { instant: "bad" },
         { secCode: "bad" }, { docID: "" }, { docID: "doc\n" }, { period: { instant } }, { unknown: true }
     ])("不正metadataを設定エラーにする %j", override => {
         expect(() => createIfrsBalanceSheetSnapshot(xml(), { ...metadata(), ...override } as any)).toThrow();

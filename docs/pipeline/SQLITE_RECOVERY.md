@@ -121,3 +121,9 @@ edinet-ts recover-sqlite-snapshot \
 取得状態の復旧後は、[`FinancialSourceJob.audit` / `audit-financial-source-job`](FINANCIAL_SOURCE_JOB.md#復旧候補未完了checkpointの再開前監査) で期待計画・停止原本と全task/履歴を照合できます。一般の復旧manifestにある `applicationRecordsValidated: false` を書き換えず、指定jobの監査結果を別の証跡として保持します。
 
 結果の状態指紋が復旧manifestの出力指紋と一致することを確認し、新しい固定実行configへ渡します。財務値/公開条件の検査は引き続き別工程です。
+
+## 解析済みStore/JobとDuckDB作成経路
+
+`kind: "parsed-financial-store"` と `kind: "parsed-financial-job"` を追加した。汎用API/CLIは従来どおり私有コピーだけを復旧し、`applicationRecordsValidated: false` を返す。結果のStore.page/get、Job.plan/progressで内容を再検査する。
+
+DuckDB作成経路には、候補・共有Storeの排他下で全レコード検査と退避を済ませて管理DBを復旧する別の内部処理を追加した。cold/空journalと新規schema初期化の扱いを含め、[強制終了復旧仕様](DUCK_FINANCIAL_RECOVERY.md)を参照する。これは任意の原本DBを自動書換えする処理ではない。

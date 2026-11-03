@@ -16,6 +16,22 @@ flowchart LR
 
 既存の原本/索引形式版1や従来の明細世代Storeを変更せず、サービスや利用先vendorを自動更新しません。
 
+## 正式な日次候補の原本照合
+
+日次候補の正式な切替には `scripts/roadmap/build-financial-cycle.mjs` の `activateBuiltFinancialCycle` を使います。品質・metadataの条件だけでは切り替わらず、`financial-values-unverified` を返します。候補の排他を保持した状態で次を実行すると、SDKとは独立したPython標準ライブラリのSQLite・gzip・XML処理で、保存projectionの全採用値を原本へ照合します。
+
+```bash
+node scripts/roadmap/verify-built-financial-cycle.mjs --config /absolute/path/candidate-config.json --locked
+```
+
+候補内 `reconstructed/value-verification.json` は、入力・世代・原本・構築計画・品質・検証プログラムのSHA-256と、検査件数・全検査値の指紋を保持します。切替時もこの結合を確認して全採用値を再照合し、別候補の記録、欠落・改変された記録、単なる検証フラグを拒否します。原値・精度・namespace・context・期間・scope・単位、SQL数値転記、DEIの企業コード、原本宣言の書類ID/hash/取得時刻とcutoffを検査します。Pythonは `-I` で環境変数の影響を避け、最適化によりassertが無効化された実行を拒否します。中断signalはPython子プロセスへ伝えます。
+
+独立照合器v5は、SQL行の全12属性と保存本文、原DEIの会計基準・主連結区分・提出者/証券コード・context・当期日付の前後関係も検査します。従来の過去期行を維持するため、一般の行を原DEIの当期期間へ一律に限定しません。当期期間との厳密な結合は主単体IFRSと根拠付き選択形式2の対象profileに限ります。形式2はこの公開入口でも未対応です。検証器のSHAが変わるため、旧照合記録は再検証が必要です。
+
+これは保存済み直接XBRL値の照合です。PDFとの金額照合や科目意味の網羅、未採用値の未開示判定を代替しません。namespaceの再束縛など独立処理が未対応の原本は検証失敗として止めます。Python 3が必要です。切戻しも同じ正式入口を使い、戻り先の原本・検証記録・品質とCASを再確認します。
+
+以下のSDK `FinancialIndexPublication.activate` と汎用CLIは、品質検査と世代pointer操作を提供する従来APIです。原本照合gateは持たないため、正式な日次候補の切替入口として直接使用しません。この区別を保ったままAPI互換性を維持しています。
+
 ## 候補と既定条件
 
 `prepare(id, index, generation, policy?)` は、[母集団全件の分割構築](FINANCIAL_INDEX_BUILD.md)でassemblyを持つ世代だけを受け付けます。全本文/値索引の品質を検査し、世代・原本・構築計画・品質の指紋、母集団/quality、policy、条件違反を保存します。
@@ -114,3 +130,25 @@ CLIで旧→新、APIで新→旧と切り替え、履歴3件と現在pointer、
 独立SQLite/JSON処理でも候補/品質/世代/構築計画の指紋、8条件の判定、履歴3件の前後関係と現在pointerが一致しました。全130ファイル/3,623テスト、ビルド、公開型・配布物NodeNext型検査、認証値混入の非表示検査が成功しています。
 
 公開候補を読取側へロードし、世代を固定して検索/明示再ロードする入口は、[公開snapshotの財務検索](PUBLISHED_FINANCIAL_INDEX.md)を参照してください。
+
+## DuckDBの非同期catalog接続（P6の途中段階）
+
+`prepareAsync`、`resolveAsync`、`activateAsync` を追加した。`FinancialIndexAsyncReader` は非同期のgeneration・quality・snapshotSha256だけを要求し、DuckDB readerが実装する。既存の同期メソッド・catalog schema・候補形式版は維持する。
+
+prepareは読取前後のsnapshot指紋一致、世代本文のhashと品質の一致を確認する。policyとexpectedActiveはawait前に取り込み、呼出側が待機中に変更しても採用しない。候補保存と履歴/pointer更新は同期経路と同じ処理を使い、更新transaction内で検査対象の候補も再読取する。await中に別候補へ切り替わった場合はCASで拒否する。resolveも待機中のpointer変更を拒否する。
+
+これらは従来SDKと同じ**品質検査とpointer操作**であり、独立原本照合gateを追加した正式日次入口ではない。正式なDuckDB候補の原本照合記録、Python照合器との接続、読込失敗時に旧readerを維持するreloadは[独立照合gate仕様](DUCK_FINANCIAL_VERIFICATION.md)の別入口へ実装した。新メソッドの公開exports/CLI接続はP7で行う。
+
+専用6テストでは実DuckDBとSQLite catalogで保存・CAS切替・切戻し・readOnly再open、条件未達、不変候補、await中の競合、変化するsnapshot指紋、不整合な世代、pointer書込失敗rollback、close、policy/CASの外部変更を確認する。同期publicationの既存回帰も維持する。
+
+実原本由来の限定候補は次で検証する。
+
+```sh
+node node_modules/tsx/dist/cli.mjs scripts/verify-duck-financial-publication.ts \
+  data/benchmarks/duck-financial-index-build-20261031-v8 \
+  <新規出力先>
+```
+
+証跡は `data/benchmarks/duck-financial-publication-20261031/summary.json`。既定policyは不合格であることを記録し、テスト専用catalogでは現存する欠損値を許容する明示policyを使って旧→新→旧の3履歴と再openを確認した。元DuckDBは不変。本番catalog・正式参照先は変更せず、原本照合済みの正式公開を意味しない。
+
+P6の続きとして[DuckDB独立原本照合gate・安全なreload](DUCK_FINANCIAL_VERIFICATION.md)を実装した。正式なDuckDB切替は記録を検査し全採用値を再照合する新gateを使う。上記の品質のみのasync SDKを正式入口へ読み替えない。日次制御/配布への統合はP7。

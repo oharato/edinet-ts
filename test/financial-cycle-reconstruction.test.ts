@@ -1,5 +1,5 @@
 import {reportingInstance} from './fixtures/financial-reporting-basis';
-import {activateBuiltFinancialCycle,buildReconstructedFinancialCycle} from '../scripts/roadmap/build-financial-cycle.mjs';
+import {activateBuiltFinancialCycle,buildReconstructedFinancialCycle,verifyBuiltFinancialCycleValues} from '../scripts/roadmap/build-financial-cycle.mjs';
 import {it,expect,vi} from 'vitest';
 import {spawnSync} from 'node:child_process';
 import {mkdtempSync,rmSync,readFileSync,writeFileSync,existsSync} from 'node:fs';
@@ -9,7 +9,7 @@ import {EdinetRepository,ObservedFinancialArchive,FinancialIndexPublication,Publ
 import {prepareFinancialCycle} from '../scripts/roadmap/prepare-financial-cycle.mjs';
 import {acquirePreparedFinancialCycle} from '../scripts/roadmap/acquire-financial-cycle.mjs';
 import {reconstructAcquiredFinancialCycle} from '../scripts/roadmap/reconstruct-financial-cycle.mjs';
-import {sha256,readJSONSnapshot,atomicJSON} from '../scripts/roadmap/operational-files.mjs';
+import {sha256,readJSONSnapshot,atomicJSON,canonical} from '../scripts/roadmap/operational-files.mjs';
 async function fixture(fn:(s:any)=>Promise<void>,rows=3,withOrigin=false,acquireAt='2026-10-30T03:00:00Z',edinetCodes=['E12345'],storedXml='<stored/>'){
  vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-30T01:00:00Z'));const dir=mkdtempSync(join(tmpdir(),'cycle-reconstruct-')),metadataPath=join(dir,'metadata.sqlite'),sourceArchivePath=join(dir,'pool.sqlite'),repo=new EdinetRepository(metadataPath),pool=new ObservedFinancialArchive(sourceArchivePath);
  try{repo.saveDocumentList(Array.from({length:rows},(_,i)=>({docID:'A'+i,edinetCode:'E12345',secCode:'10010',docTypeCode:'120',submitDateTime:'2026-09-01 09:00',periodStart:'2025-04-01',periodEnd:'2026-03-31',withdrawalStatus:'0',docInfoEditStatus:'0',disclosureStatus:'0',xbrlFlag:rows>3&&i>0||i===2?'0':'1'})),'2026-09-01');pool.append([],[{docID:'A0',availableAt:'2026-10-01T00:00:00Z',sourceSha256:sha256(storedXml),xml:storedXml}]);pool.close();const ro=new ObservedFinancialArchive(sourceArchivePath,{readOnly:true});const sourceArchiveSha256=ro.snapshotSha256();ro.close();
@@ -70,7 +70,7 @@ it('構築の処理件数と中断signalを入口で検査する',async()=>{
 });
 
 it('欠損のある候補は厳格な公開条件で不適格となり公開先を切り替えない',()=>fixture(async s=>{
- const result=await buildReconstructedFinancialCycle(s.config);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['quality-conditions','metadata-not-current']);expect(result.publicationCandidate.eligible).toBe(false);expect(result.publicationCandidate.violations.length).toBeGreaterThan(0);
+ const result=await buildReconstructedFinancialCycle(s.config);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['quality-conditions','metadata-not-current','financial-values-unverified']);expect(result.publicationCandidate.eligible).toBe(false);expect(result.publicationCandidate.violations.length).toBeGreaterThan(0);
  const catalog=new FinancialIndexPublication(join(s.config.outputDirectory,'reconstructed','publication.sqlite'),{readOnly:true});
  try{expect(catalog.current()).toBeUndefined();expect(catalog.candidate(result.generation)).toEqual(result.publicationCandidate)}finally{catalog.close()}
 }));
@@ -82,19 +82,19 @@ it('会社別の途中構築を完了扱いせず、次の呼出しで同じ計�
 },3,false,'2026-10-30T03:00:00Z',['E12345','E99999']));
 
 it('閉日の鮮度が確認できても品質違反の候補は不適格のままにする',()=>fixture(async s=>{
- const result=await buildReconstructedFinancialCycle(s.config);expect(result.metadataCurrentForCutoff).toBe(true);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['quality-conditions']);
+ const result=await buildReconstructedFinancialCycle(s.config);expect(result.metadataCurrentForCutoff).toBe(true);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['quality-conditions','financial-values-unverified']);
 },3,true));
 
 it('有効な原本と最新の閉日証跡から品質条件に適合した候補を作る',()=>fixture(async s=>{
- const result=await buildReconstructedFinancialCycle(s.config);expect(result.publicationEligible).toBe(true);expect(result.publicationBlockers).toEqual([]);expect(result.publicationCandidate.violations).toEqual([]);expect(result.quality.values.available).toBe(5);
+ const result=await buildReconstructedFinancialCycle(s.config);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['financial-values-unverified']);expect(result.publicationCandidate.violations).toEqual([]);expect(result.quality.values.available).toBe(5);
  const catalog=new FinancialIndexPublication(join(s.config.outputDirectory,'reconstructed','publication.sqlite'),{readOnly:true});try{expect(catalog.current()).toBeUndefined()}finally{catalog.close()}
 },1,true,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));
 it('品質条件に適合しても閉日証跡がなければ公開可能としない',()=>fixture(async s=>{
- const result=await buildReconstructedFinancialCycle(s.config);expect(result.publicationCandidate.eligible).toBe(true);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['metadata-not-current']);
+ const result=await buildReconstructedFinancialCycle(s.config);expect(result.publicationCandidate.eligible).toBe(true);expect(result.publicationEligible).toBe(false);expect(result.publicationBlockers).toEqual(['metadata-not-current','financial-values-unverified']);
 },1,false,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));
 
 it('適格候補を期待する公開先から切り替え、不正なCASでは履歴を増やさない',()=>fixture(async s=>{
- const catalogPath=join(s.dir,'active.sqlite');const result=await activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null});expect(result.status).toBe('published');const reader=new PublishedFinancialIndex(catalogPath,result.indexPath);try{expect(reader.snapshot().generation).toBe(result.generation);expect(reader.quality()).toEqual(result.quality)}finally{reader.close()}
+ const catalogPath=join(s.dir,'active.sqlite');await verifyBuiltFinancialCycleValues(s.config);const result=await activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null});expect(result.status).toBe('published');expect(result.financialValuesValidated).toBe(true);const reader=new PublishedFinancialIndex(catalogPath,result.indexPath);try{expect(reader.snapshot().generation).toBe(result.generation);expect(reader.quality()).toEqual(result.quality)}finally{reader.close()}
  await expect(activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null})).rejects.toThrow('切り替わりました');
  const catalog=new FinancialIndexPublication(catalogPath,{readOnly:true});try{expect(catalog.current()!.id).toBe(result.generation);expect(catalog.history()).toHaveLength(1)}finally{catalog.close()}
 },1,true,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));
@@ -114,7 +114,63 @@ it('構築専用CLIは件数上限を増やしても同じ入力指紋とcheckpo
 },1,false,'2026-10-30T03:00:00Z',['E12345','E54321'],reportingInstance()));
 it('構築専用CLIは排他宣言・上限・再構築receiptがない場合に新候補を作らない',()=>fixture(async s=>{
  const configPath=join(s.dir,'prepared-config.json');writeFileSync(configPath,JSON.stringify(s.config));const worker=resolve('scripts/roadmap/build-prepared-financial-cycle.mjs');
- for(const args of [[],['--locked','--max-companies','0'],['--locked','--max-companies','101'],['--locked']]){
+ for(const args of [[],['--locked','--max-companies','0'],['--locked','--max-companies','101'],['--locked','--max-batches','0'],['--locked','--max-batches','101'],['--locked']]){
   const result=spawnSync(process.execPath,[worker,'--config',configPath,...args],{encoding:'utf8'});expect(result.status).toBe(1);expect(result.stderr).toContain('Prepared financial build stopped');expect(result.stdout).toBe('');expect(existsSync(join(s.config.outputDirectory,'reconstructed'))).toBe(false);
  }
 }));
+
+it('品質適合だけの未検証候補はcatalogを作らず、単なる検証フラグも受け入れない',()=>fixture(async s=>{
+ const catalogPath=join(s.dir,'active.sqlite');
+ const blocked=await activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null});
+ expect(blocked).toMatchObject({status:'publication-blocked',financialValuesValidated:false,publicationBlockers:['financial-values-unverified']});
+ expect(existsSync(catalogPath)).toBe(false);
+ writeFileSync(join(s.config.outputDirectory,'reconstructed','value-verification.json'),JSON.stringify({financialValuesValidated:true}));
+ await expect(activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null})).rejects.toThrow('binding');
+ expect(existsSync(catalogPath)).toBe(false);
+},1,true,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));
+
+it('別候補の指紋や改変した原本照合記録はhashを付け直しても拒否する',()=>fixture(async s=>{
+ const prior=process.env.PYTHONOPTIMIZE;let verified:any;
+ try{process.env.PYTHONOPTIMIZE='1';verified=await verifyBuiltFinancialCycleValues(s.config)}finally{if(prior===undefined)delete process.env.PYTHONOPTIMIZE;else process.env.PYTHONOPTIMIZE=prior}
+ const catalogPath=join(s.dir,'active.sqlite'),recordPath=join(s.config.outputDirectory,'reconstructed','value-verification.json');
+ expect(verified.verification.checks).toMatchObject({selectedValues:5,documents:1});
+ const original=readFileSync(recordPath);
+ for(const field of ['inputSha256','generationSha256','archiveSha256','buildPlanSha256','qualitySha256']){
+  const record=JSON.parse(original.toString());record.binding[field]='a'.repeat(64);delete record.sha256;record.sha256=sha256(canonical(record));writeFileSync(recordPath,JSON.stringify(record));
+  await expect(activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null})).rejects.toThrow('binding');
+ }
+ const forged=JSON.parse(original.toString());forged.checks.valuesSha256='f'.repeat(64);delete forged.sha256;forged.sha256=sha256(canonical(forged));writeFileSync(recordPath,JSON.stringify(forged));
+ await expect(activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null})).rejects.toThrow('evidence');
+ expect(existsSync(catalogPath)).toBe(false);
+ writeFileSync(recordPath,original);expect((await activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null})).status).toBe('published');
+ expect((await verifyBuiltFinancialCycleValues(s.config)).verification).toEqual(verified.verification);
+},1,true,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));
+
+it('原本照合CLIは候補排他を必須とし、有効記録で公開後に旧世代へ切り戻せる',()=>fixture(async s=>{
+ const built=await buildReconstructedFinancialCycle(s.config),configPath=join(s.dir,'config.json'),catalogPath=join(s.dir,'active.sqlite');writeFileSync(configPath,JSON.stringify(s.config));
+ const worker=resolve('scripts/roadmap/verify-built-financial-cycle.mjs');
+ expect(spawnSync(process.execPath,[worker,'--config',configPath],{encoding:'utf8'}).status).toBe(1);
+ const result=spawnSync(process.execPath,[worker,'--config',configPath,'--locked'],{encoding:'utf8'});expect(result.status,result.stderr).toBe(0);expect(JSON.parse(result.stdout).verification.checks.selectedValues).toBe(5);
+ const first=await activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:null});
+ const {FinancialSearchIndex}=await import('../dist/index.js');const index=new FinancialSearchIndex(built.indexPath,{readOnly:true}),catalog=new FinancialIndexPublication(catalogPath);
+ try{
+  catalog.prepare('next',index,built.generation);catalog.activate('next',index,{expectedActive:first.publication});
+  expect((await activateBuiltFinancialCycle(s.config,{catalogPath,expectedActive:'next'})).publication).toBe(first.publication);
+  expect(catalog.current()?.id).toBe(first.publication);expect(catalog.history()).toHaveLength(3);
+ }finally{catalog.close();index.close()}
+},1,true,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));
+
+it('異なる原本と検証記録を持つ2世代を切り替え、旧世代の検証を再確認して戻す',()=>fixture(async first=>{
+ await fixture(async second=>{
+  const old=await verifyBuiltFinancialCycleValues(first.config),next=await verifyBuiltFinancialCycleValues(second.config),catalogPath=join(first.dir,'active.sqlite');
+  expect(old.generation).not.toBe(next.generation);expect(old.verification.binding.archiveSha256).not.toBe(next.verification.binding.archiveSha256);
+  const a=await activateBuiltFinancialCycle(first.config,{catalogPath,expectedActive:null});
+  const b=await activateBuiltFinancialCycle(second.config,{catalogPath,expectedActive:a.publication});
+  expect(b.verification.recordSha256).not.toBe(a.verification.recordSha256);
+  const reader=new PublishedFinancialIndex(catalogPath,b.indexPath);try{expect(reader.snapshot().generation).toBe(next.generation)}finally{reader.close()}
+  const back=await activateBuiltFinancialCycle(first.config,{catalogPath,expectedActive:b.publication});expect(back.publication).toBe(old.generation);
+  const restored=new PublishedFinancialIndex(catalogPath,back.indexPath),catalog=new FinancialIndexPublication(catalogPath,{readOnly:true});
+  try{expect(restored.snapshot().generation).toBe(old.generation);expect(catalog.history().map(t=>t.publication)).toEqual([a.publication,b.publication,a.publication])}
+  finally{catalog.close();restored.close()}
+ },1,true,'2026-10-30T03:00:00Z',['E12345'],reportingInstance().replace('>100<','>200<'));
+},1,true,'2026-10-30T03:00:00Z',['E12345'],reportingInstance()));

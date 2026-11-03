@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import {adjustPerShareValuesForSplits,type ShareSplitLedger,type ShareSplitAdjustmentResult,type ShareSplitUnavailableReason} from './share-split-adjustment';
 import {EdinetXbrlParser} from './edinet-xbrl-parser';
 import {normalizeFinancialDetailMetadata,type FinancialDetailMetadata} from './financial-detail-metadata';
 import {MetricId} from './metric-registry';
@@ -13,18 +14,19 @@ export const ValuationMetricId=Object.freeze({PriceToAnnualEarnings:'priceToAnnu
 export type ValuationMetricId=typeof ValuationMetricId[keyof typeof ValuationMetricId];
 export type PriceShareBasis={state:'unknown'}|{state:'confirmed';shareClass:'ordinary';basisDate:string;reviewedThrough:string;adjustment:'unadjusted'};
 export interface ValuationInput {
+ splitLedger?: ShareSplitLedger;
  financial:{xml:string;metadata:FinancialDetailMetadata;observedAt:string;shareBasis:ShareBasis};
  price:{rows:readonly LocalPriceRow[];request:LocalPriceRequest;shareBasis:PriceShareBasis;maxAgeDays:number};
 }
-export type ValuationUnavailableReason='unsupported-standard'|'unsupported-period'|'financial-after-cutoff'|'financial-period-after-price'|'financial-period-after-observation'|'price-unavailable'|'stale-price'|'unavailable-input'|'unsafe-input'|'unverified-share-basis'|'invalid-share-basis-evidence'|'unverified-price-basis'|'incompatible-share-basis'|'unpaid-dividend'|'nonpositive-denominator'|'negative-dividend'|'unsafe-result';
-interface ValuationBase{metricId:ValuationMetricId;unit:'multiple'|'ratio';financial:{metadata:FinancialDetailMetadata;observedAt:string;inputXmlSha256:string;selection:FactSelectionResult;shareBasis:ShareBasisAssessment};price:LocalClosingPriceResult;priceShareBasis:PriceShareBasis;maxPriceAgeDays:number;}
+export type ValuationUnavailableReason='unsupported-standard'|'unsupported-period'|'financial-after-cutoff'|'financial-period-after-price'|'financial-period-after-observation'|'price-unavailable'|'stale-price'|'unavailable-input'|'unsafe-input'|'unverified-share-basis'|'invalid-share-basis-evidence'|'unverified-price-basis'|'incompatible-share-basis'|'unpaid-dividend'|'nonpositive-denominator'|'negative-dividend'|'unsafe-result'|ShareSplitUnavailableReason;
+interface ValuationBase{shareAdjustment?:ShareSplitAdjustmentResult;metricId:ValuationMetricId;unit:'multiple'|'ratio';financial:{metadata:FinancialDetailMetadata;observedAt:string;inputXmlSha256:string;selection:FactSelectionResult;shareBasis:ShareBasisAssessment};price:LocalClosingPriceResult;priceShareBasis:PriceShareBasis;maxPriceAgeDays:number;}
 export type ValuationResult=ValuationBase&({status:'calculated';reason:'calculated';value:number;exact:{numerator:string;denominator:string};declaration:'source-reviewed-by-caller'}|{status:'unavailable';reason:ValuationUnavailableReason});
 const record=(v:unknown):v is Record<string,any>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const date=(v:unknown):v is string=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
 const metrics={priceToAnnualEarnings:MetricId.EarningsPerShare,priceToBookValue:MetricId.BookValuePerShare,annualPaidDividendYield:MetricId.DividendPaidPerShare}as const;
 function capture(input:ValuationInput):ValuationInput {
- if(!record(input)||Object.keys(input).some(k=>!['financial','price'].includes(k)))throw Error('財務と価格原本が必要です');
- const {financial:f,price:p}=input;
+ if(!record(input)||Object.keys(input).some(k=>!['financial','price','splitLedger'].includes(k)))throw Error('財務と価格原本が必要です');
+ const {financial:f,price:p,splitLedger:rawLedger}=input;
  if(!record(f)||Object.keys(f).some(k=>!['xml','metadata','observedAt','shareBasis'].includes(k))||!record(p)||Object.keys(p).some(k=>!['rows','request','shareBasis','maxAgeDays'].includes(k)))throw Error('評価指標原本が不正です');
  const {xml,metadata:rawMetadata,observedAt,shareBasis:rawBasis}=f,metadata=normalizeFinancialDetailMetadata(rawMetadata),shareBasis=captureShareBasis(rawBasis);
  if(typeof xml!=='string'||Buffer.byteLength(xml)>64*1024*1024||parseDocumentTimestamp(observedAt,true)===undefined||!shareBasis)throw Error('財務原本/観測時刻/株式基準が不正です');
@@ -38,12 +40,12 @@ function capture(input:ValuationInput):ValuationInput {
  const {state}=rawPriceBasis;
  let priceBasis:PriceShareBasis;
  if(state==='unknown')priceBasis={state};else {const {shareClass,basisDate,reviewedThrough,adjustment}=rawPriceBasis as Extract<PriceShareBasis,{state:'confirmed'}>;if(state!=='confirmed'||shareClass!=='ordinary'||!date(basisDate)||!date(reviewedThrough)||adjustment!=='unadjusted')throw Error('価格の株式基準が不正です');priceBasis={state,shareClass,basisDate,reviewedThrough,adjustment};}
- return{financial:{xml,metadata,observedAt,shareBasis},price:{rows,request,shareBasis:priceBasis,maxAgeDays}};
+ return{...(rawLedger===undefined?{}:{splitLedger:structuredClone(rawLedger)}),financial:{xml,metadata,observedAt,shareBasis},price:{rows,request,shareBasis:priceBasis,maxAgeDays}};
 }
 /** 実績一株値と未調整終値。同じ株式基準は原本確認済みの呼出元宣言で要求します。 */
 export function calculateValuation(input:ValuationInput,metricId:ValuationMetricId):ValuationResult {
  if(!Object.hasOwn(metrics,metricId))throw Error('既知の評価指標が必要です');
- const {financial:f,price:p}=capture(input),object=new EdinetXbrlParser().parse(f.xml,f.metadata.docID),selection=object.selectMetric(metrics[metricId],f.metadata,{collapseIdenticalDuplicates:true}),basis=assessShareBasis(object,f.shareBasis,selection.source?.entity),price=selectLocalClosingPrice(p.rows,p.request);
+ const {financial:f,price:p,splitLedger}=capture(input),object=new EdinetXbrlParser().parse(f.xml,f.metadata.docID),selection=object.selectMetric(metrics[metricId],f.metadata,{collapseIdenticalDuplicates:true}),basis=assessShareBasis(object,f.shareBasis,selection.source?.entity),price=selectLocalClosingPrice(p.rows,p.request);
  if(price.secCode!==f.metadata.secCode)throw Error('価格と財務の証券コードが異なります');
  const base:ValuationBase={metricId,unit:metricId==='annualPaidDividendYield'?'ratio':'multiple',financial:{metadata:f.metadata,observedAt:f.observedAt,inputXmlSha256:createHash('sha256').update(f.xml).digest('hex'),selection,shareBasis:basis},price,priceShareBasis:p.shareBasis,maxPriceAgeDays:p.maxAgeDays},unavailable=(reason:ValuationUnavailableReason):ValuationResult=>({...base,status:'unavailable',reason});
  if(f.metadata.accountingStandard!=='J-GAAP')return unavailable('unsupported-standard');
@@ -61,12 +63,19 @@ export function calculateValuation(input:ValuationInput,metricId:ValuationMetric
  if(basis.proof.key!==key||!proofContext?.period.instant||proofContext.period.instant>new Date(parseDocumentTimestamp(f.observedAt,true)!+9*3600000).toISOString().slice(0,10))return unavailable('invalid-share-basis-evidence');
  if(p.shareBasis.state!=='confirmed')return unavailable('unverified-price-basis');
  const knownDate=new Date(parseDocumentTimestamp(p.request.knownAt,true)!+9*3600000).toISOString().slice(0,10);
- if(p.shareBasis.basisDate!==basis.basisDate||basis.basisDate>knownDate||p.shareBasis.reviewedThrough<p.request.asOf||p.shareBasis.reviewedThrough>knownDate)return unavailable('incompatible-share-basis');
+ if((splitLedger===undefined&&p.shareBasis.basisDate!==basis.basisDate)||basis.basisDate>knownDate||p.shareBasis.reviewedThrough<p.request.asOf||p.shareBasis.reviewedThrough>knownDate)return unavailable('incompatible-share-basis');
  if(metricId==='annualPaidDividendYield'&&basis.dividendStatus!=='paid')return unavailable('unpaid-dividend');
  const value=selection.safeNumber;
  if(metricId!=='annualPaidDividendYield'&&value<=0)return unavailable('nonpositive-denominator');
  if(metricId==='annualPaidDividendYield'&&value<0)return unavailable('negative-dividend');
- const a=decimalFraction(metricId==='annualPaidDividendYield'?value:price.close),b=decimalFraction(metricId==='annualPaidDividendYield'?price.close:value),exact=reduceFraction(a.numerator*b.denominator,a.denominator*b.numerator),approx=Number(exact.numerator)/Number(exact.denominator);
+ let financialFraction=decimalFraction(value);
+ if(splitLedger!==undefined){
+  const adjusted=adjustPerShareValuesForSplits([{value,basisDate:basis.basisDate}],f.metadata.secCode,{asOf:p.request.asOf,knownAt:p.request.knownAt,targetBasisDate:p.shareBasis.basisDate,sourceObservedAt:[f.observedAt],ledger:splitLedger});
+  base.shareAdjustment=adjusted;
+  if(adjusted.status!=='adjusted')return unavailable(adjusted.reason);
+  financialFraction={numerator:BigInt(adjusted.points[0].exact.numerator),denominator:BigInt(adjusted.points[0].exact.denominator)};
+ }
+ const priceFraction=decimalFraction(price.close),a=metricId==='annualPaidDividendYield'?financialFraction:priceFraction,b=metricId==='annualPaidDividendYield'?priceFraction:financialFraction,exact=reduceFraction(a.numerator*b.denominator,a.denominator*b.numerator),approx=Number(exact.numerator)/Number(exact.denominator);
  if(!Number.isFinite(approx)||approx===0&&exact.numerator!==0n||Math.abs(approx)>Number.MAX_SAFE_INTEGER)return unavailable('unsafe-result');
  return{...base,status:'calculated',reason:'calculated',value:approx,exact:{numerator:String(exact.numerator),denominator:String(exact.denominator)},declaration:'source-reviewed-by-caller'};
 }

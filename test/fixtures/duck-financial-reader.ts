@@ -1,0 +1,18 @@
+import {createHash} from 'node:crypto';import {mkdtempSync,rmSync,chmodSync,appendFileSync} from 'node:fs';import {join} from 'node:path';import {tmpdir} from 'node:os';
+import {DuckDBInstance} from '@duckdb/node-api';
+import {DuckFinancialIndexBuild} from '../../src/db/duck-financial-index-build';
+import {DuckFinancialSearchIndex} from '../../src/db/duck-financial-search-index';
+import {ObservedFinancialArchive} from '../../src/db/observed-financial-archive';
+import {ParsedFinancialStore,parsedFinancialMappingVersions} from '../../src/db/parsed-financial-store';
+import {ParsedFinancialJob} from '../../src/db/parsed-financial-job';
+import {FinancialIndexBuild} from '../../src/db/financial-index-build';
+import {FinancialSearchIndex,type FinancialIndexCohort,type FinancialIndexSearchOptions} from '../../src/db/financial-search-index';
+import {reportingInstance} from './financial-reporting-basis';
+export async function duckFinancialReaderFixture(fn:(s:{sqlite:FinancialSearchIndex;duck:DuckFinancialSearchIndex;dir:string;path:string})=>Promise<void>,beforeOpen?:(path:string)=>Promise<void>){
+ const dir=mkdtempSync(join(tmpdir(),'duck-reader-')),path=join(dir,'index.duckdb'),a=join(dir,'a.sqlite'),p=join(dir,'p.sqlite'),options={cutoff:'2026-10-28T00:00:00Z',extractorVersion:'parser',sourceCommit:'a'.repeat(40)},writer=new ObservedFinancialArchive(a),tasks=[];
+ for(const i of [1,2,3,4]){const docID='A'+i,edinetCode='E1200'+i,secCode='100'+i+'0',xml=reportingInstance({issuer:edinetCode,security:secCode,standard:i>=3?'IFRS':'Japan GAAP',consolidated:i===4?'false':'true'}).replace('>10</jppfs_cor:CostOfSales>',`>${i===2?'9007199254740993':'10'}</jppfs_cor:CostOfSales>`),sourceSha256=createHash('sha256').update(xml).digest('hex'),availableAt='2026-07-01T00:00:00.000Z';
+ writer.append([{observationId:docID,observedAt:'2026-06-26T00:00:00Z',document:{docID,parentDocID:null,edinetCode,secCode,docTypeCode:'120',periodStart:'2025-04-01',periodEnd:'2026-03-31',submitDateTime:'2026-06-24 10:00',withdrawalStatus:'0',disclosureStatus:'0',docInfoEditStatus:'0'}}],[{docID,availableAt,sourceSha256,xml}]);tasks.push({availableAt,identity:{docID,sourceSha256,extractorVersion:options.extractorVersion,sourceCommit:options.sourceCommit,mappingVersions:parsedFinancialMappingVersions()}})
+ }writer.close();const archive=new ObservedFinancialArchive(a,{readOnly:true}),pw=new ParsedFinancialStore(p),job=new ParsedFinancialJob(':memory:');job.begin({id:'parse',archiveSha256:archive.snapshotSha256(),tasks});await job.runNext('parse',archive,pw);job.close();pw.close();const parsed=new ParsedFinancialStore(p,{readOnly:true}),sqlite=new FinancialSearchIndex(':memory:'),state=new FinancialIndexBuild(':memory:'),instance=await DuckDBInstance.create(path,{threads:'1'}),connection=await instance.connect();
+ try{const input={id:'build',generation:'all',archiveSha256:archive.snapshotSha256(),options,population:{asOf:'2026-10-27',observedAt:'2026-10-27T00:00:00Z',source:'fixture',sourceSha256:'a'.repeat(64),edinetCodes:['E12001','E12002','E12003','E12004']}};state.begin(input);state.runNext('build',archive,sqlite);state.finish('build',sqlite);const b=new DuckFinancialIndexBuild(connection);await b.begin(input,parsed.snapshotSha256());await b.runNext('build',archive,parsed);await b.finish('build')}finally{connection.closeSync();instance.closeSync();parsed.close();archive.close();state.close()}
+ let duck:DuckFinancialSearchIndex|undefined;try{if(beforeOpen)await beforeOpen(path);duck=await DuckFinancialSearchIndex.open(path);await fn({sqlite,duck,dir,path})}finally{await duck?.close();sqlite.close();rmSync(dir,{recursive:true,force:true})}
+}

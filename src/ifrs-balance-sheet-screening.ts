@@ -1,3 +1,5 @@
+import type { FinancialReportingBasis } from "./financial-reporting-basis";
+import type { EdinetXbrlObject } from "./edinet-xbrl-object";
 import { createHash } from "node:crypto";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { IfrsBalanceSheetMetricId, DEFAULT_IFRS_BALANCE_SHEET_METRICS } from "./ifrs-balance-sheet-registry";
@@ -9,7 +11,7 @@ export const IFRS_BALANCE_SHEET_SCREENING_MAX_DOCUMENTS = 100;
 export const IFRS_BALANCE_SHEET_SCREENING_MAX_CONDITIONS = 100;
 export interface IfrsBalanceSheetMetadata {
     secCode: string; docID: string; instant: string;
-    scope: "Consolidated"; accountingStandard: "IFRS"; currency: "JPY";
+    scope: "Consolidated" | "NonConsolidated"; accountingStandard: "IFRS"; currency: "JPY";
 }
 export interface IfrsBalanceSheetDocument { xml: string; metadata: IfrsBalanceSheetMetadata; }
 export interface IfrsBalanceSheetSnapshot {
@@ -18,6 +20,8 @@ export interface IfrsBalanceSheetSnapshot {
         Partial<Record<IfrsBalanceSheetMetricId, FactSelectionResult<IfrsBalanceSheetMetricId>>>;
     /** 解析に使ったXML文字列のUTF-8表現。原本真正性や申告docIDとの対応は証明しません。 */
     inputXmlSha256: string;
+    /** 単体は当期主範囲のDEIを保持。過去比較の経済的範囲を認証しません。 */
+    reportingBasis?: FinancialReportingBasis;
 }
 export interface IfrsBalanceSheetCondition { metric: IfrsBalanceSheetMetricId; operator: ComparisonOperator; value: number; }
 export interface IfrsBalanceSheetScreeningOptions {
@@ -62,9 +66,9 @@ function metadata(value: unknown): IfrsBalanceSheetMetadata {
     const m = flat(value, ["secCode", "docID", "instant", "scope", "accountingStandard", "currency"]);
     if (typeof m.secCode !== "string" || !/^[0-9A-Z]{4}0?$/.test(m.secCode) || typeof m.docID !== "string" || !m.docID.trim() || /[\x00-\x1f\x7f]/.test(m.docID) ||
         typeof m.instant !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(m.instant) || !Number.isFinite(Date.parse(m.instant)) || new Date(m.instant).toISOString().slice(0, 10) !== m.instant ||
-        m.scope !== "Consolidated" || m.accountingStandard !== "IFRS" || m.currency !== "JPY") throw new Error("IFRS/連結/JPYと正しい会社・書類・期末を明示してください");
+        !["Consolidated", "NonConsolidated"].includes(m.scope as string) || m.accountingStandard !== "IFRS" || m.currency !== "JPY") throw new Error("IFRS/主範囲/JPYと正しい会社・書類・期末を明示してください");
     return { secCode: m.secCode.length === 4 ? m.secCode + "0" : m.secCode, docID: m.docID, instant: m.instant,
-        scope: "Consolidated", accountingStandard: "IFRS", currency: "JPY" };
+        scope: m.scope as IfrsBalanceSheetMetadata["scope"], accountingStandard: "IFRS", currency: "JPY" };
 }
 function projection(value: unknown): IfrsBalanceSheetMetricId[] {
     const chosen = array(value === undefined ? DEFAULT_IFRS_BALANCE_SHEET_METRICS : value, ids.length);
@@ -83,17 +87,24 @@ function options(value: IfrsBalanceSheetScreeningOptions): Required<Pick<IfrsBal
     return { conditions, metricIds: projection(o.metricIds), ...(o.sortBy === undefined ? {} : { sortBy: o.sortBy as IfrsBalanceSheetMetricId }), ...(o.order === undefined ? {} : { order: o.order as SortOrder }),
         ...(o.offset === undefined ? {} : { offset: o.offset as number }), ...(o.limit === undefined ? {} : { limit: o.limit as number }) };
 }
-function createCaptured(xml: string, m: IfrsBalanceSheetMetadata, selectedIds: readonly IfrsBalanceSheetMetricId[]): IfrsBalanceSheetSnapshot {
+function createCaptured(xml: string, m: IfrsBalanceSheetMetadata, selectedIds: readonly IfrsBalanceSheetMetricId[], parsed?: EdinetXbrlObject): IfrsBalanceSheetSnapshot {
     if (typeof xml !== "string") throw new Error("XML文字列が必要です");
     // XML構文/DOCTYPE/容量の検査はparserへ集約し、その事前guardより先に再検証しません。
-    const object = new EdinetXbrlParser().parse(xml, m.docID);
+    const object = parsed ?? new EdinetXbrlParser().parse(xml, m.docID);
+    const reportingBasis = m.scope === "NonConsolidated" ? object.selectFinancialReportingBasis() : undefined;
+    if (reportingBasis?.status === "selected" && reportingBasis.metadata.securityCode !== m.secCode) throw new Error("単体IFRSの証券コードが原本DEIと一致しません");
     const selections = {} as IfrsBalanceSheetSnapshot["selections"];
-    for (const id of selectedIds) selections[id] = object.selectIfrsBalanceSheetMetric(id, { accountingStandard: "IFRS", scope: "Consolidated", period: { instant: m.instant } });
-    return structuredClone({ metadata: m, selections, inputXmlSha256: createHash("sha256").update(xml).digest("hex") });
+    for (const id of selectedIds) selections[id] = object.selectIfrsBalanceSheetMetric(id, { accountingStandard: "IFRS", scope: m.scope, period: { instant: m.instant } });
+    return structuredClone({ metadata: m, selections, ...(reportingBasis ? { reportingBasis } : {}), inputXmlSha256: createHash("sha256").update(xml).digest("hex") });
 }
 /** 専用IFRS snapshot。J-GAAP snapshotへ型変換せず、同じXML文字列を解析/hashに使います。 */
 export function createIfrsBalanceSheetSnapshot(xml: string, inputMetadata: IfrsBalanceSheetMetadata, metricIds?: readonly IfrsBalanceSheetMetricId[]): IfrsBalanceSheetSnapshot {
     return createCaptured(xml, metadata(inputMetadata), projection(metricIds));
+}
+
+/** Internal parsed-object path; XML was already guarded and parsed by the caller. */
+export function createIfrsBalanceSheetSnapshotFromObject(xml: string, object: EdinetXbrlObject, inputMetadata: IfrsBalanceSheetMetadata, metricIds?: readonly IfrsBalanceSheetMetricId[]): IfrsBalanceSheetSnapshot {
+    return createCaptured(xml, metadata(inputMetadata), projection(metricIds), object);
 }
 
 /** 同一期末の明示原本集合だけをメモリ検索。最新採用・比率計算・DB保存はしません。 */
@@ -113,7 +124,7 @@ export function screenIfrsBalanceSheetDocuments(documents: readonly IfrsBalanceS
         const m = row.metadata;
         if (codes.has(m.secCode) || docs.has(m.docID)) throw new Error("同一企業/書類の複数候補は自動選択しません");
         codes.add(m.secCode); docs.add(m.docID);
-        if (m.instant !== captured[0].metadata.instant) throw new Error("企業間で期末が混在しています");
+        if (m.instant !== captured[0].metadata.instant || m.scope !== captured[0].metadata.scope) throw new Error("企業間で期末が混在しています");
     }
     const snapshots = captured.map(row => { const xml = row.document.xml; return createCaptured(xml as string, row.metadata, settings.metricIds); });
     const entities = new Map<string, string>();

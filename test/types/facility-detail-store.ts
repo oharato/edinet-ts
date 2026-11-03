@@ -6,3 +6,13 @@ const appended:FacilityDetailStoreAppendResult=store.append([]);
 const noXML:false=result.storage.originalXmlStored;
 const version:string=FACILITY_DETAIL_STORE_VERSION;
 void [appended,noXML,version,store.audit()];store.close();
+
+import {parseFacilitySiteAndLocation,type FacilityLocationParts} from '../../src/index';
+const location:FacilityLocationParts=parseFacilitySiteAndLocation('本社（東京都中央区）');
+if(location.status==='selected'){
+ const reported:string=location.location;
+ const scope:'reported-cell-only'=location.semantics;
+ // @ts-expect-error no geocoding or property identity is established
+ const latitude:number=location.latitude;
+ void [reported,scope,latitude];
+}

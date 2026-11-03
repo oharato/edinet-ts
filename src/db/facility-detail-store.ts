@@ -17,7 +17,7 @@ const digest=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{64}$/.test
 function fail():never {throw Error('設備Storeの形式・本文・宣言・索引を確認してください');}
 const maximumBody=32*1024**2;
 const columns=`id,doc_id,context_ref,as_of_date,input_sha256,CASE WHEN typeof(body)='text' AND length(CAST(body AS BLOB))<=${maximumBody} THEN body END AS body,content_sha256`;
-type RecordBody={version:typeof FACILITY_DETAILS_VERSION;input:Omit<FacilityDetailDocument,'xml'>;extraction:FacilityDetailsExtraction};
+type RecordBody={version:"2"|typeof FACILITY_DETAILS_VERSION;input:Omit<FacilityDetailDocument,'xml'>;extraction:FacilityDetailsExtraction};
 const identity=(record:RecordBody)=>hash(canonical([record.version,record.input,record.extraction.source.inputXmlSha256]));
 export interface FacilityDetailStoreAppendResult {snapshotIds:string[];inserted:number;}
 export interface FacilityDetailStoreSearchOptions extends FacilityScreeningOptions {snapshotIds?:readonly string[];}
@@ -26,12 +26,16 @@ export type FacilityDetailStoreSearchResult=ReturnType<typeof screenParsedFacili
 /** 原表本文と根拠付き明細を保存。原XMLは既存の原本保管先へ保持します。 */
 export class FacilityDetailStore extends DedicatedSqliteDatabase {
  private verified=false;
- constructor(file:string,options:{readOnly?:boolean}={}){super(file,options,{table:'facility_format',kind:format,schema});}
+ constructor(file:string,options:{readOnly?:boolean}={}){
+  if(!options||typeof options!=='object'||Array.isArray(options)||Object.keys(options).some(k=>k!=='readOnly'))throw Error('専用DBパスとreadOnlyを指定してください');
+  const readOnly=options.readOnly;
+  super(file,{readOnly},{table:'facility_format',kind:format,schema,...(readOnly?{compatibleKinds:['edinet-ts-facility-2-v1']}:{})});
+ }
  private read<T>(fn:()=>T){if(this.closed)fail();const before=this.readOnly?this.readOnlySnapshotSha256():undefined;const result=this.transaction(fn,false);if(before!==undefined&&before!==this.readOnlySnapshotSha256())fail();return result;}
  private decode(row:Record<string,unknown>,deep=true):RecordBody{
   if(typeof row.body!=='string'||!digest(row.id)||!digest(row.input_sha256)||!digest(row.content_sha256))fail();
   const record=JSON.parse(row.body) as RecordBody;
-  if(!record||record.version!==FACILITY_DETAILS_VERSION||!record.input||!record.extraction||canonical(record)!==row.body||hash(canonical([row.id,row.doc_id,row.context_ref,row.as_of_date,row.input_sha256,row.body]))!==row.content_sha256||identity(record)!==row.id)fail();
+  if(!record||record.version!==(this.rows('SELECT kind FROM facility_format')[0]?.kind==='edinet-ts-facility-2-v1'?'2':FACILITY_DETAILS_VERSION)||!record.input||!record.extraction||canonical(record)!==row.body||hash(canonical([row.id,row.doc_id,row.context_ref,row.as_of_date,row.input_sha256,row.body]))!==row.content_sha256||identity(record)!==row.id)fail();
   const {input,extraction}=record,source=extraction.source;
   if(input.accountingStandard!=='J-GAAP'||input.selection?.kind!==DisclosureTableKind.Facilities||input.selection.docID!==row.doc_id||input.selection.contextRef!==row.context_ref||!Array.isArray(input.declarations)||!input.declarations.length||input.declarations.some(d=>d.asOfDate!==row.as_of_date)||source?.inputXmlSha256!==row.input_sha256||source.source?.docID!==row.doc_id||source.source.contextRef!==row.context_ref||source.source.kind!==DisclosureTableKind.Facilities)fail();
   if(deep){
@@ -40,7 +44,7 @@ export class FacilityDetailStore extends DedicatedSqliteDatabase {
     const parsed=parseDisclosureTableFragment(raw);
     if(canonical(parsed.tables)!==canonical(source.tables)||parsed.parsedText!==source.parsedText||parsed.outsideTableText!==source.outsideTableText)fail();
    }
-   if(canonical(projectFacilityDetails(source,input))!==canonical(extraction))fail();
+   if(canonical(projectFacilityDetails(source,input,record.version))!==canonical(extraction))fail();
    screenParsedFacilityDetails([extraction],{asOfDate:String(row.as_of_date)});
   }
   return record;

@@ -43,3 +43,23 @@ describe("期首/期末平均総資産による算式別利益率", () => {
         expect(() => screenAverageAssetsReturn([], M.NetIncome, { conditions: [{ operator: "eq", value: NaN }] })).toThrow();
     });
 });
+
+describe('完全一致する直接factだけを圧縮して平均資産利益率へ渡す',()=>{
+ it.each(Object.values(M))('%sは重複を合算せず原値と全証跡を保持する',metric=>{
+  const data=input(),raw=data.income.xml,facts=raw.match(/<jppfs_cor:[^>]+>[\s\S]*?<\/jppfs_cor:[^>]+>/g)!;
+  for(const p of [data.income,data.opening,data.closing])p.xml=raw.replace('</xbrli:xbrl>',facts.join('')+'</xbrli:xbrl>');
+  const r=calculateAverageAssetsReturn(data,metric);expect(r).toMatchObject({status:'calculated',exact:{numerator:'1',denominator:'10'}});
+  for(const key of ['income','opening','closing'] as const)expect(r[key].selection.evidence.filter(e=>e.reason==='selected')).toHaveLength(2);
+ });
+ it.each(['value','precision','context'])('%sが異なる候補を同値として圧縮しない',kind=>{
+  const data=input(),raw=data.income.xml,original=fact('20','','jppfs_cor:ProfitLossAttributableToOwnersOfParent','income');
+  let addition=kind==='value'?original.replace('>20<','>21<'):kind==='precision'?original.replace('decimals="INF"','decimals="0"'):'';
+  if(kind==='context'){const c=raw.match(/<xbrli:context id="income">[\s\S]*?<\/xbrli:context>/)![0];addition=c.replace('2025-03-31','2025-03-30');}
+  data.income.xml=raw.replace('</xbrli:xbrl>',addition+'</xbrli:xbrl>');expect(calculateAverageAssetsReturn(data,M.NetIncome)).toMatchObject({status:'unavailable',reason:'unavailable-input'});
+ });
+ it('USD候補をJPYへ足さず不採用根拠を残す',()=>{
+  const data=input(),other=fact('20','','jppfs_cor:ProfitLossAttributableToOwnersOfParent','income').replace('unitRef="money"','unitRef="usd"');
+  data.income.xml=data.income.xml.replace('</xbrli:xbrl>','<xbrli:unit id="usd"><xbrli:measure>iso4217:USD</xbrli:measure></xbrli:unit>'+other+'</xbrli:xbrl>');
+  const r=calculateAverageAssetsReturn(data,M.NetIncome);expect(r).toMatchObject({status:'unavailable',reason:'unavailable-input'});expect(r.income.selection.evidence.some(e=>e.reason==='unsupported-unit')).toBe(true);
+ });
+});

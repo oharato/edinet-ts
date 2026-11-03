@@ -26,4 +26,4 @@ export const IFRS_BALANCE_SHEET_REGISTRY: Readonly<Record<IfrsBalanceSheetMetric
     currentLeaseLiabilities: define("currentLeaseLiabilities", "LeaseLiabilitiesCLIFRS"),
     noncurrentLeaseLiabilities: define("noncurrentLeaseLiabilities", "LeaseLiabilitiesNCLIFRS")
 });
-export const IFRS_BALANCE_SHEET_REGISTRY_VERSION = "3";
+export const IFRS_BALANCE_SHEET_REGISTRY_VERSION = "4";

@@ -1,3 +1,5 @@
+import type { FinancialReportingBasis } from "./financial-reporting-basis";
+import type { EdinetXbrlObject } from "./edinet-xbrl-object";
 import { createHash } from "node:crypto";
 import { EdinetXbrlParser } from "./edinet-xbrl-parser";
 import { IfrsFinancialDetailMetricId, DEFAULT_IFRS_FINANCIAL_DETAIL_METRICS } from "./ifrs-financial-detail-registry";
@@ -9,7 +11,7 @@ export const IFRS_FINANCIAL_DETAIL_SCREENING_MAX_DOCUMENTS = 100;
 export const IFRS_FINANCIAL_DETAIL_SCREENING_MAX_CONDITIONS = 100;
 export interface IfrsFinancialDetailMetadata {
     secCode: string; docID: string; period: {startDate:string;endDate:string}; periodType: FinancialPeriodType;
-    scope: "Consolidated"; accountingStandard: "IFRS"; currency: "JPY";
+    scope: "Consolidated" | "NonConsolidated"; accountingStandard: "IFRS"; currency: "JPY";
 }
 export interface IfrsFinancialDetailDocument { xml: string; metadata: IfrsFinancialDetailMetadata; }
 export interface IfrsFinancialDetailSnapshot {
@@ -17,6 +19,8 @@ export interface IfrsFinancialDetailSnapshot {
     selections: Partial<Record<IfrsFinancialDetailMetricId, FactSelectionResult<IfrsFinancialDetailMetricId>>>;
     /** 解析に使ったXML文字列のUTF-8表現。原本真正性や申告docIDとの対応は証明しません。 */
     inputXmlSha256: string;
+    /** 単体は当期主範囲のDEIを保持。過去比較の経済的範囲を認証しません。 */
+    reportingBasis?: FinancialReportingBasis;
 }
 export interface IfrsFinancialDetailCondition { metric: IfrsFinancialDetailMetricId; operator: ComparisonOperator; value: number; }
 export interface IfrsFinancialDetailScreeningOptions {
@@ -62,8 +66,8 @@ function metadata(value: unknown): IfrsFinancialDetailMetadata {
     const valid = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v;
     if (typeof m.secCode !== "string" || !/^[0-9A-Z]{4}0?$/.test(m.secCode) || typeof m.docID !== "string" || !m.docID.trim() || /[\x00-\x1f\x7f]/.test(m.docID) ||
         !valid(p.startDate) || !valid(p.endDate) || p.startDate > p.endDate || !Object.values(FinancialPeriodType).includes(m.periodType as FinancialPeriodType) ||
-        m.scope !== "Consolidated" || m.accountingStandard !== "IFRS" || m.currency !== "JPY") throw new Error("IFRS/連結/JPYと正しい会社・書類・期間/分類を明示してください");
-    return {secCode:m.secCode.length===4?m.secCode+"0":m.secCode,docID:m.docID,period:{startDate:p.startDate,endDate:p.endDate},periodType:m.periodType as FinancialPeriodType,scope:"Consolidated",accountingStandard:"IFRS",currency:"JPY"};
+        !["Consolidated", "NonConsolidated"].includes(m.scope as string) || m.accountingStandard !== "IFRS" || m.currency !== "JPY") throw new Error("IFRS/主範囲/JPYと正しい会社・書類・期間/分類を明示してください");
+    return {secCode:m.secCode.length===4?m.secCode+"0":m.secCode,docID:m.docID,period:{startDate:p.startDate,endDate:p.endDate},periodType:m.periodType as FinancialPeriodType,scope:m.scope as IfrsFinancialDetailMetadata["scope"],accountingStandard:"IFRS",currency:"JPY"};
 }
 function projection(value: unknown): IfrsFinancialDetailMetricId[] {
     const chosen = array(value === undefined ? DEFAULT_IFRS_FINANCIAL_DETAIL_METRICS : value, ids.length);
@@ -82,17 +86,24 @@ function options(value: IfrsFinancialDetailScreeningOptions) {
     return { conditions, metricIds:projection(o.metricIds), ...(o.sortBy === undefined ? {} : { sortBy: o.sortBy as IfrsFinancialDetailMetricId }), ...(o.order === undefined ? {} : { order: o.order as SortOrder }),
         ...(o.offset === undefined ? {} : { offset: o.offset as number }), ...(o.limit === undefined ? {} : { limit: o.limit as number }) };
 }
-function createCaptured(xml: string, m: IfrsFinancialDetailMetadata, selectedIds: readonly IfrsFinancialDetailMetricId[]): IfrsFinancialDetailSnapshot {
+function createCaptured(xml: string, m: IfrsFinancialDetailMetadata, selectedIds: readonly IfrsFinancialDetailMetricId[], parsed?: EdinetXbrlObject): IfrsFinancialDetailSnapshot {
     if (typeof xml !== "string") throw new Error("XML文字列が必要です");
     // XML構文/DOCTYPE/容量の検査はparserへ集約し、その事前guardより先に再検証しません。
-    const object = new EdinetXbrlParser().parse(xml, m.docID);
+    const object = parsed ?? new EdinetXbrlParser().parse(xml, m.docID);
+    const reportingBasis = m.scope === "NonConsolidated" ? object.selectFinancialReportingBasis() : undefined;
+    if (reportingBasis?.status === "selected" && reportingBasis.metadata.securityCode !== m.secCode) throw new Error("単体IFRSの証券コードが原本DEIと一致しません");
     const selections = {} as IfrsFinancialDetailSnapshot["selections"];
-    for (const id of selectedIds) selections[id] = object.selectIfrsFinancialDetail(id, { accountingStandard: "IFRS", scope: "Consolidated", period: m.period });
-    return structuredClone({ metadata: m, selections, inputXmlSha256: createHash("sha256").update(xml).digest("hex") });
+    for (const id of selectedIds) selections[id] = reportingBasis?.status === "selected" && reportingBasis.metadata.periodType !== m.periodType ? { metricId: id, status: "unsupported", reason: "unsupported-semantics", evidence: [] } : object.selectIfrsFinancialDetail(id, { accountingStandard: "IFRS", scope: m.scope, period: m.period });
+    return structuredClone({ metadata: m, selections, ...(reportingBasis ? { reportingBasis } : {}), inputXmlSha256: createHash("sha256").update(xml).digest("hex") });
 }
 /** 専用IFRS snapshot。J-GAAP snapshotへ型変換せず、同じXML文字列を解析/hashに使います。 */
 export function createIfrsFinancialDetailSnapshot(xml: string, inputMetadata: IfrsFinancialDetailMetadata, metricIds?: readonly IfrsFinancialDetailMetricId[]): IfrsFinancialDetailSnapshot {
     return createCaptured(xml, metadata(inputMetadata), projection(metricIds));
+}
+
+/** Internal parsed-object path; XML was already guarded and parsed by the caller. */
+export function createIfrsFinancialDetailSnapshotFromObject(xml: string, object: EdinetXbrlObject, inputMetadata: IfrsFinancialDetailMetadata, metricIds?: readonly IfrsFinancialDetailMetricId[]): IfrsFinancialDetailSnapshot {
+    return createCaptured(xml, metadata(inputMetadata), projection(metricIds), object);
 }
 
 /** 同一期間・期間分類の明示原本集合だけをメモリ検索。最新採用・比率計算・DB保存はしません。 */
@@ -113,7 +124,7 @@ export function screenIfrsFinancialDetailDocuments(documents: readonly IfrsFinan
         const m = row.metadata;
         if (codes.has(m.secCode) || docs.has(m.docID)) throw new Error("同一企業/書類の複数候補は自動選択しません");
         codes.add(m.secCode); docs.add(m.docID);
-        if (JSON.stringify([m.period,m.periodType]) !== JSON.stringify([captured[0].metadata.period,captured[0].metadata.periodType])) throw new Error("企業間で期間/分類が混在しています");
+        if (JSON.stringify([m.period,m.periodType,m.scope]) !== JSON.stringify([captured[0].metadata.period,captured[0].metadata.periodType,captured[0].metadata.scope])) throw new Error("企業間で期間/分類が混在しています");
     }
     let totalBytes = 0;
     const inputs = captured.map(row => {

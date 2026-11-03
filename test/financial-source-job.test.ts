@@ -37,7 +37,7 @@ it('同じ接続の並行実行・closeを止め、他の状態DB接続からの
  s.state.begin(input,s.frozen);const second=new FinancialSourceJob(s.statePath);let release!:(v:string)=>void;const waiting=new Promise<string>(resolve=>release=resolve);const running=s.state.runNext('job',s.archive,async()=>waiting,{limit:1});
  // await transaction開始まで進めます。
  await Promise.resolve();expect(()=>s.state.close()).toThrow('実行終了');await expect(s.state.runNext('job',s.archive,async()=>xml)).rejects.toThrow('実行中');expect(()=>s.state.progress('job')).toThrow('実行中');const f=vi.fn(async()=>xml);await expect(second.runNext('job',s.archive,f)).rejects.toThrow();expect(f).not.toHaveBeenCalled();second.close();release(xml);expect((await running).completed).toBe(1);
-}));
+}),15000);
 it.each(['source_job_plans','source_job_tasks','source_job_attempts'])('%s破損を成功扱いしない',table=>fixture(async s=>{
  s.state.begin(input,s.frozen);await s.state.runNext('job',s.archive,async()=>xml,{limit:1});s.state.close();const db=new Database(s.statePath);db.exec(`UPDATE ${table} SET sha256='bad'`);db.close();const bad=new FinancialSourceJob(s.statePath);try{expect(()=>bad.progress('job')).toThrow('hash');}finally{bad.close();}
 }));

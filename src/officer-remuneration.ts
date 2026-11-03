@@ -18,9 +18,12 @@ const norm=(s:string)=>s.normalize("NFKC").replace(/\s/g,"");
 const validDate=(s:unknown):s is string=>typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;
 const multiplier=(unit:string):1|1000|1000000=>unit==="百万円"?1000000:unit==="千円"?1000:1;
 function capture(d:RemunerationDocument):RemunerationDocument{
- if(!d?.selection||d.selection.kind!==DisclosureTableKind.OfficerRemuneration||!d.period||!validDate(d.period.startDate)||!validDate(d.period.endDate)||d.period.startDate>=d.period.endDate||!Array.isArray(d.tables)||!d.tables.length||d.tables.length>200)throw new Error("役員報酬の本文/確認済み期間/表が必要です");
- const seen=new Set<number>(),tables=Array.from({length:d.tables.length},(_,i)=>{
-  const t=d.tables[i];
+ if(!d?.selection||d.selection.kind!==DisclosureTableKind.OfficerRemuneration||!d.period||!validDate(d.period.startDate)||!validDate(d.period.endDate)||d.period.startDate>=d.period.endDate)throw new Error("役員報酬の本文/確認済み期間/表が必要です");
+ const declared=d.tables;if(!Array.isArray(declared))throw new Error("確認済み表の配列が必要です");
+ const tableCount=declared.length;if(!Number.isSafeInteger(tableCount)||tableCount<1||tableCount>200)throw new Error("確認済み表は1〜200件です");
+ const seen=new Set<number>(),tables=Array.from({length:tableCount},(_,i)=>{
+  if(!Object.hasOwn(declared,i))throw new Error("確認済み表の配列要素が欠落しています");
+  const t=declared[i];
   if(!t||Object.keys(t).some(k=>!["tableIndex","rawSha256","kind","headerRows"].includes(k))||!Number.isSafeInteger(t.tableIndex)||t.tableIndex<0||seen.has(t.tableIndex)||!["category","individual"].includes(t.kind)||![2,3].includes(t.headerRows)||typeof t.rawSha256!=="string"||!/^[a-f0-9]{64}$/.test(t.rawSha256))throw new Error("役員報酬表の位置/hash/種類/見出し/重複を確認してください");
   seen.add(t.tableIndex);return {tableIndex:t.tableIndex,rawSha256:t.rawSha256,kind:t.kind,headerRows:t.headerRows};
  }).sort((a,b)=>a.tableIndex-b.tableIndex);
@@ -87,13 +90,14 @@ export function extractOfficerRemuneration(input:RemunerationDocument):Remunerat
 export interface RemunerationSearchOptions {kind:"category"|"individual";period:{startDate:string;endDate:string};role:"detail"|"reported-total";metric:"total"|"recipientCount"|"component";componentPath?:readonly string[];labelContains?:string;companyContains?:string;condition?:{operator:ComparisonOperator;value:number};sort?:"value-asc"|"value-desc";offset?:number;limit?:number;}
 const fraction=(s:string)=>{const [i,f=""]=s.split(".");return {numerator:BigInt(i+f),denominator:10n**BigInt(f.length)};};
 export function searchOfficerRemuneration(documents:readonly RemunerationDocument[],options:RemunerationSearchOptions){
- if(!Array.isArray(documents)||documents.length>100||!options?.period)throw new Error("役員報酬検索は100原本以下で対象期間が必要です");
+ if(!Array.isArray(documents)||!options?.period)throw new Error("役員報酬検索は100原本以下で対象期間が必要です");
+ const documentCount=documents.length;if(!Number.isSafeInteger(documentCount)||documentCount<0||documentCount>100)throw new Error("検索原本は100件以下です");
  const {kind,period,role,metric,componentPath,labelContains,companyContains,condition,sort,offset=0,limit=100}=options;
  if(!["category","individual"].includes(kind)||!validDate(period.startDate)||!validDate(period.endDate)||period.startDate>=period.endDate||!["detail","reported-total"].includes(role)||!["total","recipientCount","component"].includes(metric)||kind==="individual"&&(metric==="recipientCount"||role==="reported-total")||
   (metric==="component"? !Array.isArray(componentPath)||!componentPath.length||componentPath.length>5||Array.from({length:componentPath.length},(_,i)=>componentPath[i]).some(s=>typeof s!=="string"||!s.trim()||s.length>1000):componentPath!==undefined)||
   [labelContains,companyContains].some(s=>s!==undefined&&(typeof s!=="string"||!s.trim()||s.length>1000))||companyContains!==undefined&&(kind!=="individual"||metric!=="component")||
   condition!==undefined&&(!condition||typeof condition!=="object"||Array.isArray(condition)||!["gt","gte","lt","lte","eq"].includes(condition.operator)||!Number.isFinite(condition.value))||sort!==undefined&&!["value-asc","value-desc"].includes(sort)||!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>1000)throw new Error("役員報酬検索の種類/期間/指標/内訳見出し/条件を確認してください");
- const inputs=Array.from({length:documents.length},(_,i)=>capture(documents[i])).sort((a,b)=>a.selection.docID<b.selection.docID?-1:a.selection.docID>b.selection.docID?1:0);
+ const inputs=Array.from({length:documentCount},(_,i)=>{if(!Object.hasOwn(documents,i))throw new Error("検索原本の配列要素が欠落しています");return capture(documents[i]);}).sort((a,b)=>a.selection.docID<b.selection.docID?-1:a.selection.docID>b.selection.docID?1:0);
  if(inputs.some(d=>typeof d.xml!=="string")||inputs.reduce((n,d)=>n+Buffer.byteLength(d.xml),0)>256*1024*1024||new Set(inputs.map(d=>d.selection.docID)).size!==inputs.length)throw new Error("役員報酬原本の重複/上限を確認してください");
  const extractions:RemunerationExtraction[]=[],rows:{sourceIndex:number;entry:RemunerationEntry;value:RemunerationValue;contributionIndex?:number}[]=[],excluded:{sourceIndex:number;entryKey:string;contributionIndex?:number;reason:string}[]=[],issuers=new Set<string>();let filtered=0,count=0,cells=0;
  for(const d of inputs){

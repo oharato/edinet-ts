@@ -1,7 +1,14 @@
 import { createHash } from 'node:crypto';
 import { DedicatedSqliteDatabase } from './dedicated-sqlite';
-import { FinancialSearchIndex, isFinancialIndexGenerationId, type FinancialIndexQuality } from './financial-search-index';
+import { FinancialSearchIndex, isFinancialIndexGenerationId, financialIndexGenerationSha256, type FinancialIndexGeneration, type FinancialIndexQuality } from './financial-search-index';
 export const FINANCIAL_INDEX_PUBLICATION_VERSION = '1';
+/** Minimum contract for an already verified immutable reader; quality-only catalog operations do not verify original XML. */
+export interface FinancialIndexAsyncReader {
+ generation(id:string):Promise<FinancialIndexGeneration>;
+ quality(id:string):Promise<FinancialIndexQuality>;
+ snapshotSha256():Promise<string>;
+}
+
 export interface FinancialIndexPublicationPolicy {
     minimumCompaniesWithUsableValues: number;
     maxUnavailableSources: number;
@@ -51,6 +58,9 @@ function normalizePolicy(input: FinancialIndexPublicationPolicy): FinancialIndex
         throw new Error('公開条件は0以上の安全な整数です');
     return policy;
 }
+function assertMetadataGeneration(report:FinancialIndexGeneration){
+    if(report.indexVersion!=='1' || 'selectionMode' in report || 'metadataSelection' in report || 'financialVersionProof' in report || 'financialVersion' in report.provenance)throw Error('金融版選択の世代は公開できません。専用の独立検証・公開条件が必要です');
+}
 function violations(quality: FinancialIndexQuality, policy: FinancialIndexPublicationPolicy): FinancialIndexPublicationCandidate['violations'] {
     const actual: FinancialIndexPublicationPolicy = { minimumCompaniesWithUsableValues: quality.companiesWithUsableValues, maxUnavailableSources: quality.unavailableSources.reduce((n, r) => n + r.documents, 0), maxUnresolvedSelections: quality.selectionDecisions.unresolved, maxUnavailableSelections: quality.selectionDecisions.unavailable, maxUnresolvedRecords: quality.unresolvedRecords.reduce((n, r) => n + r.documents, 0), maxUnavailableGroups: quality.unavailableGroups.reduce((n, r) => n + r.documents, 0), maxDuplicateCohortIdentifiers: quality.cohorts.reduce((n, r) => n + r.duplicateCompanies + r.duplicateSecurityCodes, 0), maxUnavailableValues: quality.values.missing + quality.values.unsupported + quality.values.ambiguous + quality.values['unsafe-number'] };
     return fields.filter(k => k === 'minimumCompaniesWithUsableValues' ? actual[k] < policy[k] : actual[k] > policy[k]).map(condition => ({ condition, actual: actual[condition], limit: policy[condition] }));
@@ -64,6 +74,11 @@ export class FinancialIndexPublication extends DedicatedSqliteDatabase {
         if (!isFinancialIndexGenerationId(id) || !(index instanceof FinancialSearchIndex))
             throw new Error('公開候補IDと財務索引が必要です');
         const quality = index.quality(generation), report = index.generation(generation);
+        return this.prepareCandidate(id,generation,quality,report,inputPolicy);
+    }
+    private prepareCandidate(id:string,generation:string,quality:FinancialIndexQuality,report:FinancialIndexGeneration,inputPolicy?:FinancialIndexPublicationPolicy):FinancialIndexPublicationCandidate {
+        assertMetadataGeneration(report);
+        if(report.id!==generation||quality.generation!==generation||quality.generationSha256!==financialIndexGenerationSha256(report))throw Error('候補の世代と品質が不一致です');
         if (!report.assembly || quality.populationCompanies === undefined)
             throw new Error('全母集団を集約した固定世代が必要です');
         const policy = normalizePolicy(inputPolicy ?? { minimumCompaniesWithUsableValues: quality.populationCompanies, maxUnavailableSources: 0, maxUnresolvedSelections: 0, maxUnavailableSelections: 0, maxUnresolvedRecords: 0, maxUnavailableGroups: 0, maxDuplicateCohortIdentifiers: 0, maxUnavailableValues: 0 }), failed = violations(quality, policy);
@@ -79,6 +94,36 @@ export class FinancialIndexPublication extends DedicatedSqliteDatabase {
             this.run('INSERT INTO publication_candidates VALUES(?,?,?)', [id, body, hash(canonical([id, body]))]);
             return candidate;
         });
+    }
+    private async inspectAsync(index:FinancialIndexAsyncReader,generation:string){
+        if(!index||typeof index!=='object'||['generation','quality','snapshotSha256'].some(k=>typeof (index as unknown as Record<string,unknown>)[k]!=='function'))throw Error('固定snapshotの非同期readerが必要です');
+        const before=await index.snapshotSha256();if(typeof before!=='string'||!/^[a-f0-9]{64}$/.test(before))throw Error('固定snapshotの指紋が不正です');
+        const quality=await index.quality(generation),report=await index.generation(generation);
+        assertMetadataGeneration(report);
+        if(before!==await index.snapshotSha256())throw Error('検査中に固定snapshotが変化しました');return {quality,report};
+    }
+    /** Quality-only candidate preparation. Formal daily activation still requires independent source verification. */
+    async prepareAsync(id:string,index:FinancialIndexAsyncReader,generation:string,inputPolicy?:FinancialIndexPublicationPolicy){
+        if(!isFinancialIndexGenerationId(id)||!isFinancialIndexGenerationId(generation))throw Error('公開候補IDと世代IDが不正です');
+        const policy=inputPolicy===undefined?undefined:normalizePolicy(inputPolicy),{quality,report}=await this.inspectAsync(index,generation);
+        return this.prepareCandidate(id,generation,quality,report,policy);
+    }
+    async resolveAsync(index:FinancialIndexAsyncReader){
+        const c=this.current();if(!c)return undefined;
+        const {quality,report}=await this.inspectAsync(index,c.generation);
+        if(canonical(quality)!==canonical(c.quality)||report.id!==c.generation||financialIndexGenerationSha256(report)!==c.generationSha256)throw Error('候補の固定世代と財務索引が一致しません');
+        if(canonical(this.current())!==canonical(c))throw Error('検査中に公開候補が切り替わりました');return c;
+    }
+    /** Low-level quality/CAS operation, equivalent to activate; does not replace the independent source gate. */
+    async activateAsync(id:string,index:FinancialIndexAsyncReader,options:{expectedActive:string|null}){
+        const expected=this.captureExpected(options),c=this.candidate(id);if(!c.eligible)throw Error('公開条件を満たしていません');
+        const {quality,report}=await this.inspectAsync(index,c.generation);
+        if(canonical(quality)!==canonical(c.quality)||financialIndexGenerationSha256(report)!==c.generationSha256)throw Error('候補の固定世代と財務索引が一致しません');
+        return this.activateCandidate(c,expected);
+    }
+    private captureExpected(options:{expectedActive:string|null}){
+        if(!options||typeof options!=='object'||Array.isArray(options)||Object.keys(options).length!==1||!Object.hasOwn(options,'expectedActive')||options.expectedActive!==null&&!isFinancialIndexGenerationId(options.expectedActive))throw Error('直前の公開候補IDまたはnullを指定してください');
+        return options.expectedActive;
     }
     private readCandidate(id: string): FinancialIndexPublicationCandidate {
         if (!isFinancialIndexGenerationId(id))
@@ -120,6 +165,7 @@ export class FinancialIndexPublication extends DedicatedSqliteDatabase {
     history(): FinancialIndexPublicationTransition[] { return this.transaction(() => this.readHistory(), false); }
     current(): FinancialIndexPublicationCandidate | undefined { return this.transaction(() => { const last = this.readHistory().at(-1); return last ? this.readCandidate(last.publication) : undefined; }, false); }
     private verify(c: FinancialIndexPublicationCandidate, index: FinancialSearchIndex) {
+        if(index instanceof FinancialSearchIndex)assertMetadataGeneration(index.generation(c.generation));
         if (!(index instanceof FinancialSearchIndex) || canonical(index.quality(c.generation)) !== canonical(c.quality))
             throw new Error('候補の固定世代と財務索引が一致しません');
     }
@@ -138,7 +184,12 @@ export class FinancialIndexPublication extends DedicatedSqliteDatabase {
         if (!c.eligible)
             throw new Error('公開条件を満たしていません');
         this.verify(c, index);
+        return this.activateCandidate(c,expected);
+    }
+    private activateCandidate(c:FinancialIndexPublicationCandidate,expected:string|null):FinancialIndexPublicationCandidate {
+        const id=c.id;
         return this.transaction(() => {
+            if(canonical(this.readCandidate(id))!==canonical(c))throw Error('検査中に公開候補が変化しました');
             const history = this.readHistory(), previous = history.at(-1)?.publication ?? null;
             if (previous !== expected)
                 throw new Error('公開候補が他の処理で切り替わりました');

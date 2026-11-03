@@ -132,13 +132,14 @@ async function main(){
             normalFile(daily.envPath);loadEnv({path:daily.envPath,quiet:true});if(!process.env.EDINET_API_KEY)throw Error('Source acquisition credentials are missing');
             const client=new EdinetXbrlDownloader({rootDir:join(dirname(prepared.configPath),'provider-cache'),requestTimeoutMs:60000,maxRetries:0});return (docID,request)=>client.fetchXbrl(docID,request);
         }}):prepared;
-        if(result.status==='acquired')result=await buildReconstructedFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal,maxCompanies:100});
+        if(result.status==='acquired')result=await buildReconstructedFinancialCycle(readJSONSnapshot(prepared.configPath).value,{signal:controller.signal,maxCompanies:100,maxBatches:10});
         console.log(JSON.stringify(result));if(result.status==='aborted')process.exitCode=1;
     }
     finally{process.removeListener('SIGINT',stop);process.removeListener('SIGTERM',stop)}
 }
 export function dailyFinancialFailureMessage(error){
-    if(error instanceof Error&&['Financial cycle preparation disk reserve','Daily preparation disk reserve','Financial build disk reserve','Reconstruction disk reserve'].includes(error.message))return 'Daily financial preparation stopped: insufficient disk space for protected copies and reserve.';
+    if(error?.exitCode===75)return 'Daily financial preparation stopped: another process holds a required operational lock. Retry after it finishes.';
+    if(error instanceof Error&&['Financial cycle preparation disk reserve','Daily preparation disk reserve','Financial build disk reserve','Reconstruction disk reserve','DuckDB financial cycle disk reserve'].includes(error.message))return 'Daily financial preparation stopped: insufficient disk space for protected copies and reserve.';
     return 'Daily financial preparation stopped; check fixed acquisition, completed metadata, population and storage (details hidden).';
 }
 

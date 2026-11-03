@@ -3,8 +3,9 @@ import type {EdinetData} from "./edinet-xbrl-object";
 import type {EdinetContext} from "./edinet-context";
 import type {CompanyProfileEvidence,CompanyProfileReason} from "./company-profile";
 import {EdinetXbrlParser} from "./edinet-xbrl-parser";
-export const FINANCIAL_REPORTING_BASIS_VERSION="2";
+export const FINANCIAL_REPORTING_BASIS_VERSION="4";
 const tags={
+ amendmentTargetDocID:"IdentificationOfDocumentSubjectToAmendmentDEI",
  edinetCode:"EDINETCodeDEI",securityCode:"SecurityCodeDEI",documentType:"DocumentTypeDEI",accountingStandard:"AccountingStandardsDEI",consolidated:"WhetherConsolidatedFinancialStatementsArePreparedDEI",
  fiscalYearStart:"CurrentFiscalYearStartDateDEI",fiscalYearEnd:"CurrentFiscalYearEndDateDEI",currentPeriodEnd:"CurrentPeriodEndDateDEI",currentPeriodType:"TypeOfCurrentPeriodDEI",
  consolidatedIndustry:"IndustryCodeWhenConsolidatedFinancialStatementsArePreparedInAccordanceWithIndustrySpecificRegulationsDEI",standaloneIndustry:"IndustryCodeWhenFinancialStatementsArePreparedInAccordanceWithIndustrySpecificRegulationsDEI"
@@ -15,7 +16,8 @@ export type ReportingBasisFieldSelection={fieldId:FinancialReportingBasisField;r
 export interface FinancialReportingBasisIssue {reason:"field-unavailable"|"inconsistent-dei-context"|"invalid-issuer"|"unsupported-standard"|"invalid-consolidated-flag"|"unsupported-period-code"|"unsupported-document-form"|"period-range-conflict";field?:FinancialReportingBasisField;}
 export interface ResolvedFinancialReportingMetadata {
  accountingStandard:"J-GAAP"|"IFRS";scope:"Consolidated"|"NonConsolidated";edinetCode:string;securityCode?:string;
- documentType:string;reportingPeriodCode:"FY"|"HY"|"Q1"|"Q2"|"Q3";periodType:"annual"|"ytd";deiContextInstant:string;
+ amendmentTargetDocID?:string;
+ documentType:string;reportingPeriodCode:"FY"|"HY"|"Q1"|"Q2"|"Q3"|"Q4";periodType:"annual"|"ytd";deiContextInstant:string;
  fiscalYear:{startDate:string;endDate:string};period:{startDate:string;endDate:string};instant:string;
  /** 通常の3暦月区切りと実contextの両方で確認できた単四半期。累計抽出には使いません。 */
  quarterPeriod?:{startDate:string;endDate:string};
@@ -49,8 +51,9 @@ export function selectFinancialReportingBasis(docID:string,facts:ReadonlyMap<str
     else if(c.unsupportedDimensions||c.dimensions.length!==0)item.reason="unsupported-dimensions";
     else if(item.unitRef!=="")item.reason="unsupported-unit";
     else if(item.nil)item.reason="nil";
-    else if(item.raw===undefined)item.reason="raw-unavailable";
+    else if(item.raw===undefined)item.reason=fieldId==="amendmentTargetDocID"?"empty-value":"raw-unavailable";
     else if(!item.raw.trim())item.reason="empty-value";
+    else if(fieldId==="amendmentTargetDocID"&&(item.raw!==item.raw.trim()||item.raw.length>256||/[\x00-\x1f\x7f-\x9f]/.test(item.raw)))item.reason="invalid-field-value";
     else if(item.raw.length>2048)item.reason="invalid-field-value";
     else if(["fiscalYearStart","fiscalYearEnd","currentPeriodEnd"].includes(fieldId)&&!date(item.raw))item.reason="invalid-date";
     evidence.push(item);
@@ -66,7 +69,7 @@ export function selectFinancialReportingBasis(docID:string,facts:ReadonlyMap<str
   }
   fields[fieldId]=selected;
  }
- const issues:FinancialReportingBasisIssue[]=[],optional=new Set<FinancialReportingBasisField>(["securityCode","consolidatedIndustry","standaloneIndustry"]);
+ const issues:FinancialReportingBasisIssue[]=[],optional=new Set<FinancialReportingBasisField>(["securityCode","consolidatedIndustry","standaloneIndustry","amendmentTargetDocID"]);
  for(const [field,s]of Object.entries(fields)as[FinancialReportingBasisField,ReportingBasisFieldSelection][])if(s.status!=="selected"&&(!optional.has(field)||s.status!=="missing"))issues.push({reason:"field-unavailable",field});
  const raw=(id:FinancialReportingBasisField)=>fields[id].status==="selected"?fields[id].raw:undefined;
  const selected=Object.values(fields).filter((s):s is ReportingBasisFieldSelection&{status:"selected"}=>s.status==="selected");
@@ -76,15 +79,21 @@ export function selectFinancialReportingBasis(docID:string,facts:ReadonlyMap<str
  const standard=raw("accountingStandard"),flag=raw("consolidated"),periodCode=raw("currentPeriodType"),form=raw("documentType");
  if(standard!==undefined&&!["Japan GAAP","IFRS"].includes(standard))issues.push({reason:"unsupported-standard",field:"accountingStandard"});
  if(flag!==undefined&&!["true","false","1","0"].includes(flag))issues.push({reason:"invalid-consolidated-flag",field:"consolidated"});
- if(periodCode!==undefined&&!["FY","HY","Q1","Q2","Q3"].includes(periodCode))issues.push({reason:"unsupported-period-code",field:"currentPeriodType"});
+ if(periodCode!==undefined&&!["FY","HY","Q1","Q2","Q3","Q4"].includes(periodCode))issues.push({reason:"unsupported-period-code",field:"currentPeriodType"});
  if(form!==undefined&&periodCode!==undefined&&!(periodCode==="FY"?form==="第三号様式":periodCode==="HY"?["第四号の三様式","第五号様式"].includes(form):form==="第四号の三様式"))issues.push({reason:"unsupported-document-form",field:"documentType"});
  const start=raw("fiscalYearStart"),end=raw("fiscalYearEnd"),currentEnd=raw("currentPeriodEnd"),filing=selected[0]?.source.period?.instant;
  if(start&&end&&currentEnd&&filing&&(start>currentEnd||currentEnd>end||currentEnd>filing||periodCode==="FY"&&currentEnd!==end||periodCode!=="FY"&&currentEnd>=end))issues.push({reason:"period-range-conflict"});
+ // Q4 is confirmed only for this extended-year profile; twelve-month YTD is not FY.
+ if(periodCode==="Q4"&&start&&end&&currentEnd){
+  const first=new Date(start+"T00:00:00Z");
+  const boundary=(months:number)=>{const d=new Date(first);d.setUTCMonth(d.getUTCMonth()+months);if(d.getUTCDate()!==first.getUTCDate())return undefined;d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10);};
+  if(currentEnd!==boundary(12))issues.push({reason:"period-range-conflict"});
+ }
  const base={docID,version:FINANCIAL_REPORTING_BASIS_VERSION,fields,issues} satisfies Pick<FinancialReportingBasis,"docID"|"version"|"fields"|"issues">;
  if(issues.length)return structuredClone({...base,status:"unresolved"});
  const scope=flag==="true"||flag==="1"?"Consolidated":"NonConsolidated",duration:string[]=[],instant:string[]=[],blockedDuplicateContexts:{contextRef:string;periodKind:"duration"|"instant"}[]=[];
  let quarterStart:string|undefined,quarterFound=false,quarterBlocked=false;
- if(periodCode==="Q2"||periodCode==="Q3"){
+ if(periodCode==="Q2"||periodCode==="Q3"||periodCode==="Q4"){
   const first=new Date(start!+"T00:00:00Z"),boundary=new Date(first);
   boundary.setUTCMonth(boundary.getUTCMonth()+3*(Number(periodCode[1])-1));
   // 決算期変更等の変則期間を日付の丸めで推測しません。
@@ -104,10 +113,11 @@ export function selectFinancialReportingBasis(docID:string,facts:ReadonlyMap<str
   if(duplicates.has(id)){blockedDuplicateContexts.push({contextRef:id,periodKind:durationMatch?"duration":"instant"});continue;}
   if(durationMatch)duration.push(id);if(instantMatch)instant.push(id);
  }
+ if(periodCode==="Q4"&&(!quarterFound||quarterBlocked))return structuredClone({...base,status:"unresolved",issues:[{reason:"period-range-conflict"}]});
  const industryCode=raw(scope==="Consolidated"?"consolidatedIndustry":"standaloneIndustry");
  const metadata:ResolvedFinancialReportingMetadata={
   accountingStandard:standard==="IFRS"?"IFRS":"J-GAAP",scope,edinetCode:issuer!,
-  ...(security?{securityCode:security}:{}),documentType:form!,
+  ...(security?{securityCode:security}:{}),...(raw("amendmentTargetDocID")?{amendmentTargetDocID:raw("amendmentTargetDocID")}:{}),documentType:form!,
   reportingPeriodCode:periodCode as ResolvedFinancialReportingMetadata["reportingPeriodCode"],
   periodType:periodCode==="FY"?"annual":"ytd",deiContextInstant:filing!,
   fiscalYear:{startDate:start!,endDate:end!},period:{startDate:start!,endDate:currentEnd!},
@@ -120,8 +130,11 @@ export function selectFinancialReportingBasis(docID:string,facts:ReadonlyMap<str
  };
  return structuredClone({...base,status:"selected",metadata});
 }
-export function resolveFinancialReportingBasis(xml:string,docID:string):FinancialReportingBasis{
+export function parseFinancialReportingObject(xml:string,docID:string){
  assertDocID(docID);
- const object=new EdinetXbrlParser().parse(xml,docID);
+ return new EdinetXbrlParser().parse(xml,docID);
+}
+export function resolveFinancialReportingBasis(xml:string,docID:string):FinancialReportingBasis{
+ const object=parseFinancialReportingObject(xml,docID);
  return {...object.selectFinancialReportingBasis(),inputXmlSha256:createHash("sha256").update(xml).digest("hex")};
 }

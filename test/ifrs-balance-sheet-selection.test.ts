@@ -18,7 +18,7 @@ const segment = '<xbrldi:explicitMember dimension="extension:SegmentAxis">extens
 
 describe("IFRS連結の貸借対照表8項目（公式定義を基にした合成fixture）", () => {
     it("別辞書をfreezeし、各辞書版と主要18指標を確認する", () => {
-        expect(IFRS_BALANCE_SHEET_REGISTRY_VERSION).toBe("3"); expect(BALANCE_SHEET_REGISTRY_VERSION).toBe("2");
+        expect(IFRS_BALANCE_SHEET_REGISTRY_VERSION).toBe("4"); expect(BALANCE_SHEET_REGISTRY_VERSION).toBe("2");
         expect(Object.keys(METRIC_REGISTRY)).toHaveLength(18); expect(Object.isFrozen(IfrsBalanceSheetMetricId)).toBe(true); expect(Object.isFrozen(IFRS_BALANCE_SHEET_REGISTRY)).toBe(true);
         expect(definitions.map(d => d.candidates[0].key)).toEqual(["jpigp_cor:CurrentAssetsIFRS", "jpigp_cor:TotalCurrentLiabilitiesIFRS", "jpigp_cor:LiabilitiesIFRS", "jpigp_cor:NonCurrentAssetsIFRS", "jpigp_cor:InterestBearingLiabilitiesCLIFRS", "jpigp_cor:InterestBearingLiabilitiesNCLIFRS", "jpigp_cor:LeaseLiabilitiesCLIFRS", "jpigp_cor:LeaseLiabilitiesNCLIFRS"]);
         for (const definition of definitions) {
