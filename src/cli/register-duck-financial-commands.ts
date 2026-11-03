@@ -1,3 +1,4 @@
+import { readCliJSON, cliInputMessage } from "./input-diagnostics";
 import {
   recordDuckFinancialValueVerification,
   validateDuckFinancialValueVerification,
@@ -13,6 +14,7 @@ import { FinancialIndexPublication } from "../db/financial-index-publication";
 import {
   normalizeFinancialIndexSearch,
   type FinancialIndexSearchOptions,
+  type FinancialIndexCohort,
 } from "../db/financial-search-index";
 import { screenDuckCompanyFinancials } from "../companies/screen-company-financials";
 import { compareDuckCompanyFinancialsByIndustry } from "../companies/compare-industries";
@@ -197,6 +199,10 @@ export function registerDuckFinancialCommands(program: Command) {
     .option("--company-master <path>", "企業マスター完全観測の配列JSON（64MiB以下）")
     .option("--company-query <path>", "asOf/業種等の属性条件JSON。knownAtは財務世代へ固定")
     .option("--pretty", "JSONを整形")
+    .addHelpText(
+      "after",
+      "\n最小cohort例: https://github.com/oharato/edinet-ts/blob/main/docs/development/CLI_INPUT_EXAMPLES.md#screen-duck-financial-index",
+    )
     .action(async (options) => {
       let index: DuckFinancialSearchIndex | undefined;
       try {
@@ -204,7 +210,11 @@ export function registerDuckFinancialCommands(program: Command) {
           if (value !== undefined && !/^\d+$/.test(value)) throw Error("Invalid pagination");
         if ((options.companyMaster === undefined) !== (options.companyQuery === undefined))
           throw Error("Company input incomplete");
-        const cohort = readJSON(options.cohort),
+        const cohort = readCliJSON(
+            resolve(options.cohort),
+            "cohort",
+            64 * 1024 * 1024,
+          ) as FinancialIndexCohort,
           query = {
             metricIds: options.metrics.split(",").map((s: string) => s.trim()),
             conditions: JSON.parse(options.conditions),
@@ -229,9 +239,12 @@ export function registerDuckFinancialCommands(program: Command) {
         }
         index = await DuckFinancialSearchIndex.open(resolve(options.db));
         output(await index.screen(cohort, query), options.pretty);
-      } catch {
+      } catch (error) {
         console.error(
-          "DuckDB・比較集合・企業マスター・企業条件・保存項目・数値条件を確認してください（入力内容は非表示）",
+          cliInputMessage(
+            error,
+            "cohortのperiod・基準・scope、検索条件、DuckDBを確認してください（入力内容は非表示）",
+          ),
         );
         process.exitCode = 1;
       } finally {

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { Help } from "commander";
+import { CliInputError, readCliJSON, cliInputMessage } from "./input-diagnostics";
 import { planCorporateRegistryDifferences } from "../companies/registry/publication-calendar";
 import { parseDocumentTimestamp } from "../edinet/parse-document-timestamp";
 import {
@@ -120,7 +122,26 @@ const program = new Command();
 program
   .name("edinet-ts")
   .description("EDINET XBRLファイルをダウンロードおよび解析するためのCLI")
-  .version(packageJson.version);
+  .version(packageJson.version)
+  .configureHelp({
+    visibleCommands(command) {
+      const rank = (name: string) =>
+        ["download", "get"].includes(name)
+          ? 0
+          : name === "parse"
+            ? 1
+            : /^(screen|search|compare)/.test(name)
+              ? 2
+              : 3;
+      return Help.prototype.visibleCommands
+        .call(this, command)
+        .sort((a, b) => rank(a.name()) - rank(b.name()));
+    },
+  })
+  .addHelpText(
+    "after",
+    "\n基本操作:\n  edinet-ts parse --file document.xbrl\n  edinet-ts get --ticker 7203 --pretty\n  edinet-ts screen --file snapshots.json\n詳細: edinet-ts <command> --help\n入力JSON例: https://github.com/oharato/edinet-ts/blob/main/docs/development/CLI_INPUT_EXAMPLES.md",
+  );
 
 program
   .command("download")
@@ -3708,17 +3729,17 @@ program
   .option("--offset <number>", "開始位置", "0")
   .option("--limit <number>", "最大件数")
   .option("--pretty", "JSONを整形")
+  .addHelpText(
+    "after",
+    "\n最小manifest例: https://github.com/oharato/edinet-ts/blob/main/docs/development/CLI_INPUT_EXAMPLES.md#screen-bs",
+  )
   .action((options) => {
     try {
       const manifestPath = path.resolve(options.manifest);
-      const entries = JSON.parse(
-        new TextDecoder("utf-8", { fatal: true }).decode(
-          readRegularFile(manifestPath, LOCAL_IMPORT_LIMITS.manifestBytes).bytes,
-        ),
-      );
+      const entries = readCliJSON(manifestPath, "manifest", LOCAL_IMPORT_LIMITS.manifestBytes);
       if (!Array.isArray(entries) || entries.length > LOCAL_IMPORT_LIMITS.entries)
-        throw new Error("manifestは100件以下の配列です");
-      const files = entries.map((entry) => {
+        throw new CliInputError("manifest：100件以下の配列が必要です");
+      const files = entries.map((entry, index) => {
         if (
           !entry ||
           typeof entry !== "object" ||
@@ -3730,7 +3751,14 @@ program
               !["secCode", "docID", "file", "instant", "scope", "accountingStandard"].includes(key),
           )
         )
-          throw new Error("不正なmanifest項目です");
+          throw new CliInputError(`manifestの${index + 1}件目：fileまたは項目名が不正です`);
+        if (
+          typeof entry.instant !== "string" ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(entry.instant) ||
+          !Number.isFinite(Date.parse(entry.instant)) ||
+          new Date(entry.instant).toISOString().slice(0, 10) !== entry.instant
+        )
+          throw new CliInputError(`manifestの${index + 1}件目：instantが不正です`);
         return path.resolve(path.dirname(manifestPath), entry.file);
       });
       assertRegularFileByteBudget(files);
@@ -3763,7 +3791,12 @@ program
       });
       console.log(JSON.stringify(result, null, options.pretty ? 2 : undefined));
     } catch (error) {
-      console.error(error instanceof Error ? error.message : String(error));
+      console.error(
+        cliInputMessage(
+          error,
+          "財務検索の原本・metadata・検索条件を確認してください（詳細は非表示）",
+        ),
+      );
       process.exitCode = 1;
     }
   });
