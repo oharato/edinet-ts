@@ -2,9 +2,12 @@ import { it, expect, vi } from "vitest";
 import { join } from "node:path";
 import { readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { buildDuckFinancialCycle, type DuckFinancialCycleInput } from "../src/duck-financial-cycle";
+import {
+  buildDuckFinancialCycle,
+  type DuckFinancialCycleInput,
+} from "../src/pipeline/build-duck-financial-cycle";
 import { ParsedFinancialStore } from "../src/db/parsed-financial-store";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
 import { duckFinancialReaderFixture as fixture } from "./fixtures/duck-financial-reader";
 import { crashParsedPut } from "./fixtures/parsed-put-crash";
 import { crashDatabase } from "./fixtures/sqlite-crash";

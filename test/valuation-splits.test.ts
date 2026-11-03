@@ -1,5 +1,9 @@
 import { it, expect } from "vitest";
-import { calculateValuation, screenValuation, type ValuationInput } from "../src/valuation";
+import {
+  calculateValuation,
+  screenValuation,
+  type ValuationInput,
+} from "../src/financial/analysis/valuation";
 import { point } from "./fixtures/per-share";
 
 const source = {

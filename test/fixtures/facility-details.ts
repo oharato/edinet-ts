@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { DisclosureTableKind } from "../../src/disclosure-tables";
-import type { FacilityDetailDocument } from "../../src/facility-details";
+import { DisclosureTableKind } from "../../src/disclosures/read-disclosure-tables";
+import type { FacilityDetailDocument } from "../../src/disclosures/extract-facilities";
 const ns = "http://disclosure.edinet-fsa.go.jp/taxonomy/jpcrp/2025-11-01/jpcrp_cor";
 const escape = (s: string) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
 export function facilityTable(

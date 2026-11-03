@@ -188,7 +188,7 @@ it("通常Q4対応はwhole-attached v1のannual/HYQ2 profileを拡張しない",
   const { financialVersionEvidenceFixture, signFinancialVersionBundle, sourceHash } =
     await import("./fixtures/financial-version-evidence");
   const { authenticateFinancialVersionEvidence, readFinancialVersionProof } =
-    await import("../src/financial-version-selection");
+    await import("../src/financial/selection/select-financial-source-versions");
   const b = await financialVersionEvidenceFixture();
   for (const o of b.observations) {
     o.document.docTypeCode = o.document.parentDocID ? "150" : "140";

@@ -99,7 +99,7 @@ async function main() {
   assert.equal(saved.sha256, sha(canonical([saved.inputSha256, saved.body])));
   assert.equal(saved.body.indexPath, join(cycle, "index.duckdb"));
   assert(!existsSync(out));
-  const { duckFinancialSdkSha256 } = await load(sdk, "duck-financial-cycle.js");
+  const { duckFinancialSdkSha256 } = await load(sdk, "pipeline/build-duck-financial-cycle.js");
   assert.equal(duckFinancialSdkSha256(), marker.input.sdkSha256);
   const space = statfsSync(cycle, { bigint: true });
   assert(

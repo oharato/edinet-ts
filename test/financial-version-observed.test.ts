@@ -5,13 +5,13 @@ import { join } from "node:path";
 import {
   authenticateFinancialVersionEvidence,
   FINANCIAL_VERSION_POLICY,
-} from "../src/financial-version-selection";
+} from "../src/financial/selection/select-financial-source-versions";
 import {
   createSourceBackedObservedFinancialSnapshots,
   createSourceBackedObservedFinancialSnapshotsUsing,
-} from "../src/financial-version-observed";
-import { createAutomaticFinancialSnapshots } from "../src/automatic-financial-snapshots";
-import { createObservedFinancialSnapshots } from "../src/observed-financial-snapshots";
+} from "../src/financial/snapshots/create-versioned-snapshots";
+import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
+import { createObservedFinancialSnapshots } from "../src/financial/snapshots/create-observed-snapshots";
 import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
 import { projectFinancialIndexGeneration } from "../src/db/financial-search-index";
 import {

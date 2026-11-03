@@ -42,7 +42,7 @@ async function main() {
   assert.equal(saved.inputSha256, marker.inputSha256);
   assert.equal(saved.sha256, sha(canonical([saved.inputSha256, saved.body])));
   const { duckFinancialSdkSha256 } = await import(
-    pathToFileURL(join(sdk, "dist/duck-financial-cycle.js")).href
+    pathToFileURL(join(sdk, "dist/pipeline/build-duck-financial-cycle.js")).href
   );
   assert.equal(duckFinancialSdkSha256(), marker.input.sdkSha256, "SDK differs from build");
   const { ObservedFinancialArchive, DuckFinancialSearchIndex } = await import(
@@ -155,7 +155,7 @@ async function main() {
           elapsedMs: performance.now() - started,
           maxRssKiB: process.resourceUsage().maxRSS,
           scope:
-            "same SDK direct XML path versus parsed SQLite/DuckDB; independent Python value verification remains required",
+            "same SDK direct XML path versus parsed SQLite/DuckDB; independent TypeScript value verification remains required",
         },
         null,
         2,

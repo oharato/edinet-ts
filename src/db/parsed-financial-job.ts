@@ -13,8 +13,8 @@ import {
 import {
   createAutomaticFinancialSnapshots,
   AutomaticFinancialProjectionError,
-} from "../automatic-financial-snapshots";
-import { parseDocumentTimestamp } from "../document-timestamp";
+} from "../financial/snapshots/create-financial-snapshots";
+import { parseDocumentTimestamp } from "../edinet/parse-document-timestamp";
 export interface ParsedFinancialTask {
   identity: ParsedFinancialIdentity;
   availableAt: string;

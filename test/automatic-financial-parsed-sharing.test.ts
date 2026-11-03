@@ -1,9 +1,9 @@
 import { afterEach, expect, it, vi } from "vitest";
 import * as sdk from "../src/index";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
-import * as details from "../src/financial-detail-screening";
-import * as ifrsBs from "../src/ifrs-balance-sheet-screening";
-import { IfrsBalanceSheetMetricId } from "../src/ifrs-balance-sheet-registry";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import * as details from "../src/financial/screening/screen-financial-details";
+import * as ifrsBs from "../src/financial/screening/screen-ifrs-balance-sheets";
+import { IfrsBalanceSheetMetricId } from "../src/financial/extraction/ifrs-balance-sheet-metric-definitions";
 import { reportingInstance as xml } from "./fixtures/financial-reporting-basis";
 afterEach(() => vi.restoreAllMocks());
 it.each(["Japan GAAP", "IFRS"])(

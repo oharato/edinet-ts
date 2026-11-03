@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as path from "path";
 import * as fs from "fs";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
 
 describe("EdinetXbrlParser", () => {
   const TEST_DIR = path.resolve(__dirname, "./test_data");

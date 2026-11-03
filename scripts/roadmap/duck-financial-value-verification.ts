@@ -3,5 +3,5 @@ export {
   recordDuckFinancialValueVerification,
   validateDuckFinancialValueVerification,
   activateVerifiedDuckFinancialPublication,
-} from "../../src/duck-financial-value-verification";
-export type { DuckFinancialVerificationInput } from "../../src/duck-financial-value-verification";
+} from "../../src/pipeline/verification/verify-duck-financial-publication";
+export type { DuckFinancialVerificationInput } from "../../src/pipeline/verification/verify-duck-financial-publication";

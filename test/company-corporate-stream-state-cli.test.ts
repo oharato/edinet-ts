@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { linkCompanyMasterCorporateStreamStates as link } from "../src/company-corporate-state";
+import { linkCompanyMasterCorporateStreamStates as link } from "../src/companies/link-corporate-states";
 import {
   registryStreamXml as xml,
   registryStreamRow as row,

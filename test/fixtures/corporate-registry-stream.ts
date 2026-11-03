@@ -1,7 +1,7 @@
 import {
   CORPORATE_REGISTRY_FIELDS as fields,
   type CorporateRegistrySource,
-} from "../../src/corporate-registry";
+} from "../../src/companies/registry/registry-records";
 export const registryStreamSource: CorporateRegistrySource = {
   sourceUrl: "https://example.test/registry.zip",
   observedAt: "2026-10-30T00:00:00Z",

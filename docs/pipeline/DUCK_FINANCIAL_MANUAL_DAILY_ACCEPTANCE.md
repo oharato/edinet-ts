@@ -6,28 +6,30 @@
 
 同じ固定SDK・Node・解析版・共有解析Storeを2日間使う。SDKを途中でbuildし直したり、既存候補のinputやhandoffを書き換えたりしない。版を変える場合は別の検証rootからやり直す。NASは使わない。
 
-必要なものはNode 26.12.1以上、通常build済みSDK、DuckDB optional driver、Python 3、Linux `/usr/bin/flock`、GNU time（`/usr/bin/time`）、EDINETの有効な認証情報、日次metadata設定、母集団snapshot、検証用のローカル保存先。認証情報は既存metadata設定のenvPathから読み、ログへ出さない。
+必要なものはNode 26.13.0以上、通常build済みSDK、DuckDB optional driver、Linux `/usr/bin/flock`、GNU time（`/usr/bin/time`）、EDINETの有効な認証情報、日次metadata設定、母集団snapshot、検証用のローカル保存先。認証情報は既存metadata設定のenvPathから読み、ログへ出さない。
 
 この手順の`DUCK_SDK`には、`scripts/roadmap`とbuild済み`dist`の両方を含む固定実行treeを指定する。npmのtgzだけを展開したpackageには日次スクリプトが含まれない。スクリプト・dist・package manifest・依存環境を揃え、日次実行に必要なモジュールを事前に配置する。
 
-11月3日の検証候補は `data/benchmarks/duck-financial-final-20261103/sdk/` に通常ディレクトリとして保管した。ソース532ファイルと配布267ファイルのhashが元の固定SDK・tgzに一致し、SDK指紋 `45e1a3cf…` とCLI起動を確認済み。依存は同ホストの既存node_modulesを参照する。`sdk-retention.json`と`build2/source-binding.json`で保存先・依存参照・source commit・未commit差分を含む固定manifestを確認する。正式採用前の検証候補なので、全社の受入結果も実装計画で確認する。
+使用する固定SDKは、本番運用記録 `data/production/duck-financial/deployment.json` の `release` と `sourceCommit` で確認します。この手順はTypeScript照合器を含む版を対象とし、`dist/pipeline/verification/verify-source-values.js` の存在を事前確認します。固定runtimeは専用node_modulesも保持しており、作業中のcheckoutやその依存へのsymlinkを使いません。
+
+初回の全社検証に使った `data/benchmarks/duck-financial-final-20261103/sdk/` と `sdk-retention.json` は当時の証跡として保持しています。手動運転のSDKには、現在の本番運用記録で指定した固定版を使ってください。
 
 以下の変数は実際に検証する絶対パス・固定commitへ置き換える。`DUCK_SDK` は全検証を通した最終採用SDKにする。`DUCK_SETTINGS` は既存の日次設定version 2を使い、そのoutputDirectoryを専用の検証rootにする。新しいrootでは新しい設定ファイルを作る。既存handoffを持つ設定は変更しない。
 
 ```bash
-export PATH=/home/oharato/.local/share/mise/installs/node/26.12.1/bin:$PATH
+export PATH=/home/oharato/.local/share/mise/installs/node/26.13.0/bin:$PATH
 export DUCK_SDK=/absolute/fixed-sdk
 export DUCK_SETTINGS=/absolute/daily-settings.json
-export DUCK_PARSED=/absolute/shared-parsed.sqlite
+export DUCK_PARSED=/absolute/manual-daily/shared-parsed.sqlite
 export DUCK_SOURCE_COMMIT=0123456789abcdef0123456789abcdef01234567
 export DUCK_EVIDENCE=/absolute/manual-daily-evidence
 mkdir -m 700 -p "$DUCK_EVIDENCE"
 cd /home/oharato/workspace/edinet-ts
 node --version
-python3 --version
 test -f "$DUCK_SDK/scripts/roadmap/run-daily-duck-financial-cycle.mjs"
 test -f "$DUCK_SDK/scripts/roadmap/run-acquired-duck-financial-cycle.mjs"
 test -f "$DUCK_SDK/dist/index.js"
+test -f "$DUCK_SDK/dist/pipeline/verification/verify-source-values.js"
 test -x /usr/bin/time
 node "$DUCK_SDK/dist/cli.js" --help > /dev/null
 sha256sum "$DUCK_SETTINGS" "$DUCK_SDK/package.json"
@@ -40,15 +42,24 @@ df -h . /tmp
 
 ## 競合する既存処理
 
-既存SQLite日次財務サービスと対応タイマーは2026-11-03にユーザー指示で停止した。勝手に再起動しない。日次metadataサービスは停止対象ではない。
+本番の日次財務serviceとtimerは、2026-11-03にDuckDB経路へ切り替えて稼働しています。手動検証を始める前に状態を記録し、次回の自動起動を止めます。metadata serviceは停止対象にしません。
 
 ```bash
+systemctl --user show edinet-roadmap-daily-financial-preparation.timer \
+  -p Id -p ActiveState -p UnitFileState \
+  > "$DUCK_EVIDENCE/financial-timer-before.txt"
 systemctl --user show edinet-roadmap-daily-financial-preparation.service \
-  edinet-roadmap-daily-financial-preparation.timer -p Id -p ActiveState -p MainPID
+  -p Id -p ActiveState -p MainPID \
+  > "$DUCK_EVIDENCE/financial-service-before.txt"
+systemctl --user stop edinet-roadmap-daily-financial-preparation.timer
+systemctl --user show edinet-roadmap-daily-financial-preparation.service \
+  -p ActiveState -p MainPID
 systemctl --user show edinet-roadmap-daily-metadata.service -p ActiveState -p MainPID
 ```
 
-財務serviceのMainPIDが0、timerがinactiveであることを確認する。serviceのfailed表示だけでプロセス稼働と判断しない。metadataが稼働中なら完了後に日次コマンドを実行する。終了75は排他競合で、ロックファイルを削除して回避しない。
+進行中の財務serviceがあれば、その1回が終わるまで待ち、MainPIDが0であることを確認してから始めます。timerを止めても実行中のserviceは終了しません。serviceのfailed表示だけで稼働を判断せず、PIDも確認してください。metadataが稼働中なら完了後に日次コマンドを実行します。終了75は排他競合なので、保持元の終了後に再実行します。ロックファイルを削除して回避しません。
+
+検証には専用のoutputDirectoryと解析済みStoreを使います。2日間の途中でホストを再起動した場合も、この競合確認からやり直してください。各コマンドが失敗した場合は、その原因を確認してから次へ進みます。
 
 ## 1日目：当日のmetadata完了後に実行する
 
@@ -137,7 +148,7 @@ import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 const sdk=process.env.DUCK_SDK;
 const {ParsedFinancialJob,ParsedFinancialStore}=await import(pathToFileURL(join(sdk,'dist/index.js')).href);
-const {duckFinancialSdkSha256}=await import(pathToFileURL(join(sdk,'dist/duck-financial-cycle.js')).href);
+const {duckFinancialSdkSha256}=await import(pathToFileURL(join(sdk,'dist/pipeline/build-duck-financial-cycle.js')).href);
 const canonical=v=>JSON.stringify(v,(_k,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(k=>[k,x[k]])):x);
 const handles=[];
 function load(directory){
@@ -175,7 +186,7 @@ cat "$DUCK_EVIDENCE/$DUCK_ATTEMPT.json"
 
 2日分それぞれについて、以下を同じ証跡ディレクトリへ記録する。
 
-- 実日付、固定SDKのsource manifest・配布hash、Node/Python版、設定hash。
+- 実日付、固定SDKのsource manifest・配布hash、Node版、設定hash。
 - 原本取得完了時刻と照合完了時刻、その差が24時間以内であること。`candidate/acquisition.json`のbody.receipt.completedAtが取得完了の記録。ログのwall timeだけで代替しない。
 - day、候補ID、generation、input/hash、品質結果、原本照合結果、全ログと終了コード。
 - 初日の解析件数、翌日の新規解析件数とcache再利用件数。上のreadOnly APIによる比較結果を保存し、推測で件数を補わない。
@@ -185,4 +196,16 @@ cat "$DUCK_EVIDENCE/$DUCK_ATTEMPT.json"
 
 2日とも当日の候補・品質gate・独立照合を完了し、取得完了から解析・構築・照合まで24時間以内で、翌日分を同じSDKで処理できた場合に日次条件を満たす。足りない証跡は未確認として残す。
 
-本手順の完了後も正式vendor/catalogの切替・切戻し確認とP8の参照・保持一覧は別途必要。削除対象を自動決定しない。実施結果を[実装計画](../plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)へ追記する。
+## 完了・中断後に自動運転を戻す
+
+開始前にtimerがactiveだった場合は、手動コマンドがすべて終了し、DB接続が閉じたことを確認してから戻します。開始前がinactiveだった場合はその状態を保ちます。enable/disableの設定はこの手順では変更しません。
+
+```bash
+if grep -qx 'ActiveState=active' "$DUCK_EVIDENCE/financial-timer-before.txt"; then
+  systemctl --user start edinet-roadmap-daily-financial-preparation.timer
+fi
+systemctl --user show edinet-roadmap-daily-financial-preparation.timer \
+  -p ActiveState -p UnitFileState
+```
+
+正式catalogの切替状況は[本番運用](DUCK_FINANCIAL_PRODUCTION.md)で確認し、手動検証の完了と混同しません。参照・保持一覧に従って原本・正式世代・切戻し先を保持し、削除対象を自動決定しないでください。実施結果は[実装計画](../plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)へ追記します。

@@ -3,11 +3,11 @@ import {
   EdinetDocumentType,
   isFinancialReport,
   isLargeShareholding,
-} from "../src/edinet-document-type";
-import { resolveCliDocumentType } from "../src/cli-document-type";
+} from "../src/edinet/document-types";
+import { resolveCliDocumentType } from "../src/cli/parse-document-type";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
-import { EdinetXbrlDownloader } from "../src/edinet-xbrl-downloader";
+import { EdinetXbrlDownloader } from "../src/edinet/api-client";
 
 describe("通知書010と届出書030の区別", () => {
   afterEach(() => vi.restoreAllMocks());

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
 import { deflateRawSync } from "node:zlib";
-import { assertDownloadDocId, loadZipArchive, ZIP_LIMITS } from "../src/zip-archive";
+import { assertDownloadDocId, loadZipArchive, ZIP_LIMITS } from "../src/edinet/read-document-zip";
 
 const encoder = new TextEncoder();
 function crc32(bytes: Uint8Array): number {

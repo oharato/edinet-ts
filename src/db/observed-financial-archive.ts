@@ -1,19 +1,20 @@
+import { observedFinancialArchiveSchema as schema } from "./schema/observed-financial-archive";
 import {
   createSourceBackedObservedFinancialSnapshots,
   createSourceBackedObservedFinancialSnapshotsUsing,
-} from "../financial-version-observed";
+} from "../financial/snapshots/create-versioned-snapshots";
 import {
   captureFinancialVersionEvidenceBundle,
   verifyFinancialVersionContext,
   type FinancialVersionOptions,
   type FinancialVersionRuntimeBinding,
-} from "../financial-version-selection";
+} from "../financial/selection/select-financial-source-versions";
 import {
   encodeArchiveContent,
   decodeArchiveContent,
   type ArchiveContentEncoding,
 } from "./archive-content";
-import { assertXmlInput } from "../xml-input";
+import { assertXmlInput } from "../xbrl/validate-xml-input";
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
@@ -22,7 +23,7 @@ import {
   selectDocumentVersions,
   type DocumentVersionObservation,
   type SelectedDocumentVersion,
-} from "../document-version-selection";
+} from "../edinet/select-document-versions";
 import {
   OBSERVED_FINANCIAL_SNAPSHOT_VERSION,
   captureObservedFinancialSources,
@@ -32,19 +33,19 @@ import {
   type ObservedFinancialSnapshotOptions,
   type ObservedFinancialSnapshotRecord,
   type ObservedFinancialSourceReason,
-} from "../observed-financial-snapshots";
+} from "../financial/snapshots/create-observed-snapshots";
 import {
   createAutomaticFinancialSnapshots,
   normalizeAutomaticFinancialDetailMetricIds,
   AutomaticFinancialProjectionError,
   type AutomaticFinancialSnapshotOptions,
-} from "../automatic-financial-snapshots";
-import { parseDocumentTimestamp as timestamp } from "../document-timestamp";
-import { FINANCIAL_REPORTING_BASIS_VERSION } from "../financial-reporting-basis";
-import { BALANCE_SHEET_REGISTRY_VERSION } from "../balance-sheet-registry";
-import { FINANCIAL_DETAIL_REGISTRY_VERSION } from "../financial-detail-registry";
-import { IFRS_BALANCE_SHEET_REGISTRY_VERSION } from "../ifrs-balance-sheet-registry";
-import { IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION } from "../ifrs-financial-detail-registry";
+} from "../financial/snapshots/create-financial-snapshots";
+import { parseDocumentTimestamp as timestamp } from "../edinet/parse-document-timestamp";
+import { FINANCIAL_REPORTING_BASIS_VERSION } from "../financial/extraction/resolve-reporting-basis";
+import { BALANCE_SHEET_REGISTRY_VERSION } from "../financial/extraction/balance-sheet-metric-definitions";
+import { FINANCIAL_DETAIL_REGISTRY_VERSION } from "../financial/extraction/detail-metric-definitions";
+import { IFRS_BALANCE_SHEET_REGISTRY_VERSION } from "../financial/extraction/ifrs-balance-sheet-metric-definitions";
+import { IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION } from "../financial/extraction/ifrs-detail-metric-definitions";
 export const OBSERVED_FINANCIAL_ARCHIVE_VERSION = "1";
 export interface ObservedFinancialArchiveOptions {
   readOnly?: boolean;
@@ -156,24 +157,7 @@ export type SourceBackedArchivedFinancialSnapshots = Omit<
   };
 const kind = "edinet-ts-observed-financial-archive-v1",
   gzipKind = "edinet-ts-observed-financial-archive-gzip-v1";
-const schema = {
-  archive_format: "CREATE TABLE archive_format(kind TEXT NOT NULL)",
-  archive_observations:
-    "CREATE TABLE archive_observations(id TEXT PRIMARY KEY,doc_id TEXT NOT NULL,parent_doc_id TEXT,edinet_code TEXT,observed_ms INTEGER NOT NULL,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
-  archive_observation_company:
-    "CREATE INDEX archive_observation_company ON archive_observations(edinet_code,doc_id)",
-  archive_observation_parent:
-    "CREATE INDEX archive_observation_parent ON archive_observations(parent_doc_id,doc_id)",
-  archive_observation_document:
-    "CREATE INDEX archive_observation_document ON archive_observations(doc_id)",
-  archive_sources:
-    "CREATE TABLE archive_sources(id TEXT PRIMARY KEY,doc_id TEXT NOT NULL,available_ms INTEGER NOT NULL,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
-  archive_source_lookup:
-    "CREATE INDEX archive_source_lookup ON archive_sources(doc_id,available_ms)",
-  archive_contents: "CREATE TABLE archive_contents(sha256 TEXT PRIMARY KEY,xml BLOB NOT NULL)",
-  archive_extractions:
-    "CREATE TABLE archive_extractions(id TEXT PRIMARY KEY,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
-};
+
 const canonical = (v: unknown): string =>
   JSON.stringify(v, (_k, item) =>
     item && typeof item === "object" && !Array.isArray(item)

@@ -2,7 +2,7 @@ import { it, expect } from "vitest";
 import { mkdtempSync, rmSync, readFileSync, lstatSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { atomicJSON } from "../src/verification-files";
+import { atomicJSON } from "../src/utils/verification-files";
 it("新規検証記録は既存ファイルを置換せず、一時リンクを残さない", () => {
   const dir = mkdtempSync(join(tmpdir(), "verification-files-"));
   try {

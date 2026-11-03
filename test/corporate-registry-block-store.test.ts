@@ -22,7 +22,7 @@ import { CorporateRegistryStore as Rows } from "../src/db/corporate-registry-sto
 import { Database } from "../src/db/node-sqlite";
 import { recoverDedicatedSqliteSnapshot } from "../src/db/sqlite-recovery";
 import { crashDatabase } from "./fixtures/sqlite-crash";
-import { CORPORATE_REGISTRY_FIELDS as fields } from "../src/corporate-registry";
+import { CORPORATE_REGISTRY_FIELDS as fields } from "../src/companies/registry/registry-records";
 import {
   registryStreamXml as xml,
   registryStreamRow as row,

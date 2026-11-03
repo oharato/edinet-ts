@@ -5,7 +5,7 @@ import {
   financialVersionEvidenceManifestSha256,
   type FinancialVersionEvidenceBundle,
   type FinancialVersionEvidenceInput,
-} from "../../src/financial-version-selection";
+} from "../../src/financial/selection/select-financial-source-versions";
 export const sourceHash = (s: string | Uint8Array) => createHash("sha256").update(s).digest("hex");
 export function signFinancialVersionBundle(
   input: FinancialVersionEvidenceInput,

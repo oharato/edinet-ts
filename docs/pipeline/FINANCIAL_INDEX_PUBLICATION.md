@@ -137,7 +137,7 @@ CLIで旧→新、APIで新→旧と切り替え、履歴3件と現在pointer、
 
 prepareは読取前後のsnapshot指紋一致、世代本文のhashと品質の一致を確認する。policyとexpectedActiveはawait前に取り込み、呼出側が待機中に変更しても採用しない。候補保存と履歴/pointer更新は同期経路と同じ処理を使い、更新transaction内で検査対象の候補も再読取する。await中に別候補へ切り替わった場合はCASで拒否する。resolveも待機中のpointer変更を拒否する。
 
-これらは従来SDKと同じ**品質検査とpointer操作**であり、独立原本照合gateを追加した正式日次入口ではない。正式なDuckDB候補の原本照合記録、Python照合器との接続、読込失敗時に旧readerを維持するreloadは[独立照合gate仕様](DUCK_FINANCIAL_VERIFICATION.md)の別入口へ実装した。新メソッドの公開exports/CLI接続はP7で行う。
+これらは従来SDKと同じ**品質検査とpointer操作**であり、独立原本照合gateを追加した正式日次入口ではない。正式なDuckDB候補の原本照合記録、TypeScript照合器との接続、読込失敗時に旧readerを維持するreloadは[独立照合gate仕様](DUCK_FINANCIAL_VERIFICATION.md)の別入口へ実装した。新メソッドの公開exports/CLI接続はP7で行う。
 
 専用6テストでは実DuckDBとSQLite catalogで保存・CAS切替・切戻し・readOnly再open、条件未達、不変候補、await中の競合、変化するsnapshot指紋、不整合な世代、pointer書込失敗rollback、close、policy/CASの外部変更を確認する。同期publicationの既存回帰も維持する。
 

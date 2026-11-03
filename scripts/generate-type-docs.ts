@@ -255,7 +255,7 @@ function main() {
   // 設定: どのファイルからどのインターフェースを抽出するか定義
   const interfaceConfig = [
     {
-      sourceFile: path.join(__dirname, "..", "src", "edinet-xbrl-object.ts"),
+      sourceFile: path.join(__dirname, "..", "src", "xbrl", "xbrl-document.ts"),
       interfaces: ["CommonMetadata", "KeyMetrics", "LargeShareholdingInfo", "QualitativeInfo"],
     },
     {
@@ -270,7 +270,7 @@ function main() {
 
   const documentTypeConfig = [
     {
-      sourceFile: path.join(__dirname, "..", "src", "edinet-xbrl-object.ts"),
+      sourceFile: path.join(__dirname, "..", "src", "xbrl", "xbrl-document.ts"),
       interfaces: [
         "AnnualResponse",
         "QuarterlyResponse",

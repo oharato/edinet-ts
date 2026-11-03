@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { FacilityDetailStore } from "../src/db/facility-detail-store";
-import { screenFacilityDetails, type FacilityScreeningOptions } from "../src/facility-details";
+import {
+  screenFacilityDetails,
+  type FacilityScreeningOptions,
+} from "../src/disclosures/extract-facilities";
 import { Database } from "../src/db/node-sqlite";
 import { facilityDocument as document, facilityTable as table } from "./fixtures/facility-details";
 const hash = (v: Buffer) => createHash("sha256").update(v).digest("hex");

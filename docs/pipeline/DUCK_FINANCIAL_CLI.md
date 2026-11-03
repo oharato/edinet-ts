@@ -52,7 +52,7 @@ CLIは毎回snapshotをロードし直す。繰返し検索で監査を再利用
 
 driverはoptional依存 `@duckdb/node-api@2.0.0-r.1`。通常import・SQLite API・公開型の利用ではdriverを読み込まない。DuckDB機能の実行時にだけ必要とする。公開型へdriver固有型を露出させない。
 
-SDKの品質/pointer操作だけでは独立原本照合gateにならない。[検証済み切替入口](DUCK_FINANCIAL_VERIFICATION.md)を使う。[固定原本からの作成CLI・日次handoff・取得済み候補の照合/切替コマンド](DUCK_FINANCIAL_CYCLE.md)と、Python照合器のSDK同梱は実装済み。最終採用SDKの全社品質・性能受入と正式vendor/catalog統合はP7の残件。実連続2日の日次受入は[手動手順](DUCK_FINANCIAL_MANUAL_DAILY_ACCEPTANCE.md)に従ってユーザーが実施する。
+SDKの品質/pointer操作だけでは独立原本照合gateにならない。[検証済み切替入口](DUCK_FINANCIAL_VERIFICATION.md)を使う。[固定原本からの作成CLI・日次handoff・取得済み候補の照合/切替コマンド](DUCK_FINANCIAL_CYCLE.md)と、TypeScript照合器のSDK同梱は実装済み。最終採用SDKの全社品質・性能受入と正式vendor/catalog統合はP7の残件。実連続2日の日次受入は[手動手順](DUCK_FINANCIAL_MANUAL_DAILY_ACCEPTANCE.md)に従ってユーザーが実施する。
 
 ## 配布物の限定検証
 
@@ -71,6 +71,6 @@ node node_modules/tsx/dist/cli.mjs scripts/verify-duck-financial-package.ts \
 
 ## 原本照合記録
 
-`verify-duck-financial-values --db <停止したDuckDB> --catalog <候補catalog> --candidate <候補ID> --input-sha256 <固定入力hash> --archive <停止した原本SQLite> --record <記録JSON>` は同梱Pythonで採用値を独立照合し、検証記録を作成する。同じ記録の再実行では原本照合と内容一致を再確認する。`--check` は既存記録を再検証し、記録がなければ失敗する。実行環境に `python3` が必要。
+`verify-duck-financial-values --db <停止したDuckDB> --catalog <候補catalog> --candidate <候補ID> --input-sha256 <固定入力hash> --archive <停止した原本SQLite> --record <記録JSON>` は同梱TypeScript照合器で採用値を独立照合し、検証記録を作成する。同じ記録の再実行では原本照合と内容一致を再確認する。`--check` は既存記録を再検証し、記録がなければ失敗する。原本照合はNodeだけで実行する。
 
 catalogは読取専用で、正式参照を変更しない。原本の副ファイル・候補/入力/照合器の不一致を拒否する。記録は新規作成時に既存ファイルを原子的に上書きしない。中断は終了コード2、その他の照合失敗は1で、入力の内容はstderrへ出力しない。

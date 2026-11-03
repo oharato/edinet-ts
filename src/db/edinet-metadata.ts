@@ -1,4 +1,4 @@
-import { EdinetDocumentType } from "../edinet-document-type";
+import { EdinetDocumentType } from "../edinet/document-types";
 
 export interface EdinetMetadata {
   docID: string;

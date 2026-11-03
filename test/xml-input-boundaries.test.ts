@@ -11,7 +11,7 @@ import {
   BalanceSheetSqliteStore,
   importBalanceSheets,
 } from "../src/index";
-import { assertXmlInput, XML_INPUT_MAX_BYTES } from "../src/xml-input";
+import { assertXmlInput, XML_INPUT_MAX_BYTES } from "../src/xbrl/validate-xml-input";
 import { instance, fact } from "./fixtures/metric-boundaries";
 const metadata = {
   secCode: "1001",

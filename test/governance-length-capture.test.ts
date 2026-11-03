@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { extractOfficerRemuneration, searchOfficerRemuneration } from "../src/officer-remuneration";
-import { extractPolicyShareholdings, searchPolicyShareholdings } from "../src/policy-shareholdings";
+import {
+  extractOfficerRemuneration,
+  searchOfficerRemuneration,
+} from "../src/disclosures/extract-officer-remuneration";
+import {
+  extractPolicyShareholdings,
+  searchPolicyShareholdings,
+} from "../src/disclosures/extract-policy-shareholdings";
 import { remunerationDocument } from "./fixtures/remuneration";
 import { policyDocument } from "./fixtures/policy-shareholdings";
 const cases = [

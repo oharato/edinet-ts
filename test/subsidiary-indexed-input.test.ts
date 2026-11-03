@@ -3,7 +3,7 @@ import {
   extractSubsidiaryHumanCapitalMetrics as extract,
   screenSubsidiaryHumanCapitalMetrics as screen,
   SubsidiaryHumanCapitalMetricId as M,
-} from "../src/subsidiary-human-capital-metrics";
+} from "../src/disclosures/extract-subsidiary-human-capital";
 import { subsidiaryDocument } from "./fixtures/subsidiary-metrics";
 const conceal = <T>(items: T[], visible: T[]) =>
   Object.assign(items, {

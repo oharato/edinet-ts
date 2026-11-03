@@ -75,7 +75,7 @@ it("検証用SQLiteはDuckDBの全品質と一致し、成功・失敗時とも�
     expect(existsSync(dirname(file))).toBe(false);
   }));
 it(
-  "独立Pythonで全採用値を原本照合し、記録・再検証・切替・復帰する",
+  "独立TypeScriptで全採用値を原本照合し、記録・再検証・切替・復帰する",
   () =>
     gateFixture(async (i) => {
       const receipt = await record(i);
@@ -153,13 +153,13 @@ it("中断済みsignalでは記録も切替も行わない", () =>
     expect(existsSync(i.recordPath)).toBe(false);
     expect(i.catalog.current()).toBeUndefined();
   }));
-it("closeは検証用projectionのcallback完了を待つ", () =>
+it("closeは検証用snapshotのcallback完了を待つ", () =>
   fixture(async ({ duck }) => {
     let release!: () => void, started!: () => void;
     const ready = new Promise<void>((r) => (started = r)),
       waiting = new Promise<void>((r) => (release = r));
     let file = "";
-    const task = duck.withVerificationProjection(async (path) => {
+    const task = duck.withVerificationSnapshot(async (path) => {
       file = path;
       started();
       await waiting;
@@ -176,8 +176,8 @@ it("closeは検証用projectionのcallback完了を待つ", () =>
 it("照合中に原本副ファイルが現れたら記録保存前に拒否する", () =>
   gateFixture(async (i) => {
     const reader = i.reader as any,
-      original = reader.withVerificationProjection.bind(reader);
-    reader.withVerificationProjection = (verify: any, options: any) =>
+      original = reader.withVerificationSnapshot.bind(reader);
+    reader.withVerificationSnapshot = (verify: any, options: any) =>
       original(async (path: string) => {
         const result = await verify(path);
         writeFileSync(i.archivePath + "-wal", "concurrent writer");
@@ -187,3 +187,19 @@ it("照合中に原本副ファイルが現れたら記録保存前に拒否す�
     expect(existsSync(i.recordPath)).toBe(false);
     expect(i.catalog.current()).toBeUndefined();
   }));
+it("呼出元のNode preload設定を独立照合プロセスへ引き継がない", async () => {
+  const options = process.env.NODE_OPTIONS,
+    path = process.env.NODE_PATH;
+  process.env.NODE_OPTIONS = "--import=file:///missing-independent-verifier-preload.mjs";
+  process.env.NODE_PATH = "/missing-independent-verifier-modules";
+  try {
+    await gateFixture(async (input) => {
+      expect((await record(input)).checks.documents).toBe(4);
+    });
+  } finally {
+    if (options === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = options;
+    if (path === undefined) delete process.env.NODE_PATH;
+    else process.env.NODE_PATH = path;
+  }
+});

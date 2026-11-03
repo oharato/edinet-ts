@@ -8,8 +8,11 @@ import {
   type FacilityDetailDocument,
   type FacilityDetailsExtraction,
   type FacilityScreeningOptions,
-} from "../facility-details";
-import { parseDisclosureTableFragment, DisclosureTableKind } from "../disclosure-tables";
+} from "../disclosures/extract-facilities";
+import {
+  parseDisclosureTableFragment,
+  DisclosureTableKind,
+} from "../disclosures/read-disclosure-tables";
 
 export const FACILITY_DETAIL_STORE_VERSION = "1";
 const format = `edinet-ts-facility-${FACILITY_DETAILS_VERSION}-v1`;

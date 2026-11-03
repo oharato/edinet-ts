@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { LargeHoldingStore } from "../src/db/large-holding-store";
 import { Database } from "../src/db/node-sqlite";
 import { largeDocument } from "./fixtures/large-holding-report";
-import { searchLargeHoldingTransactions } from "../src/large-holding-transactions";
+import { searchLargeHoldingTransactions } from "../src/disclosures/large-holdings/extract-transactions";
 const hash = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");
 const canonical = (v: unknown): string =>
   JSON.stringify(v, (_k, x) =>

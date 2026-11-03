@@ -9,7 +9,7 @@ import {
   isFinancialIndexGenerationId,
   type FinancialIndexPopulation,
 } from "./financial-search-index";
-import { parseDocumentTimestamp as timestamp } from "../document-timestamp";
+import { parseDocumentTimestamp as timestamp } from "../edinet/parse-document-timestamp";
 export const FINANCIAL_SOURCE_JOB_VERSION = "2";
 export interface FinancialSourceJobInput {
   id: string;

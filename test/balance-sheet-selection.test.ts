@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
-import { BALANCE_SHEET_REGISTRY } from "../src/balance-sheet-registry";
-import { METRIC_REGISTRY } from "../src/metric-registry";
-import type { MetricSelectionOptions } from "../src/metric-selection";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import { BALANCE_SHEET_REGISTRY } from "../src/financial/extraction/balance-sheet-metric-definitions";
+import { METRIC_REGISTRY } from "../src/financial/extraction/metric-definitions";
+import type { MetricSelectionOptions } from "../src/financial/extraction/select-metric-facts";
 import { fact, instance, standalone } from "./fixtures/metric-boundaries";
 const instant = "2025-03-31";
 const options: MetricSelectionOptions = {

@@ -10,9 +10,9 @@ import {
 import {
   linkCompanyMasterCorporateStates as link,
   type CompanyCorporateStateQuery,
-} from "../src/company-corporate-state";
-import { CORPORATE_REGISTRY_FIELDS as fields } from "../src/corporate-registry";
-import type { CompanyMasterSnapshot } from "../src/company-master";
+} from "../src/companies/link-corporate-states";
+import { CORPORATE_REGISTRY_FIELDS as fields } from "../src/companies/registry/registry-records";
+import type { CompanyMasterSnapshot } from "../src/companies/company-master";
 const number = "1010001001202",
   sha = (v: string | Buffer) => createHash("sha256").update(v).digest("hex");
 const row = (patch: Record<string, string> = {}) => {

@@ -25,7 +25,9 @@ import {
 const format = "edinet-ts-corporate-registry-archive-job-v1",
   reserve = 34 * 1024 ** 3,
   margin = 64 * 1024 ** 2;
-const helper = fileURLToPath(new URL("./stream-corporate-registry-member.py", import.meta.url));
+const helper = fileURLToPath(
+  new URL("../../dist/companies/registry/stream-verified-xml.js", import.meta.url),
+);
 const digest = (v) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
 const capacity = (db, limit) => {
   const s = statfsSync(dirname(db));
@@ -38,7 +40,7 @@ const capacity = (db, limit) => {
     });
 };
 async function* chunks(receiptPath, entry, signal, check) {
-  const child = spawn("python3", [helper, "--receipt", receiptPath, "--entry", entry], {
+  const child = spawn(process.execPath, [helper, "--receipt", receiptPath, "--entry", entry], {
     stdio: ["ignore", "pipe", "pipe"],
     signal,
   });

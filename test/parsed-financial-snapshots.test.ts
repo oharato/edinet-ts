@@ -10,9 +10,9 @@ import {
 } from "../src/db/parsed-financial-store";
 import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
 import { createParsedFinancialSnapshots } from "../src/db/parsed-financial-snapshots";
-import { createObservedFinancialSnapshotsFromParsed } from "../src/observed-financial-snapshots";
-import { createAutomaticFinancialSnapshots } from "../src/automatic-financial-snapshots";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
+import { createObservedFinancialSnapshotsFromParsed } from "../src/financial/snapshots/create-observed-snapshots";
+import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const options = {

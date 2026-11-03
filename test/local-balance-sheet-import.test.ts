@@ -10,7 +10,7 @@ import {
   runLocalBalanceSheetImport,
   LOCAL_IMPORT_LIMITS,
   type LocalBalanceSheetImportOptions,
-} from "../src/local-balance-sheet-import";
+} from "../src/pipeline/import-local-balance-sheets";
 import { instance, fact } from "./fixtures/metric-boundaries";
 const cli = resolve("src/cli.ts"),
   loader = resolve("node_modules/tsx/dist/loader.mjs");

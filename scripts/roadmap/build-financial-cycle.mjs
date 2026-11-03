@@ -1,3 +1,4 @@
+import { financialSourceVerifierSha256 } from "../../dist/pipeline/verification/source-verifier-command.js";
 import { readFileSync, existsSync, statSync, statfsSync } from "node:fs";
 import { join, isAbsolute, resolve } from "node:path";
 import { isFinancialIndexGenerationId } from "../../dist/db/financial-search-index.js";
@@ -41,13 +42,13 @@ export async function buildReconstructedFinancialCycle(
             "build-financial-cycle.mjs",
             "financial-build-session.mjs",
             "financial-value-verification.mjs",
-            "verify-financial-values.py",
           ].map((name) => [
             name,
             sha256(readFileSync(fileURLToPath(new URL("./" + name, import.meta.url)))),
           ]),
         ),
       ),
+      verifierSha256: financialSourceVerifierSha256(),
       input: reconstructed.buildInput,
     };
   const inputSha256 = sha256(canonical(recipe)),

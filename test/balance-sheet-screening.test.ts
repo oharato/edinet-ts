@@ -3,14 +3,14 @@ import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
-import { BALANCE_SHEET_REGISTRY } from "../src/balance-sheet-registry";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import { BALANCE_SHEET_REGISTRY } from "../src/financial/extraction/balance-sheet-metric-definitions";
 import {
   createBalanceSheetSnapshot,
   screenBalanceSheetSnapshots,
   BalanceSheetSnapshot,
   BalanceSheetSnapshotMetadata,
-} from "../src/balance-sheet-screening";
+} from "../src/financial/screening/screen-balance-sheets";
 import { fact, instance, standalone } from "./fixtures/metric-boundaries";
 const instant = "2025-03-31";
 const meta: BalanceSheetSnapshotMetadata = {

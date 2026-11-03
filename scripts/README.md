@@ -9,7 +9,7 @@
 TypeScriptのソースコードから型定義ドキュメントを自動生成します。CLIの `--help-types` で表示される情報はここから生成されます。
 
 - **実行**: `npm run generate-type-docs` (またはビルド時に自動実行)
-- **入力**: `src/edinet-xbrl-object.ts`, `src/types/*.ts` など
+- **入力**: `src/xbrl/xbrl-document.ts`, `src/types/*.ts` など
 - **出力**: `src/utils/type-doc-defs.ts` (データ定義のみ)
 - **仕組み**: `ts-morph` を使用してインターフェース定義とJSDocコメントを解析し、プログラムで利用可能な定数定義に変換します。
 
@@ -64,18 +64,18 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 
 `roadmap/build-prepared-financial-cycle.mjs` は、固定済みの再構築候補を1〜100社ずつ構築する入口です。`--max-batches`（既定1、上限100）で複数batchのarchive/state/index接続を共有できます。日次入口は100社×10batchを上限にします。同じ入力指紋と会社別checkpointを使い、各batch前に容量・入力を再確認し、中断時は会社単位の残件から再開します。呼出元で全batch終了まで排他を保持し、`--locked` を指定します。[構築手順](../docs/pipeline/FINANCIAL_INDEX_BUILD.md#再構築済みの日次候補をまとめて構築する)のロック順序・完了判定を確認してください。
 
-`roadmap/verify-built-financial-cycle.mjs --config /absolute/path/config.json --locked` は構築済み候補の全採用直接値を独立Python処理で原本照合し、候補に結び付いた検証記録を保存します。候補の排他が必要です。品質条件だけでは正式切替できず、`activateBuiltFinancialCycle` でこの記録を再照合します。[原本照合と正式切替](../docs/pipeline/FINANCIAL_INDEX_PUBLICATION.md#正式な日次候補の原本照合)を参照してください。
+`roadmap/verify-built-financial-cycle.mjs --config /absolute/path/config.json --locked` は構築済み候補の全採用直接値を独立TypeScript処理で原本照合し、候補に結び付いた検証記録を保存します。候補の排他が必要です。品質条件だけでは正式切替できず、`activateBuiltFinancialCycle` でこの記録を再照合します。[原本照合と正式切替](../docs/pipeline/FINANCIAL_INDEX_PUBLICATION.md#正式な日次候補の原本照合)を参照してください。
 
 ## 全体テスト
 
-`.node-version` の Node 26.12.1 と `package.json` の npm 12.2.1 を使用し、リポジトリ直下で実行します。バージョン管理ツールの設定だけでなく、`node --version` と `npm --version` の出力も確認してください。
+`.node-version` の Node 26.13.0 と `package.json` の npm 12.2.1 を使用し、リポジトリ直下で実行します。バージョン管理ツールの設定だけでなく、`node --version` と `npm --version` の出力も確認してください。
 
 ```sh
 npm run build
 npx --no-install tsc --noEmit
 npx --no-install tsc --project test/types/tsconfig.json
 npm test -- --maxWorkers=1 --testTimeout=30000
-python3 scripts/test_artifact_store.py
+npm test -- test/local-artifact-store.test.ts
 ```
 
 `data/` と `artifacts/` の固定配布物には過去のソースとテストが含まれるため、`npm test` が既定で現在のソースの検証から除外します。`test/` 以下はESM・CLI・SQLiteを含めて実行します。ESMテストが古い `dist/` を参照しないよう、先にビルドしてください。
@@ -91,6 +91,6 @@ CLIテストは子プロセスを起動します。`spawnSync` の `error.code` 
 
 ## 開発用チェック（2026-11-03更新）
 
-現在の開発・本番DuckDB実行系は`.node-version`のNode 26.13.0、npm 12.2.1、`.python-version`のPython 3.15.2。固定済み旧配布物を再現する`build-local.py`の旧toolchain指定は履歴の再現条件なので変更しない。
+現在の開発実行系は`.node-version`のNode 26.13.0、npm 12.2.1です。運用スクリプトとテストをTypeScriptへ移し、Pythonの準備は不要になりました。単独実行するTypeScriptはES moduleを明示する`.mts`を使用します。稼働中の固定runtimeは検証後に更新します。固定済み旧配布物を再現する`build-local.mts`の旧toolchain指定は履歴の再現条件なので変更しない。
 
 `npm run format`でoxfmtによる整形、`npm run format:check`で差分検査、`npm run lint`でoxlintのcorrectness検査、`npm run security`で開発依存を含む脆弱性検査を行う。生成DB・原本・調査artifactは整形対象外。lintでは未使用識別子、入力境界で意図して使う制御文字の正規表現、thisのcapture、互換enum aliasを一括変更しない。型試験の値参照・異常入力fixture等はtest側overrideに限定する。

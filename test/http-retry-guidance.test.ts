@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
-import { EdinetXbrlDownloader } from "../src/edinet-xbrl-downloader";
+import { EdinetXbrlDownloader } from "../src/edinet/api-client";
 const now = Date.UTC(2026, 9, 25, 0, 0, 0);
 const empty = () =>
   new Response(

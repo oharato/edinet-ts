@@ -157,7 +157,7 @@ async function main() {
   const files = [
     "src/db/managed-sqlite-recovery.ts",
     "src/db/sqlite-recovery.ts",
-    "src/duck-financial-cycle.ts",
+    "src/pipeline/build-duck-financial-cycle.ts",
     "scripts/verify-duck-financial-recovery.ts",
     "test/fixtures/parsed-put-crash.ts",
     "test/fixtures/duck-crash.ts",

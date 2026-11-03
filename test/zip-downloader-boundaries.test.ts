@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import JSZip from "jszip";
-import { EdinetXbrlDownloader } from "../src/edinet-xbrl-downloader";
+import { EdinetXbrlDownloader } from "../src/edinet/api-client";
 const roots: string[] = [];
 function root() {
   const dir = fs.mkdtempSync(join(tmpdir(), "edinet-zip-public-"));

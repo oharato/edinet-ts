@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { planCorporateRegistryDifferences as plan } from "../src/corporate-registry-calendar";
+import { planCorporateRegistryDifferences as plan } from "../src/companies/registry/publication-calendar";
 import { registryCalendarFixture } from "./fixtures/corporate-registry-calendar";
 const query = { from: "2026-09-18", through: "2026-09-24", knownAt: "2026-10-30T01:00:00Z" };
 

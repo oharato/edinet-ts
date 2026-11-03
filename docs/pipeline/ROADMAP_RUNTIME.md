@@ -178,15 +178,15 @@ timerはenable/activeで次の通常確認は09:00JST、09〜23時台の5分間�
 
 ## 停止したDBの完全バックアップと復元
 
-`scripts/roadmap/cold-sqlite-archive.py` は、停止したSQLiteファイル全体をgzipで保管します。元DBの全byte列と物理SHA-256を保ち、利用時には同じSQLite byte列へ復元します。格納されていた原本・観測時刻・解析結果を読み替えません。
+`scripts/roadmap/cold-sqlite-archive.mts` は、停止したSQLiteファイル全体をgzipで保管します。元DBの全byte列と物理SHA-256を保ち、利用時には同じSQLite byte列へ復元します。格納されていた原本・観測時刻・解析結果を読み替えません。
 
 切戻し用の元DBと、現行設定や再開経路から参照するDBは保持します。容量整理の対象は、それらの参照から外したDBや検証コピーとして別途確認したものに限定してください。`pack` と `audit` は元DBを削除しません。
 
 ```sh
-python3 scripts/roadmap/cold-sqlite-archive.py pack \
+node scripts/roadmap/cold-sqlite-archive.mts pack \
   --source stopped.sqlite --out cold-archive \
   --expected-sha256 <固定した元DBのSHA-256>
-python3 scripts/roadmap/cold-sqlite-archive.py audit --archive cold-archive
+node scripts/roadmap/cold-sqlite-archive.mts audit --archive cold-archive
 ```
 
 `pack` は通常ファイル・単一リンク・SQLiteヘッダーを検査し、WAL/SHM/journalがあれば停止します。生成したgzipを全量展開して元のサイズ/hashと照合し、処理中の元DBの変更も検査してから `receipt.json` を確定します。元DBと既存の出力先は上書きしません。gzip内の日時/ファイル名を固定し、圧縮物のhashも記録します。
@@ -195,11 +195,11 @@ python3 scripts/roadmap/cold-sqlite-archive.py audit --archive cold-archive
 
 ```sh
 # 廃止対象と確認した元DBだけを、圧縮保管へ移す
-python3 scripts/roadmap/cold-sqlite-archive.py retire --archive cold-archive
+node scripts/roadmap/cold-sqlite-archive.mts retire --archive cold-archive
 # 元の場所へ復元する。既存のファイルやsymlinkがあれば停止
-python3 scripts/roadmap/cold-sqlite-archive.py restore --archive cold-archive
+node scripts/roadmap/cold-sqlite-archive.mts restore --archive cold-archive
 # 別の未使用パスで復元を試す場合
-python3 scripts/roadmap/cold-sqlite-archive.py restore \
+node scripts/roadmap/cold-sqlite-archive.mts restore \
   --archive cold-archive --target restored.sqlite
 ```
 

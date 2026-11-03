@@ -1,5 +1,5 @@
-import { EdinetXbrlDownloader } from "../src/edinet-xbrl-downloader";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
+import { EdinetXbrlDownloader } from "../src/edinet/api-client";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
 import "dotenv/config";
 import * as fs from "fs";
 

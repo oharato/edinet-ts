@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { parseFacilitySiteAndLocation as parse } from "../src/facility-location";
+import { parseFacilitySiteAndLocation as parse } from "../src/disclosures/parse-facility-location";
 it.each([
   ["本社\n(東京都中央区)", "本社", "東京都中央区", "東京都"],
   ["東京事業所(東京都府中市)", "東京事業所", "東京都府中市", "東京都"],

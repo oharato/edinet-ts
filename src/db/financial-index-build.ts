@@ -4,7 +4,7 @@ import {
   verifyFinancialVersionContext,
   type FinancialVersionOptions,
   type FinancialVersionRuntimeBinding,
-} from "../financial-version-selection";
+} from "../financial/selection/select-financial-source-versions";
 import { createHash } from "node:crypto";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import {

@@ -1,16 +1,17 @@
+import { financialSearchIndexSchema as schema } from "./schema/financial-search-index";
 import {
   FINANCIAL_VERSION_POLICY,
   type FinancialVersionProof,
   type FinancialVersionDecision,
   type FinancialVersionRuntimeBinding,
-} from "../financial-version-selection";
+} from "../financial/selection/select-financial-source-versions";
 import type {
   SourceBackedArchivedFinancialSnapshots,
   SourceBackedArchivedFinancialSnapshotOptions,
 } from "./observed-financial-archive";
-import type { FinancialReportingBasis } from "../financial-reporting-basis";
+import type { FinancialReportingBasis } from "../financial/extraction/resolve-reporting-basis";
 import { createHash } from "node:crypto";
-import { parseDocumentTimestamp as timestamp } from "../document-timestamp";
+import { parseDocumentTimestamp as timestamp } from "../edinet/parse-document-timestamp";
 import type { SQLInputValue } from "node:sqlite";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import {
@@ -18,21 +19,31 @@ import {
   type ArchivedFinancialSnapshotOptions,
   type ArchivedFinancialSnapshots,
 } from "./observed-financial-archive";
-import { BALANCE_SHEET_REGISTRY, type BalanceSheetMetricId } from "../balance-sheet-registry";
+import {
+  BALANCE_SHEET_REGISTRY,
+  type BalanceSheetMetricId,
+} from "../financial/extraction/balance-sheet-metric-definitions";
 import {
   FINANCIAL_DETAIL_REGISTRY,
   type FinancialDetailMetricId,
-} from "../financial-detail-registry";
+} from "../financial/extraction/detail-metric-definitions";
 import {
   IFRS_FINANCIAL_DETAIL_REGISTRY,
   type IfrsFinancialDetailMetricId,
-} from "../ifrs-financial-detail-registry";
-import { toSafeMetricNumber, type FactSelectionResult } from "../metric-selection";
-import type { FinancialPeriodType, ComparisonOperator, SortOrder } from "../financial-options";
+} from "../financial/extraction/ifrs-detail-metric-definitions";
+import {
+  toSafeMetricNumber,
+  type FactSelectionResult,
+} from "../financial/extraction/select-metric-facts";
+import type {
+  FinancialPeriodType,
+  ComparisonOperator,
+  SortOrder,
+} from "../financial/financial-types";
 import {
   IFRS_BALANCE_SHEET_REGISTRY,
   type IfrsBalanceSheetMetricId,
-} from "../ifrs-balance-sheet-registry";
+} from "../financial/extraction/ifrs-balance-sheet-metric-definitions";
 export const FINANCIAL_SEARCH_INDEX_VERSION = "1";
 export type FinancialIndexMetricId =
   | BalanceSheetMetricId
@@ -218,19 +229,7 @@ export interface FinancialIndexQuality {
   values: FinancialIndexQualityCounts;
   cohorts: FinancialIndexCohortQuality[];
 }
-const schema = {
-  financial_index_format: "CREATE TABLE financial_index_format(kind TEXT NOT NULL)",
-  financial_generations:
-    "CREATE TABLE financial_generations(id TEXT PRIMARY KEY,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
-  financial_rows:
-    "CREATE TABLE financial_rows(generation TEXT NOT NULL,row_id TEXT NOT NULL,group_id TEXT NOT NULL,standard TEXT NOT NULL,scope TEXT NOT NULL,currency TEXT NOT NULL,period_start TEXT NOT NULL,period_end TEXT NOT NULL,period_type TEXT NOT NULL,edinet_code TEXT NOT NULL,sec_code TEXT NOT NULL,doc_id TEXT NOT NULL,sha256 TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(generation,row_id))",
-  financial_cohort:
-    "CREATE INDEX financial_cohort ON financial_rows(generation,group_id,standard,scope,currency,period_start,period_end,period_type,sec_code,doc_id)",
-  financial_values:
-    "CREATE TABLE financial_values(generation TEXT NOT NULL,row_id TEXT NOT NULL,metric_id TEXT NOT NULL,available INTEGER NOT NULL,numeric_value REAL,raw_text TEXT,status TEXT NOT NULL,reason TEXT NOT NULL,failure_kind TEXT,metric_order INTEGER NOT NULL,PRIMARY KEY(generation,row_id,metric_id))",
-  financial_metric_range:
-    "CREATE INDEX financial_metric_range ON financial_values(generation,metric_id,available,numeric_value,row_id)",
-};
+
 const jsonPrimitive = (v: unknown) =>
   v === null ||
   v === undefined ||

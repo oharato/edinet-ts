@@ -11,7 +11,7 @@ import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
 import { DuckFinancialIndexBuild } from "../src/db/duck-financial-index-build";
 import { FinancialIndexBuild } from "../src/db/financial-index-build";
 import { FinancialSearchIndex } from "../src/db/financial-search-index";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
 import { Database } from "../src/db/node-sqlite";
 const sha = (s: Buffer | string) => createHash("sha256").update(s).digest("hex");
 const plain = (r: Record<string, unknown>) =>
@@ -183,7 +183,7 @@ async function main() {
     "src/db/financial-search-index.ts",
     "src/db/parsed-financial-snapshots.ts",
     "src/db/observed-financial-archive.ts",
-    "src/observed-financial-snapshots.ts",
+    "src/financial/snapshots/create-observed-snapshots.ts",
   ];
   writeFileSync(
     join(out, "summary.json"),

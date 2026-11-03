@@ -8,13 +8,13 @@ import { Database, type NativeDatabase } from "./node-sqlite";
 import {
   normalizeFinancialDetailSnapshot,
   screenFinancialDetailSnapshots,
-} from "../financial-detail-snapshots";
+} from "../financial/screening/screen-saved-financial-details";
 import type {
   FinancialDetailSnapshot,
   FinancialDetailScreeningOptions,
   FinancialDetailScreeningResult,
   FinancialDetailDiagnostic,
-} from "../financial-detail-screening";
+} from "../financial/screening/screen-financial-details";
 
 export const FINANCIAL_DETAIL_STORE_METRICS = Object.freeze([
   "noncurrentAssets",

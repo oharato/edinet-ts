@@ -10,23 +10,23 @@ import {
   type CorporateRegistryRecord,
   type CorporateRegistryStateQuery,
   type CorporateRegistryStateResult,
-} from "../corporate-registry";
+} from "../companies/registry/registry-records";
 import {
   readCorporateRegistryFile,
   streamCorporateRegistryRecords,
   CORPORATE_REGISTRY_STREAM_MAX_BYTES,
   type CorporateRegistryStreamReceipt,
-} from "../corporate-registry-stream";
+} from "../companies/registry/read-registry-stream";
 import {
   captureRegistryStateQuery,
   reconstructRegistryCandidates,
   type CorporateRegistryCandidate,
-} from "../corporate-registry-state-core";
+} from "../companies/registry/reconstruct-state";
 import {
   parseCorporateRegistryPublicationCalendar,
   type CorporateRegistryPublicationCalendarInput,
-} from "../corporate-registry-calendar";
-import { parseDocumentTimestamp } from "../document-timestamp";
+} from "../companies/registry/publication-calendar";
+import { parseDocumentTimestamp } from "../edinet/parse-document-timestamp";
 import type {
   CorporateRegistryFileImport,
   CorporateRegistryStoredFile,

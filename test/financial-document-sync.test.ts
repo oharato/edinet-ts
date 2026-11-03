@@ -8,7 +8,7 @@ import {
   backfillFinancialDocumentLists,
   archiveFinancialDocumentObservations,
 } from "../src/index";
-import type { EdinetDocument } from "../src/edinet-xbrl-downloader";
+import type { EdinetDocument } from "../src/edinet/api-client";
 const doc = (docID: string): EdinetDocument => ({
   docID,
   docDescription: "fixture",

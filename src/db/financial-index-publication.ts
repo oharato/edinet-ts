@@ -1,3 +1,4 @@
+import { financialPublicationSchema as schema } from "./schema/financial-index-publication";
 import { createHash } from "node:crypto";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import {
@@ -47,15 +48,7 @@ export interface FinancialIndexPublicationTransition {
   previous: string | null;
   publication: string;
 }
-const schema = {
-  publication_format: "CREATE TABLE publication_format(kind TEXT NOT NULL)",
-  publication_candidates:
-    "CREATE TABLE publication_candidates(id TEXT PRIMARY KEY,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
-  publication_history:
-    "CREATE TABLE publication_history(sequence INTEGER PRIMARY KEY,previous_id TEXT,publication_id TEXT NOT NULL,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
-  publication_active:
-    "CREATE TABLE publication_active(singleton INTEGER PRIMARY KEY CHECK(singleton=1),publication_id TEXT NOT NULL,sequence INTEGER NOT NULL,sha256 TEXT NOT NULL)",
-};
+
 const canonical = (v: unknown): string =>
   JSON.stringify(v, (_k, x) =>
     x && typeof x === "object" && !Array.isArray(x)

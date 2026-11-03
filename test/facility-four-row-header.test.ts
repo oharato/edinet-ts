@@ -3,7 +3,10 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { extractFacilityDetails, screenFacilityDetails } from "../src/facility-details";
+import {
+  extractFacilityDetails,
+  screenFacilityDetails,
+} from "../src/disclosures/extract-facilities";
 import { FacilityDetailStore } from "../src/db/facility-detail-store";
 import { Database } from "../src/db/node-sqlite";
 import { facilityDocument, facilityTable } from "./fixtures/facility-details";

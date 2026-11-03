@@ -238,6 +238,15 @@ export class DuckFinancialSnapshot {
       throw Error("DuckDB snapshot changed");
     return this.digest;
   }
+  /** 原本照合の間だけ、固定した読み取り専用DuckDBのパスを渡す。 */
+  async withSnapshotFile<T>(verify: (path: string) => Promise<T>): Promise<T> {
+    await this.snapshotSha256();
+    try {
+      return await verify(this.file);
+    } finally {
+      await this.snapshotSha256();
+    }
+  }
   private async read(sql: string, args?: any[]): Promise<NativeQueryResult> {
     // Bound the retained plans; multi-statement SQL keeps the native execution path.
     if (!args || sql.length > 65536 || sql.includes(";") || !/^\s*(SELECT|WITH)\b/i.test(sql))

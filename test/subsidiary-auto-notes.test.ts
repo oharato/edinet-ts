@@ -3,9 +3,9 @@ import {
   extractSubsidiaryHumanCapitalMetrics as extract,
   screenSubsidiaryHumanCapitalMetrics as screen,
   SubsidiaryHumanCapitalMetricId as M,
-} from "../src/subsidiary-human-capital-metrics";
-import { EdinetXbrlObject } from "../src/edinet-xbrl-object";
-import { parseDisclosureTableFragment } from "../src/disclosure-tables";
+} from "../src/disclosures/extract-subsidiary-human-capital";
+import { EdinetXbrlObject } from "../src/xbrl/xbrl-document";
+import { parseDisclosureTableFragment } from "../src/disclosures/read-disclosure-tables";
 import { subsidiaryDocument, proof as fixtureProof } from "./fixtures/subsidiary-metrics";
 const women =
   "「女性の職業生活における活躍の推進に関する法律」（平成27年法律第64号）の規定に基づき算出したものであります。";

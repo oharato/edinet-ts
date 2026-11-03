@@ -4,10 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { LargeHoldingStore } from "../src/db/large-holding-store";
-import { searchObservedLargeHoldingReports } from "../src/observed-large-holding";
+import { searchObservedLargeHoldingReports } from "../src/disclosures/large-holdings/search-observed-reports";
 import { Database } from "../src/db/node-sqlite";
 import { largeDocument } from "./fixtures/large-holding-report";
-import type { LargeHoldingDocument, LargeHoldingSearchOptions } from "../src/large-holding-report";
+import type {
+  LargeHoldingDocument,
+  LargeHoldingSearchOptions,
+} from "../src/disclosures/large-holdings/read-large-holding-report";
 const hash = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");
 const observation = (d: LargeHoldingDocument, id = d.metadata.docID) => ({
   observationId: id,
