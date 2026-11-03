@@ -1,12 +1,12 @@
 import { it, expect } from "vitest";
 import { createHash } from "node:crypto";
-import { linkCompanyMasterCorporateStreamStates as link } from "../src/company-corporate-state";
+import { linkCompanyMasterCorporateStreamStates as link } from "../src/companies/link-corporate-states";
 import {
   registryStreamXml as xml,
   registryStreamRow as row,
   registryStreamSource as source,
 } from "./fixtures/corporate-registry-stream";
-import type { CompanyMasterSnapshot } from "../src/company-master";
+import type { CompanyMasterSnapshot } from "../src/companies/company-master";
 const number = "1010001001202",
   hash = (s: string) => createHash("sha256").update(s).digest("hex");
 const master = (): CompanyMasterSnapshot => ({

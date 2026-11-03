@@ -13,8 +13,8 @@ import {
 import {
   createObservedFinancialSnapshotsFromParsed,
   type ObservedParsedFinancialSource,
-} from "../observed-financial-snapshots";
-import { parseDocumentTimestamp } from "../document-timestamp";
+} from "../financial/snapshots/create-observed-snapshots";
+import { parseDocumentTimestamp } from "../edinet/parse-document-timestamp";
 
 /** 固定アーカイブの一覧・宣言と解析済みStoreから構築。XMLを読み出しません。 */
 export function createParsedFinancialSnapshots(

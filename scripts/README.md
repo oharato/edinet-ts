@@ -9,7 +9,7 @@
 TypeScriptのソースコードから型定義ドキュメントを自動生成します。CLIの `--help-types` で表示される情報はここから生成されます。
 
 - **実行**: `npm run generate-type-docs` (またはビルド時に自動実行)
-- **入力**: `src/edinet-xbrl-object.ts`, `src/types/*.ts` など
+- **入力**: `src/xbrl/xbrl-document.ts`, `src/types/*.ts` など
 - **出力**: `src/utils/type-doc-defs.ts` (データ定義のみ)
 - **仕組み**: `ts-morph` を使用してインターフェース定義とJSDocコメントを解析し、プログラムで利用可能な定数定義に変換します。
 
@@ -68,7 +68,7 @@ EDINETタクソノミファイル（XBRL定義）からTypeScriptの型定義を
 
 ## 全体テスト
 
-`.node-version` の Node 26.12.1 と `package.json` の npm 12.2.1 を使用し、リポジトリ直下で実行します。バージョン管理ツールの設定だけでなく、`node --version` と `npm --version` の出力も確認してください。
+`.node-version` の Node 26.13.0 と `package.json` の npm 12.2.1 を使用し、リポジトリ直下で実行します。バージョン管理ツールの設定だけでなく、`node --version` と `npm --version` の出力も確認してください。
 
 ```sh
 npm run build

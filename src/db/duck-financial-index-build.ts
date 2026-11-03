@@ -1,3 +1,4 @@
+import { duckFinancialBuildTables as tables } from "./schema/duck-financial-build";
 import { createHash } from "node:crypto";
 import { ObservedFinancialArchive } from "./observed-financial-archive";
 import { ParsedFinancialStore } from "./parsed-financial-store";
@@ -9,7 +10,6 @@ import {
 } from "./financial-index-build";
 import {
   projectFinancialIndexGeneration,
-  financialIndexSqliteSchema,
   financialIndexRowColumns,
   financialIndexValueColumns,
   financialIndexBuildPartId,
@@ -56,14 +56,7 @@ const canonical = (v: unknown): string =>
   );
 const hash = (v: string) => createHash("sha256").update(v).digest("hex");
 const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-const tables = {
-  ...financialIndexSqliteSchema,
-  duck_build_format: "CREATE TABLE duck_build_format(kind TEXT NOT NULL)",
-  duck_build_plan:
-    "CREATE TABLE duck_build_plan(id TEXT PRIMARY KEY,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
-  duck_build_parts:
-    "CREATE TABLE duck_build_parts(code TEXT PRIMARY KEY,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
-};
+
 const tableNames = Object.entries(tables)
   .filter(([, sql]) => sql.startsWith("CREATE TABLE"))
   .map(([name]) => name)

@@ -29,7 +29,7 @@ async function main() {
   assert.equal(saved.body.indexPath, join(cycle, "index.duckdb"));
   assert(!existsSync(out));
   const { duckFinancialSdkSha256 } = await import(
-    pathToFileURL(join(sdk, "dist/duck-financial-cycle.js")).href
+    pathToFileURL(join(sdk, "dist/pipeline/build-duck-financial-cycle.js")).href
   );
   assert.equal(duckFinancialSdkSha256(), marker.input.sdkSha256);
   const space = statfsSync(cycle, { bigint: true });

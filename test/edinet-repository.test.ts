@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EdinetRepository } from "../src/db/edinet-repository";
 import { Database } from "../src/db/node-sqlite";
-import type { EdinetDocument } from "../src/edinet-xbrl-downloader";
+import type { EdinetDocument } from "../src/edinet/api-client";
 
 const repositories: EdinetRepository[] = [];
 const directories: string[] = [];

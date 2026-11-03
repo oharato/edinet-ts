@@ -13,7 +13,7 @@ import { join, resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { execFileSync } from "node:child_process";
 import { Database } from "../src/db/node-sqlite";
-import { createAutomaticFinancialSnapshots } from "../src/automatic-financial-snapshots";
+import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
 import {
   ParsedFinancialStore,
   parsedFinancialMappingVersions,

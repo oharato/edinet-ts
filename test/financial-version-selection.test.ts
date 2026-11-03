@@ -6,13 +6,13 @@ import {
   verifyFinancialVersionContext as verify,
   financialVersionEvidenceManifestSha256,
   captureFinancialVersionEvidenceBundle,
-} from "../src/financial-version-selection";
+} from "../src/financial/selection/select-financial-source-versions";
 import {
   financialVersionEvidenceFixture as fixture,
   signFinancialVersionBundle as sign,
   sourceHash,
 } from "./fixtures/financial-version-evidence";
-import type { FinancialVersionEvidenceBundle } from "../src/financial-version-selection";
+import type { FinancialVersionEvidenceBundle } from "../src/financial/selection/select-financial-source-versions";
 function change(b: FinancialVersionEvidenceBundle, id: string, tag: string, value: string) {
   const s = b.sources.find((s) => s.docID === id)! as { xml: string; sourceSha256: string };
   s.xml = s.xml.replace(

@@ -32,10 +32,14 @@ export async function runFinancialSourceVerifier(
   archiveSha256: string,
   signal?: AbortSignal,
 ) {
+  // The independent child must not inherit host preloads or alternate module search paths.
+  const env = { ...process.env };
+  delete env.NODE_OPTIONS;
+  delete env.NODE_PATH;
   const { stdout } = await execute(
     process.execPath,
     [verifier, engine, index, archive, generation, archiveSha256],
-    { signal, maxBuffer: 1024 * 1024 },
+    { signal, maxBuffer: 1024 * 1024, env },
   );
   return JSON.parse(stdout);
 }

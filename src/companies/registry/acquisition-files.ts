@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { strict as assert } from "node:assert";
 import { RetainedFile, readRetainedJSON } from "../../utils/retained-files";
 import { withOperationalLocks } from "../../utils/with-operational-locks";
-import { atomicJSON, canonical } from "../../verification-files";
+import { atomicJSON, canonical } from "../../utils/verification-files";
 import { registryDate } from "./parse-download-listing";
 export { readRetainedJSON as load };
 export const same = (a: unknown, b: unknown, message: string) =>

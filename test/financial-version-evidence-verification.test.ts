@@ -9,7 +9,7 @@ import {
   authenticateFinancialVersionEvidence,
   financialVersionEvidenceManifestSha256,
   readFinancialVersionProof,
-} from "../src/financial-version-selection";
+} from "../src/financial/selection/select-financial-source-versions";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
 import { FinancialSearchIndex } from "../src/db/financial-search-index";

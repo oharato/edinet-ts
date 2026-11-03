@@ -2,7 +2,7 @@ import { it, expect, vi } from "vitest";
 import { Command } from "commander";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { registerDuckFinancialCommands } from "../src/duck-financial-cli";
+import { registerDuckFinancialCommands } from "../src/cli/register-duck-financial-commands";
 import {
   FinancialIndexPublication,
   type FinancialIndexPublicationPolicy,

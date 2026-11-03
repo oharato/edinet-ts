@@ -14,8 +14,8 @@
 
 既存コード、生成済み型、同梱XBRLのみを照合した。新しい提出書類の取得、認証API照合、第三者コード・mappingのコピーは行っていない。以下の記録はタグ・scope・期間・基準の存在確認で、個別銘柄の金額は掲載しない。
 
-- [EdinetXbrlParser](../../src/edinet-xbrl-parser.ts)はcontextRef付きfactを保持するため、新しいタグを読むための別XMLパーサーは不要。
-- [EdinetXbrlObject](../../src/edinet-xbrl-object.ts)の `getDataList()`、`getDataByContextRef()`、`getKeys()`、`findContexts()`を候補調査に再利用できる。`getJppfsCor()`の型付きアクセスも存在するが、正規化の選択理由や基準を返す契約ではない。
+- [EdinetXbrlParser](../../src/xbrl/parse-xbrl.ts)はcontextRef付きfactを保持するため、新しいタグを読むための別XMLパーサーは不要。
+- [EdinetXbrlObject](../../src/xbrl/xbrl-document.ts)の `getDataList()`、`getDataByContextRef()`、`getKeys()`、`findContexts()`を候補調査に再利用できる。`getJppfsCor()`の型付きアクセスも存在するが、正規化の選択理由や基準を返す契約ではない。
 - [jppfs型](../../src/types/jppfs_cor_taxonomy.ts)と[jppfs一覧](../generated/TAXONOMY_JPPFS_COR.md)には下表のJ-GAAP候補がある。型は2024版・一般商工業を生成元とし、最新年度・全業種対応の証明には使わない。`jpigp_cor`の専用生成型は現行にない。
 - `getKeyMetricsWithSources()`のタグ・context・期間・scope・単純通貨の来歴と、[scope回帰](../../test/key-metrics-scope.test.ts)、[contextテスト](../../test/edinet-context.test.ts)、[screeningテスト](../../test/financial-screening.test.ts)を再利用する。既存18項目の値を変更する作業とは分離する。
 - remote branchの監査は親作業で実施済み。既存のscope修正・財務検索の統合済み実装を基準にし、古いbranchを再適用しない。`preserve-submission-datetime`はremote/当該checkoutに存在を確認できず、不要・統合済みとは判定していない。

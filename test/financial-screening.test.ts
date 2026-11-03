@@ -3,14 +3,14 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
-import { KeyMetricSources } from "../src/edinet-xbrl-object";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
+import { KeyMetricSources } from "../src/xbrl/xbrl-document";
 import {
   calculateFinancialMetrics,
   FINANCIAL_SCREENING_METRICS,
   FinancialSnapshot,
   screenFinancialSnapshots,
-} from "../src/financial-screening";
+} from "../src/financial/screening/screen-financial-snapshots";
 
 const source = {
   key: "example:Fact",

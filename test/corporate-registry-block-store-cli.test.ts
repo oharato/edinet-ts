@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { CorporateRegistryBlockStore } from "../src/db/corporate-registry-block-store";
-import { linkCompanyMasterCorporateStates } from "../src/company-corporate-state";
+import { linkCompanyMasterCorporateStates } from "../src/companies/link-corporate-states";
 import {
   registryStreamSource as source,
   registryStreamRow as row,

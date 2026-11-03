@@ -10,7 +10,7 @@ import {
   parsedFinancialMappingVersions,
   type ParsedFinancialExtraction,
 } from "../src/db/parsed-financial-store";
-import { createAutomaticFinancialSnapshots } from "../src/automatic-financial-snapshots";
+import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
 import { reportingInstance } from "./fixtures/financial-reporting-basis";
 const clean = (v: unknown) => JSON.parse(JSON.stringify(v));
 const hash = (v: string) => createHash("sha256").update(v).digest("hex");

@@ -1,4 +1,4 @@
-import type { CorporateRegistryPublicationCalendarInput } from "../../src/corporate-registry-calendar";
+import type { CorporateRegistryPublicationCalendarInput } from "../../src/companies/registry/publication-calendar";
 export function registryCalendarFixture(): CorporateRegistryPublicationCalendarInput {
   const dates = new Map<string, string>();
   for (let y = 2017; y <= 2027; y++) dates.set(y + "/1/1", "元日");

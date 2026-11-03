@@ -1,16 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
 import {
   IFRS_BALANCE_SHEET_REGISTRY,
   IFRS_BALANCE_SHEET_REGISTRY_VERSION,
   IfrsBalanceSheetMetricId,
-} from "../src/ifrs-balance-sheet-registry";
+} from "../src/financial/extraction/ifrs-balance-sheet-metric-definitions";
 import {
   BALANCE_SHEET_REGISTRY,
   BALANCE_SHEET_REGISTRY_VERSION,
-} from "../src/balance-sheet-registry";
-import { METRIC_REGISTRY } from "../src/metric-registry";
-import type { MetricSelectionOptions } from "../src/metric-selection";
+} from "../src/financial/extraction/balance-sheet-metric-definitions";
+import { METRIC_REGISTRY } from "../src/financial/extraction/metric-definitions";
+import type { MetricSelectionOptions } from "../src/financial/extraction/select-metric-facts";
 import { instance, fact, standalone } from "./fixtures/metric-boundaries";
 const instant = "2026-03-31";
 const options: MetricSelectionOptions = {

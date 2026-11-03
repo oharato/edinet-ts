@@ -1,5 +1,5 @@
-import { readZipMember } from "../../utils/read-zip-member";
 /** 事前署名検証の記録と保存ZIPを照合して、指定XMLだけをstdoutへ流す。署名の再認証は行わない。 */
+import { readZipMember } from "../../utils/read-zip-member";
 import { strict as assert } from "node:assert";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";

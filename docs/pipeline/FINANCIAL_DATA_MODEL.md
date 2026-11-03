@@ -65,16 +65,16 @@ XMLから値・期間・単位・出典を取り出して保存します。
                                       └─ 財務行R1
                                            ├─ costOfSales
                                            ├─ grossProfit
-                                           └─ incomeTaxExpense
+                                           └─ incomeTaxes
 ```
 
 `parsed_values` の一部を表にすると次のようになります。
 
-| extraction | row_id | metric_id        | raw_text       | numeric_value | available | status   | reason     |
-| ---------- | ------ | ---------------- | -------------- | ------------: | --------: | -------- | ---------- |
-| K1         | R1     | costOfSales      | `"1200000000"` |    1200000000 |         1 | selected | selected   |
-| K1         | R1     | grossProfit      | NULL           |          NULL |         0 | missing  | tag-absent |
-| K1         | R1     | incomeTaxExpense | `"0"`          |             0 |         1 | selected | selected   |
+| extraction | row_id | metric_id   | raw_text       | numeric_value | available | status   | reason     |
+| ---------- | ------ | ----------- | -------------- | ------------: | --------: | -------- | ---------- |
+| K1         | R1     | costOfSales | `"1200000000"` |    1200000000 |         1 | selected | selected   |
+| K1         | R1     | grossProfit | NULL           |          NULL |         0 | missing  | tag-absent |
+| K1         | R1     | incomeTaxes | `"0"`          |             0 |         1 | selected | selected   |
 
 `raw_text` は元の数値文字列、`numeric_value` は安全に扱える場合の検索用数値です。大きすぎる数値などを検索用数値へ無理に変換せず、元の文字列と利用できない理由を保持します。出典のタグ名・context・単位・精度などは結果JSONにも残ります。
 
@@ -100,11 +100,11 @@ XMLから値・期間・単位・出典を取り出して保存します。
 
 **financial_valuesの例**
 
-| generation | row_id | metric_id        | numeric_value | status   |
-| ---------- | ------ | ---------------- | ------------: | -------- |
-| G1         | R1     | costOfSales      |    1200000000 | selected |
-| G1         | R1     | grossProfit      |          NULL | missing  |
-| G1         | R1     | incomeTaxExpense |             0 | selected |
+| generation | row_id | metric_id   | numeric_value | status   |
+| ---------- | ------ | ----------- | ------------: | -------- |
+| G1         | R1     | costOfSales |    1200000000 | selected |
+| G1         | R1     | grossProfit |          NULL | missing  |
+| G1         | R1     | incomeTaxes |             0 | selected |
 
 検索では `generation` と `row_id` でこの2表を結び、会社・期間・基準・指標・数値条件などで絞ります。通常検索は保存済みの値と根拠を読み、原本XMLの展開・解析は行いません。
 
@@ -148,6 +148,12 @@ XMLから値・期間・単位・出典を取り出して保存します。
 これは抽出時の誤りを保存先へ引き継いでいないか調べる検査です。言語を変えることが独立性の条件ではありません。TypeScriptでも本体の抽出関数を呼ばない検査処理で実現できます。
 
 2026-11-03の最初の公開では、一時SQLiteへ転記してPythonで照合しました。現在のソースはTypeScriptの照合器がDuckDBを直接読む構成です。本体とは別のXMLパーサーを使い、原本の値・単位・期間・訂正関係を検査します。同じ本番用DBの7,408文書・14,816行・38,598採用値で旧照合結果と値のhashが一致しました。稼働中の固定runtimeの更新は、このリファクタの検証後に行います。
+
+## テーブル定義をコードで確認する
+
+財務データの主要DDLは [`src/db/schema/`](../../src/db/schema/) にあります。[原本](../../src/db/schema/observed-financial-archive.ts)、[解析済み結果](../../src/db/schema/parsed-financial-store.ts)、[検索用の表](../../src/db/schema/financial-search-index.ts)、[DuckDBの構築記録](../../src/db/schema/duck-financial-build.ts)、[正式catalog](../../src/db/schema/financial-index-publication.ts) を分けています。定義を使ってDBを開く処理は `src/db/` の保存クラスです。
+
+各フォルダと処理の対応は[ソースコードの読み方](../development/SOURCE_LAYOUT.md)を参照してください。
 
 ## ファイルが多い理由と、日常的に見るもの
 

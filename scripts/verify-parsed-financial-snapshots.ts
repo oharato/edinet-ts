@@ -8,7 +8,7 @@ import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
 import { ParsedFinancialStore } from "../src/db/parsed-financial-store";
 import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
 import { createParsedFinancialSnapshots } from "../src/db/parsed-financial-snapshots";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
 async function fileHash(path: string) {
   const h = createHash("sha256");
   for await (const data of createReadStream(path)) h.update(data);
@@ -84,7 +84,7 @@ async function main() {
     assert.equal(contentReads, 0);
     assert.equal(await fileHash(prior.original), prior.originalSha256);
     const sourceFiles = [
-      "src/observed-financial-snapshots.ts",
+      "src/financial/snapshots/create-observed-snapshots.ts",
       "src/db/observed-financial-archive.ts",
       "src/db/parsed-financial-snapshots.ts",
     ];

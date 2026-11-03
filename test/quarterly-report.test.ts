@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
 
 describe("EdinetXbrlParser - Quarterly Reports", () => {
   const parser = new EdinetXbrlParser();

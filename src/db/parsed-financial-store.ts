@@ -1,27 +1,34 @@
+import { parsedFinancialStoreSchema as schema } from "./schema/parsed-financial-store";
 import { createHash } from "node:crypto";
 import type { SQLInputValue } from "node:sqlite";
-import { parseDocumentTimestamp } from "../document-timestamp";
+import { parseDocumentTimestamp } from "../edinet/parse-document-timestamp";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
 import {
   normalizeAutomaticFinancialDetailMetricIds,
   type AutomaticFinancialSnapshotOptions,
   type AutomaticFinancialSnapshots,
-} from "../automatic-financial-snapshots";
-import { toSafeMetricNumber, type FactSelectionResult } from "../metric-selection";
-import { FINANCIAL_REPORTING_BASIS_VERSION } from "../financial-reporting-basis";
-import { BALANCE_SHEET_REGISTRY, BALANCE_SHEET_REGISTRY_VERSION } from "../balance-sheet-registry";
+} from "../financial/snapshots/create-financial-snapshots";
+import {
+  toSafeMetricNumber,
+  type FactSelectionResult,
+} from "../financial/extraction/select-metric-facts";
+import { FINANCIAL_REPORTING_BASIS_VERSION } from "../financial/extraction/resolve-reporting-basis";
+import {
+  BALANCE_SHEET_REGISTRY,
+  BALANCE_SHEET_REGISTRY_VERSION,
+} from "../financial/extraction/balance-sheet-metric-definitions";
 import {
   FINANCIAL_DETAIL_REGISTRY,
   FINANCIAL_DETAIL_REGISTRY_VERSION,
-} from "../financial-detail-registry";
+} from "../financial/extraction/detail-metric-definitions";
 import {
   IFRS_BALANCE_SHEET_REGISTRY,
   IFRS_BALANCE_SHEET_REGISTRY_VERSION,
-} from "../ifrs-balance-sheet-registry";
+} from "../financial/extraction/ifrs-balance-sheet-metric-definitions";
 import {
   IFRS_FINANCIAL_DETAIL_REGISTRY,
   IFRS_FINANCIAL_DETAIL_REGISTRY_VERSION,
-} from "../ifrs-financial-detail-registry";
+} from "../financial/extraction/ifrs-detail-metric-definitions";
 
 export const PARSED_FINANCIAL_STORE_VERSION = "1";
 export const parsedFinancialMappingVersions = () => ({
@@ -49,16 +56,7 @@ export interface ParsedFinancialExtraction {
 }
 
 const maximumBodyBytes = 64 * 1024 * 1024;
-const schema = {
-  parsed_format: "CREATE TABLE parsed_format(kind TEXT NOT NULL)",
-  parsed_extractions:
-    "CREATE TABLE parsed_extractions(id TEXT PRIMARY KEY,doc_id TEXT NOT NULL,source_sha256 TEXT NOT NULL,state TEXT NOT NULL,parsed_at TEXT NOT NULL,body TEXT NOT NULL,sha256 TEXT NOT NULL)",
-  parsed_by_source: "CREATE INDEX parsed_by_source ON parsed_extractions(doc_id,source_sha256,id)",
-  parsed_rows:
-    "CREATE TABLE parsed_rows(extraction TEXT NOT NULL,row_id TEXT NOT NULL,group_id TEXT NOT NULL,edinet_code TEXT NOT NULL,sec_code TEXT NOT NULL,standard TEXT NOT NULL,scope TEXT NOT NULL,currency TEXT NOT NULL,period_start TEXT NOT NULL,period_end TEXT NOT NULL,period_type TEXT NOT NULL,amendment_target TEXT,body TEXT NOT NULL,sha256 TEXT NOT NULL,PRIMARY KEY(extraction,row_id))",
-  parsed_values:
-    "CREATE TABLE parsed_values(extraction TEXT NOT NULL,row_id TEXT NOT NULL,metric_id TEXT NOT NULL,metric_order INTEGER NOT NULL,available INTEGER NOT NULL,numeric_value REAL,raw_text TEXT,status TEXT NOT NULL,reason TEXT NOT NULL,failure_kind TEXT,unit TEXT,decimals TEXT,body TEXT NOT NULL,sha256 TEXT NOT NULL,PRIMARY KEY(extraction,row_id,metric_id))",
-};
+
 const rowColumns = [
   "extraction",
   "row_id",

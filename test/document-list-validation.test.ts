@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EdinetXbrlDownloader } from "../src/edinet-xbrl-downloader";
-import { EdinetDocumentType } from "../src/edinet-document-type";
+import { EdinetXbrlDownloader } from "../src/edinet/api-client";
+import { EdinetDocumentType } from "../src/edinet/document-types";
 
 const document = (overrides: Record<string, unknown> = {}) => ({
   secCode: "72030",

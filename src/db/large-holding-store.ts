@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { DedicatedSqliteDatabase } from "./dedicated-sqlite";
-import { analyzeDocumentRelations } from "../document-relations";
-import { parseDocumentTimestamp as timestamp } from "../document-timestamp";
-import { parseReportedTableNumber } from "../reported-table-number";
+import { analyzeDocumentRelations } from "../edinet/document-relations";
+import { parseDocumentTimestamp as timestamp } from "../edinet/parse-document-timestamp";
+import { parseReportedTableNumber } from "../disclosures/parse-table-number";
 import {
   LARGE_HOLDING_REPORT_VERSION,
   LargeHoldingMetric,
@@ -11,21 +11,21 @@ import {
   type LargeHoldingMetadata,
   type LargeHoldingReport,
   type LargeHoldingSearchOptions,
-} from "../large-holding-report";
+} from "../disclosures/large-holdings/read-large-holding-report";
 import {
   LARGE_HOLDING_VERSION_FIELDS,
   LARGE_HOLDING_VERSIONS_VERSION,
   selectLargeHoldingReportVersions,
   type LargeHoldingVersionObservation,
-} from "../large-holding-versions";
-import type { ObservedLargeHoldingSource } from "../observed-large-holding";
+} from "../disclosures/large-holdings/select-report-versions";
+import type { ObservedLargeHoldingSource } from "../disclosures/large-holdings/search-observed-reports";
 import {
   extractLargeHoldingTransactions,
   searchParsedLargeHoldingTransactions,
   validateStoredLargeHoldingTransactions,
   type LargeHoldingTransactions,
   type LargeHoldingTransactionSearchOptions,
-} from "../large-holding-transactions";
+} from "../disclosures/large-holdings/extract-transactions";
 export const LARGE_HOLDING_STORE_VERSION = "1";
 const format = `edinet-ts-large-holding-${LARGE_HOLDING_REPORT_VERSION}-${LARGE_HOLDING_VERSIONS_VERSION}-v1`;
 const schema = {

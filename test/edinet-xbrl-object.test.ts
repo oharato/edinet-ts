@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { EdinetXbrlObject, EdinetData } from "../src/edinet-xbrl-object";
-import { EdinetContext } from "../src/edinet-context";
+import { EdinetXbrlObject, EdinetData } from "../src/xbrl/xbrl-document";
+import { EdinetContext } from "../src/xbrl/parse-contexts";
 
 describe("EdinetXbrlObject", () => {
   let xbrlObject: EdinetXbrlObject;

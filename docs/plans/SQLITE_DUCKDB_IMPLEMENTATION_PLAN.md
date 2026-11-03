@@ -292,7 +292,7 @@ optional driverの具体型を公開宣言へ漏らさないようsnapshot内部
 
 隔離作業ツリーで通常のbuildとnpm packを実行し、README入り最終の試験tgzは `data/benchmarks/duck-financial-package-20261031-v2/edinet-ts-1.1.17.tgz`。証跡はconsumer-proof、pack.json、全source manifest。registryへのpublish・rootの稼働dist・利用先vendor更新はしていない。これは配布候補の検証で、正式な固定配布物への移行完了ではない。
 
-全sourceの比較時に、並行作業の `src/financial-version-selection.ts` が隔離コピー後に更新されていたことを記録した。本tgzはmanifestの隔離時点のソースに固定し、その更新を上書き・途中取り込みしていない。P7の正式配布物は並行修正の固定後に再build・全受入・vendor検証する。自身の対象4ファイルは取り込み後とhash一致。
+全sourceの比較時に、並行作業の `src/financial/selection/select-financial-source-versions.ts` が隔離コピー後に更新されていたことを記録した。本tgzはmanifestの隔離時点のソースに固定し、その更新を上書き・途中取り込みしていない。P7の正式配布物は並行修正の固定後に再build・全受入・vendor検証する。自身の対象4ファイルは取り込み後とhash一致。
 
 作成/日次/検証付き切替のCLI、独立照合器の配布同梱、全社/翌日/停止再開/競合/容量、利用先、SIGKILL復旧、数値性能基準の受入は引き続き残件。P0の全社基準とP8の整理も維持する。
 

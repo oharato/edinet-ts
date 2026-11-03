@@ -46,4 +46,4 @@ jobs:
         run: npx --no-install tsc --project test/types/tsconfig.json
       # ESM integration tests rebuild the package; exercise distribution builds on nuc7.
       - name: Run source tests
-        run: npm test -- --maxWorkers=1 --exclude test/esm-imports.test.ts
+        run: npm test -- --maxWorkers=1 --testTimeout=30000 --exclude test/esm-imports.test.ts

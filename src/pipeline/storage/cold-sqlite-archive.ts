@@ -24,7 +24,7 @@ import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { strict as assert } from "node:assert";
 import { RetainedFile, reserveSpace } from "../../utils/retained-files";
-import { atomicJSON, canonical } from "../../verification-files";
+import { atomicJSON, canonical } from "../../utils/verification-files";
 const fingerprint = (s: BigIntStats) =>
   [s.dev, s.ino, s.size, s.mtimeNs, s.ctimeNs, s.nlink].map(String);
 const now = () => new Date().toISOString();

@@ -7,23 +7,23 @@ import {
   type CorporateRegistryRecord,
   type CorporateRegistryStateQuery,
   type CorporateRegistryStateResult,
-} from "../corporate-registry";
+} from "../companies/registry/registry-records";
 import {
   readCorporateRegistryFile,
   CORPORATE_REGISTRY_STREAM_MAX_BYTES,
   type CorporateRegistryStreamReceipt,
-} from "../corporate-registry-stream";
-import { parseDocumentTimestamp } from "../document-timestamp";
+} from "../companies/registry/read-registry-stream";
+import { parseDocumentTimestamp } from "../edinet/parse-document-timestamp";
 import {
   captureRegistryStateQuery,
   registryValuesSignature,
   reconstructRegistryCandidates,
   type CorporateRegistryCandidate,
-} from "../corporate-registry-state-core";
+} from "../companies/registry/reconstruct-state";
 import {
   parseCorporateRegistryPublicationCalendar,
   type CorporateRegistryPublicationCalendarInput,
-} from "../corporate-registry-calendar";
+} from "../companies/registry/publication-calendar";
 const schema = {
   registry_format: "CREATE TABLE registry_format(kind TEXT NOT NULL)",
   registry_contents:

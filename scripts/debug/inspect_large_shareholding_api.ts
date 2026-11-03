@@ -1,5 +1,5 @@
-import { EdinetXbrlDownloader } from "../src/edinet-xbrl-downloader";
-import { EdinetDocumentType } from "../src/edinet-document-type";
+import { EdinetXbrlDownloader } from "../src/edinet/api-client";
+import { EdinetDocumentType } from "../src/edinet/document-types";
 import "dotenv/config";
 
 async function main() {

@@ -1,9 +1,9 @@
-import { parseDocumentTimestamp } from "../document-timestamp";
+import { parseDocumentTimestamp } from "../edinet/parse-document-timestamp";
 import type { SQLInputValue } from "node:sqlite";
 import { Database, type NativeDatabase } from "./node-sqlite";
 import * as path from "path";
 import * as fs from "fs";
-import { EdinetDocument } from "../edinet-xbrl-downloader";
+import { EdinetDocument } from "../edinet/api-client";
 import { EdinetMetadata } from "./edinet-metadata";
 
 export interface DocumentSearchCriteria {

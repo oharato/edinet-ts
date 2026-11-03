@@ -1,5 +1,5 @@
-import { readZipMember } from "../../utils/read-zip-member";
 /** ZIPのXMLを一つずつ取り出して署名を検証する。原本と既存の証跡は上書きしない。 */
+import { readZipMember } from "../../utils/read-zip-member";
 import {
   closeSync,
   mkdirSync,

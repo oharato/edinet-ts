@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ContextParser } from "../src/edinet-context";
+import { ContextParser } from "../src/xbrl/parse-contexts";
 
 describe("ContextParser", () => {
   describe("parse", () => {

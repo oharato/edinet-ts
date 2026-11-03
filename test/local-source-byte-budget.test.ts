@@ -14,7 +14,7 @@ import {
   assertRegularFileByteBudget as check,
   readRegularFile,
   LOCAL_IMPORT_LIMITS as limits,
-} from "../src/local-balance-sheet-import";
+} from "../src/pipeline/import-local-balance-sheets";
 it("通常ファイルだけのサイズを集計し、重複指定も数え、上限ぴったりは受け付ける", () => {
   const dir = mkdtempSync(join(tmpdir(), "source-budget-"));
   try {

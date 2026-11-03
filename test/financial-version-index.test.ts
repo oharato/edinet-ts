@@ -14,7 +14,7 @@ import { ObservedFinancialArchive } from "../src/db/observed-financial-archive";
 import {
   authenticateFinancialVersionEvidence,
   FINANCIAL_VERSION_POLICY,
-} from "../src/financial-version-selection";
+} from "../src/financial/selection/select-financial-source-versions";
 import {
   financialVersionEvidenceFixture,
   signFinancialVersionBundle,

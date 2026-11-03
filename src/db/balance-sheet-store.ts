@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { SQLInputValue, SQLOutputValue } from "node:sqlite";
 import { Database, type NativeDatabase } from "./node-sqlite";
-import { BALANCE_SHEET_REGISTRY } from "../balance-sheet-registry";
+import { BALANCE_SHEET_REGISTRY } from "../financial/extraction/balance-sheet-metric-definitions";
 import {
   BalanceSheetScreeningMetric,
   calculateCurrentRatio,
@@ -10,9 +10,9 @@ import {
   type BalanceSheetScreeningOptions,
   type BalanceSheetScreeningResult,
   type BalanceSheetDiagnostic,
-} from "../balance-sheet-screening";
-import { decimalFraction, compareFractions } from "../decimal-fraction";
-import { toSafeMetricNumber } from "../metric-selection";
+} from "../financial/screening/screen-balance-sheets";
+import { decimalFraction, compareFractions } from "../utils/decimal-fraction";
+import { toSafeMetricNumber } from "../financial/extraction/select-metric-facts";
 
 export interface BalanceSheetProvenance {
   extractorVersion: string;

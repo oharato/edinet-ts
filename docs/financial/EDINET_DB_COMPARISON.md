@@ -32,7 +32,7 @@
 ## 調査方法と範囲
 
 - 公式資料: [API概要](https://edinetdb.jp/developers)、[API reference](https://edinetdb.com/docs/api-reference)、[OpenAPI](https://edinetdb.com/v1/openapi.json)、[スクリーナー](https://edinetdb.jp/screener)。認証APIは実行していない。
-- `src/edinet-xbrl-object.ts`、`src/types/*`、`src/edinet.ts`、`src/db/*`、`src/cli.ts`、`test/*` を調査。
+- `src/xbrl/xbrl-document.ts`、`src/types/*`、`src/edinet/edinet-client.ts`、`src/db/*`、`src/cli.ts`、`test/*` を調査。
 - 既存保存DBを読み取り専用で調査し、書類メタデータのみで財務値の永続テーブルがないことを確認。
 
 EDINET DB は正規化済みの財務データサービス、edinet-ts はローカルXBRLのパーサーとEDINET取得ライブラリであり、同じデータを全社分保持しているわけではない。型定義に項目があることは、その銘柄の値を取得済み・欠損なく抽出可能という意味ではない。
@@ -88,7 +88,7 @@ EDINET DB は正規化済みの財務データサービス、edinet-ts はロー
 
 ## 今回追加した独立機能
 
-`src/financial-screening.ts` の `calculateFinancialMetrics`、`screenFinancialSnapshots`、`FINANCIAL_SCREENING_METRICS` をトップレベルからexport。CLI `screen` は同じ関数を使用する。
+`src/financial/screening/screen-financial-snapshots.ts` の `calculateFinancialMetrics`、`screenFinancialSnapshots`、`FINANCIAL_SCREENING_METRICS` をトップレベルからexport。CLI `screen` は同じ関数を使用する。
 
 `FinancialHistory.metrics` は実際の返値に合わせ `KeyMetrics` 型にした。既存KeyMetricsの値の選択規則・DBスキーマ・ダウンロード動作は維持する。
 

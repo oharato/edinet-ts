@@ -4,8 +4,8 @@ import {
   queryCompanyMaster,
   type CompanyMasterSnapshot,
   type CompanyMasterQuery,
-} from "../company-master";
-import { compareCompanyMasterSnapshots } from "../company-master-changes";
+} from "../companies/company-master";
+import { compareCompanyMasterSnapshots } from "../companies/compare-company-masters";
 const schema = {
   master_format: "CREATE TABLE master_format(kind TEXT NOT NULL)",
   master_observations:

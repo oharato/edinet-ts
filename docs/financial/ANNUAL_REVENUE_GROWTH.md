@@ -223,6 +223,6 @@ node dist/cli.js screen-cagr --manifest series.json --metric netSalesCagr \
 
 ## 実装を変更するとき
 
-売上高・営業利益・親会社株主利益の前年比は、`src/annual-growth-core.ts` の計算・入力検査・検索処理を共有します。各 `annual-*-growth.ts` は公開型と指標ID、元の指標を指定する入口です。
+売上高・営業利益・親会社株主利益の前年比は、`src/financial/analysis/calculate-annual-growth.ts` の計算・入力検査・検索処理を共有します。各 `annual-*-growth.ts` は公開型と指標ID、元の指標を指定する入口です。
 
 共通の条件や計算不可理由を変える場合は、3指標のAPIテストと売上高・営業利益・純利益のCLI、`test/types/tsconfig.json` の公開型例を確認してください。CAGRと一株値の成長率は別の計算処理です。

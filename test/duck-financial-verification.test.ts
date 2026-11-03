@@ -187,3 +187,19 @@ it("照合中に原本副ファイルが現れたら記録保存前に拒否す�
     expect(existsSync(i.recordPath)).toBe(false);
     expect(i.catalog.current()).toBeUndefined();
   }));
+it("呼出元のNode preload設定を独立照合プロセスへ引き継がない", async () => {
+  const options = process.env.NODE_OPTIONS,
+    path = process.env.NODE_PATH;
+  process.env.NODE_OPTIONS = "--import=file:///missing-independent-verifier-preload.mjs";
+  process.env.NODE_PATH = "/missing-independent-verifier-modules";
+  try {
+    await gateFixture(async (input) => {
+      expect((await record(input)).checks.documents).toBe(4);
+    });
+  } finally {
+    if (options === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = options;
+    if (path === undefined) delete process.env.NODE_PATH;
+    else process.env.NODE_PATH = path;
+  }
+});

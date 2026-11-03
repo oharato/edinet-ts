@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Edinet } from "../src/edinet";
+import { Edinet } from "../src/edinet/edinet-client";
 import { EdinetRepository } from "../src/db/edinet-repository";
-import { EdinetDocumentType } from "../src/edinet-document-type";
-import type { EdinetDocument } from "../src/edinet-xbrl-downloader";
+import { EdinetDocumentType } from "../src/edinet/document-types";
+import type { EdinetDocument } from "../src/edinet/api-client";
 
 // Edinet facadeの横断検索（findDocumentsByFiler / findDocumentsByType）の仕様を固定するテスト。
 // 実APIは使わず、fetchを合成応答に差し替えて、一時DBとの連携を確認します。

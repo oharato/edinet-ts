@@ -12,7 +12,7 @@ import {
   type CorporateRegistryDelivery,
   type CorporateRegistryStateQuery,
   CORPORATE_REGISTRY_FIELDS,
-} from "../src/corporate-registry";
+} from "../src/companies/registry/registry-records";
 import { registryCalendarFixture } from "./fixtures/corporate-registry-calendar";
 import {
   registryStreamXml as xml,

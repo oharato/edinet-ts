@@ -1,6 +1,6 @@
 # ドキュメント案内
 
-最初にデータの形を確認する場合は、[財務データ構造の説明](pipeline/FINANCIAL_DATA_MODEL.md)を参照してください。
+最初にデータの形を確認する場合は[財務データ構造の説明](pipeline/FINANCIAL_DATA_MODEL.md)、コードの配置を確認する場合は[ソースコードの読み方](development/SOURCE_LAYOUT.md)を参照してください。
 
 使い始める方は[ルートREADME](../README.md)へ進んでください。このページでは、目的に合う詳しい資料を選べます。全ページを順番に読む必要はありません。
 

@@ -214,7 +214,7 @@ export async function attachedZipProof(
   );
   const entry = (name: string) => {
     const value = content.get(name);
-    assert(value, "ZIP entry absent: " + name);
+    assert(value, "ZIP entry absent");
     return value;
   };
   const manifestName = "XBRL/PublicDoc/manifest_PublicDoc.xml",

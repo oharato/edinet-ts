@@ -187,7 +187,7 @@ await catalog.prepareAsync('old',reader,quality.generation,policy);const input={
     const files = [
       "src/index.ts",
       "src/cli.ts",
-      "src/duck-financial-cli.ts",
+      "src/cli/register-duck-financial-commands.ts",
       "src/db/duck-financial-snapshot.ts",
     ];
     writeFileSync(

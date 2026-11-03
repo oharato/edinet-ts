@@ -28,7 +28,7 @@ flowchart LR
 
 ## インストールと実行環境
 
-このチェックアウトのコードは **Node.js 26.12.1以上 / npm 12.2.1以上** を使います。SQLiteにはNode標準の `node:sqlite` を使用します。[環境と既存DBの互換性](docs/development/RUNTIME_AND_SQLITE.md)も確認してください。
+このチェックアウトのコードは **Node.js 26.13.0以上 / npm 12.2.1以上** を使います。Pythonの準備は不要です。SQLiteにはNode標準の `node:sqlite` を使用します。[環境と既存DBの互換性](docs/development/RUNTIME_AND_SQLITE.md)も確認してください。
 
 公開パッケージのインストール:
 
@@ -180,29 +180,9 @@ node dist/cli.js screen --file ./snapshots.json \
 
 流動比率、財務明細、前年比などは専用APIを使います。対応する入力形式はAPIごとに異なるため、[財務機能の一覧](docs/README.md#財務値の抽出計算)から選んでください。
 
-## 数値を使う前に確認すること
+## SQLiteとDuckDBで保存・検索する
 
-- **対象を揃える:** 会社、連結・単体、会計基準、期間、単位を確認します。同じ期末日でも、単四半期と累計では意味が違います。
-- **0と不明を分ける:** `undefined` や未採用の結果は、実際の0ではありません。
-- **比率の単位を確認する:** 旧大株主・大量保有getterの比率は単位未検証の原値です。そのまま `%` を付けず、必要に応じて出典付き明細APIを使います。
-- **出典と検証範囲を確認する:** 出典情報は値の選択過程を追うためのものです。原本の真正性や全市場データの正しさを証明するものではありません。
-
-## 詳細資料と開発
-
-- [ドキュメント案内](docs/README.md): 目的別の入口と全資料。
-- [提供機能と制約](docs/REQUIREMENTS.md): 対応範囲、主要指標・テキスト項目。
-- [用語集](docs/GLOSSARY.md): 財務・XBRL・保存処理の用語。
-- [技術仕様](docs/SPECIFICATIONS.md): 処理の流れ、選択規則、保存の仕組み。
-- [テスト手順](scripts/README.md#全体テスト) / [タクソノミ更新](docs/development/TAXONOMY_UPDATE.md)。
-- [今後の計画](docs/plans/EDINET_TS_ROADMAP.md) / [ローカル配布物の作成](docs/development/nuc7-local-artifacts.md)。
-
-## ライセンス
-
-[Apache License 2.0](LICENSE)。Copyright (c) 2025 oharato / Copyright (c) 2018 Buffett Code。
-
-### SQLite取得・DuckDB検索の移行API
-
-原本・取得履歴と解析済み値はSQLite、検証済み検索世代はDuckDBへ保存する移行APIを追加しています。既存の同期APIも利用できます。
+原本・取得履歴・解析済み結果・公開catalogはSQLite、検索用の世代はDuckDBへ保存します。既存の同期SQLite APIも利用できます。具体的な行と値の例は[財務データ構造の説明](docs/pipeline/FINANCIAL_DATA_MODEL.md)を参照してください。
 
 ```ts
 import { DuckFinancialSearchIndex } from "edinet-ts";
@@ -215,17 +195,40 @@ try {
 }
 ```
 
+`listed-current` は構築時に付けた世代IDの例です。実際に保存したIDへ置き換えてください。
+
 `ParsedFinancialStore` / `ParsedFinancialJob` は版付き解析結果の保存・再開、`DuckFinancialIndexBuild` は固定入力からの候補構築、`DuckFinancialPublicationReader` はcatalog切替後の明示reloadに対応します。検索readerは初回に全件検査し、同じ私有snapshot内で監査結果を再利用します。
 
 DuckDB機能にはoptional依存 `@duckdb/node-api@2.0.0-r.1` が必要です。driverなしでも通常import・SQLite APIは利用できます。
 
 ```sh
-edinet-ts duck-financial-index-quality --db data/search.duckdb --generation listed-current
-edinet-ts duck-financial-index-generation --db data/search.duckdb --generation listed-current
-edinet-ts screen-duck-financial-index --db data/search.duckdb --cohort cohort.json --metrics costOfSales
-edinet-ts duck-financial-publication-status --catalog data/publication.sqlite --db data/search.duckdb
+node dist/cli.js duck-financial-index-quality --db data/search.duckdb --generation listed-current
+node dist/cli.js duck-financial-index-generation --db data/search.duckdb --generation listed-current
+node dist/cli.js screen-duck-financial-index --db data/search.duckdb --cohort cohort.json --metrics costOfSales
+node dist/cli.js duck-financial-publication-status --catalog data/publication.sqlite --db data/search.duckdb
 ```
 
-[読取CLI](docs/pipeline/DUCK_FINANCIAL_CLI.md)、[非同期reader](docs/pipeline/DUCK_FINANCIAL_SEARCH_INDEX.md)、[独立原本照合gate](docs/pipeline/DUCK_FINANCIAL_VERIFICATION.md)、[移行計画・未完了事項](docs/plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)を参照してください。全社・日次・配布先移行の受入は継続中で、本番経路はまだ切り替えていません。
+[読取CLI](docs/pipeline/DUCK_FINANCIAL_CLI.md)、[非同期reader](docs/pipeline/DUCK_FINANCIAL_SEARCH_INDEX.md)、[独立原本照合gate](docs/pipeline/DUCK_FINANCIAL_VERIFICATION.md)、[移行計画・未完了事項](docs/plans/SQLITE_DUCKDB_IMPLEMENTATION_PLAN.md)を参照してください。2026-11-03に同ホストの正式catalogと日次準備サービスをDuckDB経路へ切り替えました。初期公開は2026-10-30時点の固定snapshotです。実連続2日の日次運転は[手動手順](docs/pipeline/DUCK_FINANCIAL_MANUAL_DAILY_ACCEPTANCE.md)で確認します。
 
-固定原本からの作成は `edinet-ts build-duck-financial-cycle --config cycle.json --max-documents 100 --max-companies 100 --max-batches 10` で分割再開できます。共有の解析済みSQLiteを再利用し、候補には構築用の固定snapshotを保存します。出力先・共有Storeのflock排他と既存相当の容量余裕を要求します。構築だけではmetadata最新性や原本照合の合格にせず、正式切替は行いません。[設定と運用](docs/pipeline/DUCK_FINANCIAL_CYCLE.md)を参照してください。
+固定原本からの作成は `node dist/cli.js build-duck-financial-cycle --config cycle.json --max-documents 100 --max-companies 100 --max-batches 10` で分割再開できます。共有の解析済みSQLiteを再利用し、候補には構築用の固定snapshotを保存します。出力先・共有Storeのflock排他と既存相当の容量余裕を要求します。構築だけではmetadata最新性や原本照合の合格にせず、正式切替は行いません。[設定と運用](docs/pipeline/DUCK_FINANCIAL_CYCLE.md)を参照してください。
+
+## 数値を使う前に確認すること
+
+- **対象を揃える:** 会社、連結・単体、会計基準、期間、単位を確認します。同じ期末日でも、単四半期と累計では意味が違います。
+- **0と不明を分ける:** `undefined` や未採用の結果は、実際の0ではありません。
+- **比率の単位を確認する:** 旧大株主・大量保有getterの比率は単位未検証の原値です。そのまま `%` を付けず、必要に応じて出典付き明細APIを使います。
+- **出典と検証範囲を確認する:** 出典情報は値の選択過程を追うためのものです。原本の真正性や全市場データの正しさを証明するものではありません。
+
+## 詳細資料と開発
+
+- [ドキュメント案内](docs/README.md): 目的別の入口と全資料。
+- [提供機能と制約](docs/REQUIREMENTS.md): 対応範囲、主要指標・テキスト項目。
+- [用語集](docs/GLOSSARY.md): 財務・XBRL・保存処理の用語。
+- [ソースコードの読み方](docs/development/SOURCE_LAYOUT.md): フォルダの役割とテーブル定義の場所。
+- [技術仕様](docs/SPECIFICATIONS.md): 処理の流れ、選択規則、保存の仕組み。
+- [テスト手順](scripts/README.md#全体テスト) / [タクソノミ更新](docs/development/TAXONOMY_UPDATE.md)。
+- [今後の計画](docs/plans/EDINET_TS_ROADMAP.md) / [ローカル配布物の作成](docs/development/nuc7-local-artifacts.md)。
+
+## ライセンス
+
+[Apache License 2.0](LICENSE)。Copyright (c) 2025 oharato / Copyright (c) 2018 Buffett Code。

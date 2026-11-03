@@ -19,7 +19,7 @@ import {
   parsedFinancialMappingVersions,
 } from "../src/db/parsed-financial-store";
 import { ParsedFinancialJob } from "../src/db/parsed-financial-job";
-import { createAutomaticFinancialSnapshots } from "../src/automatic-financial-snapshots";
+import { createAutomaticFinancialSnapshots } from "../src/financial/snapshots/create-financial-snapshots";
 const hash = (v: string | Buffer) => createHash("sha256").update(v).digest("hex");
 async function fileHash(path: string) {
   const h = createHash("sha256");

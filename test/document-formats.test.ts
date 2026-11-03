@@ -1,5 +1,8 @@
 import { expect, it } from "vitest";
-import { describeDocumentFormats, normalizeDocumentFormatFlag } from "../src/document-formats";
+import {
+  describeDocumentFormats,
+  normalizeDocumentFormatFlag,
+} from "../src/edinet/document-formats";
 it("形式ごとの提供・未提供・未記録・null・未知コードを区別する", () => {
   expect(
     describeDocumentFormats({ xbrlFlag: 0, pdfFlag: "1", csvFlag: null, attachDocFlag: "9" }),

@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
-import { EdinetXbrlParser } from "../src/edinet-xbrl-parser";
+import { EdinetXbrlParser } from "../src/xbrl/parse-xbrl";
 
 const SOFTBANK_DOC_ID = "S100TP3N";
 const FILE_PATH = `downloads/${SOFTBANK_DOC_ID}/XBRL/PublicDoc/jpcrp030000-asr-001_E02778-000_2024-03-31_01_2024-06-21_ixbrl.htm`;

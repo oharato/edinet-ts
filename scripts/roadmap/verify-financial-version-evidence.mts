@@ -1,6 +1,6 @@
 /** 固定manifest pinに対し、保存した版の証拠と任意の構築済み索引を独立に検査する。 */
 import { parseArgs } from "node:util";
-import { strict as assert } from "node:assert";
+import { strict as assert, AssertionError } from "node:assert";
 import { loadVersionJSON } from "../../dist/pipeline/verification/read-version-input.js";
 import { canonical } from "../../dist/pipeline/verification/version-evidence-format.js";
 import { verifyVersionBundle } from "../../dist/pipeline/verification/verify-version-bundle.js";
@@ -51,7 +51,7 @@ try {
 } catch (error) {
   console.error(
     "Independent financial version evidence verification failed: " +
-      (error instanceof Error ? error.message : "Invalid evidence"),
+      (error instanceof AssertionError ? error.message : "Invalid evidence files or syntax"),
   );
   process.exitCode = 1;
 }
