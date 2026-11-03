@@ -24,5 +24,7 @@ export function cliInputMessage(error: unknown, fallback: string): string {
     "原本XMLがUTF-8 byte上限（64MiB）を超えています",
     "整形式の原本XMLが必要です（DOCTYPE非対応）",
   ];
-  return error instanceof Error && knownMessages.includes(error.message) ? error.message : fallback;
+  return error instanceof Error
+    ? (knownMessages.find((message) => message === error.message) ?? fallback)
+    : fallback;
 }
