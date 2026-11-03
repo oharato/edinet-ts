@@ -18,7 +18,17 @@ export interface ScreeningResultRow {
   equityRatioCurrent?: number;
   equityRatioPrior?: number;
   roeCurrent?: number;
+  roaCurrent?: number;
   operatingCfCurrent?: number;
+  investingCfCurrent?: number;
+  freeCashFlowCurrent?: number;
+  cashAndEquivalentsCurrent?: number;
+  dividendPerShareCurrent?: number;
+  dividendGrowthRate?: number;
+  epsCurrent?: number;
+  bpsCurrent?: number;
+  numberOfEmployees?: number;
+  operatingIncomePerEmployee?: number;
 }
 
 export class FinancialStore {
@@ -59,9 +69,19 @@ export class FinancialStore {
         net_assets_current DOUBLE,
         total_assets_current DOUBLE,
         operating_cf_current DOUBLE,
+        investing_cf_current DOUBLE,
+        free_cash_flow_current DOUBLE,
+        cash_and_equivalents_current DOUBLE,
         equity_ratio_current DOUBLE,
         equity_ratio_prior DOUBLE,
         roe_current DOUBLE,
+        roa_current DOUBLE,
+        dividend_per_share_current DOUBLE,
+        dividend_growth_rate DOUBLE,
+        eps_current DOUBLE,
+        bps_current DOUBLE,
+        number_of_employees INTEGER,
+        operating_income_per_employee DOUBLE,
         PRIMARY KEY (company_name, period_end)
       );
     `);
@@ -73,7 +93,7 @@ export class FinancialStore {
     const stmt = await this.connection.prepare(`
       INSERT OR REPLACE INTO financial_summary VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20, $21
+        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
       );
     `);
 
@@ -97,9 +117,25 @@ export class FinancialStore {
     this.bindNullableDouble(stmt, 16, record.current.netAssets);
     this.bindNullableDouble(stmt, 17, record.current.totalAssets);
     this.bindNullableDouble(stmt, 18, record.current.operatingCashFlow);
-    this.bindNullableDouble(stmt, 19, record.equityRatioCurrent);
-    this.bindNullableDouble(stmt, 20, record.equityRatioPrior);
-    this.bindNullableDouble(stmt, 21, record.roeCurrent);
+    this.bindNullableDouble(stmt, 19, record.current.investingCashFlow);
+    this.bindNullableDouble(stmt, 20, record.freeCashFlowCurrent);
+    this.bindNullableDouble(stmt, 21, record.current.cashAndEquivalents);
+    this.bindNullableDouble(stmt, 22, record.equityRatioCurrent);
+    this.bindNullableDouble(stmt, 23, record.equityRatioPrior);
+    this.bindNullableDouble(stmt, 24, record.roeCurrent);
+    this.bindNullableDouble(stmt, 25, record.roaCurrent);
+    this.bindNullableDouble(stmt, 26, record.current.dividendPerShare);
+    this.bindNullableDouble(stmt, 27, record.dividendGrowthRate);
+    this.bindNullableDouble(stmt, 28, record.current.eps);
+    this.bindNullableDouble(stmt, 29, record.current.bps);
+
+    if (record.current.numberOfEmployees !== undefined && !Number.isNaN(record.current.numberOfEmployees)) {
+      stmt.bindInteger(30, Math.round(record.current.numberOfEmployees));
+    } else {
+      stmt.bindNull(30);
+    }
+
+    this.bindNullableDouble(stmt, 31, record.operatingIncomePerEmployee);
 
     await stmt.run();
   }
@@ -109,7 +145,6 @@ export class FinancialStore {
 
     const conditions: string[] = [];
 
-    // 自由なWHERE句パススルー
     if (criteria.whereClause) {
       conditions.push(`(${criteria.whereClause})`);
     }
@@ -132,6 +167,12 @@ export class FinancialStore {
     if (criteria.minRoe !== undefined) {
       conditions.push(`roe_current >= ${criteria.minRoe}`);
     }
+    if (criteria.minRoa !== undefined) {
+      conditions.push(`roa_current >= ${criteria.minRoa}`);
+    }
+    if (criteria.minFcf !== undefined) {
+      conditions.push(`free_cash_flow_current >= ${criteria.minFcf}`);
+    }
     if (criteria.consolidatedOnly) {
       conditions.push(`is_consolidated = true`);
     }
@@ -145,6 +186,9 @@ export class FinancialStore {
     else if (criteria.orderBy === "operating_income_growth") orderCol = "operating_income_growth_rate";
     else if (criteria.orderBy === "equity_ratio") orderCol = "equity_ratio_current";
     else if (criteria.orderBy === "roe") orderCol = "roe_current";
+    else if (criteria.orderBy === "roa") orderCol = "roa_current";
+    else if (criteria.orderBy === "fcf") orderCol = "free_cash_flow_current";
+    else if (criteria.orderBy === "per_employee") orderCol = "operating_income_per_employee";
 
     const direction = criteria.orderDirection?.toUpperCase() === "ASC" ? "ASC" : "DESC";
     const limitClause = criteria.limit ? `LIMIT ${criteria.limit}` : "LIMIT 100";
@@ -167,7 +211,17 @@ export class FinancialStore {
         equity_ratio_current,
         equity_ratio_prior,
         roe_current,
-        operating_cf_current
+        roa_current,
+        operating_cf_current,
+        investing_cf_current,
+        free_cash_flow_current,
+        cash_and_equivalents_current,
+        dividend_per_share_current,
+        dividend_growth_rate,
+        eps_current,
+        bps_current,
+        number_of_employees,
+        operating_income_per_employee
       FROM financial_summary
       ${whereClause}
       ORDER BY ${orderCol} ${direction} NULLS LAST
@@ -194,7 +248,17 @@ export class FinancialStore {
       equityRatioCurrent: row[13] !== null ? Number(row[13]) : undefined,
       equityRatioPrior: row[14] !== null ? Number(row[14]) : undefined,
       roeCurrent: row[15] !== null ? Number(row[15]) : undefined,
-      operatingCfCurrent: row[16] !== null ? Number(row[16]) : undefined,
+      roaCurrent: row[16] !== null ? Number(row[16]) : undefined,
+      operatingCfCurrent: row[17] !== null ? Number(row[17]) : undefined,
+      investingCfCurrent: row[18] !== null ? Number(row[18]) : undefined,
+      freeCashFlowCurrent: row[19] !== null ? Number(row[19]) : undefined,
+      cashAndEquivalentsCurrent: row[20] !== null ? Number(row[20]) : undefined,
+      dividendPerShareCurrent: row[21] !== null ? Number(row[21]) : undefined,
+      dividendGrowthRate: row[22] !== null ? Number(row[22]) : undefined,
+      epsCurrent: row[23] !== null ? Number(row[23]) : undefined,
+      bpsCurrent: row[24] !== null ? Number(row[24]) : undefined,
+      numberOfEmployees: row[25] !== null ? Number(row[25]) : undefined,
+      operatingIncomePerEmployee: row[26] !== null ? Number(row[26]) : undefined,
     }));
   }
 

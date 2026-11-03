@@ -52,6 +52,41 @@ const OPERATING_CF_TAGS = [
   "OperatingCashFlow",
 ];
 
+const INVESTING_CF_TAGS = [
+  "NetCashProvidedByUsedInInvestingActivitiesSummaryOfBusinessResults",
+  "CashFlowsFromUsedInInvestingActivitiesIFRSSummaryOfBusinessResults",
+  "NetCashProvidedByUsedInInvestmentActivities",
+  "NetCashProvidedByUsedInInvestingActivities",
+];
+
+const CASH_EQUIVALENTS_TAGS = [
+  "CashAndCashEquivalentsSummaryOfBusinessResults",
+  "CashAndCashEquivalentsIFRSSummaryOfBusinessResults",
+  "CashAndCashEquivalents",
+  "CashAndDeposits",
+];
+
+const DIVIDEND_PER_SHARE_TAGS = [
+  "DividendPaidPerShareSummaryOfBusinessResults",
+  "CashDividendsPaidPerShare",
+];
+
+const EPS_TAGS = [
+  "BasicEarningsLossPerShareSummaryOfBusinessResults",
+  "BasicEarningsLossPerShareIFRSSummaryOfBusinessResults",
+  "BasicEarningsLossPerShare",
+];
+
+const BPS_TAGS = [
+  "NetAssetsPerShareSummaryOfBusinessResults",
+  "NetAssetsPerShareIFRSSummaryOfBusinessResults",
+  "NetAssetsPerShare",
+];
+
+const EMPLOYEES_TAGS = [
+  "NumberOfEmployees",
+];
+
 export class FinancialExtractor {
   public extract(doc: ParsedXbrlDocument): CompanyFinancialComparison {
     const metadata = this.extractMetadata(doc);
@@ -139,6 +174,44 @@ export class FinancialExtractor {
         ? currentMetrics.netIncome / currentMetrics.netAssets
         : undefined;
 
+    // ROA (NetIncome / TotalAssets)
+    const roaCurrent =
+      currentMetrics.netIncome !== undefined &&
+      currentMetrics.totalAssets !== undefined &&
+      currentMetrics.totalAssets > 0
+        ? currentMetrics.netIncome / currentMetrics.totalAssets
+        : undefined;
+
+    // フリーキャッシュフロー (営業CF + 投資CF)
+    const freeCashFlowCurrent =
+      currentMetrics.operatingCashFlow !== undefined &&
+      currentMetrics.investingCashFlow !== undefined
+        ? currentMetrics.operatingCashFlow + currentMetrics.investingCashFlow
+        : undefined;
+
+    const freeCashFlowPrior =
+      priorMetrics.operatingCashFlow !== undefined &&
+      priorMetrics.investingCashFlow !== undefined
+        ? priorMetrics.operatingCashFlow + priorMetrics.investingCashFlow
+        : undefined;
+
+    // 従業員1人当たり営業利益 (営業利益 / 従業員数)
+    const operatingIncomePerEmployee =
+      currentMetrics.operatingIncome !== undefined &&
+      currentMetrics.numberOfEmployees !== undefined &&
+      currentMetrics.numberOfEmployees > 0
+        ? currentMetrics.operatingIncome / currentMetrics.numberOfEmployees
+        : undefined;
+
+    // 配当成長率
+    const dividendGrowthRate =
+      currentMetrics.dividendPerShare !== undefined &&
+      priorMetrics.dividendPerShare !== undefined &&
+      priorMetrics.dividendPerShare > 0
+        ? (currentMetrics.dividendPerShare - priorMetrics.dividendPerShare) /
+          priorMetrics.dividendPerShare
+        : undefined;
+
     return {
       metadata,
       current: currentMetrics,
@@ -152,6 +225,11 @@ export class FinancialExtractor {
       equityRatioCurrent,
       equityRatioPrior,
       roeCurrent,
+      roaCurrent,
+      freeCashFlowCurrent,
+      freeCashFlowPrior,
+      operatingIncomePerEmployee,
+      dividendGrowthRate,
     };
   }
 
@@ -204,9 +282,15 @@ export class FinancialExtractor {
     const ordinaryIncome = this.findFirstNumericFact(doc, ORDINARY_INCOME_TAGS, durationContextId);
     const netIncome = this.findFirstNumericFact(doc, NET_INCOME_TAGS, durationContextId);
     const operatingCashFlow = this.findFirstNumericFact(doc, OPERATING_CF_TAGS, durationContextId);
+    const investingCashFlow = this.findFirstNumericFact(doc, INVESTING_CF_TAGS, durationContextId);
+    const dividendPerShare = this.findFirstNumericFact(doc, DIVIDEND_PER_SHARE_TAGS, durationContextId);
+    const eps = this.findFirstNumericFact(doc, EPS_TAGS, durationContextId);
 
     const netAssets = this.findFirstNumericFact(doc, NET_ASSETS_TAGS, instantContextId);
     const totalAssets = this.findFirstNumericFact(doc, TOTAL_ASSETS_TAGS, instantContextId);
+    const cashAndEquivalents = this.findFirstNumericFact(doc, CASH_EQUIVALENTS_TAGS, instantContextId);
+    const bps = this.findFirstNumericFact(doc, BPS_TAGS, instantContextId);
+    const numberOfEmployees = this.findFirstNumericFact(doc, EMPLOYEES_TAGS, instantContextId);
 
     return {
       netSales,
@@ -216,6 +300,12 @@ export class FinancialExtractor {
       netAssets,
       totalAssets,
       operatingCashFlow,
+      investingCashFlow,
+      cashAndEquivalents,
+      dividendPerShare,
+      eps,
+      bps,
+      numberOfEmployees,
       isConsolidated,
     };
   }

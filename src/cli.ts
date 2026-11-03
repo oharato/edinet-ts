@@ -52,8 +52,11 @@ program
     console.log(`営業利益率:   当期 ${formatPercent(result.operatingMarginCurrent)} / 前期 ${formatPercent(result.operatingMarginPrior)}`);
     console.log(`利益率成長率: ${formatPercent(result.operatingMarginGrowthRate)} (ポイント差: ${formatPercent(result.operatingMarginDelta)})`);
     console.log(`自己資本比率: 当期 ${formatPercent(result.equityRatioCurrent)} / 前期 ${formatPercent(result.equityRatioPrior)}`);
-    console.log(`ROE:          当期 ${formatPercent(result.roeCurrent)}`);
-    console.log(`営業活動CF:   当期 ${formatYen(result.current.operatingCashFlow)} / 前期 ${formatYen(result.prior.operatingCashFlow)}`);
+    console.log(`ROE:          当期 ${formatPercent(result.roeCurrent)} / ROA: 当期 ${formatPercent(result.roaCurrent)}`);
+    console.log(`フリーCF:     当期 ${formatYen(result.freeCashFlowCurrent)} / 営業CF: 当期 ${formatYen(result.current.operatingCashFlow)}`);
+    console.log(`1株配当金:    当期 ${result.current.dividendPerShare ? result.current.dividendPerShare + " 円" : "N/A"} (増配率: ${formatPercent(result.dividendGrowthRate)})`);
+    console.log(`1人当たり営業益: ${result.operatingIncomePerEmployee ? (result.operatingIncomePerEmployee / 10_000).toFixed(1) + " 万円/人" : "N/A"} (従業員数: ${result.current.numberOfEmployees ? result.current.numberOfEmployees + " 人" : "N/A"})`);
+    console.log(`EPS:          当期 ${result.current.eps ? result.current.eps.toFixed(2) + " 円" : "N/A"} / BPS: 当期 ${result.current.bps ? result.current.bps.toFixed(2) + " 円" : "N/A"}`);
     console.log("");
   });
 
@@ -271,14 +274,16 @@ const screenCmd = program
     console.table(
       rows.map((r) => ({
         コード: r.securityCode || r.edinetCode,
-        会社名: r.companyName.length > 12 ? r.companyName.slice(0, 11) + "…" : r.companyName,
+        会社名: r.companyName.length > 11 ? r.companyName.slice(0, 10) + "…" : r.companyName,
         決算期: r.periodEnd,
-        "売上(億円)": r.netSalesCurrent ? (r.netSalesCurrent / 100_000_000).toFixed(1) : "-",
-        "営業益(億円)": r.operatingIncomeCurrent ? (r.operatingIncomeCurrent / 100_000_000).toFixed(1) : "-",
+        "売上(億)": r.netSalesCurrent ? (r.netSalesCurrent / 100_000_000).toFixed(1) : "-",
+        "営業益(億)": r.operatingIncomeCurrent ? (r.operatingIncomeCurrent / 100_000_000).toFixed(1) : "-",
         "利益率(%)": r.operatingMarginCurrent ? (r.operatingMarginCurrent * 100).toFixed(2) : "-",
         "利益率成長(%)": r.operatingMarginGrowthRate ? (r.operatingMarginGrowthRate * 100).toFixed(2) : "-",
         "自己資本比率(%)": r.equityRatioCurrent ? (r.equityRatioCurrent * 100).toFixed(2) : "-",
         "ROE(%)": r.roeCurrent ? (r.roeCurrent * 100).toFixed(2) : "-",
+        "FCF(億)": r.freeCashFlowCurrent ? (r.freeCashFlowCurrent / 100_000_000).toFixed(1) : "-",
+        "1人当り営業益(万)": r.operatingIncomePerEmployee ? (r.operatingIncomePerEmployee / 10_000).toFixed(0) : "-",
       }))
     );
   });
