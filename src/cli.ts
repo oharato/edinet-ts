@@ -5,6 +5,7 @@ import { resolve, join } from "node:path";
 import { XbrlParser } from "./xbrl/parser.js";
 import { FinancialExtractor } from "./financial/extractor.js";
 import { FinancialStore } from "./db/store.js";
+import { SCREENING_COLUMNS, QUERY_EXAMPLES } from "./db/schema-info.js";
 
 const program = new Command();
 program
@@ -114,7 +115,7 @@ program
 /**
  * 3. screen コマンド: DuckDBから条件検索して表示
  */
-program
+const screenCmd = program
   .command("screen")
   .description("DuckDBから利益率や成長率の条件で企業をスクリーニングします")
   .option("--db <path>", "DuckDBファイルのパス", "./data/screening.duckdb")
@@ -128,6 +129,35 @@ program
   .option("--order-dir <dir>", "ソート順 (asc, desc)", "desc")
   .option("-l, --limit <number>", "取得件数上限", parseInt, 50)
   .option("--json", "JSON形式で出力")
+  .addHelpText(
+    "after",
+    `
+利用可能なSQLカラム一覧 (--where で指定可能):
+  operating_margin_current     当期 営業利益率 (例: >= 0.15)
+  operating_margin_prior       前期 営業利益率
+  operating_margin_growth_rate 利益率の前年比成長率 (例: >= 0.20 で+20%以上)
+  equity_ratio_current         当期 自己資本比率 (例: >= 0.50 で50%以上)
+  roe_current                  当期 ROE (例: >= 0.10 で10%以上)
+  sales_growth_rate            売上高の前年比成長率 (例: >= 0.10)
+  operating_income_growth_rate 営業利益の前年比成長率 (例: >= 0.20)
+  net_sales_current            当期 売上高(円) (例: >= 10000000000 で100億円以上)
+  operating_income_current     当期 営業利益(円)
+  operating_cf_current         当期 営業活動CF(円) (例: > 0 で黒字)
+  security_code                証券コード (例: = '2371')
+  company_name                 会社名 (例: LIKE '%カカクコム%')
+  period_end                   決算期 (例: >= '2024-01-01')
+  is_consolidated              連結決算フラグ (true / false)
+
+クエリ例:
+  # 利益率成長率+20%以上 かつ 利益率15%以上
+  edinet-ts screen --where "operating_margin_growth_rate >= 0.20 AND operating_margin_current >= 0.15"
+
+  # 自己資本比率50%以上 かつ ROE 10%以上
+  edinet-ts screen --where "equity_ratio_current >= 0.50 AND roe_current >= 0.10"
+
+※ 詳細な一覧やJSONスキーマは 'edinet-ts schema' を実行してください。
+`
+  )
   .action(async (options) => {
     const dbPath = resolve(process.cwd(), options.db);
     const store = new FinancialStore(dbPath);
@@ -171,6 +201,47 @@ program
         "ROE(%)": r.roeCurrent ? (r.roeCurrent * 100).toFixed(2) : "-",
       }))
     );
+  });
+
+/**
+ * 4. schema コマンド: 利用可能なカラム定義・クエリ例の表示 (人間 & AI向け)
+ */
+program
+  .command("schema")
+  .description("スクリーニング（--where）で指定可能なカラム定義とクエリ例を表示します")
+  .option("--json", "AI/プログラム向けのJSONスキーマ形式で出力")
+  .action((options) => {
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          {
+            columns: SCREENING_COLUMNS,
+            examples: QUERY_EXAMPLES,
+          },
+          null,
+          2
+        )
+      );
+      return;
+    }
+
+    console.log("\n================ スクリーニング項目一覧 (DuckDB カラム) ================\n");
+    console.table(
+      SCREENING_COLUMNS.map((col) => ({
+        カラム名: col.name,
+        型: col.type,
+        単位: col.unit,
+        説明: col.description,
+        条件指定例: col.example,
+      }))
+    );
+
+    console.log("\n================ よく使うクエリ例 (レシピ) ================\n");
+    for (const ex of QUERY_EXAMPLES) {
+      console.log(`【${ex.title}】`);
+      console.log(`  説明: ${ex.description}`);
+      console.log(`  SQL:  edinet-ts screen --where "${ex.sql}"\n`);
+    }
   });
 
 program.parse(process.argv);
