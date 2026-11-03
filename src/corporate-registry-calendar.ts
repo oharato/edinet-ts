@@ -24,7 +24,7 @@ export function parseCorporateRegistryPublicationCalendar(input:CorporateRegistr
         return {text,source:{sourceUrl:url,observedAt:v.observedAt,inputTextSha256:createHash('sha256').update(text).digest('hex')}};
     };
     const policy=capture(data.policy,'html','https://www.houjin-bangou.nta.go.jp/download/sabun/'),csv=capture(data.holidays,'csv','https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv');
-    const text=policy.text.replace(/<!--[\s\S]*?-->/g,'').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,'').replace(/<[^>]*>/g,'').normalize('NFKC').replace(/\s/g,'');
+    const text=policy.text.replace(/<!--[\s\S]*?-->/g,'').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,'').replace(/<[^>]*>/g,'').normalize('NFKC').replace(/[<>]/g,'').replace(/\s/g,'');
     if(!text.includes('休日・祝日と12月29日から1月3日は、差分ダウンロードファイルの作成を行いません。'))invalid();
     const lines=csv.text.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').split('\n');if(lines.at(-1)==='')lines.pop();
     if(lines.shift()!=='国民の祝日・休日月日,国民の祝日・休日名称'||!lines.length||lines.length>10000)invalid();

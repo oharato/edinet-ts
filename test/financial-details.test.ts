@@ -52,7 +52,7 @@ describe("JGAAP直接財務5項目",()=>{
     it("未知namespaceと明細次元を混ぜず、完全一致重複は採用する",()=>{
         expect(createFinancialDetailSnapshot(xml("120",{namespace:"https://example.test/fake"}),metadata()).selections.cashAndDeposits?.status).toBe("unsupported");
         expect(createFinancialDetailSnapshot(xml("120",{extra:fact("120","","jppfs_cor:CashAndDeposits","instant")}),metadata()).selections.cashAndDeposits).toMatchObject({status:"selected",reason:"selected-identical-duplicates"});
-        const segment=xml().replace('<xbrli:context id="instant">','<xbrli:context id="instant">').replace('<xbrli:instant>2025-03-31</xbrli:instant></xbrli:period>','<xbrli:instant>2025-03-31</xbrli:instant></xbrli:period><xbrli:scenario><xbrldi:explicitMember dimension="extension:RegionAxis">extension:RegionMember</xbrldi:explicitMember></xbrli:scenario>');
+        const segment=xml().replace('<xbrli:instant>2025-03-31</xbrli:instant></xbrli:period>','<xbrli:instant>2025-03-31</xbrli:instant></xbrli:period><xbrli:scenario><xbrldi:explicitMember dimension="extension:RegionAxis">extension:RegionMember</xbrldi:explicitMember></xbrli:scenario>');
         expect(createFinancialDetailSnapshot(segment,metadata()).selections.cashAndDeposits?.status).not.toBe("selected");
     });
     it("連結→単体、当期→前期、instant→durationへのfallbackなし",()=>{

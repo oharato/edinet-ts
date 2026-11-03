@@ -77,7 +77,7 @@ export function measureFinancialDetailCoverage(input: FinancialDetailCoverageInp
         }
     }
     const counts: Partial<Record<FinancialCoverageState, number>> = {};
-    const byMetric: Partial<Record<FinancialDetailMetricId, Partial<Record<FinancialCoverageState, number>>>> = {};
+    const byMetric: Partial<Record<FinancialDetailMetricId, Partial<Record<FinancialCoverageState, number>>>> = Object.create(null);
     for (const row of rows) { counts[row.state] = (counts[row.state] ?? 0) + 1; const group = byMetric[row.metric] ??= {}; group[row.state] = (group[row.state] ?? 0) + 1; }
     const { secCode: _code, docID: _doc, ...resultCohort } = cohort;
     return { population: { asOf: population.asOf, source: population.source, companies: codes.length },

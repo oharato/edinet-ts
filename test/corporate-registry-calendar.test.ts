@@ -38,3 +38,7 @@ it.each(['wrong-url','bad-date','duplicate','order','header','year-hole','policy
 it('入力getterを一度固定し、再読で祝日や観測時刻を差し替えない',()=>{
  const input=registryCalendarFixture(),csv=input.holidays.csv;let reads=0;Object.defineProperty(input.holidays,'csv',{enumerable:true,get(){reads++;if(reads>1)throw Error('changed');return csv}});expect(parse(input).lastYear).toBe(2027);expect(reads).toBe(1);
 });
+
+it.each(['script','style'])('方針文が%s本文にだけある入力を根拠にしない',tag=>{
+ const input=registryCalendarFixture();input.policy.html='<'+tag+'>'+input.policy.html+'</'+tag+'>';expect(()=>parse(input)).toThrow();
+});

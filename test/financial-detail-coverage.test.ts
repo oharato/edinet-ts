@@ -48,3 +48,7 @@ describe("財務明細の母集団付き充足率", () => {
         expect(measureFinancialDetailCoverage(request)).toMatchObject({ cells: 0, population: { companies: 0 }, counts: {}, rows: [] });
     });
 });
+
+it('充足率の項目辞書はprototype由来の項目を持たない',()=>{
+ const result=measureFinancialDetailCoverage(input());expect(Object.getPrototypeOf(result.byMetric)).toBeNull();expect(result.byMetric).not.toHaveProperty('__proto__');expect(result.byMetric.cashAndDeposits).toEqual({'no-document-in-window':2});
+});
