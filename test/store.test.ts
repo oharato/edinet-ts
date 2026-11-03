@@ -79,6 +79,13 @@ describe("FinancialStore with DuckDB", () => {
     expect(results[1].operatingMarginCurrent).toBe(0.15);
     expect(results[1].operatingMarginGrowthRate).toBe(0.50);
 
+    // whereClause によるスクリーニング
+    const whereResults = await store.screen({
+      whereClause: "operating_margin_current >= 0.20 AND operating_margin_growth_rate >= 0.20",
+    });
+    expect(whereResults).toHaveLength(1);
+    expect(whereResults[0].companyName).toBe("高収益企業B");
+
     await store.close();
   });
 });

@@ -50,6 +50,9 @@ program
     console.log(`営業利益:     当期 ${formatYen(result.current.operatingIncome)} / 前期 ${formatYen(result.prior.operatingIncome)} (前年比: ${formatPercent(result.operatingIncomeGrowthRate)})`);
     console.log(`営業利益率:   当期 ${formatPercent(result.operatingMarginCurrent)} / 前期 ${formatPercent(result.operatingMarginPrior)}`);
     console.log(`利益率成長率: ${formatPercent(result.operatingMarginGrowthRate)} (ポイント差: ${formatPercent(result.operatingMarginDelta)})`);
+    console.log(`自己資本比率: 当期 ${formatPercent(result.equityRatioCurrent)} / 前期 ${formatPercent(result.equityRatioPrior)}`);
+    console.log(`ROE:          当期 ${formatPercent(result.roeCurrent)}`);
+    console.log(`営業活動CF:   当期 ${formatYen(result.current.operatingCashFlow)} / 前期 ${formatYen(result.prior.operatingCashFlow)}`);
     console.log("");
   });
 
@@ -115,10 +118,13 @@ program
   .command("screen")
   .description("DuckDBから利益率や成長率の条件で企業をスクリーニングします")
   .option("--db <path>", "DuckDBファイルのパス", "./data/screening.duckdb")
+  .option("-w, --where <sql>", "任意のSQL条件式 (例: \"operating_margin_current > 0.15 AND equity_ratio_current > 0.5\")")
   .option("--min-growth <number>", "営業利益率の前年比成長率の下限 (例: 0.20 で +20%以上)", parseFloat)
   .option("--min-margin <number>", "当期営業利益率の下限 (例: 0.10 で 10%以上)", parseFloat)
   .option("--min-sales-growth <number>", "売上成長率の下限", parseFloat)
-  .option("--order-by <field>", "ソート項目 (margin_growth, current_margin, sales_growth)", "current_margin")
+  .option("--min-equity-ratio <number>", "自己資本比率の下限 (例: 0.50 で 50%以上)", parseFloat)
+  .option("--min-roe <number>", "ROEの下限 (例: 0.10 で 10%以上)", parseFloat)
+  .option("--order-by <field>", "ソート項目 (margin_growth, current_margin, sales_growth, equity_ratio, roe)", "current_margin")
   .option("--order-dir <dir>", "ソート順 (asc, desc)", "desc")
   .option("-l, --limit <number>", "取得件数上限", parseInt, 50)
   .option("--json", "JSON形式で出力")
@@ -128,9 +134,12 @@ program
     await store.init();
 
     const rows = await store.screen({
+      whereClause: options.where,
       minMarginGrowth: options.minGrowth,
       minCurrentMargin: options.minMargin,
       minSalesGrowth: options.minSalesGrowth,
+      minEquityRatio: options.minEquityRatio,
+      minRoe: options.minRoe,
       orderBy: options.orderBy,
       orderDirection: options.orderDir,
       limit: options.limit,
@@ -154,12 +163,12 @@ program
         コード: r.securityCode || r.edinetCode,
         会社名: r.companyName.length > 12 ? r.companyName.slice(0, 11) + "…" : r.companyName,
         決算期: r.periodEnd,
-        "当期売上(億円)": r.netSalesCurrent ? (r.netSalesCurrent / 100_000_000).toFixed(1) : "-",
-        "当期営業益(億円)": r.operatingIncomeCurrent ? (r.operatingIncomeCurrent / 100_000_000).toFixed(1) : "-",
-        "当期利益率(%)": r.operatingMarginCurrent ? (r.operatingMarginCurrent * 100).toFixed(2) : "-",
-        "前期利益率(%)": r.operatingMarginPrior ? (r.operatingMarginPrior * 100).toFixed(2) : "-",
-        "利益率成長率(%)": r.operatingMarginGrowthRate ? (r.operatingMarginGrowthRate * 100).toFixed(2) : "-",
-        "売上成長率(%)": r.salesGrowthRate ? (r.salesGrowthRate * 100).toFixed(2) : "-",
+        "売上(億円)": r.netSalesCurrent ? (r.netSalesCurrent / 100_000_000).toFixed(1) : "-",
+        "営業益(億円)": r.operatingIncomeCurrent ? (r.operatingIncomeCurrent / 100_000_000).toFixed(1) : "-",
+        "利益率(%)": r.operatingMarginCurrent ? (r.operatingMarginCurrent * 100).toFixed(2) : "-",
+        "利益率成長(%)": r.operatingMarginGrowthRate ? (r.operatingMarginGrowthRate * 100).toFixed(2) : "-",
+        "自己資本比率(%)": r.equityRatioCurrent ? (r.equityRatioCurrent * 100).toFixed(2) : "-",
+        "ROE(%)": r.roeCurrent ? (r.roeCurrent * 100).toFixed(2) : "-",
       }))
     );
   });

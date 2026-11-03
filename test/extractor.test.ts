@@ -36,6 +36,12 @@ describe("FinancialExtractor & XbrlParser", () => {
 
     // 売上成長率: (45089432000 - 41275187000) / 41275187000 ≈ 0.0924 (9.24%)
     expect(result.salesGrowthRate).toBeCloseTo(0.0924, 3);
+
+    // 自己資本比率・ROE
+    expect(result.current.netAssets).toBeDefined();
+    expect(result.current.totalAssets).toBeDefined();
+    expect(result.equityRatioCurrent).toBeGreaterThan(0.5); // カカクコムは高自己資本比率
+    expect(result.roeCurrent).toBeGreaterThan(0.1); // 高ROE
   });
 
   it("IFRS ヤフーの当期・前期財務データと利益率が正しく抽出されること", () => {

@@ -15,6 +15,10 @@ export interface ScreeningResultRow {
   operatingMarginDelta?: number;
   salesGrowthRate?: number;
   operatingIncomeGrowthRate?: number;
+  equityRatioCurrent?: number;
+  equityRatioPrior?: number;
+  roeCurrent?: number;
+  operatingCfCurrent?: number;
 }
 
 export class FinancialStore {
@@ -52,6 +56,12 @@ export class FinancialStore {
         operating_margin_delta DOUBLE,
         sales_growth_rate DOUBLE,
         operating_income_growth_rate DOUBLE,
+        net_assets_current DOUBLE,
+        total_assets_current DOUBLE,
+        operating_cf_current DOUBLE,
+        equity_ratio_current DOUBLE,
+        equity_ratio_prior DOUBLE,
+        roe_current DOUBLE,
         PRIMARY KEY (company_name, period_end)
       );
     `);
@@ -62,7 +72,8 @@ export class FinancialStore {
 
     const stmt = await this.connection.prepare(`
       INSERT OR REPLACE INTO financial_summary VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+        $16, $17, $18, $19, $20, $21
       );
     `);
 
@@ -83,6 +94,13 @@ export class FinancialStore {
     this.bindNullableDouble(stmt, 14, record.salesGrowthRate);
     this.bindNullableDouble(stmt, 15, record.operatingIncomeGrowthRate);
 
+    this.bindNullableDouble(stmt, 16, record.current.netAssets);
+    this.bindNullableDouble(stmt, 17, record.current.totalAssets);
+    this.bindNullableDouble(stmt, 18, record.current.operatingCashFlow);
+    this.bindNullableDouble(stmt, 19, record.equityRatioCurrent);
+    this.bindNullableDouble(stmt, 20, record.equityRatioPrior);
+    this.bindNullableDouble(stmt, 21, record.roeCurrent);
+
     await stmt.run();
   }
 
@@ -90,6 +108,11 @@ export class FinancialStore {
     if (!this.connection) throw new Error("Database not initialized");
 
     const conditions: string[] = [];
+
+    // 自由なWHERE句パススルー
+    if (criteria.whereClause) {
+      conditions.push(`(${criteria.whereClause})`);
+    }
 
     if (criteria.minMarginGrowth !== undefined) {
       conditions.push(`operating_margin_growth_rate >= ${criteria.minMarginGrowth}`);
@@ -103,6 +126,12 @@ export class FinancialStore {
     if (criteria.minOperatingIncomeGrowth !== undefined) {
       conditions.push(`operating_income_growth_rate >= ${criteria.minOperatingIncomeGrowth}`);
     }
+    if (criteria.minEquityRatio !== undefined) {
+      conditions.push(`equity_ratio_current >= ${criteria.minEquityRatio}`);
+    }
+    if (criteria.minRoe !== undefined) {
+      conditions.push(`roe_current >= ${criteria.minRoe}`);
+    }
     if (criteria.consolidatedOnly) {
       conditions.push(`is_consolidated = true`);
     }
@@ -114,6 +143,8 @@ export class FinancialStore {
     else if (criteria.orderBy === "current_margin") orderCol = "operating_margin_current";
     else if (criteria.orderBy === "sales_growth") orderCol = "sales_growth_rate";
     else if (criteria.orderBy === "operating_income_growth") orderCol = "operating_income_growth_rate";
+    else if (criteria.orderBy === "equity_ratio") orderCol = "equity_ratio_current";
+    else if (criteria.orderBy === "roe") orderCol = "roe_current";
 
     const direction = criteria.orderDirection?.toUpperCase() === "ASC" ? "ASC" : "DESC";
     const limitClause = criteria.limit ? `LIMIT ${criteria.limit}` : "LIMIT 100";
@@ -132,7 +163,11 @@ export class FinancialStore {
         operating_margin_growth_rate,
         operating_margin_delta,
         sales_growth_rate,
-        operating_income_growth_rate
+        operating_income_growth_rate,
+        equity_ratio_current,
+        equity_ratio_prior,
+        roe_current,
+        operating_cf_current
       FROM financial_summary
       ${whereClause}
       ORDER BY ${orderCol} ${direction} NULLS LAST
@@ -156,6 +191,10 @@ export class FinancialStore {
       operatingMarginDelta: row[10] !== null ? Number(row[10]) : undefined,
       salesGrowthRate: row[11] !== null ? Number(row[11]) : undefined,
       operatingIncomeGrowthRate: row[12] !== null ? Number(row[12]) : undefined,
+      equityRatioCurrent: row[13] !== null ? Number(row[13]) : undefined,
+      equityRatioPrior: row[14] !== null ? Number(row[14]) : undefined,
+      roeCurrent: row[15] !== null ? Number(row[15]) : undefined,
+      operatingCfCurrent: row[16] !== null ? Number(row[16]) : undefined,
     }));
   }
 
