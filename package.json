@@ -1,6 +1,7 @@
 {
   "name": "edinet-ts",
-  "version": "1.1.17",
+  "type": "module",
+  "version": "2.0.0",
   "description": "TypeScript port of edinet_xbrl for parsing EDINET XBRL files",
   "keywords": [
     "edinet",
@@ -32,15 +33,12 @@
     }
   },
   "scripts": {
-    "build": "npm run clean && npm run generate-type-docs && tsc && npm run add-js-extensions",
-    "generate-type-docs": "node --import tsx scripts/generate-type-docs.ts && oxfmt src/utils/type-doc-defs.ts",
-    "add-js-extensions": "node scripts/add-js-extensions.js",
-    "test": "vitest run --exclude=data/** --exclude=artifacts/**",
+    "build": "pnpm run clean && tsc",
+    "test": "vitest run test/*.test.ts",
     "clean": "node -e \"require('node:fs').rmSync('dist', {recursive:true, force:true})\"",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "lint": "oxlint src scripts test",
-    "security": "npm audit --audit-level=moderate"
+    "lint": "oxlint src test"
   },
   "dependencies": {
     "commander": "15.0.0",
@@ -78,7 +76,7 @@
     "node": ">=26.13.0",
     "npm": ">=12.2.1"
   },
-  "packageManager": "npm@12.2.1",
+  "packageManager": "pnpm@12.13.0",
   "allowScripts": {
     "esbuild": true
   }
