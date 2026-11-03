@@ -91,6 +91,6 @@ CLIテストは子プロセスを起動します。`spawnSync` の `error.code` 
 
 ## 開発用チェック（2026-11-03更新）
 
-現在の開発実行系は`.node-version`のNode 26.13.0、npm 12.2.1です。運用スクリプトとテストをTypeScriptへ移し、Pythonの準備は不要になりました。単独実行するTypeScriptはES moduleを明示する`.mts`を使用します。稼働中の固定runtimeは検証後に更新します。固定済み旧配布物を再現する`build-local.mts`の旧toolchain指定は履歴の再現条件なので変更しない。
+現在の開発実行系は`.node-version`のNode 26.13.0、npm 12.2.1です。運用スクリプトとテストをTypeScriptへ移し、Pythonの準備は不要になりました。単独実行するTypeScriptはES moduleを明示する`.mts`を使用します。本番の固定runtimeもTypeScript版へ更新済みです。採用commitと検証記録は[本番運用](../docs/pipeline/DUCK_FINANCIAL_PRODUCTION.md)のdeployment.jsonで確認します。固定済み旧配布物を再現する`build-local.mts`の旧toolchain指定は履歴の再現条件なので変更しない。
 
 `npm run format`でoxfmtによる整形、`npm run format:check`で差分検査、`npm run lint`でoxlintのcorrectness検査、`npm run security`で開発依存を含む脆弱性検査を行う。生成DB・原本・調査artifactは整形対象外。lintでは未使用識別子、入力境界で意図して使う制御文字の正規表現、thisのcapture、互換enum aliasを一括変更しない。型試験の値参照・異常入力fixture等はtest側overrideに限定する。
