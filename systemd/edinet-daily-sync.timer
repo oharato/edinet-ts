@@ -1,0 +1,10 @@
+[Unit]
+Description=Run EDINET daily DuckDB sync every 6 hours
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00 Asia/Tokyo
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -384,7 +384,8 @@ program
   .option("--api-key <key>", "EDINET APIキー (省略時は環境変数 EDINET_API_KEY を使用)")
   .option("--dry-run", "実際のダウンロードやDB更新を行わず、対象書類の件数と一覧のみ表示")
   .action(async (options) => {
-    const today = new Date().toISOString().slice(0, 10);
+    // バッチはJSTで動くため、UTCのtoISOStringではなくAsia/Tokyoの日付を使う。
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
     const until = options.until || today;
 
     let since = options.since;
@@ -406,10 +407,14 @@ program
     const client = new EdinetClient({ apiKey });
 
     process.stdout.write("開示書類一覧を取得中...");
-    const reports = await client.getAnnualReportsInRange(since, until, (date, count) => {
+    const allReports = await client.getAnnualReportsInRange(since, until, (date, count) => {
       process.stdout.write(`\r開示書類一覧を取得中... [${date}] (${count}件の有報)`);
     });
-    console.log(`\n合計 ${reports.length} 件の有価証券報告書が見つかりました。\n`);
+    // 投資信託等の非上場書類は証券コードを持たないため、スクリーニング対象から除外する。
+    const reports = allReports.filter((r) => r.secCode);
+    console.log(
+      `\n合計 ${allReports.length} 件の有報のうち、上場企業 ${reports.length} 件を同期対象にします。\n`,
+    );
 
     if (reports.length === 0) {
       console.log("同期対象の有価証券報告書はありませんでした。");

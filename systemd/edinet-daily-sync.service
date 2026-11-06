@@ -1,0 +1,18 @@
+[Unit]
+Description=EDINET daily DuckDB sync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/oharato/workspace/edinet-ts
+EnvironmentFile=/home/oharato/workspace/edinet-ts/.env
+ExecStart=/home/oharato/.local/share/mise/installs/node/26.13.0/bin/node /home/oharato/workspace/edinet-ts/dist/cli.js sync --db /home/oharato/workspace/edinet-ts/data/production/screening.duckdb --days 2
+StandardOutput=append:/home/oharato/workspace/edinet-ts/data/production/daily-sync.log
+StandardError=append:/home/oharato/workspace/edinet-ts/data/production/daily-sync.log
+TimeoutStartSec=1800
+Nice=10
+UMask=0077
+
+[Install]
+WantedBy=default.target
