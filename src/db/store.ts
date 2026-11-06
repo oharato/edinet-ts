@@ -1,5 +1,6 @@
 import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
 import type { CompanyFinancialComparison, ScreeningCriteria } from "../types.js";
+import type { XbrlFactRow } from "./facts.js";
 
 export interface ScreeningResultRow {
   edinetCode: string;
@@ -126,6 +127,34 @@ export class FinancialStore {
         bps_current DOUBLE,
         number_of_employees INTEGER,
         operating_income_per_employee DOUBLE
+      );
+    `);
+
+    // XBRLの全Fact（数値・テキストBlock・セグメント軸）を保存する汎用テーブル。
+    await this.connection.run(`
+      CREATE TABLE IF NOT EXISTS xbrl_facts (
+        doc_id VARCHAR,
+        concept VARCHAR,
+        qname VARCHAR,
+        context_id VARCHAR,
+        value_text VARCHAR,
+        value_numeric DOUBLE,
+        unit VARCHAR,
+        period_start VARCHAR,
+        period_end VARCHAR,
+        instant VARCHAR,
+        dimensions VARCHAR,
+        decimals INTEGER,
+        scale INTEGER
+      );
+    `);
+
+    // Fact取込済みdocIDの管理（キャッシュ削除の判定にも使う）。
+    await this.connection.run(`
+      CREATE TABLE IF NOT EXISTS xbrl_fact_documents (
+        doc_id VARCHAR PRIMARY KEY,
+        fact_count INTEGER,
+        ingested_at TIMESTAMP DEFAULT current_timestamp
       );
     `);
   }
@@ -272,6 +301,60 @@ export class FinancialStore {
     );
     const rows = reader.getRows();
     return new Set(rows.map((row) => String(row[0])));
+  }
+
+  /**
+   * XBRLの全Factを一括投入する。大量行を想定してAppenderを使う。
+   */
+  public async appendFacts(rows: XbrlFactRow[]): Promise<void> {
+    if (!this.connection) throw new Error("Database not initialized");
+    if (rows.length === 0) return;
+
+    const appender = await this.connection.createAppender("xbrl_facts");
+    try {
+      for (const row of rows) {
+        appender.appendVarchar(row.docId);
+        appender.appendVarchar(row.concept);
+        appender.appendVarchar(row.qname);
+        appender.appendVarchar(row.contextId);
+        if (row.valueText === null) appender.appendNull();
+        else appender.appendVarchar(row.valueText);
+        if (row.valueNumeric === null) appender.appendNull();
+        else appender.appendDouble(row.valueNumeric);
+        if (row.unit === null) appender.appendNull();
+        else appender.appendVarchar(row.unit);
+        if (row.periodStart === null) appender.appendNull();
+        else appender.appendVarchar(row.periodStart);
+        if (row.periodEnd === null) appender.appendNull();
+        else appender.appendVarchar(row.periodEnd);
+        if (row.instant === null) appender.appendNull();
+        else appender.appendVarchar(row.instant);
+        if (row.dimensions === null) appender.appendNull();
+        else appender.appendVarchar(row.dimensions);
+        if (row.decimals === null) appender.appendNull();
+        else appender.appendInteger(row.decimals);
+        if (row.scale === null) appender.appendNull();
+        else appender.appendInteger(row.scale);
+        appender.endRow();
+      }
+      appender.flushSync();
+    } finally {
+      appender.closeSync();
+    }
+  }
+
+  public async markFactDocument(docId: string, factCount: number): Promise<void> {
+    if (!this.connection) throw new Error("Database not initialized");
+    await this.connection.run(
+      "INSERT OR REPLACE INTO xbrl_fact_documents (doc_id, fact_count) VALUES (?, ?)",
+      [docId, factCount],
+    );
+  }
+
+  public async getIngestedFactDocIds(): Promise<Set<string>> {
+    if (!this.connection) throw new Error("Database not initialized");
+    const reader = await this.connection.runAndReadAll("SELECT doc_id FROM xbrl_fact_documents");
+    return new Set(reader.getRows().map((row) => String(row[0])));
   }
 
   public async screen(criteria: ScreeningCriteria = {}): Promise<ScreeningResultRow[]> {

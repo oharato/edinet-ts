@@ -1,4 +1,4 @@
-import { createWriteStream, mkdirSync, existsSync } from "node:fs";
+import { createWriteStream, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import JSZip from "jszip";
@@ -172,5 +172,13 @@ export class EdinetClient {
     writeFileSync(cachePath, xbrlContent, "utf8");
 
     return xbrlContent;
+  }
+
+  /**
+   * 取込済みXBRLのキャッシュを削除します。
+   */
+  public removeCached(docId: string): void {
+    const cachePath = join(this.cacheDir, `${docId}.xbrl`);
+    if (existsSync(cachePath)) unlinkSync(cachePath);
   }
 }
