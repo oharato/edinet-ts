@@ -11,6 +11,7 @@ export interface EdinetDocumentSummary {
   docTypeCode: string;
   docDescription: string;
   submitDateTime: string;
+  periodEnd?: string;
 }
 
 export interface EdinetClientOptions {
@@ -62,15 +63,17 @@ export class EdinetClient {
       docTypeCode: item.docTypeCode,
       docDescription: item.docDescription,
       submitDateTime: item.submitDateTime,
+      periodEnd: item.periodEnd,
     }));
   }
 
   /**
-   * 指定した日付範囲内の有価証券報告書（docTypeCode: "120"）の一覧を取得します。
+   * 指定した日付範囲内の書類をdocTypeで絞り込んで取得します。
    */
-  public async getAnnualReportsInRange(
+  public async getReportsInRange(
     startDate: string,
     endDate: string,
+    docTypes: string[] = ["120"],
     onProgress?: (date: string, count: number) => void,
   ): Promise<EdinetDocumentSummary[]> {
     const dates: string[] = [];
@@ -87,8 +90,7 @@ export class EdinetClient {
     for (const date of dates) {
       try {
         const docs = await this.getDocumentList(date);
-        // 有価証券報告書 (120) のみ抽出
-        const reports = docs.filter((d) => d.docTypeCode === "120");
+        const reports = docs.filter((d) => docTypes.includes(d.docTypeCode));
         allReports.push(...reports);
         if (onProgress) {
           onProgress(date, reports.length);
@@ -101,6 +103,17 @@ export class EdinetClient {
     }
 
     return allReports;
+  }
+
+  /**
+   * 指定した日付範囲内の有価証券報告書（docTypeCode: "120"）の一覧を取得します。
+   */
+  public async getAnnualReportsInRange(
+    startDate: string,
+    endDate: string,
+    onProgress?: (date: string, count: number) => void,
+  ): Promise<EdinetDocumentSummary[]> {
+    return this.getReportsInRange(startDate, endDate, ["120"], onProgress);
   }
 
   /**
