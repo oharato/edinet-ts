@@ -149,7 +149,7 @@ program
   .option(
     "--archive <path>",
     "archive.sqlite のパス",
-    "/home/oharato/workspace/edinet-ts/data/production/duck-financial/daily/2026-11-03/candidate/archive.sqlite",
+    "./data/old/production/duck-financial/daily/2026-11-03/candidate/archive.sqlite",
   )
   .option("--db <path>", "DuckDBファイルの保存先", "./data/screening.duckdb")
   .option("-l, --limit <number>", "処理する書類の上限件数 (テスト用)", parseInt)
