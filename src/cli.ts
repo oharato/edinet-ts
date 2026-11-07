@@ -9,6 +9,14 @@ import { buildFactRows } from "./db/facts.js";
 import { SCREENING_COLUMNS, QUERY_EXAMPLES } from "./db/schema-info.js";
 import { EdinetClient } from "./edinet/client.js";
 
+// 手動実行でも .env の EDINET_API_KEY を読めるようにする。
+// systemd 経由では EnvironmentFile が設定するため、.env がなくても動作する。
+try {
+  process.loadEnvFile();
+} catch {
+  // .env がない場合は環境変数をそのまま使う
+}
+
 const program = new Command();
 program
   .name("edinet-ts")
