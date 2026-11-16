@@ -453,14 +453,9 @@ program
     const client = new EdinetClient({ apiKey });
 
     process.stdout.write("開示書類一覧を取得中...");
-    const allReports = await client.getReportsInRange(
-      since,
-      until,
-      docTypes,
-      (date, count) => {
-        process.stdout.write(`\r開示書類一覧を取得中... [${date}] (${count}件の対象書類)`);
-      },
-    );
+    const allReports = await client.getReportsInRange(since, until, docTypes, (date, count) => {
+      process.stdout.write(`\r開示書類一覧を取得中... [${date}] (${count}件の対象書類)`);
+    });
     // 投資信託等の非上場書類は証券コードを持たないため、スクリーニング対象から除外する。
     const reports = allReports.filter((r) => r.secCode);
     console.log(
@@ -586,7 +581,6 @@ program
     console.log(`DB保存先:       ${dbPath}`);
     console.log("===========================================\n");
   });
-
 
 function parseInteger(value: string): number {
   return parseInt(value, 10);
