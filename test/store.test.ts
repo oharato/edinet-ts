@@ -58,13 +58,13 @@ describe("FinancialStore with DuckDB", () => {
       operatingIncomeGrowthRate: 0.033,
     };
 
-    await store.insert(companyA);
-    await store.insert(companyB);
-    await store.insert(companyC);
+    await store.insert(companyA, { docId: "S100A", docTypeCode: "120" });
+    await store.insert(companyB, { docId: "S100B", docTypeCode: "120" });
+    await store.insert(companyC, { docId: "S100C", docTypeCode: "120" });
 
     // スクリーニング: 利益率成長率 >= 20% (0.20)、当期利益率順(DESC)
     const results = await store.screen({
-      minMarginGrowth: 0.2,
+      whereClause: "operating_margin_growth_rate >= 0.20",
       orderBy: "current_margin",
       orderDirection: "desc",
     });
@@ -85,6 +85,57 @@ describe("FinancialStore with DuckDB", () => {
     });
     expect(whereResults).toHaveLength(1);
     expect(whereResults[0].companyName).toBe("高収益企業B");
+
+    await store.close();
+  });
+
+  it("訂正有報(130)が同じ証券コード・決算期の年次データを上書きすること", async () => {
+    const store = new FinancialStore(":memory:");
+    await store.init();
+
+    const original: CompanyFinancialComparison = {
+      metadata: {
+        edinetCode: "E00001",
+        securityCode: "1001",
+        companyName: "訂正テスト株式会社",
+        periodEnd: "2024-03-31",
+      },
+      current: { netSales: 10000, operatingIncome: 1500, isConsolidated: true },
+      prior: { netSales: 10000, operatingIncome: 1000, isConsolidated: true },
+      operatingMarginCurrent: 0.15,
+      operatingMarginPrior: 0.1,
+      operatingMarginGrowthRate: 0.5,
+    };
+
+    const corrected: CompanyFinancialComparison = {
+      ...original,
+      current: { ...original.current, operatingIncome: 1600 },
+      operatingMarginCurrent: 0.16,
+      operatingMarginGrowthRate: 0.6,
+    };
+
+    await store.insert(original, {
+      docId: "S100ORIGINAL",
+      docTypeCode: "120",
+      submittedAt: "2024-06-25 10:00",
+    });
+    await store.insert(corrected, {
+      docId: "S100CORRECTED",
+      docTypeCode: "130",
+      submittedAt: "2024-08-20 15:00",
+    });
+
+    const rows = await store.screen({ whereClause: "security_code = '1001'", limit: 10 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].operatingMarginCurrent).toBe(0.16);
+    expect(rows[0].operatingIncomeCurrent).toBe(1600);
+    expect(rows[0].docTypeCode).toBe("130");
+    expect(rows[0].submittedAt).toBe("2024-08-20 15:00");
+
+    const existing = await store.getExistingDocuments();
+    expect(existing.bySecurityPeriod.get("1001:2024-03-31")?.docTypeCode).toBe("130");
+    expect(existing.docIds.has("S100CORRECTED")).toBe(true);
+    expect(existing.docIds.has("S100ORIGINAL")).toBe(false);
 
     await store.close();
   });

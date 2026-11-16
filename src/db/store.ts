@@ -1,6 +1,5 @@
 import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
 import type { CompanyFinancialComparison, ScreeningCriteria } from "../types.js";
-import type { XbrlFactRow } from "./facts.js";
 
 export interface ScreeningResultRow {
   edinetCode: string;
@@ -31,7 +30,21 @@ export interface ScreeningResultRow {
   numberOfEmployees?: number;
   operatingIncomePerEmployee?: number;
   docTypeCode?: string;
-  periodType?: string;
+  submittedAt?: string;
+}
+
+/** 1件の財務サマリーに付随する書類メタデータ */
+export interface RecordMeta {
+  docId?: string;
+  docTypeCode?: string; // 120=有価証券報告書, 130=訂正有価証券報告書
+  submittedAt?: string; // EDINETのsubmitDateTime
+}
+
+export interface ExistingDocuments {
+  /** security_code:period_end -> 登録済み書類 */
+  bySecurityPeriod: Map<string, { docId: string; docTypeCode: string }>;
+  /** 登録済みの doc_id（差分同期の重複判定用） */
+  docIds: Set<string>;
 }
 
 export class FinancialStore {
@@ -85,115 +98,70 @@ export class FinancialStore {
         bps_current DOUBLE,
         number_of_employees INTEGER,
         operating_income_per_employee DOUBLE,
-        PRIMARY KEY (company_name, period_end)
-      );
-    `);
-
-    // 半期報告書（160/170）・訂正有価証券報告書（130）など、年次以外の定期報告用。
-    // 年次の financial_summary とは分離し、doc_id を主キーにする。
-    await this.connection.run(`
-      CREATE TABLE IF NOT EXISTS financial_summary_periodic (
-        doc_id VARCHAR PRIMARY KEY,
-        doc_type_code VARCHAR,
-        period_type VARCHAR,
-        edinet_code VARCHAR,
-        security_code VARCHAR,
-        company_name VARCHAR,
-        period_end VARCHAR,
-        is_consolidated BOOLEAN,
-        net_sales_current DOUBLE,
-        net_sales_prior DOUBLE,
-        operating_income_current DOUBLE,
-        operating_income_prior DOUBLE,
-        operating_margin_current DOUBLE,
-        operating_margin_prior DOUBLE,
-        operating_margin_growth_rate DOUBLE,
-        operating_margin_delta DOUBLE,
-        sales_growth_rate DOUBLE,
-        operating_income_growth_rate DOUBLE,
-        net_assets_current DOUBLE,
-        total_assets_current DOUBLE,
-        operating_cf_current DOUBLE,
-        investing_cf_current DOUBLE,
-        free_cash_flow_current DOUBLE,
-        cash_and_equivalents_current DOUBLE,
-        equity_ratio_current DOUBLE,
-        equity_ratio_prior DOUBLE,
-        roe_current DOUBLE,
-        roa_current DOUBLE,
-        dividend_per_share_current DOUBLE,
-        dividend_growth_rate DOUBLE,
-        eps_current DOUBLE,
-        bps_current DOUBLE,
-        number_of_employees INTEGER,
-        operating_income_per_employee DOUBLE
-      );
-    `);
-
-    // XBRLの全Fact（数値・テキストBlock・セグメント軸）を保存する汎用テーブル。
-    await this.connection.run(`
-      CREATE TABLE IF NOT EXISTS xbrl_facts (
         doc_id VARCHAR,
-        concept VARCHAR,
-        qname VARCHAR,
-        context_id VARCHAR,
-        value_text VARCHAR,
-        value_numeric DOUBLE,
-        unit VARCHAR,
-        period_start VARCHAR,
-        period_end VARCHAR,
-        instant VARCHAR,
-        dimensions VARCHAR,
-        decimals INTEGER,
-        scale INTEGER
-      );
-    `);
-
-    // Fact取込済みdocIDの管理（キャッシュ削除の判定にも使う）。
-    await this.connection.run(`
-      CREATE TABLE IF NOT EXISTS xbrl_fact_documents (
-        doc_id VARCHAR PRIMARY KEY,
-        fact_count INTEGER,
-        ingested_at TIMESTAMP DEFAULT current_timestamp
+        doc_type_code VARCHAR,
+        submitted_at VARCHAR,
+        PRIMARY KEY (security_code, period_end)
       );
     `);
   }
 
-  public async insert(record: CompanyFinancialComparison): Promise<void> {
+  public async insert(record: CompanyFinancialComparison, meta: RecordMeta = {}): Promise<void> {
     if (!this.connection) throw new Error("Database not initialized");
+    if (!record.metadata.securityCode) {
+      throw new Error("security_code is required (対象は証券コードを持つ上場企業の有報です)");
+    }
 
     const stmt = await this.connection.prepare(`
-      INSERT OR REPLACE INTO financial_summary VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
-      );
-    `);
-
-    this.bindSummaryColumns(stmt, record, 0);
-    await stmt.run();
-  }
-
-  /**
-   * 半期報告書（160/170）・訂正有価証券報告書（130）などを別テーブルに保存する。
-   */
-  public async insertPeriodic(
-    record: CompanyFinancialComparison,
-    docId: string,
-    docTypeCode: string,
-  ): Promise<void> {
-    if (!this.connection) throw new Error("Database not initialized");
-
-    const stmt = await this.connection.prepare(`
-      INSERT OR REPLACE INTO financial_summary_periodic VALUES (
+      INSERT OR REPLACE INTO financial_summary (
+        edinet_code,
+        security_code,
+        company_name,
+        period_end,
+        is_consolidated,
+        net_sales_current,
+        net_sales_prior,
+        operating_income_current,
+        operating_income_prior,
+        operating_margin_current,
+        operating_margin_prior,
+        operating_margin_growth_rate,
+        operating_margin_delta,
+        sales_growth_rate,
+        operating_income_growth_rate,
+        net_assets_current,
+        total_assets_current,
+        operating_cf_current,
+        investing_cf_current,
+        free_cash_flow_current,
+        cash_and_equivalents_current,
+        equity_ratio_current,
+        equity_ratio_prior,
+        roe_current,
+        roa_current,
+        dividend_per_share_current,
+        dividend_growth_rate,
+        eps_current,
+        bps_current,
+        number_of_employees,
+        operating_income_per_employee,
+        doc_id,
+        doc_type_code,
+        submitted_at
+      ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
         $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34
       );
     `);
 
-    stmt.bindVarchar(1, docId);
-    stmt.bindVarchar(2, docTypeCode);
-    stmt.bindVarchar(3, record.metadata.periodType || "");
-    this.bindSummaryColumns(stmt, record, 3);
+    this.bindSummaryColumns(stmt, record, 0);
+    stmt.bindVarchar(32, meta.docId || "");
+    stmt.bindVarchar(33, meta.docTypeCode || "120");
+    if (meta.submittedAt) {
+      stmt.bindVarchar(34, meta.submittedAt);
+    } else {
+      stmt.bindNull(34);
+    }
     await stmt.run();
   }
 
@@ -243,156 +211,33 @@ export class FinancialStore {
   }
 
   /**
-   * 登録済みの最新の決算期末日を取得します
+   * 差分同期用: 登録済みの (証券コード, 決算期) と doc_id を取得する。
    */
-  public async getLatestPeriodEnd(): Promise<string | undefined> {
+  public async getExistingDocuments(): Promise<ExistingDocuments> {
     if (!this.connection) throw new Error("Database not initialized");
     const reader = await this.connection.runAndReadAll(
-      "SELECT MAX(period_end) as max_date FROM financial_summary WHERE period_end != ''",
+      "SELECT security_code, period_end, doc_id, doc_type_code FROM financial_summary",
     );
     const rows = reader.getRows();
-    return rows[0]?.[0] ? String(rows[0][0]) : undefined;
-  }
-
-  /**
-   * 登録済みの全レコードのキー（company_name:period_end）のセットを取得します
-   */
-  public async getExistingKeys(): Promise<Set<string>> {
-    if (!this.connection) throw new Error("Database not initialized");
-    const reader = await this.connection.runAndReadAll(
-      "SELECT company_name, period_end FROM financial_summary",
-    );
-    const rows = reader.getRows();
-    const set = new Set<string>();
+    const bySecurityPeriod = new Map<string, { docId: string; docTypeCode: string }>();
+    const docIds = new Set<string>();
     for (const row of rows) {
-      set.add(`${row[0]}:${row[1]}`);
-    }
-    return set;
-  }
-
-  /**
-   * バックフィル用: 既存の (証券コード, 決算期) セット。
-   * 証券コードは4桁に正規化済みの値が入っている。
-   */
-  public async getExistingSecurityPeriods(): Promise<Set<string>> {
-    if (!this.connection) throw new Error("Database not initialized");
-    const reader = await this.connection.runAndReadAll(
-      "SELECT security_code, period_end FROM financial_summary WHERE security_code <> '' AND period_end <> ''",
-    );
-    const rows = reader.getRows();
-    const set = new Set<string>();
-    for (const row of rows) {
-      set.add(`${row[0]}:${row[1]}`);
-    }
-    return set;
-  }
-
-  /**
-   * 半期・訂正テーブルに登録済みの doc_id セット。
-   */
-  public async getExistingPeriodicDocIds(): Promise<Set<string>> {
-    if (!this.connection) throw new Error("Database not initialized");
-    const reader = await this.connection.runAndReadAll(
-      "SELECT doc_id FROM financial_summary_periodic",
-    );
-    const rows = reader.getRows();
-    return new Set(rows.map((row) => String(row[0])));
-  }
-
-  /**
-   * XBRLの全Factを一括投入する。大量行を想定してAppenderを使う。
-   */
-  public async appendFacts(rows: XbrlFactRow[]): Promise<void> {
-    if (!this.connection) throw new Error("Database not initialized");
-    if (rows.length === 0) return;
-
-    const appender = await this.connection.createAppender("xbrl_facts");
-    try {
-      for (const row of rows) {
-        appender.appendVarchar(row.docId);
-        appender.appendVarchar(row.concept);
-        appender.appendVarchar(row.qname);
-        appender.appendVarchar(row.contextId);
-        if (row.valueText === null) appender.appendNull();
-        else appender.appendVarchar(row.valueText);
-        if (row.valueNumeric === null) appender.appendNull();
-        else appender.appendDouble(row.valueNumeric);
-        if (row.unit === null) appender.appendNull();
-        else appender.appendVarchar(row.unit);
-        if (row.periodStart === null) appender.appendNull();
-        else appender.appendVarchar(row.periodStart);
-        if (row.periodEnd === null) appender.appendNull();
-        else appender.appendVarchar(row.periodEnd);
-        if (row.instant === null) appender.appendNull();
-        else appender.appendVarchar(row.instant);
-        if (row.dimensions === null) appender.appendNull();
-        else appender.appendVarchar(row.dimensions);
-        if (row.decimals === null) appender.appendNull();
-        else appender.appendInteger(row.decimals);
-        if (row.scale === null) appender.appendNull();
-        else appender.appendInteger(row.scale);
-        appender.endRow();
+      const securityCode = String(row[0] ?? "");
+      const periodEnd = String(row[1] ?? "");
+      const docId = String(row[2] ?? "");
+      const docTypeCode = String(row[3] ?? "");
+      if (securityCode && periodEnd) {
+        bySecurityPeriod.set(`${securityCode}:${periodEnd}`, { docId, docTypeCode });
       }
-      appender.flushSync();
-    } finally {
-      appender.closeSync();
+      if (docId) docIds.add(docId);
     }
-  }
-
-  public async markFactDocument(docId: string, factCount: number): Promise<void> {
-    if (!this.connection) throw new Error("Database not initialized");
-    await this.connection.run(
-      "INSERT OR REPLACE INTO xbrl_fact_documents (doc_id, fact_count) VALUES (?, ?)",
-      [docId, factCount],
-    );
-  }
-
-  public async getIngestedFactDocIds(): Promise<Set<string>> {
-    if (!this.connection) throw new Error("Database not initialized");
-    const reader = await this.connection.runAndReadAll("SELECT doc_id FROM xbrl_fact_documents");
-    return new Set(reader.getRows().map((row) => String(row[0])));
+    return { bySecurityPeriod, docIds };
   }
 
   public async screen(criteria: ScreeningCriteria = {}): Promise<ScreeningResultRow[]> {
     if (!this.connection) throw new Error("Database not initialized");
 
-    const tableName =
-      criteria.table === "periodic" ? "financial_summary_periodic" : "financial_summary";
-    const conditions: string[] = [];
-
-    if (criteria.whereClause) {
-      conditions.push(`(${criteria.whereClause})`);
-    }
-
-    if (criteria.minMarginGrowth !== undefined) {
-      conditions.push(`operating_margin_growth_rate >= ${criteria.minMarginGrowth}`);
-    }
-    if (criteria.minCurrentMargin !== undefined) {
-      conditions.push(`operating_margin_current >= ${criteria.minCurrentMargin}`);
-    }
-    if (criteria.minSalesGrowth !== undefined) {
-      conditions.push(`sales_growth_rate >= ${criteria.minSalesGrowth}`);
-    }
-    if (criteria.minOperatingIncomeGrowth !== undefined) {
-      conditions.push(`operating_income_growth_rate >= ${criteria.minOperatingIncomeGrowth}`);
-    }
-    if (criteria.minEquityRatio !== undefined) {
-      conditions.push(`equity_ratio_current >= ${criteria.minEquityRatio}`);
-    }
-    if (criteria.minRoe !== undefined) {
-      conditions.push(`roe_current >= ${criteria.minRoe}`);
-    }
-    if (criteria.minRoa !== undefined) {
-      conditions.push(`roa_current >= ${criteria.minRoa}`);
-    }
-    if (criteria.minFcf !== undefined) {
-      conditions.push(`free_cash_flow_current >= ${criteria.minFcf}`);
-    }
-    if (criteria.consolidatedOnly) {
-      conditions.push(`is_consolidated = true`);
-    }
-
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause = criteria.whereClause ? `WHERE (${criteria.whereClause})` : "";
 
     let orderCol = "operating_margin_current";
     if (criteria.orderBy === "margin_growth") orderCol = "operating_margin_growth_rate";
@@ -438,9 +283,9 @@ export class FinancialStore {
         bps_current,
         number_of_employees,
         operating_income_per_employee,
-        ${criteria.table === "periodic" ? "doc_type_code" : "NULL::VARCHAR AS doc_type_code"},
-        ${criteria.table === "periodic" ? "period_type" : "NULL::VARCHAR AS period_type"}
-      FROM ${tableName}
+        doc_type_code,
+        submitted_at
+      FROM financial_summary
       ${whereClause}
       ORDER BY ${orderCol} ${direction} NULLS LAST
       ${limitClause};
@@ -478,7 +323,7 @@ export class FinancialStore {
       numberOfEmployees: row[25] !== null ? Number(row[25]) : undefined,
       operatingIncomePerEmployee: row[26] !== null ? Number(row[26]) : undefined,
       docTypeCode: row[27] !== null ? String(row[27]) : undefined,
-      periodType: row[28] !== null ? String(row[28]) : undefined,
+      submittedAt: row[28] !== null ? String(row[28]) : undefined,
     }));
   }
 

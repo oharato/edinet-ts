@@ -176,11 +176,6 @@ export class FinancialExtractor {
         ? currentMetrics.operatingCashFlow + currentMetrics.investingCashFlow
         : undefined;
 
-    const freeCashFlowPrior =
-      priorMetrics.operatingCashFlow !== undefined && priorMetrics.investingCashFlow !== undefined
-        ? priorMetrics.operatingCashFlow + priorMetrics.investingCashFlow
-        : undefined;
-
     // 従業員1人当たり営業利益 (営業利益 / 従業員数)
     const operatingIncomePerEmployee =
       currentMetrics.operatingIncome !== undefined &&
@@ -213,7 +208,6 @@ export class FinancialExtractor {
       roeCurrent,
       roaCurrent,
       freeCashFlowCurrent,
-      freeCashFlowPrior,
       operatingIncomePerEmployee,
       dividendGrowthRate,
     };
@@ -239,19 +233,17 @@ export class FinancialExtractor {
       doc.dei.get("CurrentFiscalYearEndDateDEI") ||
       doc.dei.get("PeriodEndDate") ||
       "";
-    const periodType = doc.dei.get("TypeOfCurrentPeriodDEI") || "";
 
     return {
       edinetCode,
       securityCode,
       companyName,
       periodEnd,
-      periodType,
     };
   }
 
   /**
-   * 年次（FY）・半期（HY/Q2）・四半期（Q1/Q3）で異なるコンテキストIDを解決する。
+   * 年次（FY）のコンテキストIDを解決する。
    * 連結のFactがなければ単体（_NonConsolidatedMember）にフォールバックする。
    */
   private resolveContexts(doc: ParsedXbrlDocument): {
@@ -261,51 +253,26 @@ export class FinancialExtractor {
     priorInstantId: string;
     hasConsolidated: boolean;
   } {
-    const periodType = (doc.dei.get("TypeOfCurrentPeriodDEI") || "").toUpperCase();
-    const isInterim =
-      periodType === "HY" || periodType === "Q1" || periodType === "Q2" || periodType === "Q3";
-
-    const candidates = isInterim
-      ? [
-          {
-            current: "CurrentYTDDuration",
-            prior: "Prior1YTDDuration",
-            currentInstant: "CurrentQuarterInstant",
-            priorInstant: "Prior1QuarterInstant",
-          },
-          {
-            current: "CurrentQuarterDuration",
-            prior: "Prior1QuarterDuration",
-            currentInstant: "CurrentQuarterInstant",
-            priorInstant: "Prior1QuarterInstant",
-          },
-          {
-            current: "CurrentYearDuration",
-            prior: "Prior1YearDuration",
-            currentInstant: "CurrentYearInstant",
-            priorInstant: "Prior1YearInstant",
-          },
-        ]
-      : [
-          {
-            current: "CurrentYearDuration",
-            prior: "Prior1YearDuration",
-            currentInstant: "CurrentYearInstant",
-            priorInstant: "Prior1YearInstant",
-          },
-          {
-            current: "CurrentYTDDuration",
-            prior: "Prior1YTDDuration",
-            currentInstant: "CurrentQuarterInstant",
-            priorInstant: "Prior1QuarterInstant",
-          },
-          {
-            current: "CurrentQuarterDuration",
-            prior: "Prior1QuarterDuration",
-            currentInstant: "CurrentQuarterInstant",
-            priorInstant: "Prior1QuarterInstant",
-          },
-        ];
+    const candidates = [
+      {
+        current: "CurrentYearDuration",
+        prior: "Prior1YearDuration",
+        currentInstant: "CurrentYearInstant",
+        priorInstant: "Prior1YearInstant",
+      },
+      {
+        current: "CurrentYTDDuration",
+        prior: "Prior1YTDDuration",
+        currentInstant: "CurrentQuarterInstant",
+        priorInstant: "Prior1QuarterInstant",
+      },
+      {
+        current: "CurrentQuarterDuration",
+        prior: "Prior1QuarterDuration",
+        currentInstant: "CurrentQuarterInstant",
+        priorInstant: "Prior1QuarterInstant",
+      },
+    ];
 
     for (const candidate of candidates) {
       if (this.hasFactForContext(doc, candidate.current)) {
