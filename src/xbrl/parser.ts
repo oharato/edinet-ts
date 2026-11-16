@@ -6,6 +6,7 @@ export interface ParsedFact {
   contextRef: string; // コンテキストID (例: "CurrentYearDuration")
   value: string; // 生の文字列値
   numericValue?: number; // 数値化された値
+  unitRef?: string; // 単位 (例: "JPY")
   decimals?: number;
   scale?: number;
 }
@@ -16,6 +17,7 @@ export interface ParsedContext {
   endDate?: string;
   instant?: string;
   isConsolidated: boolean;
+  dimensions?: Record<string, string>; // セグメント等の軸
 }
 
 export interface ParsedXbrlDocument {
@@ -107,6 +109,7 @@ export class XbrlParser {
                 contextRef,
                 value: text,
                 numericValue: Number.isNaN(num) ? undefined : num,
+                unitRef: itemObj["@_unitRef"] as string | undefined,
                 decimals: itemObj["@_decimals"]
                   ? parseInt(String(itemObj["@_decimals"]), 10)
                   : undefined,
@@ -140,6 +143,23 @@ export class XbrlParser {
       instant = this.getTextValue(period["instant"] || period["xbrli:instant"]);
     }
 
+    // セグメント等の軸（xbrldi:explicitMember）
+    const dimensions: Record<string, string> = {};
+    const scenario = (ctx["scenario"] || ctx["xbrli:scenario"]) as
+      | Record<string, unknown>
+      | undefined;
+    if (scenario && typeof scenario === "object") {
+      const members = scenario["xbrldi:explicitMember"] || scenario["explicitMember"];
+      const list = Array.isArray(members) ? members : members ? [members] : [];
+      for (const member of list) {
+        if (!member || typeof member !== "object") continue;
+        const m = member as Record<string, unknown>;
+        const dimension = m["@_dimension"] as string | undefined;
+        const value = this.getTextValue(m);
+        if (dimension && value) dimensions[dimension] = value;
+      }
+    }
+
     // Consolidated か NonConsolidated かの判定
     const isNonConsolidated =
       id.includes("NonConsolidated") || JSON.stringify(ctx).includes("NonConsolidatedMember");
@@ -150,6 +170,7 @@ export class XbrlParser {
       endDate,
       instant,
       isConsolidated: !isNonConsolidated,
+      dimensions: Object.keys(dimensions).length > 0 ? dimensions : undefined,
     });
   }
 

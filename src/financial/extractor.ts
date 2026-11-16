@@ -85,27 +85,19 @@ const EMPLOYEES_TAGS = ["NumberOfEmployees"];
 export class FinancialExtractor {
   public extract(doc: ParsedXbrlDocument): CompanyFinancialComparison {
     const metadata = this.extractMetadata(doc);
-
-    // 連結データがあるか判定
-    const hasConsolidated = this.hasFactForScope(doc, "CurrentYearDuration");
-    const scopeSuffix = hasConsolidated ? "" : "_NonConsolidatedMember";
-
-    const currentDurationId = `CurrentYearDuration${scopeSuffix}`;
-    const priorDurationId = `Prior1YearDuration${scopeSuffix}`;
-    const currentInstantId = `CurrentYearInstant${scopeSuffix}`;
-    const priorInstantId = `Prior1YearInstant${scopeSuffix}`;
+    const contexts = this.resolveContexts(doc);
 
     const currentMetrics = this.extractMetricsForContext(
       doc,
-      currentDurationId,
-      currentInstantId,
-      hasConsolidated,
+      contexts.currentDurationId,
+      contexts.currentInstantId,
+      contexts.hasConsolidated,
     );
     const priorMetrics = this.extractMetricsForContext(
       doc,
-      priorDurationId,
-      priorInstantId,
-      hasConsolidated,
+      contexts.priorDurationId,
+      contexts.priorInstantId,
+      contexts.hasConsolidated,
     );
 
     // 利益率・成長率の計算
@@ -243,17 +235,111 @@ export class FinancialExtractor {
       "";
 
     const periodEnd =
-      doc.dei.get("CurrentFiscalYearEndDateDEI") || doc.dei.get("PeriodEndDate") || "";
+      doc.dei.get("CurrentPeriodEndDateDEI") ||
+      doc.dei.get("CurrentFiscalYearEndDateDEI") ||
+      doc.dei.get("PeriodEndDate") ||
+      "";
+    const periodType = doc.dei.get("TypeOfCurrentPeriodDEI") || "";
 
     return {
       edinetCode,
       securityCode,
       companyName,
       periodEnd,
+      periodType,
     };
   }
 
-  private hasFactForScope(doc: ParsedXbrlDocument, contextId: string): boolean {
+  /**
+   * 年次（FY）・半期（HY/Q2）・四半期（Q1/Q3）で異なるコンテキストIDを解決する。
+   * 連結のFactがなければ単体（_NonConsolidatedMember）にフォールバックする。
+   */
+  private resolveContexts(doc: ParsedXbrlDocument): {
+    currentDurationId: string;
+    priorDurationId: string;
+    currentInstantId: string;
+    priorInstantId: string;
+    hasConsolidated: boolean;
+  } {
+    const periodType = (doc.dei.get("TypeOfCurrentPeriodDEI") || "").toUpperCase();
+    const isInterim =
+      periodType === "HY" || periodType === "Q1" || periodType === "Q2" || periodType === "Q3";
+
+    const candidates = isInterim
+      ? [
+          {
+            current: "CurrentYTDDuration",
+            prior: "Prior1YTDDuration",
+            currentInstant: "CurrentQuarterInstant",
+            priorInstant: "Prior1QuarterInstant",
+          },
+          {
+            current: "CurrentQuarterDuration",
+            prior: "Prior1QuarterDuration",
+            currentInstant: "CurrentQuarterInstant",
+            priorInstant: "Prior1QuarterInstant",
+          },
+          {
+            current: "CurrentYearDuration",
+            prior: "Prior1YearDuration",
+            currentInstant: "CurrentYearInstant",
+            priorInstant: "Prior1YearInstant",
+          },
+        ]
+      : [
+          {
+            current: "CurrentYearDuration",
+            prior: "Prior1YearDuration",
+            currentInstant: "CurrentYearInstant",
+            priorInstant: "Prior1YearInstant",
+          },
+          {
+            current: "CurrentYTDDuration",
+            prior: "Prior1YTDDuration",
+            currentInstant: "CurrentQuarterInstant",
+            priorInstant: "Prior1QuarterInstant",
+          },
+          {
+            current: "CurrentQuarterDuration",
+            prior: "Prior1QuarterDuration",
+            currentInstant: "CurrentQuarterInstant",
+            priorInstant: "Prior1QuarterInstant",
+          },
+        ];
+
+    for (const candidate of candidates) {
+      if (this.hasFactForContext(doc, candidate.current)) {
+        return {
+          currentDurationId: candidate.current,
+          priorDurationId: candidate.prior,
+          currentInstantId: candidate.currentInstant,
+          priorInstantId: candidate.priorInstant,
+          hasConsolidated: true,
+        };
+      }
+
+      const nonConsolidated = `${candidate.current}_NonConsolidatedMember`;
+      if (this.hasFactForContext(doc, nonConsolidated)) {
+        return {
+          currentDurationId: nonConsolidated,
+          priorDurationId: `${candidate.prior}_NonConsolidatedMember`,
+          currentInstantId: `${candidate.currentInstant}_NonConsolidatedMember`,
+          priorInstantId: `${candidate.priorInstant}_NonConsolidatedMember`,
+          hasConsolidated: false,
+        };
+      }
+    }
+
+    return {
+      currentDurationId: "CurrentYearDuration",
+      priorDurationId: "Prior1YearDuration",
+      currentInstantId: "CurrentYearInstant",
+      priorInstantId: "Prior1YearInstant",
+      hasConsolidated: true,
+    };
+  }
+
+  private hasFactForContext(doc: ParsedXbrlDocument, contextId: string): boolean {
     return doc.facts.some(
       (f) =>
         f.contextRef === contextId &&

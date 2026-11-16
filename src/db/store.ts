@@ -1,5 +1,6 @@
 import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
 import type { CompanyFinancialComparison, ScreeningCriteria } from "../types.js";
+import type { XbrlFactRow } from "./facts.js";
 
 export interface ScreeningResultRow {
   edinetCode: string;
@@ -29,6 +30,8 @@ export interface ScreeningResultRow {
   bpsCurrent?: number;
   numberOfEmployees?: number;
   operatingIncomePerEmployee?: number;
+  docTypeCode?: string;
+  periodType?: string;
 }
 
 export class FinancialStore {
@@ -85,6 +88,75 @@ export class FinancialStore {
         PRIMARY KEY (company_name, period_end)
       );
     `);
+
+    // 半期報告書（160/170）・訂正有価証券報告書（130）など、年次以外の定期報告用。
+    // 年次の financial_summary とは分離し、doc_id を主キーにする。
+    await this.connection.run(`
+      CREATE TABLE IF NOT EXISTS financial_summary_periodic (
+        doc_id VARCHAR PRIMARY KEY,
+        doc_type_code VARCHAR,
+        period_type VARCHAR,
+        edinet_code VARCHAR,
+        security_code VARCHAR,
+        company_name VARCHAR,
+        period_end VARCHAR,
+        is_consolidated BOOLEAN,
+        net_sales_current DOUBLE,
+        net_sales_prior DOUBLE,
+        operating_income_current DOUBLE,
+        operating_income_prior DOUBLE,
+        operating_margin_current DOUBLE,
+        operating_margin_prior DOUBLE,
+        operating_margin_growth_rate DOUBLE,
+        operating_margin_delta DOUBLE,
+        sales_growth_rate DOUBLE,
+        operating_income_growth_rate DOUBLE,
+        net_assets_current DOUBLE,
+        total_assets_current DOUBLE,
+        operating_cf_current DOUBLE,
+        investing_cf_current DOUBLE,
+        free_cash_flow_current DOUBLE,
+        cash_and_equivalents_current DOUBLE,
+        equity_ratio_current DOUBLE,
+        equity_ratio_prior DOUBLE,
+        roe_current DOUBLE,
+        roa_current DOUBLE,
+        dividend_per_share_current DOUBLE,
+        dividend_growth_rate DOUBLE,
+        eps_current DOUBLE,
+        bps_current DOUBLE,
+        number_of_employees INTEGER,
+        operating_income_per_employee DOUBLE
+      );
+    `);
+
+    // XBRLの全Fact（数値・テキストBlock・セグメント軸）を保存する汎用テーブル。
+    await this.connection.run(`
+      CREATE TABLE IF NOT EXISTS xbrl_facts (
+        doc_id VARCHAR,
+        concept VARCHAR,
+        qname VARCHAR,
+        context_id VARCHAR,
+        value_text VARCHAR,
+        value_numeric DOUBLE,
+        unit VARCHAR,
+        period_start VARCHAR,
+        period_end VARCHAR,
+        instant VARCHAR,
+        dimensions VARCHAR,
+        decimals INTEGER,
+        scale INTEGER
+      );
+    `);
+
+    // Fact取込済みdocIDの管理（キャッシュ削除の判定にも使う）。
+    await this.connection.run(`
+      CREATE TABLE IF NOT EXISTS xbrl_fact_documents (
+        doc_id VARCHAR PRIMARY KEY,
+        fact_count INTEGER,
+        ingested_at TIMESTAMP DEFAULT current_timestamp
+      );
+    `);
   }
 
   public async insert(record: CompanyFinancialComparison): Promise<void> {
@@ -97,50 +169,81 @@ export class FinancialStore {
       );
     `);
 
-    stmt.bindVarchar(1, record.metadata.edinetCode || "");
-    stmt.bindVarchar(2, record.metadata.securityCode || "");
-    stmt.bindVarchar(3, record.metadata.companyName || "");
-    stmt.bindVarchar(4, record.metadata.periodEnd || "");
-    stmt.bindBoolean(5, record.current.isConsolidated);
+    this.bindSummaryColumns(stmt, record, 0);
+    await stmt.run();
+  }
 
-    this.bindNullableDouble(stmt, 6, record.current.netSales);
-    this.bindNullableDouble(stmt, 7, record.prior.netSales);
-    this.bindNullableDouble(stmt, 8, record.current.operatingIncome);
-    this.bindNullableDouble(stmt, 9, record.prior.operatingIncome);
-    this.bindNullableDouble(stmt, 10, record.operatingMarginCurrent);
-    this.bindNullableDouble(stmt, 11, record.operatingMarginPrior);
-    this.bindNullableDouble(stmt, 12, record.operatingMarginGrowthRate);
-    this.bindNullableDouble(stmt, 13, record.operatingMarginDelta);
-    this.bindNullableDouble(stmt, 14, record.salesGrowthRate);
-    this.bindNullableDouble(stmt, 15, record.operatingIncomeGrowthRate);
+  /**
+   * 半期報告書（160/170）・訂正有価証券報告書（130）などを別テーブルに保存する。
+   */
+  public async insertPeriodic(
+    record: CompanyFinancialComparison,
+    docId: string,
+    docTypeCode: string,
+  ): Promise<void> {
+    if (!this.connection) throw new Error("Database not initialized");
 
-    this.bindNullableDouble(stmt, 16, record.current.netAssets);
-    this.bindNullableDouble(stmt, 17, record.current.totalAssets);
-    this.bindNullableDouble(stmt, 18, record.current.operatingCashFlow);
-    this.bindNullableDouble(stmt, 19, record.current.investingCashFlow);
-    this.bindNullableDouble(stmt, 20, record.freeCashFlowCurrent);
-    this.bindNullableDouble(stmt, 21, record.current.cashAndEquivalents);
-    this.bindNullableDouble(stmt, 22, record.equityRatioCurrent);
-    this.bindNullableDouble(stmt, 23, record.equityRatioPrior);
-    this.bindNullableDouble(stmt, 24, record.roeCurrent);
-    this.bindNullableDouble(stmt, 25, record.roaCurrent);
-    this.bindNullableDouble(stmt, 26, record.current.dividendPerShare);
-    this.bindNullableDouble(stmt, 27, record.dividendGrowthRate);
-    this.bindNullableDouble(stmt, 28, record.current.eps);
-    this.bindNullableDouble(stmt, 29, record.current.bps);
+    const stmt = await this.connection.prepare(`
+      INSERT OR REPLACE INTO financial_summary_periodic VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34
+      );
+    `);
+
+    stmt.bindVarchar(1, docId);
+    stmt.bindVarchar(2, docTypeCode);
+    stmt.bindVarchar(3, record.metadata.periodType || "");
+    this.bindSummaryColumns(stmt, record, 3);
+    await stmt.run();
+  }
+
+  private bindSummaryColumns(
+    stmt: any,
+    record: CompanyFinancialComparison,
+    base: number,
+  ): void {
+    stmt.bindVarchar(base + 1, record.metadata.edinetCode || "");
+    stmt.bindVarchar(base + 2, record.metadata.securityCode || "");
+    stmt.bindVarchar(base + 3, record.metadata.companyName || "");
+    stmt.bindVarchar(base + 4, record.metadata.periodEnd || "");
+    stmt.bindBoolean(base + 5, record.current.isConsolidated);
+
+    this.bindNullableDouble(stmt, base + 6, record.current.netSales);
+    this.bindNullableDouble(stmt, base + 7, record.prior.netSales);
+    this.bindNullableDouble(stmt, base + 8, record.current.operatingIncome);
+    this.bindNullableDouble(stmt, base + 9, record.prior.operatingIncome);
+    this.bindNullableDouble(stmt, base + 10, record.operatingMarginCurrent);
+    this.bindNullableDouble(stmt, base + 11, record.operatingMarginPrior);
+    this.bindNullableDouble(stmt, base + 12, record.operatingMarginGrowthRate);
+    this.bindNullableDouble(stmt, base + 13, record.operatingMarginDelta);
+    this.bindNullableDouble(stmt, base + 14, record.salesGrowthRate);
+    this.bindNullableDouble(stmt, base + 15, record.operatingIncomeGrowthRate);
+
+    this.bindNullableDouble(stmt, base + 16, record.current.netAssets);
+    this.bindNullableDouble(stmt, base + 17, record.current.totalAssets);
+    this.bindNullableDouble(stmt, base + 18, record.current.operatingCashFlow);
+    this.bindNullableDouble(stmt, base + 19, record.current.investingCashFlow);
+    this.bindNullableDouble(stmt, base + 20, record.freeCashFlowCurrent);
+    this.bindNullableDouble(stmt, base + 21, record.current.cashAndEquivalents);
+    this.bindNullableDouble(stmt, base + 22, record.equityRatioCurrent);
+    this.bindNullableDouble(stmt, base + 23, record.equityRatioPrior);
+    this.bindNullableDouble(stmt, base + 24, record.roeCurrent);
+    this.bindNullableDouble(stmt, base + 25, record.roaCurrent);
+    this.bindNullableDouble(stmt, base + 26, record.current.dividendPerShare);
+    this.bindNullableDouble(stmt, base + 27, record.dividendGrowthRate);
+    this.bindNullableDouble(stmt, base + 28, record.current.eps);
+    this.bindNullableDouble(stmt, base + 29, record.current.bps);
 
     if (
       record.current.numberOfEmployees !== undefined &&
       !Number.isNaN(record.current.numberOfEmployees)
     ) {
-      stmt.bindInteger(30, Math.round(record.current.numberOfEmployees));
+      stmt.bindInteger(base + 30, Math.round(record.current.numberOfEmployees));
     } else {
-      stmt.bindNull(30);
+      stmt.bindNull(base + 30);
     }
 
-    this.bindNullableDouble(stmt, 31, record.operatingIncomePerEmployee);
-
-    await stmt.run();
+    this.bindNullableDouble(stmt, base + 31, record.operatingIncomePerEmployee);
   }
 
   /**
@@ -171,9 +274,94 @@ export class FinancialStore {
     return set;
   }
 
+  /**
+   * バックフィル用: 既存の (証券コード, 決算期) セット。
+   * 証券コードは4桁に正規化済みの値が入っている。
+   */
+  public async getExistingSecurityPeriods(): Promise<Set<string>> {
+    if (!this.connection) throw new Error("Database not initialized");
+    const reader = await this.connection.runAndReadAll(
+      "SELECT security_code, period_end FROM financial_summary WHERE security_code <> '' AND period_end <> ''",
+    );
+    const rows = reader.getRows();
+    const set = new Set<string>();
+    for (const row of rows) {
+      set.add(`${row[0]}:${row[1]}`);
+    }
+    return set;
+  }
+
+  /**
+   * 半期・訂正テーブルに登録済みの doc_id セット。
+   */
+  public async getExistingPeriodicDocIds(): Promise<Set<string>> {
+    if (!this.connection) throw new Error("Database not initialized");
+    const reader = await this.connection.runAndReadAll(
+      "SELECT doc_id FROM financial_summary_periodic",
+    );
+    const rows = reader.getRows();
+    return new Set(rows.map((row) => String(row[0])));
+  }
+
+  /**
+   * XBRLの全Factを一括投入する。大量行を想定してAppenderを使う。
+   */
+  public async appendFacts(rows: XbrlFactRow[]): Promise<void> {
+    if (!this.connection) throw new Error("Database not initialized");
+    if (rows.length === 0) return;
+
+    const appender = await this.connection.createAppender("xbrl_facts");
+    try {
+      for (const row of rows) {
+        appender.appendVarchar(row.docId);
+        appender.appendVarchar(row.concept);
+        appender.appendVarchar(row.qname);
+        appender.appendVarchar(row.contextId);
+        if (row.valueText === null) appender.appendNull();
+        else appender.appendVarchar(row.valueText);
+        if (row.valueNumeric === null) appender.appendNull();
+        else appender.appendDouble(row.valueNumeric);
+        if (row.unit === null) appender.appendNull();
+        else appender.appendVarchar(row.unit);
+        if (row.periodStart === null) appender.appendNull();
+        else appender.appendVarchar(row.periodStart);
+        if (row.periodEnd === null) appender.appendNull();
+        else appender.appendVarchar(row.periodEnd);
+        if (row.instant === null) appender.appendNull();
+        else appender.appendVarchar(row.instant);
+        if (row.dimensions === null) appender.appendNull();
+        else appender.appendVarchar(row.dimensions);
+        if (row.decimals === null) appender.appendNull();
+        else appender.appendInteger(row.decimals);
+        if (row.scale === null) appender.appendNull();
+        else appender.appendInteger(row.scale);
+        appender.endRow();
+      }
+      appender.flushSync();
+    } finally {
+      appender.closeSync();
+    }
+  }
+
+  public async markFactDocument(docId: string, factCount: number): Promise<void> {
+    if (!this.connection) throw new Error("Database not initialized");
+    await this.connection.run(
+      "INSERT OR REPLACE INTO xbrl_fact_documents (doc_id, fact_count) VALUES (?, ?)",
+      [docId, factCount],
+    );
+  }
+
+  public async getIngestedFactDocIds(): Promise<Set<string>> {
+    if (!this.connection) throw new Error("Database not initialized");
+    const reader = await this.connection.runAndReadAll("SELECT doc_id FROM xbrl_fact_documents");
+    return new Set(reader.getRows().map((row) => String(row[0])));
+  }
+
   public async screen(criteria: ScreeningCriteria = {}): Promise<ScreeningResultRow[]> {
     if (!this.connection) throw new Error("Database not initialized");
 
+    const tableName =
+      criteria.table === "periodic" ? "financial_summary_periodic" : "financial_summary";
     const conditions: string[] = [];
 
     if (criteria.whereClause) {
@@ -253,8 +441,10 @@ export class FinancialStore {
         eps_current,
         bps_current,
         number_of_employees,
-        operating_income_per_employee
-      FROM financial_summary
+        operating_income_per_employee,
+        ${criteria.table === "periodic" ? "doc_type_code" : "NULL::VARCHAR AS doc_type_code"},
+        ${criteria.table === "periodic" ? "period_type" : "NULL::VARCHAR AS period_type"}
+      FROM ${tableName}
       ${whereClause}
       ORDER BY ${orderCol} ${direction} NULLS LAST
       ${limitClause};
@@ -291,6 +481,8 @@ export class FinancialStore {
       bpsCurrent: row[24] !== null ? Number(row[24]) : undefined,
       numberOfEmployees: row[25] !== null ? Number(row[25]) : undefined,
       operatingIncomePerEmployee: row[26] !== null ? Number(row[26]) : undefined,
+      docTypeCode: row[27] !== null ? String(row[27]) : undefined,
+      periodType: row[28] !== null ? String(row[28]) : undefined,
     }));
   }
 

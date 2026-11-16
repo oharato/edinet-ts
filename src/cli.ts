@@ -1,12 +1,21 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { XbrlParser } from "./xbrl/parser.js";
 import { FinancialExtractor } from "./financial/extractor.js";
 import { FinancialStore } from "./db/store.js";
+import { buildFactRows } from "./db/facts.js";
 import { SCREENING_COLUMNS, QUERY_EXAMPLES } from "./db/schema-info.js";
 import { EdinetClient } from "./edinet/client.js";
+
+// 手動実行でも .env の EDINET_API_KEY を読めるようにする。
+// systemd 経由では EnvironmentFile が設定するため、.env がなくても動作する。
+try {
+  process.loadEnvFile();
+} catch {
+  // .env がない場合は環境変数をそのまま使う
+}
 
 const program = new Command();
 program
@@ -149,10 +158,15 @@ program
   .option(
     "--archive <path>",
     "archive.sqlite のパス",
-    "/home/oharato/workspace/edinet-ts/data/production/duck-financial/daily/2026-11-03/candidate/archive.sqlite",
+    "./data/old/production/duck-financial/daily/2026-11-03/candidate/archive.sqlite",
   )
   .option("--db <path>", "DuckDBファイルの保存先", "./data/screening.duckdb")
-  .option("-l, --limit <number>", "処理する書類の上限件数 (テスト用)", parseInt)
+  .option(
+    "--doc-types <list>",
+    "取り込む書類種別 (カンマ区切り。120=年次, 130=訂正年次, 160=半期, 170=訂正半期)",
+    "120,130,140,150,160,170",
+  )
+  .option("-l, --limit <number>", "処理する書類の上限件数 (テスト用)", parseInteger)
   .action(async (options) => {
     const archivePath = resolve(process.cwd(), options.archive);
     const dbPath = resolve(process.cwd(), options.db);
@@ -170,23 +184,35 @@ program
     const parser = new XbrlParser();
     const extractor = new FinancialExtractor();
 
+    const docTypes = String(options.docTypes)
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const placeholders = docTypes.map(() => "?").join(",");
     const limitClause = options.limit ? `LIMIT ${options.limit}` : "";
     const query = `
       SELECT DISTINCT
         s.doc_id,
+        json_extract(o.body, '$.document.docTypeCode') AS doc_type_code,
         c.xml
       FROM archive_sources s
       JOIN archive_observations o ON s.doc_id = o.doc_id
       JOIN archive_contents c ON json_extract(s.body, '$.sourceSha256') = c.sha256
-      WHERE json_extract(o.body, '$.document.docTypeCode') = '120'
+      WHERE json_extract(o.body, '$.document.docTypeCode') IN (${placeholders})
       ORDER BY s.doc_id
       ${limitClause};
     `;
 
-    const rows = sqlite.prepare(query).all() as Array<{ doc_id: string; xml: Buffer }>;
-    console.log(`Found ${rows.length} annual reports (code 120) with XBRL content.\n`);
+    const rows = sqlite.prepare(query).all(...docTypes) as Array<{
+      doc_id: string;
+      doc_type_code: string;
+      xml: Buffer;
+    }>;
+    console.log(`Found ${rows.length} reports (${docTypes.join(",")}) with XBRL content.\n`);
 
-    let successCount = 0;
+    let annualCount = 0;
+    let periodicCount = 0;
+    let errorCount = 0;
     const startTime = Date.now();
 
     for (let i = 0; i < rows.length; i++) {
@@ -195,8 +221,13 @@ program
         const xmlContent = gunzipSync(row.xml).toString("utf8");
         const doc = parser.parse(xmlContent);
         const comparison = extractor.extract(doc);
-        await store.insert(comparison);
-        successCount++;
+        if (row.doc_type_code === "120") {
+          await store.insert(comparison);
+          annualCount++;
+        } else {
+          await store.insertPeriodic(comparison, row.doc_id, row.doc_type_code);
+          periodicCount++;
+        }
 
         if (i % 50 === 0 || i === rows.length - 1) {
           const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -205,17 +236,17 @@ program
               ? comparison.metadata.companyName.slice(0, 13) + "…"
               : comparison.metadata.companyName;
           process.stdout.write(
-            `\rProgress: [${i + 1}/${rows.length}] (${elapsed}s) - Last: ${name.padEnd(16)}`,
+            `\rProgress: [${i + 1}/${rows.length}] ${row.doc_type_code} (${elapsed}s) - Last: ${name.padEnd(16)}`,
           );
         }
       } catch (e: any) {
-        // スキップ
+        errorCount++;
       }
     }
 
     const totalSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(
-      `\n\nDone! Successfully imported ${successCount} companies into DuckDB in ${totalSeconds}s.`,
+      `\n\nDone! annual=${annualCount}, periodic=${periodicCount}, errors=${errorCount} in ${totalSeconds}s.`,
     );
     store.close();
   });
@@ -227,6 +258,7 @@ const screenCmd = program
   .command("screen")
   .description("DuckDBから利益率や成長率の条件で企業をスクリーニングします")
   .option("--db <path>", "DuckDBファイルのパス", "./data/screening.duckdb")
+  .option("--table <name>", "対象テーブル (annual: 年次, periodic: 半期・訂正)", "annual")
   .option(
     "-w, --where <sql>",
     '任意のSQL条件式 (例: "operating_margin_current > 0.15 AND equity_ratio_current > 0.5")',
@@ -246,7 +278,7 @@ const screenCmd = program
     "current_margin",
   )
   .option("--order-dir <dir>", "ソート順 (asc, desc)", "desc")
-  .option("-l, --limit <number>", "取得件数上限", parseInt, 50)
+  .option("-l, --limit <number>", "取得件数上限", parseInteger, 50)
   .option("--json", "JSON形式で出力")
   .addHelpText(
     "after",
@@ -283,6 +315,7 @@ const screenCmd = program
     await store.init();
 
     const rows = await store.screen({
+      table: options.table === "periodic" ? "periodic" : "annual",
       whereClause: options.where,
       minMarginGrowth: options.minGrowth,
       minCurrentMargin: options.minMargin,
@@ -310,6 +343,7 @@ const screenCmd = program
     console.table(
       rows.map((r) => ({
         コード: r.securityCode || r.edinetCode,
+        種別: r.docTypeCode || "-",
         会社名: r.companyName.length > 11 ? r.companyName.slice(0, 10) + "…" : r.companyName,
         決算期: r.periodEnd,
         "売上(億)": r.netSalesCurrent ? (r.netSalesCurrent / 100_000_000).toFixed(1) : "-",
@@ -376,16 +410,29 @@ program
  */
 program
   .command("sync")
-  .description("EDINET APIから最新の有価証券報告書を取得し、DuckDBに差分更新します")
+  .description(
+    "EDINET APIから指定期間の書類を取得し、DuckDBに差分更新します（--since/--untilでバックフィル可能）",
+  )
   .option("--db <path>", "DuckDBファイルの保存先", "./data/screening.duckdb")
   .option("-d, --days <number>", "取得する直近の日数 (例: 14 で直近14日分)", "7")
   .option("--since <date>", "同期開始日 (YYYY-MM-DD)")
   .option("--until <date>", "同期終了日 (YYYY-MM-DD, デフォルト: 本日)")
+  .option(
+    "--doc-types <list>",
+    "取得する書類種別 (カンマ区切り。120=年次, 130=訂正年次, 160=半期, 170=訂正半期)",
+    "120,130,140,150,160,170",
+  )
   .option("--api-key <key>", "EDINET APIキー (省略時は環境変数 EDINET_API_KEY を使用)")
+  .option("--keep-cache", "取込後もXBRLキャッシュを残す")
   .option("--dry-run", "実際のダウンロードやDB更新を行わず、対象書類の件数と一覧のみ表示")
   .action(async (options) => {
-    const today = new Date().toISOString().slice(0, 10);
+    // バッチはJSTで動くため、UTCのtoISOStringではなくAsia/Tokyoの日付を使う。
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
     const until = options.until || today;
+    const docTypes = String(options.docTypes)
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
 
     let since = options.since;
     if (!since) {
@@ -406,10 +453,19 @@ program
     const client = new EdinetClient({ apiKey });
 
     process.stdout.write("開示書類一覧を取得中...");
-    const reports = await client.getAnnualReportsInRange(since, until, (date, count) => {
-      process.stdout.write(`\r開示書類一覧を取得中... [${date}] (${count}件の有報)`);
-    });
-    console.log(`\n合計 ${reports.length} 件の有価証券報告書が見つかりました。\n`);
+    const allReports = await client.getReportsInRange(
+      since,
+      until,
+      docTypes,
+      (date, count) => {
+        process.stdout.write(`\r開示書類一覧を取得中... [${date}] (${count}件の対象書類)`);
+      },
+    );
+    // 投資信託等の非上場書類は証券コードを持たないため、スクリーニング対象から除外する。
+    const reports = allReports.filter((r) => r.secCode);
+    console.log(
+      `\n合計 ${allReports.length} 件の対象書類のうち、上場企業 ${reports.length} 件を同期対象にします。\n`,
+    );
 
     if (reports.length === 0) {
       console.log("同期対象の有価証券報告書はありませんでした。");
@@ -436,12 +492,18 @@ program
     await store.init();
 
     const existingKeys = await store.getExistingKeys();
-    console.log(`DuckDB既存レコード数: ${existingKeys.size} 件`);
+    const existingSecurityPeriods = await store.getExistingSecurityPeriods();
+    const existingPeriodicDocIds = await store.getExistingPeriodicDocIds();
+    const existingFactDocIds = await store.getIngestedFactDocIds();
+    console.log(
+      `DuckDB既存レコード数: ${existingKeys.size} 件 (定期報告: ${existingPeriodicDocIds.size} 件)`,
+    );
 
     const parser = new XbrlParser();
     const extractor = new FinancialExtractor();
 
     let successCount = 0;
+    let periodicCount = 0;
     let skipCount = 0;
     let errorCount = 0;
 
@@ -450,20 +512,62 @@ program
       const prefix = `[${i + 1}/${reports.length}] ${report.filerName} (${report.secCode || report.edinetCode})`;
 
       try {
-        const xml = await client.getXbrlContent(report.docId);
-        const doc = parser.parse(xml);
-        const record = extractor.extract(doc);
-
-        const key = `${record.metadata.companyName}:${record.metadata.periodEnd}`;
-        if (existingKeys.has(key)) {
+        if (report.docTypeCode !== "120" && existingPeriodicDocIds.has(report.docId)) {
+          if (!options.keepCache && existingFactDocIds.has(report.docId)) {
+            client.removeCached(report.docId);
+          }
+          skipCount++;
+          continue;
+        }
+        if (
+          report.docTypeCode === "120" &&
+          report.periodEnd &&
+          existingSecurityPeriods.has(`${normalizeSecCode(report.secCode)}:${report.periodEnd}`)
+        ) {
+          if (!options.keepCache && existingFactDocIds.has(report.docId)) {
+            client.removeCached(report.docId);
+          }
           skipCount++;
           continue;
         }
 
-        await store.insert(record);
-        existingKeys.add(key);
-        successCount++;
-        console.log(`✅ ${prefix}: 登録完了 (期末: ${record.metadata.periodEnd})`);
+        const xml = await client.getXbrlContent(report.docId);
+        const doc = parser.parse(xml);
+        const record = extractor.extract(doc);
+
+        // XBRLの全Factを保存してからキャッシュを削除する（--keep-cacheで残せる）。
+        const factRows = buildFactRows(report.docId, doc);
+        await store.appendFacts(factRows);
+        await store.markFactDocument(report.docId, factRows.length);
+        existingFactDocIds.add(report.docId);
+        if (!options.keepCache) {
+          client.removeCached(report.docId);
+        }
+
+        if (report.docTypeCode === "120") {
+          const key = `${record.metadata.companyName}:${record.metadata.periodEnd}`;
+          if (existingKeys.has(key)) {
+            skipCount++;
+            continue;
+          }
+
+          await store.insert(record);
+          existingKeys.add(key);
+          existingSecurityPeriods.add(
+            `${record.metadata.securityCode || normalizeSecCode(report.secCode)}:${record.metadata.periodEnd || report.periodEnd}`,
+          );
+          successCount++;
+          console.log(`✅ ${prefix}: 登録完了 (期末: ${record.metadata.periodEnd})`);
+        } else {
+          await store.insertPeriodic(record, report.docId, report.docTypeCode);
+          existingPeriodicDocIds.add(report.docId);
+          periodicCount++;
+          console.log(
+            `✅ ${prefix} [${report.docTypeCode}]: 登録完了 (期末: ${record.metadata.periodEnd})`,
+          );
+        }
+        // EDINET APIへの負荷を抑える
+        await new Promise((r) => setTimeout(r, 500));
       } catch (err: any) {
         errorCount++;
         console.error(`⚠️ ${prefix}: スキップ (${err.message})`);
@@ -474,12 +578,141 @@ program
 
     console.log("\n================ 同期サマリ ================");
     console.log(`期間:           ${since} 〜 ${until}`);
-    console.log(`対象有報数:     ${reports.length} 件`);
-    console.log(`新規追加:       ${successCount} 件`);
+    console.log(`対象書類数:     ${reports.length} 件`);
+    console.log(`年次新規追加:   ${successCount} 件`);
+    console.log(`定期新規追加:   ${periodicCount} 件`);
     console.log(`既存スキップ:   ${skipCount} 件`);
     console.log(`エラー/除外:    ${errorCount} 件`);
     console.log(`DB保存先:       ${dbPath}`);
     console.log("===========================================\n");
+  });
+
+
+function parseInteger(value: string): number {
+  return parseInt(value, 10);
+}
+
+function normalizeSecCode(secCode?: string): string {
+  if (!secCode) return "";
+  return secCode.length === 5 && secCode.endsWith("0") ? secCode.slice(0, 4) : secCode;
+}
+
+/**
+ * 7. facts コマンド: XBRLの全FactをDuckDBに保存
+ */
+program
+  .command("facts")
+  .description("XBRLキャッシュ（またはarchive.sqlite）の全FactをDuckDBのxbrl_factsに保存します")
+  .option("--db <path>", "DuckDBファイルの保存先", "./data/screening.duckdb")
+  .option("--cache <dir>", "XBRLキャッシュディレクトリ", "./data/edinet-cache")
+  .option("--archive <path>", "archive.sqlite から取り込む場合のパス")
+  .option("--cleanup", "取込成功後にXBRLキャッシュを削除する")
+  .option("-l, --limit <number>", "処理する書類の上限件数", parseInteger)
+  .action(async (options) => {
+    const dbPath = resolve(process.cwd(), options.db);
+    const store = new FinancialStore(dbPath);
+    await store.init();
+    const ingested = await store.getIngestedFactDocIds();
+    const parser = new XbrlParser();
+    const limit = options.limit ?? 0;
+
+    let processed = 0;
+    let skipped = 0;
+    let errors = 0;
+    let deleted = 0;
+    let factCount = 0;
+
+    const ingest = async (docId: string, xml: string, cleanupPath?: string) => {
+      const doc = parser.parse(xml);
+      const rows = buildFactRows(docId, doc);
+      await store.appendFacts(rows);
+      await store.markFactDocument(docId, rows.length);
+      ingested.add(docId);
+      factCount += rows.length;
+      processed++;
+      if (cleanupPath && options.cleanup) {
+        unlinkSync(cleanupPath);
+        deleted++;
+      }
+    };
+
+    if (options.archive) {
+      const archivePath = resolve(process.cwd(), options.archive);
+      if (!existsSync(archivePath)) throw new Error(`archive not found: ${archivePath}`);
+      const { DatabaseSync } = await import("node:sqlite");
+      const { gunzipSync } = await import("node:zlib");
+      const sqlite = new DatabaseSync(archivePath, { readOnly: true });
+      const rows = sqlite.prepare(`
+        SELECT DISTINCT
+          s.doc_id,
+          json_extract(o.body, '$.document.docTypeCode') AS doc_type_code,
+          c.xml
+        FROM archive_sources s
+        JOIN archive_observations o ON s.doc_id = o.doc_id
+        JOIN archive_contents c ON json_extract(s.body, '$.sourceSha256') = c.sha256
+        WHERE json_extract(o.body, '$.document.docTypeCode') IN ('120','130','140','150','160','170')
+        ORDER BY s.doc_id
+      `);
+
+      for (const row of rows.iterate() as Iterable<{
+        doc_id: string;
+        doc_type_code: string;
+        xml: Buffer;
+      }>) {
+        if (limit && processed >= limit) break;
+        if (ingested.has(row.doc_id)) {
+          skipped++;
+          continue;
+        }
+        try {
+          await ingest(row.doc_id, gunzipSync(row.xml).toString("utf8"));
+          if (processed % 50 === 0) {
+            process.stdout.write(`\rArchive: ${processed} docs / ${factCount} facts`);
+          }
+        } catch (e: any) {
+          errors++;
+          console.error(`\n⚠️ ${row.doc_id}: ${e.message}`);
+        }
+      }
+      sqlite.close();
+    } else {
+      const cacheDir = resolve(process.cwd(), options.cache);
+      if (!existsSync(cacheDir)) throw new Error(`cache not found: ${cacheDir}`);
+      const files = readdirSync(cacheDir).filter((file) => file.endsWith(".xbrl"));
+      for (const file of files) {
+        if (limit && processed >= limit) break;
+        const docId = file.slice(0, -".xbrl".length);
+        const path = join(cacheDir, file);
+        if (ingested.has(docId)) {
+          skipped++;
+          if (options.cleanup) {
+            unlinkSync(path);
+            deleted++;
+          }
+          continue;
+        }
+        try {
+          await ingest(docId, readFileSync(path, "utf8"), path);
+          if (processed % 50 === 0) {
+            process.stdout.write(`\rCache: ${processed} docs / ${factCount} facts`);
+          }
+        } catch (e: any) {
+          errors++;
+          console.error(`\n⚠️ ${docId}: ${e.message}`);
+        }
+      }
+    }
+
+    store.close();
+
+    console.log("\n\n================ Fact取込結果 ================");
+    console.log(`取込doc数:     ${processed}`);
+    console.log(`Fact数:        ${factCount}`);
+    console.log(`既存スキップ:  ${skipped}`);
+    console.log(`エラー:        ${errors}`);
+    console.log(`キャッシュ削除: ${deleted}`);
+    console.log(`DB保存先:      ${dbPath}`);
+    console.log("==============================================\n");
   });
 
 program.parse(process.argv);

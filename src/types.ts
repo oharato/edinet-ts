@@ -6,6 +6,7 @@ export interface CompanyMetadata {
   securityCode?: string;
   companyName: string;
   periodEnd: string; // YYYY-MM-DD
+  periodType?: string; // FY / HY / Q1 / Q2 / Q3 など
 }
 
 /**
@@ -61,6 +62,7 @@ export interface CompanyFinancialComparison {
  * スクリーニングの抽出・ソート条件
  */
 export interface ScreeningCriteria {
+  table?: "annual" | "periodic"; // 対象テーブル (annual: 年次, periodic: 半期・訂正)
   whereClause?: string; // 自由なSQL条件
   minMarginGrowth?: number; // 営業利益率の前年比成長率の下限
   minCurrentMargin?: number; // 当期営業利益率の下限
