@@ -42,6 +42,20 @@ export const SCREENING_COLUMNS: ColumnDefinition[] = [
     example: "is_consolidated = true",
   },
   {
+    name: "doc_type_code",
+    type: "VARCHAR",
+    unit: "120 / 130",
+    description: "書類種別 (120=有価証券報告書, 130=訂正有価証券報告書)",
+    example: "doc_type_code = '130'",
+  },
+  {
+    name: "submitted_at",
+    type: "VARCHAR",
+    unit: "YYYY-MM-DD HH:MM",
+    description: "提出日時 (EDINETのsubmitDateTime)",
+    example: "submitted_at >= '2024-01-01'",
+  },
+  {
     name: "operating_margin_current",
     type: "DOUBLE",
     unit: "小数比率 (0.15 = 15%)",

@@ -197,11 +197,6 @@ export class FinancialExtractor {
         ? currentMetrics.operatingCashFlow + currentMetrics.investingCashFlow
         : undefined;
 
-    const freeCashFlowPrior =
-      priorMetrics.operatingCashFlow !== undefined && priorMetrics.investingCashFlow !== undefined
-        ? priorMetrics.operatingCashFlow + priorMetrics.investingCashFlow
-        : undefined;
-
     // 従業員1人当たり営業利益 (営業利益 / 従業員数)
     const operatingIncomePerEmployee =
       currentMetrics.operatingIncome !== undefined &&
@@ -234,7 +229,6 @@ export class FinancialExtractor {
       roeCurrent,
       roaCurrent,
       freeCashFlowCurrent,
-      freeCashFlowPrior,
       operatingIncomePerEmployee,
       dividendGrowthRate,
     };
@@ -260,19 +254,17 @@ export class FinancialExtractor {
       doc.dei.get("CurrentFiscalYearEndDateDEI") ||
       doc.dei.get("PeriodEndDate") ||
       "";
-    const periodType = doc.dei.get("TypeOfCurrentPeriodDEI") || "";
 
     return {
       edinetCode,
       securityCode,
       companyName,
       periodEnd,
-      periodType,
     };
   }
 
   /**
-   * 年次（FY）・半期（HY/Q2）・四半期（Q1/Q3）で異なるコンテキストIDを解決する。
+   * 年次（FY）のコンテキストIDを解決する。
    *
    * 連結の有無は DEI の WhetherConsolidatedFinancialStatementsArePreparedDEI を正とする。
    * 連結財務諸表を作成している企業で、たまたま連結側の売上・営業利益タグが未対応だった場合に
@@ -288,17 +280,12 @@ export class FinancialExtractor {
     priorInstantId: string;
     hasConsolidated: boolean;
   } {
-    const periodType = (doc.dei.get("TypeOfCurrentPeriodDEI") || "").toUpperCase();
-    const isInterim =
-      periodType === "HY" || periodType === "Q1" || periodType === "Q2" || periodType === "Q3";
-
-    // 半期報告書は InterimDuration、四半期報告書は CurrentYTDDuration を使う。
-    const interimCandidates = [
+    const candidates = [
       {
-        current: "InterimDuration",
-        prior: "Prior1InterimDuration",
-        currentInstant: "InterimInstant",
-        priorInstant: "Prior1InterimInstant",
+        current: "CurrentYearDuration",
+        prior: "Prior1YearDuration",
+        currentInstant: "CurrentYearInstant",
+        priorInstant: "Prior1YearInstant",
       },
       {
         current: "CurrentYTDDuration",
@@ -312,24 +299,7 @@ export class FinancialExtractor {
         currentInstant: "CurrentQuarterInstant",
         priorInstant: "Prior1QuarterInstant",
       },
-      {
-        current: "CurrentYearDuration",
-        prior: "Prior1YearDuration",
-        currentInstant: "CurrentYearInstant",
-        priorInstant: "Prior1YearInstant",
-      },
     ];
-    const candidates = isInterim
-      ? interimCandidates
-      : [
-          {
-            current: "CurrentYearDuration",
-            prior: "Prior1YearDuration",
-            currentInstant: "CurrentYearInstant",
-            priorInstant: "Prior1YearInstant",
-          },
-          ...interimCandidates.slice(1),
-        ];
 
     const consolidatedPrepared = doc.dei
       .get("WhetherConsolidatedFinancialStatementsArePreparedDEI")

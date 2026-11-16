@@ -11,23 +11,14 @@ export interface ParsedFact {
   scale?: number;
 }
 
-export interface ParsedContext {
-  id: string;
-  startDate?: string;
-  endDate?: string;
-  instant?: string;
-  isConsolidated: boolean;
-  dimensions?: Record<string, string>; // セグメント等の軸
-}
-
 export interface ParsedXbrlDocument {
   facts: ParsedFact[];
-  contexts: Map<string, ParsedContext>;
   dei: Map<string, string>;
 }
 
 /**
- * XBRL / iXBRL XML をパースして、Fact一覧、Context、DEIメタデータを抽出するパーサー
+ * XBRL / iXBRL XML をパースして、Fact一覧とDEIメタデータを抽出するパーサー。
+ * Context は Fact の contextRef（CurrentYearDuration 等）で識別するため、定義の解析は行わない。
  */
 export class XbrlParser {
   private parser: XMLParser;
@@ -39,33 +30,25 @@ export class XbrlParser {
       textNodeName: "#text",
       parseTagValue: false,
       trimValues: true,
-      isArray: (name) => name === "context" || name === "xbrli:context",
     });
   }
 
   public parse(xmlContent: string): ParsedXbrlDocument {
     const parsed = this.parser.parse(xmlContent);
-    const contexts = new Map<string, ParsedContext>();
     const facts: ParsedFact[] = [];
     const dei = new Map<string, string>();
 
     // 通常のXBRLではルート直下に xbrli:xbrl または xbrl がある
     const root = parsed["xbrli:xbrl"] || parsed["xbrl"] || parsed;
-    this.traverse(root, contexts, facts, dei);
+    this.traverse(root, facts, dei);
 
     return {
       facts,
-      contexts,
       dei,
     };
   }
 
-  private traverse(
-    node: unknown,
-    contexts: Map<string, ParsedContext>,
-    facts: ParsedFact[],
-    dei: Map<string, string>,
-  ): void {
+  private traverse(node: unknown, facts: ParsedFact[], dei: Map<string, string>): void {
     if (!node || typeof node !== "object") return;
 
     const obj = node as Record<string, unknown>;
@@ -75,16 +58,10 @@ export class XbrlParser {
 
       const localName = key.includes(":") ? key.split(":")[1] : key;
 
-      // 1. Context の解析
-      if (localName === "context") {
-        const ctxList = Array.isArray(value) ? value : [value];
-        for (const ctx of ctxList) {
-          this.parseContextNode(ctx, contexts);
-        }
-        continue;
-      }
+      // Context 定義は Fact 抽出に不要なので走査しない。
+      if (localName === "context") continue;
 
-      // 2. DEI メタデータの解析
+      // 1. DEI メタデータの解析
       if (key.startsWith("jpdei_cor:") || localName.endsWith("DEI")) {
         const text = this.getTextValue(value);
         if (text !== undefined) {
@@ -92,7 +69,7 @@ export class XbrlParser {
         }
       }
 
-      // 3. Fact ノードの抽出
+      // 2. Fact ノードの抽出
       const items = Array.isArray(value) ? value : [value];
       for (const item of items) {
         if (item && typeof item === "object") {
@@ -118,60 +95,11 @@ export class XbrlParser {
             }
           } else {
             // 子要素を再帰走査
-            this.traverse(item, contexts, facts, dei);
+            this.traverse(item, facts, dei);
           }
         }
       }
     }
-  }
-
-  private parseContextNode(value: unknown, contexts: Map<string, ParsedContext>): void {
-    if (!value || typeof value !== "object") return;
-    const ctx = value as Record<string, unknown>;
-    const id = ctx["@_id"] as string | undefined;
-    if (!id) return;
-
-    let startDate: string | undefined;
-    let endDate: string | undefined;
-    let instant: string | undefined;
-
-    // period
-    const period = (ctx["period"] || ctx["xbrli:period"]) as Record<string, unknown> | undefined;
-    if (period) {
-      startDate = this.getTextValue(period["startDate"] || period["xbrli:startDate"]);
-      endDate = this.getTextValue(period["endDate"] || period["xbrli:endDate"]);
-      instant = this.getTextValue(period["instant"] || period["xbrli:instant"]);
-    }
-
-    // セグメント等の軸（xbrldi:explicitMember）
-    const dimensions: Record<string, string> = {};
-    const scenario = (ctx["scenario"] || ctx["xbrli:scenario"]) as
-      | Record<string, unknown>
-      | undefined;
-    if (scenario && typeof scenario === "object") {
-      const members = scenario["xbrldi:explicitMember"] || scenario["explicitMember"];
-      const list = Array.isArray(members) ? members : members ? [members] : [];
-      for (const member of list) {
-        if (!member || typeof member !== "object") continue;
-        const m = member as Record<string, unknown>;
-        const dimension = m["@_dimension"] as string | undefined;
-        const value = this.getTextValue(m);
-        if (dimension && value) dimensions[dimension] = value;
-      }
-    }
-
-    // Consolidated か NonConsolidated かの判定
-    const isNonConsolidated =
-      id.includes("NonConsolidated") || JSON.stringify(ctx).includes("NonConsolidatedMember");
-
-    contexts.set(id, {
-      id,
-      startDate,
-      endDate,
-      instant,
-      isConsolidated: !isNonConsolidated,
-      dimensions: Object.keys(dimensions).length > 0 ? dimensions : undefined,
-    });
   }
 
   private getTextValue(val: unknown): string | undefined {
