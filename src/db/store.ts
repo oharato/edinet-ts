@@ -197,11 +197,7 @@ export class FinancialStore {
     await stmt.run();
   }
 
-  private bindSummaryColumns(
-    stmt: any,
-    record: CompanyFinancialComparison,
-    base: number,
-  ): void {
+  private bindSummaryColumns(stmt: any, record: CompanyFinancialComparison, base: number): void {
     stmt.bindVarchar(base + 1, record.metadata.edinetCode || "");
     stmt.bindVarchar(base + 2, record.metadata.securityCode || "");
     stmt.bindVarchar(base + 3, record.metadata.companyName || "");
