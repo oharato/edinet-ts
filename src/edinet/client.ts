@@ -106,17 +106,6 @@ export class EdinetClient {
   }
 
   /**
-   * 指定した日付範囲内の有価証券報告書（docTypeCode: "120"）の一覧を取得します。
-   */
-  public async getAnnualReportsInRange(
-    startDate: string,
-    endDate: string,
-    onProgress?: (date: string, count: number) => void,
-  ): Promise<EdinetDocumentSummary[]> {
-    return this.getReportsInRange(startDate, endDate, ["120"], onProgress);
-  }
-
-  /**
    * 指定した書類IDのXBRLファイル（ZIPを展開したXMLテキスト）を取得します。
    * キャッシュがあればローカルから返します。
    */

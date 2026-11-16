@@ -6,7 +6,6 @@ export interface CompanyMetadata {
   securityCode?: string;
   companyName: string;
   periodEnd: string; // YYYY-MM-DD
-  periodType?: string; // FY / HY / Q1 / Q2 / Q3 など
 }
 
 /**
@@ -47,7 +46,6 @@ export interface CompanyFinancialComparison {
 
   // キャッシュフロー・安全性・資本効率
   freeCashFlowCurrent?: number; // 当期 フリーキャッシュフロー (営業CF + 投資CF)
-  freeCashFlowPrior?: number; // 前期 フリーキャッシュフロー
   equityRatioCurrent?: number; // 当期 自己資本比率 (netAssets / totalAssets)
   equityRatioPrior?: number; // 前期 自己資本比率
   roeCurrent?: number; // 当期 ROE (netIncome / netAssets)
@@ -62,21 +60,10 @@ export interface CompanyFinancialComparison {
  * スクリーニングの抽出・ソート条件
  */
 export interface ScreeningCriteria {
-  table?: "annual" | "periodic"; // 対象テーブル (annual: 年次, periodic: 半期・訂正)
   whereClause?: string; // 自由なSQL条件
-  minMarginGrowth?: number; // 営業利益率の前年比成長率の下限
-  minCurrentMargin?: number; // 当期営業利益率の下限
-  minSalesGrowth?: number; // 売上成長率の下限
-  minOperatingIncomeGrowth?: number; // 営業利益成長率の下限
-  minEquityRatio?: number; // 自己資本比率の下限
-  minRoe?: number; // ROEの下限
-  minRoa?: number; // ROAの下限
-  minFcf?: number; // フリーキャッシュフローの下限
-  consolidatedOnly?: boolean; // 連結決算のみを対象にするか
   orderBy?:
     | "margin_growth"
     | "current_margin"
-    | "prior_margin"
     | "sales_growth"
     | "operating_income_growth"
     | "equity_ratio"
