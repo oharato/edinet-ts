@@ -4,18 +4,39 @@ import type { ParsedFact, ParsedXbrlDocument } from "../xbrl/parser.js";
 // 優先的に検索するタグ（ローカル名）
 const NET_SALES_TAGS = [
   "NetSalesSummaryOfBusinessResults",
+  "NetSalesIFRSSummaryOfBusinessResults",
   "RevenueIFRSSummaryOfBusinessResults",
+  "Revenue2IFRSSummaryOfBusinessResults",
   "NetSales",
+  "NetSalesIFRS",
   "Revenue",
+  "RevenueIFRS",
+  "Revenue2IFRS",
   "OperatingRevenue1",
+  "OperatingRevenuesIFRS",
+  "OperatingRevenuesIFRSKeyFinancialData",
+  "OperatingRevenueIFRS",
+  "OperatingRevenueIFRSSummaryOfBusinessResults",
+  "SalesAndFinancialServicesRevenueIFRSKeyFinancialData",
 ];
 
 const OPERATING_INCOME_TAGS = [
   "OperatingIncomeSummaryOfBusinessResults",
-  "OperatingIncomeIFRSSummaryOfBusinessResults",
+  "OperatingIncomeLossSummaryOfBusinessResults",
+  "OperatingProfitLossIFRSSummaryOfBusinessResults",
   "OperatingProfitIFRSSummaryOfBusinessResults",
+  "OperatingIncomeIFRSSummaryOfBusinessResults",
+  "OperatingIncomeLossIFRSSummaryOfBusinessResults",
+  "OperatingProfitLossSummaryOfBusinessResults",
   "OperatingIncome",
+  "OperatingIncomeIFRS",
   "OperatingProfit",
+  // IFRS は OperatingProfitLossIFRS が本来の「営業利益（損失）」。
+  // OperatingProfitIFRS に営業収益合計を入れてしまった開示もあるため、Loss 側を優先する。
+  "OperatingProfitLossIFRS",
+  "OperatingProfitIFRS",
+  "BusinessProfitIFRS",
+  "BusinessProfitIFRSKeyFinancialData",
 ];
 
 const ORDINARY_INCOME_TAGS = ["OrdinaryIncomeSummaryOfBusinessResults", "OrdinaryIncome"];
@@ -244,7 +265,13 @@ export class FinancialExtractor {
 
   /**
    * 年次（FY）のコンテキストIDを解決する。
-   * 連結のFactがなければ単体（_NonConsolidatedMember）にフォールバックする。
+   *
+   * 連結の有無は DEI の WhetherConsolidatedFinancialStatementsArePreparedDEI を正とする。
+   * 連結財務諸表を作成している企業で、たまたま連結側の売上・営業利益タグが未対応だった場合に
+   * 単体（_NonConsolidatedMember）へフォールバックすると、親会社単体の数値を連結値として
+   * 扱ってしまう（例: ソニーの売上高が親会社単体の1,644億円になる）。そのため、
+   * 連結作成ありの企業では単体へフォールバックしない。DEI が無い古い書類のみ従来通り
+   * 連結→単体の順で探索する。
    */
   private resolveContexts(doc: ParsedXbrlDocument): {
     currentDurationId: string;
@@ -274,36 +301,46 @@ export class FinancialExtractor {
       },
     ];
 
-    for (const candidate of candidates) {
-      if (this.hasFactForContext(doc, candidate.current)) {
-        return {
-          currentDurationId: candidate.current,
-          priorDurationId: candidate.prior,
-          currentInstantId: candidate.currentInstant,
-          priorInstantId: candidate.priorInstant,
-          hasConsolidated: true,
-        };
-      }
+    const consolidatedPrepared = doc.dei
+      .get("WhetherConsolidatedFinancialStatementsArePreparedDEI")
+      ?.toLowerCase();
+    const useConsolidated = consolidatedPrepared !== "false";
+    const canFallbackToNonConsolidated = consolidatedPrepared === undefined;
 
-      const nonConsolidated = `${candidate.current}_NonConsolidatedMember`;
-      if (this.hasFactForContext(doc, nonConsolidated)) {
-        return {
-          currentDurationId: nonConsolidated,
-          priorDurationId: `${candidate.prior}_NonConsolidatedMember`,
-          currentInstantId: `${candidate.currentInstant}_NonConsolidatedMember`,
-          priorInstantId: `${candidate.priorInstant}_NonConsolidatedMember`,
-          hasConsolidated: false,
-        };
+    const toResolution = (candidate: (typeof candidates)[number], hasConsolidated: boolean) => {
+      const suffix = hasConsolidated ? "" : "_NonConsolidatedMember";
+      return {
+        currentDurationId: `${candidate.current}${suffix}`,
+        priorDurationId: `${candidate.prior}${suffix}`,
+        currentInstantId: `${candidate.currentInstant}${suffix}`,
+        priorInstantId: `${candidate.priorInstant}${suffix}`,
+        hasConsolidated,
+      };
+    };
+
+    if (useConsolidated) {
+      for (const candidate of candidates) {
+        if (this.hasFactForContext(doc, candidate.current)) {
+          return toResolution(candidate, true);
+        }
+      }
+      // 連結作成ありと明示されている場合は、連結側のタグが未対応でも単体値で代替しない。
+      if (consolidatedPrepared === "true") {
+        return toResolution(candidates[0], true);
       }
     }
 
-    return {
-      currentDurationId: "CurrentYearDuration",
-      priorDurationId: "Prior1YearDuration",
-      currentInstantId: "CurrentYearInstant",
-      priorInstantId: "Prior1YearInstant",
-      hasConsolidated: true,
-    };
+    if (useConsolidated === false || canFallbackToNonConsolidated) {
+      for (const candidate of candidates) {
+        const nonConsolidated = `${candidate.current}_NonConsolidatedMember`;
+        if (this.hasFactForContext(doc, nonConsolidated)) {
+          return toResolution(candidate, false);
+        }
+      }
+    }
+
+    // DEI で単体のみと明示されている場合は、単体コンテキストを既定にする。
+    return toResolution(candidates[0], consolidatedPrepared !== "false");
   }
 
   private hasFactForContext(doc: ParsedXbrlDocument, contextId: string): boolean {
